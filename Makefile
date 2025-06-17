@@ -1,9 +1,13 @@
 .PHONY: test
-test:
+test: reload
+	set -exuo pipefail; \
+	host=$$(docker inspect test-mysql | jq -r '.[].NetworkSettings.IPAddress'); \
+	cd tests && go test -database "root@tcp($$host:3306)/test" $${GO_TEST_FLAGS:-}
+
+.PHONY: reload
+reload:
 	docker exec -i test-mysql mysql -u root test < debug.sql
 	docker exec -i test-mysql mysql -u root test < protobuf.sql
-	docker exec -i test-mysql mysql -u root test < assert.sql
-	docker exec -i test-mysql mysql -u root test < test.sql
 
 .PHONY: show-logs
 show-logs:
@@ -16,3 +20,7 @@ start-mysql:
 .PHONY: stop-mysql
 stop-mysql:
 	docker stop test-mysql
+
+.PHONY: mysql-shell
+mysql-shell:
+	docker exec -it test-mysql mysql -u root test

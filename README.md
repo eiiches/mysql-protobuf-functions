@@ -61,13 +61,16 @@ Usage
 Project Status
 ------
 
-* Implementation is very incomplete. Implemented field types are: (repeated) int32, int64, string, bytes, Message. Large (>=2**31) or negative integers are not tested.
+* Implementation is very incomplete. Implemented field types are: (repeated) bool, int32, int64, uint32, uint64, sint32, sint64, fixed64, sfixed64, double, string, bytes, Message, Enum.
   * No map support.
-* Currently, only getters are implemented. Setters are technically possible, I just didn't have time.
+* Currently, only getters are implemented. Setters are possible, and may be added later.
 
 Limitation
 ----------
 
 * I never benchmarked the functions. I have no idea how slow these functions are.
   * MySQL doesn't have an ARRAY type. With the current API, each element of a repeated field must be retrieved one by one. Yes, O(n^2) to retrieve all.
-* Currently, MySQL doesn't allow using stored functions in functional indexes or generated columns. That very much limits the usefulness of the functions.
+* Currently, MySQL doesn't allow using stored functions in functional indexes or generated columns. Use triggers instead.
+  * CREATE TABLE Example (protobuf_data BLOB, generated_field INT, INDEX (generated_field));
+  * CREATE TRIGGER Example_set_generated_field_on_update BEFORE UPDATE ON Example FOR EACH ROW SET NEW.generated_field = pb_message_get_int32_field(NEW.protobuf_data, 1, NULL);
+  * CREATE TRIGGER Example_set_generated_field_on_insert BEFORE INSERT ON Example FOR EACH ROW SET NEW.generated_field = pb_message_get_int32_field(NEW.protobuf_data, 1, NULL);

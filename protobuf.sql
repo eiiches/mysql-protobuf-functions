@@ -96,7 +96,7 @@ BEGIN
 	DECLARE len BIGINT;
 
 	SET tail = buf;
-	CALL pb_wire_read_varint(tail, len, tail);
+	CALL pb_wire_read_varint_as_uint64(tail, len, tail);
 
 	IF LENGTH(tail) < len THEN
 		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = 'pb_wire_read_len_type: Unexpected end of BLOB.';
@@ -106,8 +106,8 @@ BEGIN
 	SET tail = SUBSTRING(tail, len + 1);
 END $$
 
-DROP PROCEDURE IF EXISTS pb_wire_read_varint $$
-CREATE PROCEDURE pb_wire_read_varint(IN buf BLOB, OUT value BIGINT, OUT tail BLOB)
+DROP PROCEDURE IF EXISTS pb_wire_read_varint_as_uint64 $$
+CREATE PROCEDURE pb_wire_read_varint_as_uint64(IN buf BLOB, OUT value BIGINT UNSIGNED, OUT tail BLOB)
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
@@ -120,7 +120,7 @@ BEGIN
 
 	l1: LOOP
 		IF LENGTH(tail) = 0 THEN
-			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = 'pb_wire_read_varint: Unexpected end of BLOB.';
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = 'pb_wire_read_varint_as_uint64: Unexpected end of BLOB.';
 		END IF;
 
 		SET head = _pb_util_bin_as_int32(LEFT(tail, 1));
@@ -134,18 +134,124 @@ BEGIN
 
 		SET byte_index = byte_index + 1;
 		IF byte_index > 10 THEN
-			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = 'pb_wire_read_varint: Varint cannot exceed 10 bytes.';
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = 'pb_wire_read_varint_as_uint64: Varint cannot exceed 10 bytes.';
 		END IF;
 	END LOOP;
 END $$
 
-DROP FUNCTION IF EXISTS pb_wire_read_varint $$
-CREATE FUNCTION pb_wire_read_varint(buf BLOB) RETURNS BIGINT DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wire_read_varint_as_uint64 $$
+CREATE FUNCTION pb_wire_read_varint_as_uint64(buf BLOB) RETURNS BIGINT DETERMINISTIC
 BEGIN
 	DECLARE tail BLOB;
 	DECLARE value BIGINT;
-	CALL pb_wire_read_varint(buf, value, tail);
+	CALL pb_wire_read_varint_as_uint64(buf, value, tail);
 	RETURN value;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_int64;
+CREATE FUNCTION _pb_util_reinterpret_uint64_as_int64(value BIGINT UNSIGNED) RETURNS BIGINT DETERMINISTIC
+BEGIN
+	IF value <= 0x7fffffffffffffff THEN
+		RETURN CAST(value AS SIGNED);
+	ELSE
+		RETURN value - 18446744073709551616; -- 2^64
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint32_as_int32;
+CREATE FUNCTION _pb_util_reinterpret_uint32_as_int32(value INT UNSIGNED) RETURNS INT DETERMINISTIC
+BEGIN
+	IF value <= 0x7fffffff THEN
+		RETURN CAST(value AS SIGNED);
+	ELSE
+		RETURN value - 4294967296; -- 2^32
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_int32;
+CREATE FUNCTION _pb_util_reinterpret_uint64_as_int32(value BIGINT UNSIGNED) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
+
+	IF value > 0xffffffff THEN
+		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_util_reinterpret_uint64_as_int32: value is larger than 0xffffffff';
+	END IF;
+
+	RETURN IF(
+		value <= 0x7fffffff,
+		value,
+		CAST(value AS SIGNED) - 4294967296 -- 2^32
+	);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_uint32;
+CREATE FUNCTION _pb_util_reinterpret_uint64_as_uint32(value BIGINT UNSIGNED) RETURNS INT UNSIGNED DETERMINISTIC
+BEGIN
+	RETURN value;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_zigzag_decode;
+CREATE FUNCTION _pb_util_zigzag_decode(value BIGINT UNSIGNED) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+	RETURN (value >> 1) ^ - (value & 1);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_zigzag_encode_64;
+CREATE FUNCTION _pb_util_zigzag_encode_64(value BIGINT UNSIGNED) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+	RETURN (value << 1) ^ (value >> 63);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_swap_endian_32;
+CREATE FUNCTION _pb_util_swap_endian_32(value INT UNSIGNED) RETURNS INT UNSIGNED DETERMINISTIC
+BEGIN
+	RETURN ((value & 0xff) << 24)
+		| ((value >> 8) & 0xff) << 16
+		| ((value >> 16) & 0xff) << 8
+		| ((value >> 24) & 0xff);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_swap_endian_64;
+CREATE FUNCTION _pb_util_swap_endian_64(value BIGINT UNSIGNED) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+	RETURN ((value & 0xff) << 56)
+		| ((value >> 8) & 0xff) << 48
+		| ((value >> 16) & 0xff) << 40
+		| ((value >> 24) & 0xff) << 32
+		| ((value >> 32) & 0xff) << 24
+		| ((value >> 40) & 0xff) << 16
+		| ((value >> 48) & 0xff) << 8
+		| ((value >> 56) & 0xff);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_sint64;
+CREATE FUNCTION _pb_util_reinterpret_uint64_as_sint64(value BIGINT UNSIGNED) RETURNS BIGINT DETERMINISTIC
+BEGIN
+	RETURN _pb_util_reinterpret_uint64_as_int64(_pb_util_zigzag_decode(value));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_double $$
+CREATE FUNCTION _pb_util_reinterpret_uint64_as_double(bits BIGINT UNSIGNED) RETURNS DOUBLE DETERMINISTIC
+BEGIN
+	DECLARE sign INT;
+	DECLARE exponent INT;
+	DECLARE fraction DOUBLE;
+
+	SET sign = IF(bits >> 63 = 0, 1, -1); -- sign: +1 or -1
+	SET exponent = (bits >> 52) & 0x7FF; -- exponent (11 bits)
+	SET fraction = bits & 0xFFFFFFFFFFFFF; -- fraction (52 bits)
+
+	IF exponent = 2047 THEN -- special case
+		IF fraction = 0 THEN
+			RETURN sign * NULL;  -- +Inf or -Inf
+		ELSE
+			RETURN NULL; -- NaN
+		END IF;
+	ELSEIF exponent = 0 THEN -- subnormal number
+		RETURN sign * POW(2, -1022) * (fraction / POW(2, 52));
+	ELSE -- normal number
+		RETURN sign * POW(2, exponent - 1023) * (1 + (fraction / POW(2, 52)));
+	END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wire_get_field_number_from_tag $$
@@ -183,7 +289,7 @@ BEGIN
 
 	DECLARE tag BIGINT;
 	DECLARE tail BLOB;
-	DECLARE int_value BIGINT;
+	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE bytes_value BLOB;
 	DECLARE occurrence INT;
 	DECLARE message_text TEXT;
@@ -193,7 +299,7 @@ BEGIN
 	SET occurrence = 0;
 
 	WHILE LENGTH(tail) <> 0 DO
-		CALL pb_wire_read_varint(tail, tag, tail);
+		CALL pb_wire_read_varint_as_uint64(tail, tag, tail);
 
 		IF _pb_wire_get_field_number_from_tag(tag) = field_number AND _pb_wire_get_wire_type_from_tag(tag) <> 2 /* VARINT */ THEN
 			SET message_text = CONCAT('_pb_message_get_len_type_field: string or bytes value cannot be parsed from ', _pb_wire_type_name(_pb_wire_get_wire_type_from_tag(tag)), ' wire type.');
@@ -202,7 +308,7 @@ BEGIN
 
 		CASE _pb_wire_get_wire_type_from_tag(tag)
 		WHEN 0 THEN -- VARINT
-			CALL pb_wire_read_varint(tail, int_value, tail);
+			CALL pb_wire_read_varint_as_uint64(tail, uint_value, tail);
 		WHEN 1 THEN -- I64
 			CALL pb_wire_read_i64(tail, bytes_value, tail);
 		WHEN 2 THEN -- LEN
@@ -221,14 +327,15 @@ BEGIN
 	END WHILE;
 END $$
 
-DROP PROCEDURE IF EXISTS _pb_message_get_int32_or_int64_field $$
-CREATE PROCEDURE _pb_message_get_int32_or_int64_field(IN buf BLOB, IN field_number INT, IN repeated_index INT, OUT value BIGINT)
+DROP PROCEDURE IF EXISTS _pb_message_get_i32_field_as_uint32 $$
+CREATE PROCEDURE _pb_message_get_i32_field_as_uint32(IN buf BLOB, IN field_number INT, IN repeated_index INT, OUT value INT UNSIGNED)
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
 	DECLARE tag BIGINT;
 	DECLARE tail BLOB;
-	DECLARE int_value BIGINT;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE packed_value BLOB;
 	DECLARE bytes_value BLOB;
 	DECLARE occurrence INT;
 	DECLARE message_text TEXT;
@@ -238,19 +345,136 @@ BEGIN
 	SET occurrence = 0;
 
 	WHILE LENGTH(tail) <> 0 DO
-		CALL pb_wire_read_varint(tail, tag, tail);
+		CALL pb_wire_read_varint_as_uint64(tail, tag, tail);
 
-		IF _pb_wire_get_field_number_from_tag(tag) = field_number AND _pb_wire_get_wire_type_from_tag(tag) <> 0 /* VARINT */ AND (repeated_index IS NULL OR _pb_wire_get_wire_type_from_tag(tag) <> 2 /* LEN */) THEN
-			SET message_text = CONCAT('_pb_message_get_int32_or_int64_field: int32 or int64 value cannot be parsed from ', _pb_wire_type_name(_pb_wire_get_wire_type_from_tag(tag)), ' wire type.');
+		IF _pb_wire_get_field_number_from_tag(tag) = field_number AND _pb_wire_get_wire_type_from_tag(tag) <> 5 /* I32 */ AND (repeated_index IS NULL OR _pb_wire_get_wire_type_from_tag(tag) <> 2 /* LEN */) THEN
+			SET message_text = CONCAT('_pb_message_get_i32_field_as_uint32: I32 value cannot be parsed from ', _pb_wire_type_name(_pb_wire_get_wire_type_from_tag(tag)), ' wire type.');
 			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
 		END IF;
 
 		CASE _pb_wire_get_wire_type_from_tag(tag)
 		WHEN 0 THEN -- VARINT
-			CALL pb_wire_read_varint(tail, int_value, tail);
+			CALL pb_wire_read_varint_as_uint64(tail, uint_value, tail);
+		WHEN 1 THEN -- I64
+			CALL pb_wire_read_i64(tail, bytes_value, tail);
+		WHEN 2 THEN -- LEN
+			CALL pb_wire_read_len_type(tail, bytes_value, tail);
+			IF _pb_wire_get_field_number_from_tag(tag) = field_number AND repeated_index IS NOT NULL THEN
+				WHILE LENGTH(bytes_value) <> 0 DO
+					CALL pb_wire_read_i32(bytes_value, packed_value, bytes_value);
+					IF repeated_index = occurrence THEN
+						SET value = _pb_util_swap_endian_32(_pb_util_bin_as_uint32(packed_value));
+					END IF;
+					SET occurrence = occurrence + 1;
+				END WHILE;
+			END IF;
+		WHEN 5 THEN -- I32
+			CALL pb_wire_read_i32(tail, bytes_value, tail);
 			IF _pb_wire_get_field_number_from_tag(tag) = field_number THEN
 				IF repeated_index IS NULL OR repeated_index = occurrence THEN
-					SET value = int_value;
+					SET value = _pb_util_swap_endian_32(_pb_util_bin_as_uint32(bytes_value));
+				END IF;
+				SET occurrence = occurrence + 1;
+			END IF;
+		ELSE
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_i32_field_as_uint32: unsupported wire_type';
+		END CASE;
+	END WHILE;
+
+	IF repeated_index IS NOT NULL AND occurrence <= repeated_index THEN
+		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_i32_field_as_uint32: repeated index out of range';
+	END IF;
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_message_get_i64_field_as_uint64 $$
+CREATE PROCEDURE _pb_message_get_i64_field_as_uint64(IN buf BLOB, IN field_number INT, IN repeated_index INT, OUT value BIGINT UNSIGNED)
+BEGIN
+	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
+
+	DECLARE tag BIGINT;
+	DECLARE tail BLOB;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE packed_value BLOB;
+	DECLARE bytes_value BLOB;
+	DECLARE occurrence INT;
+	DECLARE message_text TEXT;
+
+	SET value = 0; -- proto3 default value for an integer field
+	SET tail = buf;
+	SET occurrence = 0;
+
+	WHILE LENGTH(tail) <> 0 DO
+		CALL pb_wire_read_varint_as_uint64(tail, tag, tail);
+
+		IF _pb_wire_get_field_number_from_tag(tag) = field_number AND _pb_wire_get_wire_type_from_tag(tag) <> 1 /* I64 */ AND (repeated_index IS NULL OR _pb_wire_get_wire_type_from_tag(tag) <> 2 /* LEN */) THEN
+			SET message_text = CONCAT('_pb_message_get_i64_field_as_uint64: I64 value cannot be parsed from ', _pb_wire_type_name(_pb_wire_get_wire_type_from_tag(tag)), ' wire type.');
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		CASE _pb_wire_get_wire_type_from_tag(tag)
+		WHEN 0 THEN -- VARINT
+			CALL pb_wire_read_varint_as_uint64(tail, uint_value, tail);
+		WHEN 1 THEN -- I64
+			CALL pb_wire_read_i64(tail, bytes_value, tail);
+			IF _pb_wire_get_field_number_from_tag(tag) = field_number THEN
+				IF repeated_index IS NULL OR repeated_index = occurrence THEN
+					SET value = _pb_util_swap_endian_64(_pb_util_bin_as_uint64(bytes_value));
+				END IF;
+				SET occurrence = occurrence + 1;
+			END IF;
+		WHEN 2 THEN -- LEN
+			CALL pb_wire_read_len_type(tail, bytes_value, tail);
+			IF _pb_wire_get_field_number_from_tag(tag) = field_number AND repeated_index IS NOT NULL THEN
+				WHILE LENGTH(bytes_value) <> 0 DO
+					CALL pb_wire_read_i64(bytes_value, packed_value, bytes_value);
+					IF repeated_index = occurrence THEN
+						SET value = _pb_util_swap_endian_64(_pb_util_bin_as_uint64(packed_value));
+					END IF;
+					SET occurrence = occurrence + 1;
+				END WHILE;
+			END IF;
+		WHEN 5 THEN -- I32
+			CALL pb_wire_read_i32(tail, bytes_value, tail);
+		ELSE
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_i64_field_as_uint64: unsupported wire_type';
+		END CASE;
+	END WHILE;
+
+	IF repeated_index IS NOT NULL AND occurrence <= repeated_index THEN
+		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_i64_field_as_uint64: repeated index out of range';
+	END IF;
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_message_get_uint32_or_uint64_field $$
+CREATE PROCEDURE _pb_message_get_uint32_or_uint64_field(IN buf BLOB, IN field_number INT, IN repeated_index INT, OUT value BIGINT UNSIGNED)
+BEGIN
+	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
+
+	DECLARE tag BIGINT;
+	DECLARE tail BLOB;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value BLOB;
+	DECLARE occurrence INT;
+	DECLARE message_text TEXT;
+
+	SET value = 0; -- proto3 default value for an integer field
+	SET tail = buf;
+	SET occurrence = 0;
+
+	WHILE LENGTH(tail) <> 0 DO
+		CALL pb_wire_read_varint_as_uint64(tail, tag, tail);
+
+		IF _pb_wire_get_field_number_from_tag(tag) = field_number AND _pb_wire_get_wire_type_from_tag(tag) <> 0 /* VARINT */ AND (repeated_index IS NULL OR _pb_wire_get_wire_type_from_tag(tag) <> 2 /* LEN */) THEN
+			SET message_text = CONCAT('_pb_message_get_uint32_or_uint64_field: uint32 or uint64 value cannot be parsed from ', _pb_wire_type_name(_pb_wire_get_wire_type_from_tag(tag)), ' wire type.');
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		CASE _pb_wire_get_wire_type_from_tag(tag)
+		WHEN 0 THEN -- VARINT
+			CALL pb_wire_read_varint_as_uint64(tail, uint_value, tail);
+			IF _pb_wire_get_field_number_from_tag(tag) = field_number THEN
+				IF repeated_index IS NULL OR repeated_index = occurrence THEN
+					SET value = uint_value;
 				END IF;
 				SET occurrence = occurrence + 1;
 			END IF;
@@ -260,9 +484,9 @@ BEGIN
 			CALL pb_wire_read_len_type(tail, bytes_value, tail);
 			IF _pb_wire_get_field_number_from_tag(tag) = field_number AND repeated_index IS NOT NULL THEN
 				WHILE LENGTH(bytes_value) <> 0 DO
-					CALL pb_wire_read_varint(bytes_value, int_value, bytes_value);
+					CALL pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
 					IF repeated_index = occurrence THEN
-						SET value = int_value;
+						SET value = uint_value;
 					END IF;
 					SET occurrence = occurrence + 1;
 				END WHILE;
@@ -270,45 +494,117 @@ BEGIN
 		WHEN 5 THEN -- I32
 			CALL pb_wire_read_i32(tail, bytes_value, tail);
 		ELSE
-			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_int32_or_int64_field: unsupported wire_type';
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_uint32_or_uint64_field: unsupported wire_type';
 		END CASE;
 	END WHILE;
 
 	IF repeated_index IS NOT NULL AND occurrence <= repeated_index THEN
-		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_int32_or_int64_field: repeated index out of range';
+		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_uint32_or_uint64_field: repeated index out of range';
 	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_bool_field $$
+CREATE FUNCTION pb_message_get_bool_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BIGINT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	RETURN value <> 0;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_enum_field $$
+CREATE FUNCTION pb_message_get_enum_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BIGINT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	RETURN value <> 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_int32_field $$
 CREATE FUNCTION pb_message_get_int32_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT DETERMINISTIC
 BEGIN
-	DECLARE value BIGINT;
-	CALL _pb_message_get_int32_or_int64_field(buf, field_number, repeated_index, value);
-	RETURN value;
+	DECLARE value BIGINT UNSIGNED;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	RETURN _pb_util_reinterpret_uint64_as_int64(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_uint32_field $$
 CREATE FUNCTION pb_message_get_uint32_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT UNSIGNED DETERMINISTIC
 BEGIN
-	DECLARE value BIGINT;
+	DECLARE value BIGINT UNSIGNED;
 	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
 	RETURN value;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_sint32_field $$
+CREATE FUNCTION pb_message_get_sint32_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BIGINT UNSIGNED;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	RETURN _pb_util_reinterpret_uint64_as_sint64(value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_fixed32_field $$
+CREATE FUNCTION pb_message_get_fixed32_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT UNSIGNED DETERMINISTIC
+BEGIN
+	DECLARE value INT UNSIGNED;
+	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, repeated_index, value);
+	RETURN value;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_sfixed32_field $$
+CREATE FUNCTION pb_message_get_sfixed32_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value INT UNSIGNED;
+	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, repeated_index, value);
+	RETURN _pb_util_reinterpret_uint32_as_int32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_int64_field $$
 CREATE FUNCTION pb_message_get_int64_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BIGINT DETERMINISTIC
 BEGIN
-	DECLARE value BIGINT;
-	CALL _pb_message_get_int32_or_int64_field(buf, field_number, repeated_index, value);
-	RETURN value;
+	DECLARE value BIGINT UNSIGNED;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	RETURN _pb_util_reinterpret_uint64_as_int64(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_uint64_field $$
-CREATE FUNCTION pb_message_get_uint64_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT UNSIGNED DETERMINISTIC
+CREATE FUNCTION pb_message_get_uint64_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BIGINT UNSIGNED DETERMINISTIC
 BEGIN
-	DECLARE value BIGINT;
+	DECLARE value BIGINT UNSIGNED;
 	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
 	RETURN value;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_sint64_field $$
+CREATE FUNCTION pb_message_get_sint64_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BIGINT DETERMINISTIC
+BEGIN
+	DECLARE value BIGINT UNSIGNED;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	RETURN _pb_util_reinterpret_uint64_as_sint64(value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_fixed64_field $$
+CREATE FUNCTION pb_message_get_fixed64_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+	DECLARE value BIGINT UNSIGNED;
+	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, repeated_index, value);
+	RETURN value;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_sfixed64_field $$
+CREATE FUNCTION pb_message_get_sfixed64_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BIGINT DETERMINISTIC
+BEGIN
+	DECLARE value BIGINT UNSIGNED;
+	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, repeated_index, value);
+	RETURN _pb_util_reinterpret_uint64_as_int64(value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_double_field $$
+CREATE FUNCTION pb_message_get_double_field(buf BLOB, field_number INT, repeated_index INT) RETURNS DOUBLE DETERMINISTIC
+BEGIN
+	DECLARE value BIGINT UNSIGNED;
+	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, repeated_index, value);
+	RETURN _pb_util_reinterpret_uint64_as_double(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_string_field $$

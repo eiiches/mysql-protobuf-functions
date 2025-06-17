@@ -9,6 +9,14 @@ message Test {
   bytes bytes_field = 6;
   repeated int32 repeated_int32_field = 7;
   TestMessage message_field = 8;
+  sint32 sint32_field = 9;
+  sint64 sint64_field = 10;
+  sfixed64 sfixed64_field = 11;
+  fixed64 fixed64_field = 12;
+  double double_field = 13;
+  sfixed32 sfixed32_field = 14;
+  fixed32 fixed32_field = 15;
+  float float_field = 16;
 }
 
 message TestMessage {
