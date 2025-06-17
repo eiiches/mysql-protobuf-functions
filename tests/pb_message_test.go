@@ -91,3 +91,7 @@ func TestMessageGetFixed32Field(t *testing.T) {
 	AssertThatExpression(t, "pb_message_get_fixed32_field(_binary X'', 15, NULL)").IsEqualToUint(0)
 	AssertThatExpression(t, "pb_message_get_fixed32_field(_binary X'7dffffffff', 15, 0)").IsEqualToUint(4294967295)
 }
+
+func TestMessageGetMessageField(t *testing.T) {
+	AssertThatExpression(t, "pb_message_get_message_field(_binary X'4202080a', 8, NULL)").IsEqualToBytes([]byte{0x08, 0x0a})
+}

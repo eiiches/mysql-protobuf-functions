@@ -121,6 +121,10 @@ func (this *ExpressionTestContext) IsEqualToDouble(expected float64) {
 	runAssertThatExpressionIsEqualTo[float64](this.T, "IsEqualToDouble", expected, this.Expression, this.Args...)
 }
 
+func (this *ExpressionTestContext) IsEqualToFloat(expected float32) {
+	runAssertThatExpressionIsEqualTo[float32](this.T, "IsEqualToFloat", expected, this.Expression, this.Args...)
+}
+
 func (this *ExpressionTestContext) IsEqualTo(expected interface{}) {
 	runAssertThatExpressionIsEqualTo[interface{}](this.T, "IsEqualTo", expected, this.Expression, this.Args...)
 }

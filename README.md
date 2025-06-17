@@ -58,12 +58,60 @@ Usage
    }
    ```
 
-Project Status
-------
+Function Reference
+---------
 
-* Implementation is very incomplete. Implemented field types are: (repeated) bool, int32, int64, uint32, uint64, sint32, sint64, fixed64, sfixed64, double, string, bytes, Message, Enum.
-  * No map support.
-* Currently, only getters are implemented. Setters are possible, and may be added later.
+### Getters — pb\_message\_get\_{type}\_field()
+
+Retrieves the value of a specified field from a Protobuf-encoded BLOB. This function is used to extract individual values from serialized Protocol Buffers messages stored as binary data.
+
+##### Parameters
+
+* **buf** — A `BLOB` containing the serialized Protobuf message.
+* **field_number** — An `INT` specifying the field number, as defined in the Protobuf schema.
+* **repeated_index** — If the target field is repeated, this is the zero-based index to retrieve. For non-repeated fields, this should be `NULL`.
+
+##### Returns
+
+The value of the requested field, interpreted as the corresponding SQL type.
+
+- For non-repeated fields (`repeated_index` is `NULL`), the function returns the [default value](https://protobuf.dev/programming-guides/proto3/#default) defined by the Protobuf specification if the field is not explicitly set.
+- For repeated fields, if `repeated_index` exceeds the number of available elements, the function raises an "index out of range" error.
+
+##### Notes
+
+- The field number must match the one used in the `.proto` schema definition.
+- This function does not perform schema validation; it assumes the caller knows the correct field number and expected type.
+
+##### Type Variants
+
+* `pb_message_get_bool_field`(buf BLOB, field_number INT, repeated_index INT) → BOOLEAN
+* `pb_message_get_enum_field`(buf BLOB, field_number INT, repeated_index INT) → INT
+* `pb_message_get_int32_field`(buf BLOB, field_number INT, repeated_index INT) → INT
+* `pb_message_get_uint32_field`(buf BLOB, field_number INT, repeated_index INT) → INT UNSIGNED
+* `pb_message_get_sint32_field`(buf BLOB, field_number INT, repeated_index INT) → INT
+* `pb_message_get_fixed32_field`(buf BLOB, field_number INT, repeated_index INT) → INT UNSIGNED
+* `pb_message_get_sfixed32_field`(buf BLOB, field_number INT, repeated_index INT) → INT
+* `pb_message_get_int64_field`(buf BLOB, field_number INT, repeated_index INT) → BIGINT
+* `pb_message_get_uint64_field`(buf BLOB, field_number INT, repeated_index INT) → BIGINT UNSIGNED
+* `pb_message_get_sint64_field`(buf BLOB, field_number INT, repeated_index INT) → BIGINT
+* `pb_message_get_fixed64_field`(buf BLOB, field_number INT, repeated_index INT) → BIGINT UNSIGNED
+* `pb_message_get_sfixed64_field`(buf BLOB, field_number INT, repeated_index INT) → BIGINT
+* `pb_message_get_double_field`(buf BLOB, field_number INT, repeated_index INT) → DOUBLE
+* `pb_message_get_string_field`(buf BLOB, field_number INT, repeated_index INT) → TEXT
+* `pb_message_get_bytes_field`(buf BLOB, field_number INT, repeated_index INT) → BLOB
+* `pb_message_get_message_field`(buf BLOB, field_number INT, repeated_index INT) → BLOB
+
+TODO
+----
+
+* Add `pb_message_set_{type}_field(data, field_number, repeated_index)`.
+* Add `pb_message_get_{type}_field_count(data, field_number)` for repeated fields.
+* Add `pb_message_has_{type}_field(data, field_number)` for proto3 optional fields.
+* Schema support.
+  * `pb_load_file_descriptor_set()`
+  * `pb_message_to_json()`
+* Implement map support.
 
 Limitation
 ----------
@@ -74,3 +122,4 @@ Limitation
   * CREATE TABLE Example (protobuf_data BLOB, generated_field INT, INDEX (generated_field));
   * CREATE TRIGGER Example_set_generated_field_on_update BEFORE UPDATE ON Example FOR EACH ROW SET NEW.generated_field = pb_message_get_int32_field(NEW.protobuf_data, 1, NULL);
   * CREATE TRIGGER Example_set_generated_field_on_insert BEFORE INSERT ON Example FOR EACH ROW SET NEW.generated_field = pb_message_get_int32_field(NEW.protobuf_data, 1, NULL);
+* [Groups](https://protobuf.dev/programming-guides/encoding/#groups) are not, and probably will not be supported.

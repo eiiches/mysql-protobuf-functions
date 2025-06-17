@@ -164,7 +164,7 @@ BEGIN
 	IF value <= 0x7fffffff THEN
 		RETURN CAST(value AS SIGNED);
 	ELSE
-		RETURN value - 4294967296; -- 2^32
+		RETURN CAST(value AS SIGNED) - 4294967296; -- 2^32
 	END IF;
 END $$
 
@@ -252,6 +252,30 @@ BEGIN
 	ELSE -- normal number
 		RETURN sign * POW(2, exponent - 1023) * (1 + (fraction / POW(2, 52)));
 	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint32_as_float $$
+CREATE FUNCTION _pb_util_reinterpret_uint32_as_float(bits INT UNSIGNED) RETURNS FLOAT DETERMINISTIC
+BEGIN
+    DECLARE sign INT;
+    DECLARE exponent INT;
+    DECLARE fraction DOUBLE;
+
+    SET sign = IF(bits >> 31 = 0, 1, -1); -- sign: +1 or -1
+    SET exponent = (bits >> 23) & 0xFF; -- exponent (8 bits)
+    SET fraction = bits & 0x7FFFFF; -- fraction (23 bits)
+
+    IF exponent = 255 THEN -- special case
+        IF fraction = 0 THEN
+            RETURN sign * NULL; -- +Inf or -Inf
+        ELSE
+            RETURN NULL; -- NaN
+        END IF;
+    ELSEIF exponent = 0 THEN -- subnormal number
+        RETURN sign * POW(2, -126) * (fraction / POW(2, 23));
+    ELSE -- normal number
+        RETURN sign * POW(2, exponent - 127) * (1 + (fraction / POW(2, 23)));
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wire_get_field_number_from_tag $$

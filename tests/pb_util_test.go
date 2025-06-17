@@ -35,6 +35,46 @@ func TestUtilReinterpretUint64AsDouble(t *testing.T) {
 	AssertThatExpression(t, "_pb_util_reinterpret_uint64_as_double(0b0111111111111111111111111111111111111111111111111111111111111111)").IsNull() /* NaN */
 }
 
+func TestUtilReinterpretUint32AsFloat(t *testing.T) {
+	// https://en.wikipedia.org/wiki/Single-precision_floating-point_format
+
+	// Subnormal range
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x00000001)").IsEqualToFloat(1.4012984643e-45) // Smallest positive subnormal number
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x007FFFFF)").IsEqualToFloat(1.1754942107e-38) // Largest subnormal number
+
+	// Normal range
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x00800000)").IsEqualToFloat(1.1754943508e-38) // Smallest positive normal number
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x7F7FFFFF)").IsEqualToFloat(3.4028234664e+38) // Largest normal number
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x3F7FFFFF)").IsEqualToFloat(0.9999999404)     // Largest number less than one
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x3F800000)").IsEqualToFloat(1)                // 1.0
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x3F800001)").IsEqualToFloat(1.0000001192)     // Smallest number larger than one
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0xC0000000)").IsEqualToFloat(-2)               // -2.0
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x00000000)").IsEqualToFloat(0)                // +0.0
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x80000000)").IsEqualToFloat(-0)               // -0.0
+
+	// Special values
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x7F800000)").IsNull() /* +Inf */
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0xFF800000)").IsNull() /* -Inf */
+
+	// Common constants
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x40490FDB)").IsEqualToFloat(3.1415927410) // Pi (π)
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x3EAAAAAB)").IsEqualToFloat(0.3333333433) // 1/3
+
+	// NaNs
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0xFFC00001)").IsNull() /* qNaN */
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0xFF800001)").IsNull() /* sNaN */
+}
+
+func TestUtilReinterpretUint32AsInt32(t *testing.T) {
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_int32(0x00000000)").IsEqualToInt(0)
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_int32(0x7fffffff)").IsEqualToInt(2147483647)
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_int32(0x80000000)").IsEqualToInt(-2147483648)
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_int32(0x80000400)").IsEqualToInt(-2147482624)
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_int32(0x80000401)").IsEqualToInt(-2147482623)
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_int32(0xfffffffe)").IsEqualToInt(-2)
+	AssertThatExpression(t, "_pb_util_reinterpret_uint32_as_int32(0xffffffff)").IsEqualToInt(-1)
+}
+
 func TestUtilReinterpretUint64AsInt64(t *testing.T) {
 	AssertThatExpression(t, "_pb_util_reinterpret_uint64_as_int64(0x0000000000000000)").IsEqualToInt(0)
 	AssertThatExpression(t, "_pb_util_reinterpret_uint64_as_int64(0x7fffffffffffffff)").IsEqualToInt(9223372036854775807)
