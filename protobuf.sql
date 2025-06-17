@@ -318,7 +318,7 @@ BEGIN
 	DECLARE occurrence INT;
 	DECLARE message_text TEXT;
 
-	SET value = 0; -- proto3 default value for an integer field
+	SET value = _binary X''; -- proto3 default value for an string, bytes, and message field
 	SET tail = buf;
 	SET occurrence = 0;
 

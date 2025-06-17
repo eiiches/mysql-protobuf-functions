@@ -50,6 +50,7 @@ func TestMessageGetInt64Field(t *testing.T) {
 }
 
 func TestMessageGetStringField(t *testing.T) {
+	AssertThatExpression(t, "pb_message_get_string_field(_binary X'', 5, NULL)").IsEqualToString("")
 	AssertThatExpression(t, "pb_message_get_string_field(_binary X'100a2a03616263', 5, NULL)").IsEqualToString("abc")
 }
 
