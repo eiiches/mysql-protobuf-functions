@@ -328,8 +328,8 @@ BEGIN
 	END WHILE;
 END $$
 
-DROP PROCEDURE IF EXISTS pb_load_file_descriptor_set $$
-CREATE PROCEDURE pb_load_file_descriptor_set(IN set_name VARCHAR(64), IN file_descriptor_set BLOB)
+DROP PROCEDURE IF EXISTS pb_descriptor_set_load $$
+CREATE PROCEDURE pb_descriptor_set_load(IN set_name VARCHAR(64), IN file_descriptor_set BLOB)
 BEGIN
 	DECLARE file_descriptor BLOB;
 	DECLARE file_descriptor_count INT;
@@ -348,8 +348,8 @@ BEGIN
 	END WHILE;
 END $$
 
-DROP PROCEDURE IF EXISTS pb_delete_file_descriptor_set $$
-CREATE PROCEDURE pb_delete_file_descriptor_set(IN set_name VARCHAR(64))
+DROP PROCEDURE IF EXISTS pb_descriptor_set_delete $$
+CREATE PROCEDURE pb_descriptor_set_delete(IN set_name VARCHAR(64))
 BEGIN
 	DELETE FROM _Proto_FileDescriptorSet WHERE set_name = set_name;
 END $$

@@ -180,10 +180,10 @@ An `INT` representing the number of elements in the specified repeated field.
 * `pb_message_get_bytes_field_count`(buf BLOB, field_number INT) → INT
 * `pb_message_get_message_field_count`(buf BLOB, field_number INT) → INT
 
-Procedure Reference
+Descriptor Set Functions &amp; Procedures
 -------------------
 
-### Load File Descriptor Set — `CALL pb_load_file_descriptor_set()`
+### Load File Descriptor Set — CALL pb\_descriptor\_set\_load()
 
 Loads a compiled Protobuf `FileDescriptorSet` into internal database tables.
 This procedure registers the schema information required for operations that depend on message descriptors, such as `pb_message_to_json()` (planned but not yet implemented).
@@ -202,10 +202,10 @@ This procedure registers the schema information required for operations that dep
   - Getters and hazzers (`pb_message_get_{type}_field()`, `pb_message_get_{type}_field_count()`, `pb_message_has_{type}_field()`) don't require this procedure.
 - If a descriptor set with the same `set_name` already exists, the procedure will fail.
 
-### Delete File Descriptor Set — `CALL pb_delete_file_descriptor_set()`
+### Delete File Descriptor Set — CALL pb\_descriptor\_set\_delete()
 
 Deletes the internal tables associated with a previously loaded descriptor set.
-This procedure is used to clean up resources created by `pb_load_file_descriptor_set()`.
+This procedure is used to clean up resources created by `pb_descriptor_set_load()`.
 
 #### Parameters
 
@@ -216,6 +216,18 @@ This procedure is used to clean up resources created by `pb_load_file_descriptor
 
 - If the specified descriptor set does not exist, the procedure performs no action.
 - Temporary descriptor sets (created with `persist = FALSE`) do not require manual deletion — they are automatically dropped at the end of the session.
+
+### [Function] pb\_descriptor\_set\_exists()
+
+TBD
+
+### [Function] pb\_descriptor\_set\_contains\_message\_type()
+
+TBD
+
+### [Function] pb\_descriptor\_set\_contains\_enum\_type()
+
+TBD
 
 TODO
 ----
