@@ -307,7 +307,7 @@ BEGIN
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_message_get_len_type_field $$
-CREATE PROCEDURE _pb_message_get_len_type_field(IN buf BLOB, IN field_number INT, IN repeated_index INT, OUT value BLOB)
+CREATE PROCEDURE _pb_message_get_len_type_field(IN buf BLOB, IN field_number INT, IN repeated_index INT, OUT value BLOB, OUT field_count INT)
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
@@ -315,12 +315,11 @@ BEGIN
 	DECLARE tail BLOB;
 	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE bytes_value BLOB;
-	DECLARE occurrence INT;
 	DECLARE message_text TEXT;
 
 	SET value = _binary X''; -- proto3 default value for an string, bytes, and message field
 	SET tail = buf;
-	SET occurrence = 0;
+	SET field_count = 0;
 
 	WHILE LENGTH(tail) <> 0 DO
 		CALL pb_wire_read_varint_as_uint64(tail, tag, tail);
@@ -338,10 +337,10 @@ BEGIN
 		WHEN 2 THEN -- LEN
 			CALL pb_wire_read_len_type(tail, bytes_value, tail);
 			IF _pb_wire_get_field_number_from_tag(tag) = field_number THEN
-				IF repeated_index IS NULL OR repeated_index = occurrence THEN
+				IF repeated_index IS NULL OR repeated_index = field_count THEN
 					SET value = bytes_value;
-					SET occurrence = occurrence + 1;
 				END IF;
+				SET field_count = field_count + 1;
 			END IF;
 		WHEN 5 THEN -- I32
 			CALL pb_wire_read_i32(tail, bytes_value, tail);
@@ -349,10 +348,15 @@ BEGIN
 			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_len_type_field: unsupported wire_type';
 		END CASE;
 	END WHILE;
+
+	-- Negative repeated_index is used when just counting the number of repeated elements.
+	IF repeated_index IS NOT NULL AND repeated_index >= 0 AND field_count <= repeated_index THEN
+		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_len_type_field: repeated index out of range';
+	END IF;
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_message_get_i32_field_as_uint32 $$
-CREATE PROCEDURE _pb_message_get_i32_field_as_uint32(IN buf BLOB, IN field_number INT, IN repeated_index INT, OUT value INT UNSIGNED)
+CREATE PROCEDURE _pb_message_get_i32_field_as_uint32(IN buf BLOB, IN field_number INT, IN repeated_index INT, OUT value INT UNSIGNED, OUT field_count INT)
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
@@ -361,12 +365,11 @@ BEGIN
 	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE packed_value BLOB;
 	DECLARE bytes_value BLOB;
-	DECLARE occurrence INT;
 	DECLARE message_text TEXT;
 
 	SET value = 0; -- proto3 default value for an integer field
 	SET tail = buf;
-	SET occurrence = 0;
+	SET field_count = 0;
 
 	WHILE LENGTH(tail) <> 0 DO
 		CALL pb_wire_read_varint_as_uint64(tail, tag, tail);
@@ -386,32 +389,33 @@ BEGIN
 			IF _pb_wire_get_field_number_from_tag(tag) = field_number AND repeated_index IS NOT NULL THEN
 				WHILE LENGTH(bytes_value) <> 0 DO
 					CALL pb_wire_read_i32(bytes_value, packed_value, bytes_value);
-					IF repeated_index = occurrence THEN
+					IF repeated_index = field_count THEN
 						SET value = _pb_util_swap_endian_32(_pb_util_bin_as_uint32(packed_value));
 					END IF;
-					SET occurrence = occurrence + 1;
+					SET field_count = field_count + 1;
 				END WHILE;
 			END IF;
 		WHEN 5 THEN -- I32
 			CALL pb_wire_read_i32(tail, bytes_value, tail);
 			IF _pb_wire_get_field_number_from_tag(tag) = field_number THEN
-				IF repeated_index IS NULL OR repeated_index = occurrence THEN
+				IF repeated_index IS NULL OR repeated_index = field_count THEN
 					SET value = _pb_util_swap_endian_32(_pb_util_bin_as_uint32(bytes_value));
 				END IF;
-				SET occurrence = occurrence + 1;
+				SET field_count = field_count + 1;
 			END IF;
 		ELSE
 			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_i32_field_as_uint32: unsupported wire_type';
 		END CASE;
 	END WHILE;
 
-	IF repeated_index IS NOT NULL AND occurrence <= repeated_index THEN
+	-- Negative repeated_index is used when just counting the number of repeated elements.
+	IF repeated_index IS NOT NULL AND repeated_index >= 0 AND field_count <= repeated_index THEN
 		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_i32_field_as_uint32: repeated index out of range';
 	END IF;
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_message_get_i64_field_as_uint64 $$
-CREATE PROCEDURE _pb_message_get_i64_field_as_uint64(IN buf BLOB, IN field_number INT, IN repeated_index INT, OUT value BIGINT UNSIGNED)
+CREATE PROCEDURE _pb_message_get_i64_field_as_uint64(IN buf BLOB, IN field_number INT, IN repeated_index INT, OUT value BIGINT UNSIGNED, OUT field_count INT)
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
@@ -420,12 +424,11 @@ BEGIN
 	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE packed_value BLOB;
 	DECLARE bytes_value BLOB;
-	DECLARE occurrence INT;
 	DECLARE message_text TEXT;
 
 	SET value = 0; -- proto3 default value for an integer field
 	SET tail = buf;
-	SET occurrence = 0;
+	SET field_count = 0;
 
 	WHILE LENGTH(tail) <> 0 DO
 		CALL pb_wire_read_varint_as_uint64(tail, tag, tail);
@@ -441,20 +444,20 @@ BEGIN
 		WHEN 1 THEN -- I64
 			CALL pb_wire_read_i64(tail, bytes_value, tail);
 			IF _pb_wire_get_field_number_from_tag(tag) = field_number THEN
-				IF repeated_index IS NULL OR repeated_index = occurrence THEN
+				IF repeated_index IS NULL OR repeated_index = field_count THEN
 					SET value = _pb_util_swap_endian_64(_pb_util_bin_as_uint64(bytes_value));
 				END IF;
-				SET occurrence = occurrence + 1;
+				SET field_count = field_count + 1;
 			END IF;
 		WHEN 2 THEN -- LEN
 			CALL pb_wire_read_len_type(tail, bytes_value, tail);
 			IF _pb_wire_get_field_number_from_tag(tag) = field_number AND repeated_index IS NOT NULL THEN
 				WHILE LENGTH(bytes_value) <> 0 DO
 					CALL pb_wire_read_i64(bytes_value, packed_value, bytes_value);
-					IF repeated_index = occurrence THEN
+					IF repeated_index = field_count THEN
 						SET value = _pb_util_swap_endian_64(_pb_util_bin_as_uint64(packed_value));
 					END IF;
-					SET occurrence = occurrence + 1;
+					SET field_count = field_count + 1;
 				END WHILE;
 			END IF;
 		WHEN 5 THEN -- I32
@@ -464,13 +467,14 @@ BEGIN
 		END CASE;
 	END WHILE;
 
-	IF repeated_index IS NOT NULL AND occurrence <= repeated_index THEN
+	-- Negative repeated_index is used when just counting the number of repeated elements.
+	IF repeated_index IS NOT NULL AND repeated_index >= 0 AND field_count <= repeated_index THEN
 		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_i64_field_as_uint64: repeated index out of range';
 	END IF;
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_message_get_uint32_or_uint64_field $$
-CREATE PROCEDURE _pb_message_get_uint32_or_uint64_field(IN buf BLOB, IN field_number INT, IN repeated_index INT, OUT value BIGINT UNSIGNED)
+CREATE PROCEDURE _pb_message_get_uint32_or_uint64_field(IN buf BLOB, IN field_number INT, IN repeated_index INT, OUT value BIGINT UNSIGNED, OUT field_count INT)
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
@@ -478,12 +482,11 @@ BEGIN
 	DECLARE tail BLOB;
 	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE bytes_value BLOB;
-	DECLARE occurrence INT;
 	DECLARE message_text TEXT;
 
 	SET value = 0; -- proto3 default value for an integer field
 	SET tail = buf;
-	SET occurrence = 0;
+	SET field_count = 0;
 
 	WHILE LENGTH(tail) <> 0 DO
 		CALL pb_wire_read_varint_as_uint64(tail, tag, tail);
@@ -497,10 +500,10 @@ BEGIN
 		WHEN 0 THEN -- VARINT
 			CALL pb_wire_read_varint_as_uint64(tail, uint_value, tail);
 			IF _pb_wire_get_field_number_from_tag(tag) = field_number THEN
-				IF repeated_index IS NULL OR repeated_index = occurrence THEN
+				IF repeated_index IS NULL OR repeated_index = field_count THEN
 					SET value = uint_value;
 				END IF;
-				SET occurrence = occurrence + 1;
+				SET field_count = field_count + 1;
 			END IF;
 		WHEN 1 THEN -- I64
 			CALL pb_wire_read_i64(tail, bytes_value, tail);
@@ -509,10 +512,10 @@ BEGIN
 			IF _pb_wire_get_field_number_from_tag(tag) = field_number AND repeated_index IS NOT NULL THEN
 				WHILE LENGTH(bytes_value) <> 0 DO
 					CALL pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
-					IF repeated_index = occurrence THEN
+					IF repeated_index = field_count THEN
 						SET value = uint_value;
 					END IF;
-					SET occurrence = occurrence + 1;
+					SET field_count = field_count + 1;
 				END WHILE;
 			END IF;
 		WHEN 5 THEN -- I32
@@ -522,7 +525,8 @@ BEGIN
 		END CASE;
 	END WHILE;
 
-	IF repeated_index IS NOT NULL AND occurrence <= repeated_index THEN
+	-- Negative repeated_index is used when just counting the number of repeated elements.
+	IF repeated_index IS NOT NULL AND repeated_index >= 0 AND field_count <= repeated_index THEN
 		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_uint32_or_uint64_field: repeated index out of range';
 	END IF;
 END $$
@@ -531,126 +535,457 @@ DROP FUNCTION IF EXISTS pb_message_get_bool_field $$
 CREATE FUNCTION pb_message_get_bool_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
 	DECLARE value BIGINT;
-	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value, field_count);
 	RETURN value <> 0;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_bool_field_count $$
+CREATE FUNCTION pb_message_get_bool_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_bool_field $$
+CREATE FUNCTION pb_message_has_bool_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_enum_field $$
 CREATE FUNCTION pb_message_get_enum_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT DETERMINISTIC
 BEGIN
 	DECLARE value BIGINT;
-	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value, field_count);
 	RETURN value <> 0;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_enum_field_count $$
+CREATE FUNCTION pb_message_get_enum_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_enum_field $$
+CREATE FUNCTION pb_message_has_enum_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_int32_field $$
 CREATE FUNCTION pb_message_get_int32_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT DETERMINISTIC
 BEGIN
 	DECLARE value BIGINT UNSIGNED;
-	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value, field_count);
 	RETURN _pb_util_reinterpret_uint64_as_int64(value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_int32_field_count $$
+CREATE FUNCTION pb_message_get_int32_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_int32_field $$
+CREATE FUNCTION pb_message_has_int32_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_uint32_field $$
 CREATE FUNCTION pb_message_get_uint32_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT UNSIGNED DETERMINISTIC
 BEGIN
 	DECLARE value BIGINT UNSIGNED;
-	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value, field_count);
 	RETURN value;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_uint32_field_count $$
+CREATE FUNCTION pb_message_get_uint32_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_uint32_field $$
+CREATE FUNCTION pb_message_has_uint32_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_sint32_field $$
 CREATE FUNCTION pb_message_get_sint32_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT DETERMINISTIC
 BEGIN
 	DECLARE value BIGINT UNSIGNED;
-	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value, field_count);
 	RETURN _pb_util_reinterpret_uint64_as_sint64(value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_sint32_field_count $$
+CREATE FUNCTION pb_message_get_sint32_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_sint32_field $$
+CREATE FUNCTION pb_message_has_sint32_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_fixed32_field $$
 CREATE FUNCTION pb_message_get_fixed32_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT UNSIGNED DETERMINISTIC
 BEGIN
 	DECLARE value INT UNSIGNED;
-	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, repeated_index, value, field_count);
 	RETURN value;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_fixed32_field_count $$
+CREATE FUNCTION pb_message_get_fixed32_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_fixed32_field $$
+CREATE FUNCTION pb_message_has_fixed32_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_sfixed32_field $$
 CREATE FUNCTION pb_message_get_sfixed32_field(buf BLOB, field_number INT, repeated_index INT) RETURNS INT DETERMINISTIC
 BEGIN
 	DECLARE value INT UNSIGNED;
-	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, repeated_index, value, field_count);
 	RETURN _pb_util_reinterpret_uint32_as_int32(value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_sfixed32_field_count $$
+CREATE FUNCTION pb_message_get_sfixed32_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_sfixed32_field $$
+CREATE FUNCTION pb_message_has_sfixed32_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_float_field $$
+CREATE FUNCTION pb_message_get_float_field(buf BLOB, field_number INT, repeated_index INT) RETURNS float DETERMINISTIC
+BEGIN
+	DECLARE value BIGINT UNSIGNED;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, repeated_index, value, field_count);
+	RETURN _pb_util_reinterpret_uint32_as_float(value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_float_field_count $$
+CREATE FUNCTION pb_message_get_float_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_float_field $$
+CREATE FUNCTION pb_message_has_float_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i32_field_as_uint32(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_int64_field $$
 CREATE FUNCTION pb_message_get_int64_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BIGINT DETERMINISTIC
 BEGIN
 	DECLARE value BIGINT UNSIGNED;
-	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value, field_count);
 	RETURN _pb_util_reinterpret_uint64_as_int64(value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_int64_field_count $$
+CREATE FUNCTION pb_message_get_int64_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_int64_field $$
+CREATE FUNCTION pb_message_has_int64_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_uint64_field $$
 CREATE FUNCTION pb_message_get_uint64_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BIGINT UNSIGNED DETERMINISTIC
 BEGIN
 	DECLARE value BIGINT UNSIGNED;
-	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value, field_count);
 	RETURN value;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_uint64_field_count $$
+CREATE FUNCTION pb_message_get_uint64_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_uint64_field $$
+CREATE FUNCTION pb_message_has_uint64_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_sint64_field $$
 CREATE FUNCTION pb_message_get_sint64_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BIGINT DETERMINISTIC
 BEGIN
 	DECLARE value BIGINT UNSIGNED;
-	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value, field_count);
 	RETURN _pb_util_reinterpret_uint64_as_sint64(value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_sint64_field_count $$
+CREATE FUNCTION pb_message_get_sint64_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_sint64_field $$
+CREATE FUNCTION pb_message_has_sint64_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_fixed64_field $$
 CREATE FUNCTION pb_message_get_fixed64_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BIGINT UNSIGNED DETERMINISTIC
 BEGIN
 	DECLARE value BIGINT UNSIGNED;
-	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, repeated_index, value, field_count);
 	RETURN value;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_fixed64_field_count $$
+CREATE FUNCTION pb_message_get_fixed64_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_fixed64_field $$
+CREATE FUNCTION pb_message_has_fixed64_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_sfixed64_field $$
 CREATE FUNCTION pb_message_get_sfixed64_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BIGINT DETERMINISTIC
 BEGIN
 	DECLARE value BIGINT UNSIGNED;
-	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, repeated_index, value, field_count);
 	RETURN _pb_util_reinterpret_uint64_as_int64(value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_sfixed64_field_count $$
+CREATE FUNCTION pb_message_get_sfixed64_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_sfixed64_field $$
+CREATE FUNCTION pb_message_has_sfixed64_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_double_field $$
 CREATE FUNCTION pb_message_get_double_field(buf BLOB, field_number INT, repeated_index INT) RETURNS DOUBLE DETERMINISTIC
 BEGIN
 	DECLARE value BIGINT UNSIGNED;
-	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, repeated_index, value, field_count);
 	RETURN _pb_util_reinterpret_uint64_as_double(value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_double_field_count $$
+CREATE FUNCTION pb_message_get_double_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_double_field $$
+CREATE FUNCTION pb_message_has_double_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_i64_field_as_uint64(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_string_field $$
 CREATE FUNCTION pb_message_get_string_field(buf BLOB, field_number INT, repeated_index INT) RETURNS TEXT DETERMINISTIC
 BEGIN
 	DECLARE value BLOB;
-	CALL _pb_message_get_len_type_field(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_len_type_field(buf, field_number, repeated_index, value, field_count);
 	RETURN CONVERT(value USING utf8mb4);
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_string_field_count $$
+CREATE FUNCTION pb_message_get_string_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_len_type_field(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_string_field $$
+CREATE FUNCTION pb_message_has_string_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_len_type_field(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_bytes_field $$
 CREATE FUNCTION pb_message_get_bytes_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BLOB DETERMINISTIC
 BEGIN
 	DECLARE value BLOB;
-	CALL _pb_message_get_len_type_field(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_len_type_field(buf, field_number, repeated_index, value, field_count);
 	RETURN value;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_bytes_field_count $$
+CREATE FUNCTION pb_message_get_bytes_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_len_type_field(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_bytes_field $$
+CREATE FUNCTION pb_message_has_bytes_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_len_type_field(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_message_field $$
 CREATE FUNCTION pb_message_get_message_field(buf BLOB, field_number INT, repeated_index INT) RETURNS BLOB DETERMINISTIC
 BEGIN
 	DECLARE value BLOB;
-	CALL _pb_message_get_len_type_field(buf, field_number, repeated_index, value);
+	DECLARE field_count INT;
+	CALL _pb_message_get_len_type_field(buf, field_number, repeated_index, value, field_count);
 	RETURN value;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_message_field_count $$
+CREATE FUNCTION pb_message_get_message_field_count(buf BLOB, field_number INT) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_len_type_field(buf, field_number, -1, value, field_count);
+	RETURN field_count;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_has_message_field $$
+CREATE FUNCTION pb_message_has_message_field(buf BLOB, field_number INT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE value BLOB;
+	DECLARE field_count INT;
+	CALL _pb_message_get_len_type_field(buf, field_number, NULL, value, field_count);
+	RETURN field_count > 0;
 END $$

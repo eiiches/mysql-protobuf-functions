@@ -92,6 +92,7 @@ The value of the requested field, interpreted as the corresponding SQL type.
 * `pb_message_get_sint32_field`(buf BLOB, field_number INT, repeated_index INT) → INT
 * `pb_message_get_fixed32_field`(buf BLOB, field_number INT, repeated_index INT) → INT UNSIGNED
 * `pb_message_get_sfixed32_field`(buf BLOB, field_number INT, repeated_index INT) → INT
+* `pb_message_get_float_field`(buf BLOB, field_number INT, repeated_index INT) → FLOAT
 * `pb_message_get_int64_field`(buf BLOB, field_number INT, repeated_index INT) → BIGINT
 * `pb_message_get_uint64_field`(buf BLOB, field_number INT, repeated_index INT) → BIGINT UNSIGNED
 * `pb_message_get_sint64_field`(buf BLOB, field_number INT, repeated_index INT) → BIGINT
@@ -102,12 +103,87 @@ The value of the requested field, interpreted as the corresponding SQL type.
 * `pb_message_get_bytes_field`(buf BLOB, field_number INT, repeated_index INT) → BLOB
 * `pb_message_get_message_field`(buf BLOB, field_number INT, repeated_index INT) → BLOB
 
+### Hazzers — pb\_message\_has\_{type}\_field()
+
+Checks whether a specific field is present in a Protobuf-encoded BLOB.
+This function is used to determine whether a field with [Field Presence](https://protobuf.dev/programming-guides/field_presence/) tracking is set in the encoded message.
+
+#### Parameters
+
+- **`buf`** — A `BLOB` containing the serialized Protobuf message.
+- **`field_number`** — An `INT` specifying the field number, as defined in the Protobuf schema.
+
+#### Returns
+
+A `BOOLEAN` indicating whether the specified field is present in the encoded message.
+
+#### Notes
+
+- In `proto3`, presence tracking for scalar fields is only available when the field is declared with the `optional` keyword.
+- For `repeated` fields, use `pb_message_get_{type}_field_count()` instead. Hazzer do not support packed repeated scalars and cannot be used to check their presence.
+
+##### Type Variants
+
+* `pb_message_has_bool_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_enum_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_int32_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_uint32_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_sint32_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_fixed32_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_sfixed32_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_float_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_int64_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_uint64_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_sint64_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_fixed64_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_sfixed64_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_double_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_string_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_bytes_field`(buf BLOB, field_number INT) → BOOLEAN
+* `pb_message_has_message_field`(buf BLOB, field_number INT) → BOOLEAN
+
+### Repeated Field Counts — pb\_message\_get\_{type}\_field_count()
+
+Returns the number of elements present in a repeated field of a Protobuf-encoded BLOB.  
+This function is used to determine the size of repeated fields, including packed repeated fields.
+
+#### Parameters
+
+- **`buf`** — A `BLOB` containing the serialized Protobuf message.
+- **`field_number`** — An `INT` specifying the field number, as defined in the Protobuf schema.
+
+#### Returns
+
+An `INT` representing the number of elements in the specified repeated field.
+
+#### Notes
+
+- Use in combination with `pb_message_get_{type}_field()` to access individual repeated values by index.
+
+##### Type Variants
+
+* `pb_message_get_bool_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_enum_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_int32_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_uint32_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_sint32_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_fixed32_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_sfixed32_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_float_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_int64_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_uint64_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_sint64_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_fixed64_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_sfixed64_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_double_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_string_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_bytes_field_count`(buf BLOB, field_number INT) → INT
+* `pb_message_get_message_field_count`(buf BLOB, field_number INT) → INT
+
 TODO
 ----
 
 * Add `pb_message_set_{type}_field(data, field_number, repeated_index)`.
-* Add `pb_message_get_{type}_field_count(data, field_number)` for repeated fields.
-* Add `pb_message_has_{type}_field(data, field_number)` for proto3 optional fields.
 * Schema support.
   * `pb_load_file_descriptor_set()`
   * `pb_message_to_json()`
