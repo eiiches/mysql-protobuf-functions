@@ -4,10 +4,15 @@ test: reload
 	host=$$(docker inspect test-mysql | jq -r '.[].NetworkSettings.IPAddress'); \
 	cd tests && go test -database "root@tcp($$host:3306)/test" $${GO_TEST_FLAGS:-}
 
+.PHONY: test-descriptor
+test-descriptor: reload
+	docker exec -i test-mysql mysql -u root test < test-descriptor.sql
+
 .PHONY: reload
 reload:
 	docker exec -i test-mysql mysql -u root test < debug.sql
 	docker exec -i test-mysql mysql -u root test < protobuf.sql
+	docker exec -i test-mysql mysql -u root test < protobuf-descriptor.sql
 
 .PHONY: show-logs
 show-logs:

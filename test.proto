@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+option go_package = "github.com/eiiches/mysql-protobuf-functions/tests/examplepb;examplepb";
+
 message Test {
   int32 int32_field = 1;
   uint32 uint32_field = 2;
@@ -21,4 +23,19 @@ message Test {
 
 message TestMessage {
   int32 int32_field = 1;
+
+  message NestedMessage {
+    int32 a = 1;
+
+    enum TestEnum {
+      TEST_ENUM_UNSPECIFIED = 0;
+      TEST_ENUM_A = 1;
+    }
+  }
+}
+
+enum TestEnum {
+    TEST_ENUM_UNSPECIFIED = 0;
+    TEST_ENUM_A = 1;
+    TEST_ENUM_B = 2;
 }
