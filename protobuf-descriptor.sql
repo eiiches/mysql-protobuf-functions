@@ -354,16 +354,26 @@ BEGIN
 	DELETE FROM _Proto_FileDescriptorSet WHERE set_name = set_name;
 END $$
 
-DROP PROCEDURE IF EXISTS _pb_exists_file_descriptor_set $$
-CREATE PROCEDURE _pb_exists_file_descriptor_set(IN set_name VARCHAR(64), OUT exist BOOLEAN)
-BEGIN
-	SET exist = (SELECT count(*) FROM _Proto_FileDescriptorSet t WHERE t.set_name = set_name) > 0;
-END $$
-
-DROP FUNCTION IF EXISTS pb_exists_file_descriptor_set $$
-CREATE FUNCTION pb_exists_file_descriptor_set(set_name VARCHAR(64)) RETURNS BOOLEAN READS SQL DATA
+DROP FUNCTION IF EXISTS pb_descriptor_set_exists $$
+CREATE FUNCTION pb_descriptor_set_exists(set_name VARCHAR(64)) RETURNS BOOLEAN READS SQL DATA
 BEGIN
 	DECLARE exist INT;
-	CALL _pb_exists_file_descriptor_set(set_name, exist);
-	RETURN exist;
+	SET exist = (SELECT count(*) FROM _Proto_FileDescriptorSet t WHERE t.set_name = set_name) > 0;
+	RETURN exist > 0;
+END $$
+
+DROP FUNCTION IF EXISTS pb_descriptor_set_contains_message_type $$
+CREATE FUNCTION pb_descriptor_set_contains_message_type(set_name VARCHAR(64), full_type_name VARCHAR(512)) RETURNS BOOLEAN READS SQL DATA
+BEGIN
+	DECLARE exist INT;
+	SET exist = (SELECT count(*) FROM _Proto_MessageDescriptor t WHERE t.set_name = set_name AND t.type_name = full_type_name) > 0;
+	RETURN exist > 0;
+END $$
+
+DROP FUNCTION IF EXISTS pb_descriptor_set_contains_enum_type $$
+CREATE FUNCTION pb_descriptor_set_contains_enum_type(set_name VARCHAR(64), full_type_name VARCHAR(512)) RETURNS BOOLEAN READS SQL DATA
+BEGIN
+	DECLARE exist INT;
+	SET exist = (SELECT count(*) FROM _Proto_EnumDescriptor t WHERE t.set_name = set_name AND t.type_name = full_type_name) > 0;
+	RETURN exist > 0;
 END $$
