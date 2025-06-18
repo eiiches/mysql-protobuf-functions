@@ -190,7 +190,7 @@ This procedure registers the schema information required for operations that dep
 
 #### Parameters
 
-- IN **`set_name`** `VARCHAR(255)` — A user-defined identifier used as a suffix for the internal table names.
+- IN **`set_name`** `VARCHAR(32)` — A user-defined identifier used as a suffix for the internal table names.
   This allows multiple descriptor sets to coexist without conflict.
 
 - IN **`persist`** `BOOLEAN` — If `FALSE`, the tables are created as `TEMPORARY` and exist only for the current session.
@@ -205,8 +205,6 @@ This procedure registers the schema information required for operations that dep
   - Getters and hazzers (`pb_message_get_{type}_field()`, `pb_message_get_{type}_field_count()`, `pb_message_has_{type}_field()`) don't require this procedure.
 - If a descriptor set with the same `set_name` already exists, the procedure will fail.
 
----
-
 ### Delete File Descriptor Set — `CALL pb_delete_file_descriptor_set()`
 
 Deletes the internal tables associated with a previously loaded descriptor set.
@@ -214,7 +212,7 @@ This procedure is used to clean up resources created by `pb_load_file_descriptor
 
 #### Parameters
 
-- IN **`set_name`** `VARCHAR(255)` — The identifier used when the descriptor set was loaded.
+- IN **`set_name`** `VARCHAR(32)` — The identifier used when the descriptor set was loaded.
   This determines which set of internal tables will be dropped.
 
 #### Notes

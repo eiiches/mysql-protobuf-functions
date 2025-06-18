@@ -1,7 +1,7 @@
 DELIMITER $$
 
 DROP PROCEDURE IF EXISTS _pb_insert_field_descriptor_proto $$
-CREATE PROCEDURE _pb_insert_field_descriptor_proto(IN table_name VARCHAR(255), IN full_type_name TEXT, IN field_descriptor BLOB)
+CREATE PROCEDURE _pb_insert_field_descriptor_proto(IN set_name VARCHAR(32), IN full_type_name TEXT, IN field_descriptor BLOB)
 BEGIN
 	DECLARE field_number INT;
 	DECLARE field_options BLOB;
@@ -27,7 +27,7 @@ BEGIN
 	SET features = pb_message_get_message_field(field_options, 21, NULL);
 	SET oneof_index = IF(pb_message_has_int32_field(field_descriptor, 9), pb_message_get_int32_field(field_descriptor, 9, NULL), NULL);
 
-	SET @insert_sql = CONCAT('INSERT INTO `_Proto_FieldDescriptor_', table_name, '` (type_name, field_number, field_name, field_label, field_type, field_type_name, default_value, json_name, proto3_optional, oneof_index, field_options, features, field_descriptor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+	SET @insert_sql = CONCAT('INSERT INTO `_Proto_FieldDescriptor_', set_name, '` (type_name, field_number, field_name, field_label, field_type, field_type_name, default_value, json_name, proto3_optional, oneof_index, field_options, features, field_descriptor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 	PREPARE stmt FROM @insert_sql;
 	SET @full_type_name = full_type_name;
 	SET @field_number = field_number;
@@ -47,7 +47,7 @@ BEGIN
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_insert_enum_value_descriptor$$
-CREATE PROCEDURE _pb_insert_enum_value_descriptor(IN table_name VARCHAR(255), IN full_type_name TEXT, IN enum_value_descriptor BLOB)
+CREATE PROCEDURE _pb_insert_enum_value_descriptor(IN set_name VARCHAR(32), IN full_type_name TEXT, IN enum_value_descriptor BLOB)
 BEGIN
 	DECLARE enum_value_number INT;
 	DECLARE enum_value_name TEXT;
@@ -59,7 +59,7 @@ BEGIN
 	SET enum_value_options = pb_message_get_message_field(enum_value_descriptor, 3, NULL);
 	SET features = pb_message_get_message_field(enum_value_options, 2, NULL);
 
-	SET @insert_sql = CONCAT('INSERT INTO `_Proto_EnumValueDescriptor_', table_name, '` (type_name, enum_value_number, enum_value_name, enum_value_options, features, enum_value_descriptor) VALUES (?, ?, ?, ?, ?, ?)');
+	SET @insert_sql = CONCAT('INSERT INTO `_Proto_EnumValueDescriptor_', set_name, '` (type_name, enum_value_number, enum_value_name, enum_value_options, features, enum_value_descriptor) VALUES (?, ?, ?, ?, ?, ?)');
 	PREPARE stmt FROM @insert_sql;
 	SET @full_type_name = full_type_name;
 	SET @enum_value_number = enum_value_number;
@@ -72,7 +72,7 @@ BEGIN
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_insert_enum_descriptor $$
-CREATE PROCEDURE _pb_insert_enum_descriptor(IN table_name VARCHAR(255), IN file_name TEXT, IN parent_name TEXT, IN enum_descriptor BLOB)
+CREATE PROCEDURE _pb_insert_enum_descriptor(IN set_name VARCHAR(32), IN file_name TEXT, IN parent_name TEXT, IN enum_descriptor BLOB)
 BEGIN
 	DECLARE full_type_name TEXT;
 	DECLARE simple_type_name TEXT;
@@ -87,7 +87,7 @@ BEGIN
 	SET enum_options = pb_message_get_message_field(enum_descriptor, 3, NULL);
 	SET features = pb_message_get_message_field(enum_options, 7, NULL);
 
-	SET @insert_sql = CONCAT('INSERT INTO `_Proto_EnumDescriptor_', table_name, '` (file_name, type_name, enum_options, features, enum_descriptor) VALUES (?, ?, ?, ?, ?)');
+	SET @insert_sql = CONCAT('INSERT INTO `_Proto_EnumDescriptor_', set_name, '` (file_name, type_name, enum_options, features, enum_descriptor) VALUES (?, ?, ?, ?, ?)');
 	PREPARE stmt FROM @insert_sql;
 	SET @file_name = file_name;
 	SET @full_type_name = full_type_name;
@@ -101,13 +101,13 @@ BEGIN
 	SET enum_value_descriptor_index = 0;
 	WHILE enum_value_descriptor_index < enum_value_descriptor_count DO
 		SET enum_value_descriptor = pb_message_get_message_field(enum_descriptor, 2, enum_value_descriptor_index);
-		CALL _pb_insert_enum_value_descriptor(table_name, full_type_name, enum_value_descriptor);
+		CALL _pb_insert_enum_value_descriptor(set_name, full_type_name, enum_value_descriptor);
 		SET enum_value_descriptor_index = enum_value_descriptor_index + 1;
 	END WHILE;
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_insert_message_descriptor $$
-CREATE PROCEDURE _pb_insert_message_descriptor(IN table_name VARCHAR(255), IN file_name TEXT, IN parent_name TEXT, IN message_descriptor BLOB)
+CREATE PROCEDURE _pb_insert_message_descriptor(IN set_name VARCHAR(32), IN file_name TEXT, IN parent_name TEXT, IN message_descriptor BLOB)
 BEGIN
 	DECLARE full_type_name TEXT;
 	DECLARE simple_type_name TEXT;
@@ -128,7 +128,7 @@ BEGIN
 	SET message_options = pb_message_get_message_field(message_descriptor, 7, NULL);
 	SET features = pb_message_get_message_field(message_options, 12, NULL);
 
-	SET @insert_sql = CONCAT('INSERT INTO `_Proto_MessageDescriptor_', table_name, '` (file_name, type_name, message_options, features, message_descriptor) VALUES (?, ?, ?, ?, ?)');
+	SET @insert_sql = CONCAT('INSERT INTO `_Proto_MessageDescriptor_', set_name, '` (file_name, type_name, message_options, features, message_descriptor) VALUES (?, ?, ?, ?, ?)');
 	PREPARE stmt FROM @insert_sql;
 	SET @file_name = file_name;
 	SET @full_type_name = full_type_name;
@@ -141,7 +141,7 @@ BEGIN
 	SET field_descriptor_index = 0;
 	WHILE field_descriptor_index < field_descriptor_count DO
 		SET field_descriptor = pb_message_get_message_field(message_descriptor, 2, field_descriptor_index);
-		CALL _pb_insert_field_descriptor_proto(table_name, full_type_name, field_descriptor);
+		CALL _pb_insert_field_descriptor_proto(set_name, full_type_name, field_descriptor);
 		SET field_descriptor_index = field_descriptor_index + 1;
 	END WHILE;
 
@@ -149,7 +149,7 @@ BEGIN
 	SET nested_descriptor_index = 0;
 	WHILE nested_descriptor_index < nested_descriptor_count DO
 		SET nested_descriptor = pb_message_get_message_field(message_descriptor, 3, nested_descriptor_index);
-		CALL _pb_insert_message_descriptor(table_name, file_name, full_type_name, nested_descriptor);
+		CALL _pb_insert_message_descriptor(set_name, file_name, full_type_name, nested_descriptor);
 		SET nested_descriptor_index = nested_descriptor_index + 1;
 	END WHILE;
 
@@ -157,13 +157,13 @@ BEGIN
 	SET enum_descriptor_index = 0;
 	WHILE enum_descriptor_index < enum_descriptor_count DO
 		SET enum_descriptor = pb_message_get_message_field(message_descriptor, 4, enum_descriptor_index);
-		CALL _pb_insert_enum_descriptor(table_name, file_name, full_type_name, enum_descriptor);
+		CALL _pb_insert_enum_descriptor(set_name, file_name, full_type_name, enum_descriptor);
 		SET enum_descriptor_index = enum_descriptor_index + 1;
 	END WHILE;
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_insert_file_descriptor $$
-CREATE PROCEDURE _pb_insert_file_descriptor(IN table_name VARCHAR(255), IN file_descriptor BLOB)
+CREATE PROCEDURE _pb_insert_file_descriptor(IN set_name VARCHAR(32), IN file_descriptor BLOB)
 BEGIN
 	DECLARE message_descriptor BLOB;
 	DECLARE message_descriptor_count INT;
@@ -185,7 +185,7 @@ BEGIN
 	SET file_options = pb_message_get_message_field(file_descriptor, 8, NULL);
 	SET features = pb_message_get_message_field(file_options, 50, NULL);
 
-	SET @insert_sql = CONCAT('INSERT INTO `_Proto_FileDescriptor_', table_name, '` (file_name, package_name, syntax, editions, file_options, features, file_descriptor) VALUES (?, ?, ?, ?, ?, ?, ?)');
+	SET @insert_sql = CONCAT('INSERT INTO `_Proto_FileDescriptor_', set_name, '` (file_name, package_name, syntax, editions, file_options, features, file_descriptor) VALUES (?, ?, ?, ?, ?, ?, ?)');
 	PREPARE stmt FROM @insert_sql;
 	SET @file_name = file_name;
 	SET @package_name = package_name;
@@ -201,7 +201,7 @@ BEGIN
 	SET message_descriptor_index = 0;
 	WHILE message_descriptor_index < message_descriptor_count DO
 		SET message_descriptor = pb_message_get_message_field(file_descriptor, 4, message_descriptor_index);
-		CALL _pb_insert_message_descriptor(table_name, file_name, package_name, message_descriptor);
+		CALL _pb_insert_message_descriptor(set_name, file_name, package_name, message_descriptor);
 		SET message_descriptor_index = message_descriptor_index + 1;
 	END WHILE;
 
@@ -209,13 +209,14 @@ BEGIN
 	SET enum_descriptor_index = 0;
 	WHILE enum_descriptor_index < enum_descriptor_count DO
 		SET enum_descriptor = pb_message_get_message_field(file_descriptor, 5, enum_descriptor_index);
-		CALL _pb_insert_enum_descriptor(table_name, file_name, package_name, enum_descriptor);
+		CALL _pb_insert_enum_descriptor(set_name, file_name, package_name, enum_descriptor);
 		SET enum_descriptor_index = enum_descriptor_index + 1;
 	END WHILE;
 END $$
 
+-- VARCHAR(32), for set_name, is chosen not to exceed the table identifier length limit of 64 characters.
 DROP PROCEDURE IF EXISTS pb_load_file_descriptor_set $$
-CREATE PROCEDURE pb_load_file_descriptor_set(IN table_name VARCHAR(255), IN persist BOOLEAN, IN file_descriptor_set BLOB)
+CREATE PROCEDURE pb_load_file_descriptor_set(IN set_name VARCHAR(32), IN persist BOOLEAN, IN file_descriptor_set BLOB)
 BEGIN
 	DECLARE file_descriptor BLOB;
 	DECLARE file_descriptor_count INT;
@@ -223,27 +224,27 @@ BEGIN
 
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
-	SET @create_sql = CONCAT('CREATE', IF(persist, '', ' TEMPORARY'), ' TABLE `_Proto_FileDescriptor_', table_name, '` (file_name VARCHAR(512) NOT NULL, package_name VARCHAR(255) NOT NULL, syntax VARCHAR(63) NOT NULL, editions INT NOT NULL, file_options BLOB NOT NULL, features BLOB NOT NULL, file_descriptor BLOB NOT NULL, PRIMARY KEY (`file_name`))');
+	SET @create_sql = CONCAT('CREATE', IF(persist, '', ' TEMPORARY'), ' TABLE `_Proto_FileDescriptor_', set_name, '` (file_name VARCHAR(512) NOT NULL, package_name VARCHAR(255) NOT NULL, syntax VARCHAR(63) NOT NULL, editions INT NOT NULL, file_options BLOB NOT NULL, features BLOB NOT NULL, file_descriptor BLOB NOT NULL, PRIMARY KEY (`file_name`))');
 	PREPARE stmt FROM @create_sql;
 	EXECUTE stmt;
 	DEALLOCATE PREPARE stmt;
 
-	SET @create_sql = CONCAT('CREATE', IF(persist, '', ' TEMPORARY'), ' TABLE `_Proto_MessageDescriptor_', table_name, '` (file_name VARCHAR(512) NOT NULL, type_name VARCHAR(512) NOT NULL, message_options BLOB NOT NULL, features BLOB NOT NULL, message_descriptor BLOB NOT NULL, PRIMARY KEY (`type_name`), FOREIGN KEY (`file_name`) REFERENCES `_Proto_FileDescriptor_', table_name, '` (`file_name`))');
+	SET @create_sql = CONCAT('CREATE', IF(persist, '', ' TEMPORARY'), ' TABLE `_Proto_MessageDescriptor_', set_name, '` (file_name VARCHAR(512) NOT NULL, type_name VARCHAR(512) NOT NULL, message_options BLOB NOT NULL, features BLOB NOT NULL, message_descriptor BLOB NOT NULL, PRIMARY KEY (`type_name`), FOREIGN KEY (`file_name`) REFERENCES `_Proto_FileDescriptor_', set_name, '` (`file_name`))');
 	PREPARE stmt FROM @create_sql;
 	EXECUTE stmt;
 	DEALLOCATE PREPARE stmt;
 
-	SET @create_sql = CONCAT('CREATE', IF(persist, '', ' TEMPORARY'), ' TABLE `_Proto_FieldDescriptor_', table_name, '` (type_name VARCHAR(512) NOT NULL, field_number INT NOT NULL, field_name TEXT NOT NULL, field_label INT NOT NULL, field_type INT NOT NULL, field_type_name TEXT NULL, default_value TEXT NULL, json_name TEXT NULL, proto3_optional BOOLEAN NOT NULL, oneof_index INT NULL, field_options BLOB NOT NULL, features BLOB NOT NULL, field_descriptor BLOB NOT NULL, PRIMARY KEY (`type_name`, `field_number`), FOREIGN KEY (`type_name`) REFERENCES `_Proto_MessageDescriptor_', table_name, '` (`type_name`))');
+	SET @create_sql = CONCAT('CREATE', IF(persist, '', ' TEMPORARY'), ' TABLE `_Proto_FieldDescriptor_', set_name, '` (type_name VARCHAR(512) NOT NULL, field_number INT NOT NULL, field_name TEXT NOT NULL, field_label INT NOT NULL, field_type INT NOT NULL, field_type_name TEXT NULL, default_value TEXT NULL, json_name TEXT NULL, proto3_optional BOOLEAN NOT NULL, oneof_index INT NULL, field_options BLOB NOT NULL, features BLOB NOT NULL, field_descriptor BLOB NOT NULL, PRIMARY KEY (`type_name`, `field_number`), FOREIGN KEY (`type_name`) REFERENCES `_Proto_MessageDescriptor_', set_name, '` (`type_name`))');
 	PREPARE stmt FROM @create_sql;
 	EXECUTE stmt;
 	DEALLOCATE PREPARE stmt;
 
-	SET @create_sql = CONCAT('CREATE', IF(persist, '', ' TEMPORARY'), ' TABLE `_Proto_EnumDescriptor_', table_name, '` (file_name VARCHAR(512) NOT NULL, type_name VARCHAR(512) NOT NULL, enum_options BLOB NOT NULL, features BLOB NOT NULL, enum_descriptor BLOB NOT NULL, PRIMARY KEY (`type_name`), FOREIGN KEY (`file_name`) REFERENCES `_Proto_FileDescriptor_', table_name, '` (`file_name`))');
+	SET @create_sql = CONCAT('CREATE', IF(persist, '', ' TEMPORARY'), ' TABLE `_Proto_EnumDescriptor_', set_name, '` (file_name VARCHAR(512) NOT NULL, type_name VARCHAR(512) NOT NULL, enum_options BLOB NOT NULL, features BLOB NOT NULL, enum_descriptor BLOB NOT NULL, PRIMARY KEY (`type_name`), FOREIGN KEY (`file_name`) REFERENCES `_Proto_FileDescriptor_', set_name, '` (`file_name`))');
 	PREPARE stmt FROM @create_sql;
 	EXECUTE stmt;
 	DEALLOCATE PREPARE stmt;
 
-	SET @create_sql = CONCAT('CREATE', IF(persist, '', ' TEMPORARY'), ' TABLE `_Proto_EnumValueDescriptor_', table_name, '` (type_name VARCHAR(512) NOT NULL, enum_value_number INT NOT NULL, enum_value_name TEXT NOT NULL, enum_value_options BLOB NOT NULL, features BLOB NOT NULL, enum_value_descriptor BLOB NOT NULL, PRIMARY KEY (`type_name`, `enum_value_number`), FOREIGN KEY (`type_name`) REFERENCES `_Proto_EnumDescriptor_', table_name, '` (`type_name`))');
+	SET @create_sql = CONCAT('CREATE', IF(persist, '', ' TEMPORARY'), ' TABLE `_Proto_EnumValueDescriptor_', set_name, '` (type_name VARCHAR(512) NOT NULL, enum_value_number INT NOT NULL, enum_value_name TEXT NOT NULL, enum_value_options BLOB NOT NULL, features BLOB NOT NULL, enum_value_descriptor BLOB NOT NULL, PRIMARY KEY (`type_name`, `enum_value_number`), FOREIGN KEY (`type_name`) REFERENCES `_Proto_EnumDescriptor_', set_name, '` (`type_name`))');
 	PREPARE stmt FROM @create_sql;
 	EXECUTE stmt;
 	DEALLOCATE PREPARE stmt;
@@ -252,35 +253,35 @@ BEGIN
 	SET file_descriptor_index = 0;
 	WHILE file_descriptor_index < file_descriptor_count DO
 		SET file_descriptor = pb_message_get_message_field(file_descriptor_set, 1, file_descriptor_index);
-		CALL _pb_insert_file_descriptor(table_name, file_descriptor);
+		CALL _pb_insert_file_descriptor(set_name, file_descriptor);
 		SET file_descriptor_index = file_descriptor_index + 1;
 	END WHILE;
 END $$
 
 DROP PROCEDURE IF EXISTS pb_delete_file_descriptor_set $$
-CREATE PROCEDURE pb_delete_file_descriptor_set(IN table_name VARCHAR(255))
+CREATE PROCEDURE pb_delete_file_descriptor_set(IN set_name VARCHAR(32))
 BEGIN
-	SET @drop_sql = CONCAT('DROP TABLE IF EXISTS `_Proto_EnumValueDescriptor_', table_name, '`');
+	SET @drop_sql = CONCAT('DROP TABLE IF EXISTS `_Proto_EnumValueDescriptor_', set_name, '`');
 	PREPARE stmt FROM @drop_sql;
 	EXECUTE stmt;
 	DEALLOCATE PREPARE stmt;
 
-	SET @drop_sql = CONCAT('DROP TABLE IF EXISTS `_Proto_EnumDescriptor_', table_name, '`');
+	SET @drop_sql = CONCAT('DROP TABLE IF EXISTS `_Proto_EnumDescriptor_', set_name, '`');
 	PREPARE stmt FROM @drop_sql;
 	EXECUTE stmt;
 	DEALLOCATE PREPARE stmt;
 
-	SET @drop_sql = CONCAT('DROP TABLE IF EXISTS `_Proto_FieldDescriptor_', table_name, '`');
+	SET @drop_sql = CONCAT('DROP TABLE IF EXISTS `_Proto_FieldDescriptor_', set_name, '`');
 	PREPARE stmt FROM @drop_sql;
 	EXECUTE stmt;
 	DEALLOCATE PREPARE stmt;
 
-	SET @drop_sql = CONCAT('DROP TABLE IF EXISTS `_Proto_MessageDescriptor_', table_name, '`');
+	SET @drop_sql = CONCAT('DROP TABLE IF EXISTS `_Proto_MessageDescriptor_', set_name, '`');
 	PREPARE stmt FROM @drop_sql;
 	EXECUTE stmt;
 	DEALLOCATE PREPARE stmt;
 
-	SET @drop_sql = CONCAT('DROP TABLE IF EXISTS `_Proto_FileDescriptor_', table_name, '`');
+	SET @drop_sql = CONCAT('DROP TABLE IF EXISTS `_Proto_FileDescriptor_', set_name, '`');
 	PREPARE stmt FROM @drop_sql;
 	EXECUTE stmt;
 	DEALLOCATE PREPARE stmt;
