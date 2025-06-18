@@ -190,11 +190,8 @@ This procedure registers the schema information required for operations that dep
 
 #### Parameters
 
-- IN **`set_name`** `VARCHAR(32)` — A user-defined identifier used as a suffix for the internal table names.
+- IN **`set_name`** `VARCHAR(64)` — A user-defined identifier that is used to distinguish file descriptor sets.
   This allows multiple descriptor sets to coexist without conflict.
-
-- IN **`persist`** `BOOLEAN` — If `FALSE`, the tables are created as `TEMPORARY` and exist only for the current session.
-  If `TRUE`, the tables are persistent.
 
 - IN **`file_descriptor_set`** `BLOB` — A binary-encoded `FileDescriptorSet`, typically generated using the `protoc --descriptor_set_out` option.
   The input must conform to the `google.protobuf.FileDescriptorSet` message format.
@@ -212,7 +209,7 @@ This procedure is used to clean up resources created by `pb_load_file_descriptor
 
 #### Parameters
 
-- IN **`set_name`** `VARCHAR(32)` — The identifier used when the descriptor set was loaded.
+- IN **`set_name`** `VARCHAR(64)` — The identifier used when the descriptor set was loaded.
   This determines which set of internal tables will be dropped.
 
 #### Notes
