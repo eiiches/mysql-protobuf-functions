@@ -144,7 +144,7 @@ A `BOOLEAN` indicating whether the specified field is present in the encoded mes
 
 ### Repeated Field Counts — pb\_message\_get\_{type}\_field_count()
 
-Returns the number of elements present in a repeated field of a Protobuf-encoded BLOB.  
+Returns the number of elements present in a repeated field of a Protobuf-encoded BLOB.
 This function is used to determine the size of repeated fields, including packed repeated fields.
 
 #### Parameters
@@ -180,12 +180,53 @@ An `INT` representing the number of elements in the specified repeated field.
 * `pb_message_get_bytes_field_count`(buf BLOB, field_number INT) → INT
 * `pb_message_get_message_field_count`(buf BLOB, field_number INT) → INT
 
+Procedure Reference
+-------------------
+
+### Load File Descriptor Set — `CALL pb_load_file_descriptor_set()`
+
+Loads a compiled Protobuf `FileDescriptorSet` into internal database tables.
+This procedure registers the schema information required for operations that depend on message descriptors, such as `pb_message_to_json()` (planned but not yet implemented).
+
+#### Parameters
+
+- IN **`set_name`** `VARCHAR(255)` — A user-defined identifier used as a suffix for the internal table names.
+  This allows multiple descriptor sets to coexist without conflict.
+
+- IN **`persist`** `BOOLEAN` — If `FALSE`, the tables are created as `TEMPORARY` and exist only for the current session.
+  If `TRUE`, the tables are persistent.
+
+- IN **`file_descriptor_set`** `BLOB` — A binary-encoded `FileDescriptorSet`, typically generated using the `protoc --descriptor_set_out` option.
+  The input must conform to the `google.protobuf.FileDescriptorSet` message format.
+
+#### Notes
+
+- This procedure is only intended for use cases where Protobuf schema information is required.
+  - Getters and hazzers (`pb_message_get_{type}_field()`, `pb_message_get_{type}_field_count()`, `pb_message_has_{type}_field()`) don't require this procedure.
+- If a descriptor set with the same `set_name` already exists, the procedure will fail.
+
+---
+
+### Delete File Descriptor Set — `CALL pb_delete_file_descriptor_set()`
+
+Deletes the internal tables associated with a previously loaded descriptor set.
+This procedure is used to clean up resources created by `pb_load_file_descriptor_set()`.
+
+#### Parameters
+
+- IN **`set_name`** `VARCHAR(255)` — The identifier used when the descriptor set was loaded.
+  This determines which set of internal tables will be dropped.
+
+#### Notes
+
+- If the specified descriptor set does not exist, the procedure performs no action.
+- Temporary descriptor sets (created with `persist = FALSE`) do not require manual deletion — they are automatically dropped at the end of the session.
+
 TODO
 ----
 
 * Add `pb_message_set_{type}_field(data, field_number, repeated_index)`.
 * Schema support.
-  * `pb_load_file_descriptor_set()`
   * `pb_message_to_json()`
 * Implement map support.
 
@@ -194,8 +235,22 @@ Limitation
 
 * I never benchmarked the functions. I have no idea how slow these functions are.
   * MySQL doesn't have an ARRAY type. With the current API, each element of a repeated field must be retrieved one by one. Yes, O(n^2) to retrieve all.
-* Currently, MySQL doesn't allow using stored functions in functional indexes or generated columns. Use triggers instead.
-  * CREATE TABLE Example (protobuf_data BLOB, generated_field INT, INDEX (generated_field));
-  * CREATE TRIGGER Example_set_generated_field_on_update BEFORE UPDATE ON Example FOR EACH ROW SET NEW.generated_field = pb_message_get_int32_field(NEW.protobuf_data, 1, NULL);
-  * CREATE TRIGGER Example_set_generated_field_on_insert BEFORE INSERT ON Example FOR EACH ROW SET NEW.generated_field = pb_message_get_int32_field(NEW.protobuf_data, 1, NULL);
+
+* Currently, MySQL doesn't allow using stored functions in functional indexes or generated columns. Use triggers or views instead.
+
+   ```sql
+   CREATE TABLE Example (protobuf_data BLOB, generated_field INT, INDEX (generated_field));
+   CREATE TRIGGER Example_set_generated_field_on_update
+       BEFORE UPDATE ON Example
+       FOR EACH ROW SET NEW.generated_field = pb_message_get_int32_field(NEW.protobuf_data, 1, NULL);
+   CREATE TRIGGER Example_set_generated_field_on_insert
+       BEFORE INSERT ON Example
+       FOR EACH ROW SET NEW.generated_field = pb_message_get_int32_field(NEW.protobuf_data, 1, NULL);
+   ```
+
+   ```sql
+   CREATE TABLE Example (protobuf_data BLOB);
+   CREATE VIEW ExampleView AS SELECT pb_message_get_int32_field(protobuf_data, 1, NULL) FROM Example;
+   ```
+
 * [Groups](https://protobuf.dev/programming-guides/encoding/#groups) are not, and probably will not be supported.
