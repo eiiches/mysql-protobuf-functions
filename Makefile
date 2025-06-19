@@ -13,6 +13,7 @@ reload:
 	docker exec -i test-mysql mysql -u root test < debug.sql
 	docker exec -i test-mysql mysql -u root test < protobuf.sql
 	docker exec -i test-mysql mysql -u root test < protobuf-descriptor.sql
+	docker exec -i test-mysql mysql -u root test < protobuf-json.sql
 
 .PHONY: purge
 purge:

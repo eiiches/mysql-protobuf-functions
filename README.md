@@ -9,7 +9,9 @@ Usage
 1. Load functions to MySQL.
 
    ```console
-   $ mysql < protobuf.sql
+   $ mysql < protobuf.sql # core functions
+   $ mysql < protobuf-descriptor.sql # for descriptor set support
+   $ mysql < protobuf-json.sql # for json conversion support (incomplete)
    ```
 
 2. Use functions in statements.
@@ -229,12 +231,32 @@ TBD
 
 TBD
 
+JSON Conversion Functions &amp; Procedures (incomplete)
+-----
+
+### [Function] pb\_message\_to\_json()
+
+Converts a Protobuf-encoded BLOB into a JSON object using the specified type and schema set. This function deserializes a Protocol Buffers message into a human-readable and structured JSON format.
+
+##### Parameters
+
+* **set_name** — A `VARCHAR(64)` specifying the name of the schema set containing the compiled Protobuf descriptors.
+* **full_type_name** — A `VARCHAR(512)` representing the fully-qualified name of the Protobuf message type (e.g., `.my.package.MessageType`). A fully-qualified name always starts with a dot.
+* **buf** — A `BLOB` containing the serialized Protobuf message to be converted.
+
+##### Returns
+
+A `JSON` object that represents the Protobuf message, with field names and values corresponding to those defined in the Protobuf schema.
+
+##### Errors
+
+* Returns an error if the set_name or full_type_name cannot be resolved.
+* Returns an error if the buf is not a valid serialized message of the given type.
+
 TODO
 ----
 
 * Add `pb_message_set_{type}_field(data, field_number, repeated_index)`.
-* Schema support.
-  * `pb_message_to_json()`
 * Implement map support.
 
 Limitation
