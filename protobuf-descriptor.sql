@@ -93,7 +93,7 @@ BEGIN
 	SET field_type = pb_message_get_enum_field(field_descriptor, 5, NULL);
 	SET field_type_name = IF(pb_message_has_string_field(field_descriptor, 6), pb_message_get_string_field(field_descriptor, 6, NULL), NULL);
 	SET default_value = IF(pb_message_has_string_field(field_descriptor, 7), pb_message_get_string_field(field_descriptor, 7, NULL), NULL);
-	SET json_name = IF(pb_message_has_string_field(field_descriptor, 8), pb_message_get_string_field(field_descriptor, 8, NULL), NULL);
+	SET json_name = IF(pb_message_has_string_field(field_descriptor, 10), pb_message_get_string_field(field_descriptor, 10, NULL), NULL);
 	SET proto3_optional = pb_message_get_bool_field(field_descriptor, 17, NULL);
 	SET field_options = pb_message_get_message_field(field_descriptor, 8, NULL);
 	SET features = pb_message_get_message_field(field_options, 21, NULL);

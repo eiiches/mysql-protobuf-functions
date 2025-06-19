@@ -2,9 +2,9 @@ package main
 
 import "testing"
 
-func TestWireReadVarint(t *testing.T) {
-	AssertThatExpression(t, "pb_wire_read_varint(_binary X'9601')").IsEqualToInt(150)
-	AssertThatExpression(t, "pb_wire_read_varint(_binary X'960133')").IsEqualToInt(150)
+func TestWireReadVarintAsUint64(t *testing.T) {
+	AssertThatExpression(t, "pb_wire_read_varint_as_uint64(_binary X'9601')").IsEqualToUint(150)
+	AssertThatExpression(t, "pb_wire_read_varint_as_uint64(_binary X'960133')").IsEqualToUint(150)
 }
 
 func TestWireGetFieldNumberFromTag(t *testing.T) {

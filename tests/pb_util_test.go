@@ -4,9 +4,14 @@ import (
 	"testing"
 )
 
-func TestUtilSwapEndian(t *testing.T) {
-	AssertThatExpression(t, "_pb_util_swap_endian(0x000000000000ffff)").IsEqualToUint(0xffff000000000000)
-	AssertThatExpression(t, "_pb_util_swap_endian(0xffffffffffffffff)").IsEqualToUint(0xffffffffffffffff)
+func TestUtilSwapEndian32(t *testing.T) {
+	AssertThatExpression(t, "_pb_util_swap_endian_32(0x0000ffff)").IsEqualToUint(0xffff0000)
+	AssertThatExpression(t, "_pb_util_swap_endian_32(0xffffffff)").IsEqualToUint(0xffffffff)
+}
+
+func TestUtilSwapEndian64(t *testing.T) {
+	AssertThatExpression(t, "_pb_util_swap_endian_64(0x000000000000ffff)").IsEqualToUint(0xffff000000000000)
+	AssertThatExpression(t, "_pb_util_swap_endian_64(0xffffffffffffffff)").IsEqualToUint(0xffffffffffffffff)
 }
 
 func TestUtilReinterpretUint64AsDouble(t *testing.T) {

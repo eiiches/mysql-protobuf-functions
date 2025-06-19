@@ -564,7 +564,7 @@ BEGIN
 	DECLARE value BIGINT;
 	DECLARE field_count INT;
 	CALL _pb_message_get_uint32_or_uint64_field(buf, field_number, repeated_index, value, field_count);
-	RETURN value <> 0;
+	RETURN value;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_enum_field_count $$

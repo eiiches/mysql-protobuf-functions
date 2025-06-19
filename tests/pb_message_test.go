@@ -170,6 +170,7 @@ func TestMessageHasBoolField(t *testing.T) {
 func TestMessageGetEnumField(t *testing.T) {
 	AssertThatExpression(t, "pb_message_get_enum_field(_binary X'', 1, NULL)").IsEqualToInt(0)
 	AssertThatExpression(t, "pb_message_get_enum_field(_binary X'0801', 1, NULL)").IsEqualToInt(1)
+	AssertThatExpression(t, "pb_message_get_enum_field(_binary X'2805', 5, NULL)").IsEqualToInt(5)
 }
 
 func TestMessageGetEnumFieldCount(t *testing.T) {
