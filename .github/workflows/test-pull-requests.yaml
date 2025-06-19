@@ -1,0 +1,21 @@
+name: 'test-pull-requests'
+on:
+  pull_request:
+    branches:
+    - main
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4.2.2
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: 'tests/go.mod'
+        cache-dependency-path: |
+          tests/go.sum
+    - name: Test
+      run: |
+        set -exuo pipefail
+        make start-mysql await-mysql
+        make test

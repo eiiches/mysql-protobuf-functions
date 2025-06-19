@@ -84,6 +84,7 @@ The value of the requested field, interpreted as the corresponding SQL type.
 
 - The field number must match the one used in the `.proto` schema definition.
 - This function does not perform schema validation; it assumes the caller knows the correct field number and expected type.
+- MySQL does not support `+inf`, `-inf`, or `NaN`. Therefore, `float` and `double` variants return `NULL` instead if the corresponding field contains any of these values.
 
 ##### Type Variants
 
