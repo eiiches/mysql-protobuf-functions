@@ -315,7 +315,7 @@ BEGIN
 	SET message_descriptor_index = 0;
 	WHILE message_descriptor_index < message_descriptor_count DO
 		SET message_descriptor = pb_message_get_message_field(file_descriptor, 4, message_descriptor_index);
-		CALL _pb_insert_message_descriptor(set_name, file_name, package_name, message_descriptor);
+		CALL _pb_insert_message_descriptor(set_name, file_name, IF(package_name = '', '', CONCAT('.', package_name)), message_descriptor);
 		SET message_descriptor_index = message_descriptor_index + 1;
 	END WHILE;
 
@@ -323,7 +323,7 @@ BEGIN
 	SET enum_descriptor_index = 0;
 	WHILE enum_descriptor_index < enum_descriptor_count DO
 		SET enum_descriptor = pb_message_get_message_field(file_descriptor, 5, enum_descriptor_index);
-		CALL _pb_insert_enum_descriptor(set_name, file_name, package_name, enum_descriptor);
+		CALL _pb_insert_enum_descriptor(set_name, file_name, IF(package_name = '', '', CONCAT('.', package_name)), enum_descriptor);
 		SET enum_descriptor_index = enum_descriptor_index + 1;
 	END WHILE;
 END $$
