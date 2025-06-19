@@ -176,7 +176,7 @@ BEGIN
 	DECLARE enum_value_descriptor BLOB;
 
 	SET simple_type_name = pb_message_get_string_field(enum_descriptor, 1, NULL);
-	SET full_type_name = CONCAT(IF(parent_name = '', '', CONCAT(parent_name, '.')), simple_type_name);
+	SET full_type_name = CONCAT(parent_name, '.', simple_type_name);
 	SET enum_options = pb_message_get_message_field(enum_descriptor, 3, NULL);
 	SET features = pb_message_get_message_field(enum_options, 7, NULL);
 
@@ -223,7 +223,7 @@ BEGIN
 	DECLARE features BLOB;
 
 	SET simple_type_name = pb_message_get_string_field(message_descriptor, 1, NULL);
-	SET full_type_name = CONCAT(IF(parent_name = '', '', CONCAT(parent_name, '.')), simple_type_name);
+	SET full_type_name = CONCAT(parent_name, '.', simple_type_name);
 	SET message_options = pb_message_get_message_field(message_descriptor, 7, NULL);
 	SET features = pb_message_get_message_field(message_options, 12, NULL);
 
