@@ -1,7 +1,7 @@
 DELIMITER $$
 
 DROP PROCEDURE IF EXISTS _pb_message_to_json $$
-CREATE PROCEDURE _pb_message_to_json(IN set_name VARCHAR(64), IN full_type_name VARCHAR(512), IN buf BLOB, OUT result JSON)
+CREATE PROCEDURE _pb_message_to_json(IN set_name VARCHAR(64), IN full_type_name VARCHAR(512), IN buf LONGBLOB, OUT result JSON)
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
@@ -14,7 +14,7 @@ BEGIN
 	DECLARE json_name TEXT;
 	DECLARE proto3_optional BOOLEAN;
 
-	DECLARE bytes_value BLOB;
+	DECLARE bytes_value LONGBLOB;
 	DECLARE nested_json_value JSON;
 
 	-- NOTE: always use alias in select columns, to avoid confusion with variables with the same name.
@@ -123,7 +123,7 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_to_json $$
-CREATE FUNCTION pb_message_to_json(set_name VARCHAR(64), full_type_name VARCHAR(512), buf BLOB) RETURNS JSON READS SQL DATA
+CREATE FUNCTION pb_message_to_json(set_name VARCHAR(64), full_type_name VARCHAR(512), buf LONGBLOB) RETURNS JSON READS SQL DATA
 BEGIN
 	DECLARE result JSON;
 	CALL _pb_message_to_json(set_name, full_type_name, buf, result);

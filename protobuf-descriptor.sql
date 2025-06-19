@@ -12,9 +12,9 @@ CREATE TABLE IF NOT EXISTS _Proto_FileDescriptor (
 	package_name VARCHAR(255) NOT NULL,
 	syntax VARCHAR(63) NOT NULL,
 	editions INT NOT NULL,
-	file_options BLOB NOT NULL,
-	features BLOB NOT NULL,
-	file_descriptor BLOB NOT NULL,
+	file_options LONGBLOB NOT NULL,
+	features LONGBLOB NOT NULL,
+	file_descriptor LONGBLOB NOT NULL,
 	PRIMARY KEY (`set_name`, `file_name`),
 	FOREIGN KEY (`set_name`) REFERENCES _Proto_FileDescriptorSet (`set_name`) ON DELETE CASCADE
 ) $$
@@ -23,9 +23,9 @@ CREATE TABLE IF NOT EXISTS _Proto_MessageDescriptor (
 	set_name VARCHAR(64) NOT NULL,
 	file_name VARCHAR(512) NOT NULL,
 	type_name VARCHAR(512) NOT NULL,
-	message_options BLOB NOT NULL,
-	features BLOB NOT NULL,
-	message_descriptor BLOB NOT NULL,
+	message_options LONGBLOB NOT NULL,
+	features LONGBLOB NOT NULL,
+	message_descriptor LONGBLOB NOT NULL,
 	PRIMARY KEY (`set_name`, `type_name`),
 	FOREIGN KEY (`set_name`, `file_name`) REFERENCES _Proto_FileDescriptor (`set_name`, `file_name`) ON DELETE CASCADE
 ) $$
@@ -42,9 +42,9 @@ CREATE TABLE IF NOT EXISTS _Proto_FieldDescriptor (
 	json_name TEXT NULL,
 	proto3_optional BOOLEAN NOT NULL,
 	oneof_index INT NULL,
-	field_options BLOB NOT NULL,
-	features BLOB NOT NULL,
-	field_descriptor BLOB NOT NULL,
+	field_options LONGBLOB NOT NULL,
+	features LONGBLOB NOT NULL,
+	field_descriptor LONGBLOB NOT NULL,
 	PRIMARY KEY (`set_name`, `type_name`, `field_number`),
 	FOREIGN KEY (`set_name`, `type_name`) REFERENCES _Proto_MessageDescriptor (`set_name`, `type_name`) ON DELETE CASCADE
 ) $$
@@ -53,9 +53,9 @@ CREATE TABLE IF NOT EXISTS _Proto_EnumDescriptor (
 	set_name VARCHAR(64) NOT NULL,
 	file_name VARCHAR(512) NOT NULL,
 	type_name VARCHAR(512) NOT NULL,
-	enum_options BLOB NOT NULL,
-	features BLOB NOT NULL,
-	enum_descriptor BLOB NOT NULL,
+	enum_options LONGBLOB NOT NULL,
+	features LONGBLOB NOT NULL,
+	enum_descriptor LONGBLOB NOT NULL,
 	PRIMARY KEY (`set_name`, `type_name`),
 	FOREIGN KEY (`set_name`, `file_name`) REFERENCES `_Proto_FileDescriptor` (`set_name`, `file_name`) ON DELETE CASCADE
 ) $$
@@ -65,19 +65,19 @@ CREATE TABLE IF NOT EXISTS _Proto_EnumValueDescriptor (
 	type_name VARCHAR(512) NOT NULL,
 	enum_value_number INT NOT NULL,
 	enum_value_name TEXT NOT NULL,
-	enum_value_options BLOB NOT NULL,
-	features BLOB NOT NULL,
-	enum_value_descriptor BLOB NOT NULL,
+	enum_value_options LONGBLOB NOT NULL,
+	features LONGBLOB NOT NULL,
+	enum_value_descriptor LONGBLOB NOT NULL,
 	PRIMARY KEY (`set_name`, `type_name`, `enum_value_number`),
 	FOREIGN KEY (`set_name`, `type_name`) REFERENCES _Proto_EnumDescriptor (`set_name`, `type_name`) ON DELETE CASCADE
 ) $$
 
 DROP PROCEDURE IF EXISTS _pb_insert_field_descriptor_proto $$
-CREATE PROCEDURE _pb_insert_field_descriptor_proto(IN set_name VARCHAR(64), IN full_type_name TEXT, IN field_descriptor BLOB)
+CREATE PROCEDURE _pb_insert_field_descriptor_proto(IN set_name VARCHAR(64), IN full_type_name TEXT, IN field_descriptor LONGBLOB)
 BEGIN
 	DECLARE field_number INT;
-	DECLARE field_options BLOB;
-	DECLARE features BLOB;
+	DECLARE field_options LONGBLOB;
+	DECLARE features LONGBLOB;
 	DECLARE field_name TEXT;
 	DECLARE field_label INT;
 	DECLARE field_type INT;
@@ -133,12 +133,12 @@ BEGIN
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_insert_enum_value_descriptor$$
-CREATE PROCEDURE _pb_insert_enum_value_descriptor(IN set_name VARCHAR(64), IN full_type_name TEXT, IN enum_value_descriptor BLOB)
+CREATE PROCEDURE _pb_insert_enum_value_descriptor(IN set_name VARCHAR(64), IN full_type_name TEXT, IN enum_value_descriptor LONGBLOB)
 BEGIN
 	DECLARE enum_value_number INT;
 	DECLARE enum_value_name TEXT;
-	DECLARE enum_value_options BLOB;
-	DECLARE features BLOB;
+	DECLARE enum_value_options LONGBLOB;
+	DECLARE features LONGBLOB;
 
 	SET enum_value_number = pb_message_get_int32_field(enum_value_descriptor, 2, NULL);
 	SET enum_value_name = pb_message_get_string_field(enum_value_descriptor, 1, NULL);
@@ -165,15 +165,15 @@ BEGIN
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_insert_enum_descriptor $$
-CREATE PROCEDURE _pb_insert_enum_descriptor(IN set_name VARCHAR(64), IN file_name TEXT, IN parent_name TEXT, IN enum_descriptor BLOB)
+CREATE PROCEDURE _pb_insert_enum_descriptor(IN set_name VARCHAR(64), IN file_name TEXT, IN parent_name TEXT, IN enum_descriptor LONGBLOB)
 BEGIN
 	DECLARE full_type_name TEXT;
 	DECLARE simple_type_name TEXT;
-	DECLARE enum_options BLOB;
-	DECLARE features BLOB;
+	DECLARE enum_options LONGBLOB;
+	DECLARE features LONGBLOB;
 	DECLARE enum_value_descriptor_count INT;
 	DECLARE enum_value_descriptor_index INT;
-	DECLARE enum_value_descriptor BLOB;
+	DECLARE enum_value_descriptor LONGBLOB;
 
 	SET simple_type_name = pb_message_get_string_field(enum_descriptor, 1, NULL);
 	SET full_type_name = CONCAT(parent_name, '.', simple_type_name);
@@ -206,21 +206,21 @@ BEGIN
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_insert_message_descriptor $$
-CREATE PROCEDURE _pb_insert_message_descriptor(IN set_name VARCHAR(64), IN file_name TEXT, IN parent_name TEXT, IN message_descriptor BLOB)
+CREATE PROCEDURE _pb_insert_message_descriptor(IN set_name VARCHAR(64), IN file_name TEXT, IN parent_name TEXT, IN message_descriptor LONGBLOB)
 BEGIN
 	DECLARE full_type_name TEXT;
 	DECLARE simple_type_name TEXT;
 	DECLARE field_descriptor_count INT;
 	DECLARE field_descriptor_index INT;
-	DECLARE field_descriptor BLOB;
+	DECLARE field_descriptor LONGBLOB;
 	DECLARE nested_descriptor_count INT;
 	DECLARE nested_descriptor_index INT;
-	DECLARE nested_descriptor BLOB;
+	DECLARE nested_descriptor LONGBLOB;
 	DECLARE enum_descriptor_count INT;
 	DECLARE enum_descriptor_index INT;
-	DECLARE enum_descriptor BLOB;
-	DECLARE message_options BLOB;
-	DECLARE features BLOB;
+	DECLARE enum_descriptor LONGBLOB;
+	DECLARE message_options LONGBLOB;
+	DECLARE features LONGBLOB;
 
 	SET simple_type_name = pb_message_get_string_field(message_descriptor, 1, NULL);
 	SET full_type_name = CONCAT(parent_name, '.', simple_type_name);
@@ -269,20 +269,20 @@ BEGIN
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_insert_file_descriptor $$
-CREATE PROCEDURE _pb_insert_file_descriptor(IN set_name VARCHAR(64), IN file_descriptor BLOB)
+CREATE PROCEDURE _pb_insert_file_descriptor(IN set_name VARCHAR(64), IN file_descriptor LONGBLOB)
 BEGIN
-	DECLARE message_descriptor BLOB;
+	DECLARE message_descriptor LONGBLOB;
 	DECLARE message_descriptor_count INT;
 	DECLARE message_descriptor_index INT;
 	DECLARE enum_descriptor_count INT;
 	DECLARE enum_descriptor_index INT;
-	DECLARE enum_descriptor BLOB;
+	DECLARE enum_descriptor LONGBLOB;
 	DECLARE file_name TEXT;
 	DECLARE package_name TEXT;
 	DECLARE syntax TEXT;
 	DECLARE editions INT;
-	DECLARE file_options BLOB;
-	DECLARE features BLOB;
+	DECLARE file_options LONGBLOB;
+	DECLARE features LONGBLOB;
 
 	SET file_name = pb_message_get_string_field(file_descriptor, 1, NULL);
 	SET package_name = pb_message_get_string_field(file_descriptor, 2, NULL);
@@ -329,9 +329,9 @@ BEGIN
 END $$
 
 DROP PROCEDURE IF EXISTS pb_descriptor_set_load $$
-CREATE PROCEDURE pb_descriptor_set_load(IN set_name VARCHAR(64), IN file_descriptor_set BLOB)
+CREATE PROCEDURE pb_descriptor_set_load(IN set_name VARCHAR(64), IN file_descriptor_set LONGBLOB)
 BEGIN
-	DECLARE file_descriptor BLOB;
+	DECLARE file_descriptor LONGBLOB;
 	DECLARE file_descriptor_count INT;
 	DECLARE file_descriptor_index INT;
 
