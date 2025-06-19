@@ -1,8 +1,18 @@
+SHELL = /bin/bash
+
 .PHONY: test
 test: reload
 	set -exuo pipefail; \
 	host=$$(docker inspect test-mysql | jq -r '.[].NetworkSettings.IPAddress'); \
 	cd tests && go test -database "root@tcp($$host:3306)/test" $${GO_TEST_FLAGS:-}
+
+.PHONY: await-mysql
+await-mysql:
+	set -euxo pipefail; \
+	until docker exec test-mysql mysql -u root test -e 'select 1'; do \
+		sleep 1; \
+	done; \
+	echo "MySQL is ready.";
 
 .PHONY: test-descriptor
 test-descriptor: purge reload
@@ -25,7 +35,7 @@ show-logs:
 
 .PHONY: start-mysql
 start-mysql:
-	docker run --rm --name test-mysql -e MYSQL_ALLOW_EMPTY_PASSWORD=true -e MYSQL_DATABASE=test mysql
+	docker run -d --rm --name test-mysql -e MYSQL_ALLOW_EMPTY_PASSWORD=true -e MYSQL_DATABASE=test mysql:8.3.0
 
 .PHONY: stop-mysql
 stop-mysql:
