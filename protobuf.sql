@@ -618,9 +618,13 @@ BEGIN
 	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE bytes_value LONGBLOB;
 	DECLARE message_text TEXT;
+	DECLARE i INT;
+	DECLARE json_path TEXT;
+	DECLARE wire_element JSON;
 
-	SET wire_json = JSON_ARRAY();
+	SET wire_json = JSON_OBJECT();
 	SET tail = buf;
+	SET i = 0;
 
 	WHILE LENGTH(tail) <> 0 DO
 		CALL _pb_wire_read_varint_as_uint64(tail, tag, tail);
@@ -631,20 +635,29 @@ BEGIN
 		CASE wire_type
 		WHEN 0 THEN -- VARINT
 			CALL _pb_wire_read_varint_as_uint64(tail, uint_value, tail);
-			SET wire_json = JSON_ARRAY_APPEND(wire_json, '$', JSON_OBJECT('field_number', field_number, 'wire_type', wire_type, 'value', JSON_OBJECT('uint', uint_value)));
+			SET wire_element = JSON_OBJECT('i', i, 'n', field_number, 't', wire_type, 'v', uint_value);
 		WHEN 1 THEN -- I64
 			CALL _pb_wire_read_i64_as_uint64(tail, uint_value, tail);
-			SET wire_json = JSON_ARRAY_APPEND(wire_json, '$', JSON_OBJECT('field_number', field_number, 'wire_type', wire_type, 'value', JSON_OBJECT('uint', uint_value)));
+			SET wire_element = JSON_OBJECT('i', i, 'n', field_number, 't', wire_type, 'v', uint_value);
 		WHEN 2 THEN -- LEN
 			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
-			SET wire_json = JSON_ARRAY_APPEND(wire_json, '$', JSON_OBJECT('field_number', field_number, 'wire_type', wire_type, 'value', JSON_OBJECT('bytes', TO_BASE64(bytes_value))));
+			SET wire_element = JSON_OBJECT('i', i, 'n', field_number, 't', wire_type, 'v', TO_BASE64(bytes_value));
 		WHEN 5 THEN -- I32
 			CALL _pb_wire_read_i32_as_uint32(tail, uint_value, tail);
-			SET wire_json = JSON_ARRAY_APPEND(wire_json, '$', JSON_OBJECT('field_number', field_number, 'wire_type', wire_type, 'value', JSON_OBJECT('uint', uint_value)));
+			SET wire_element = JSON_OBJECT('i', i, 'n', field_number, 't', wire_type, 'v', uint_value);
 		ELSE
 			SET message_text = CONCAT('_pb_message_to_wire_json: unsupported wire type (', wire_type, ')');
 			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
 		END CASE;
+
+		SET json_path = CONCAT('$."', field_number, '"');
+		IF JSON_CONTAINS_PATH(wire_json, 'one', json_path) THEN
+			SET wire_json = JSON_ARRAY_APPEND(wire_json, json_path, wire_element);
+		ELSE
+			SET wire_json = JSON_SET(wire_json, json_path, JSON_ARRAY(wire_element));
+		END IF;
+
+		SET i = i + 1;
 	END WHILE;
 END $$
 
@@ -659,7 +672,7 @@ END $$
 DROP PROCEDURE IF EXISTS pb_wire_json_as_table $$
 CREATE PROCEDURE pb_wire_json_as_table(IN wire_json JSON)
 BEGIN
-	SELECT * FROM JSON_TABLE(wire_json, '$[*]' COLUMNS (field_number INT PATH '$.field_number', wire_type INT PATH '$.wire_type', uint_value BIGINT UNSIGNED PATH '$.value.uint', bytes_value TEXT PATH '$.value.bytes')) AS jt;
+	SELECT * FROM JSON_TABLE(JSON_EXTRACT(wire_json, '$.*[*]'), '$[*]' COLUMNS (i INT PATH '$.i', n INT PATH '$.n', t INT PATH '$.t', v JSON PATH '$.v')) jt;
 END $$
 
 DROP PROCEDURE IF EXISTS pb_message_show_wire_format $$
@@ -673,42 +686,34 @@ CREATE PROCEDURE _pb_wire_json_get_varint_field_as_uint64(IN wire_json JSON, IN 
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
-	DECLARE done TINYINT DEFAULT FALSE;
 	DECLARE message_text TEXT;
 	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE bytes_value LONGBLOB;
 	DECLARE wire_type INT;
-
-	DECLARE cur CURSOR FOR
-		SELECT
-			jt.wire_type,
-			jt.uint_value,
-			FROM_BASE64(jt.bytes_value)
-		FROM JSON_TABLE(wire_json, '$[*]' COLUMNS (
-			field_number INT PATH '$.field_number',
-			wire_type INT PATH '$.wire_type',
-			uint_value BIGINT UNSIGNED PATH '$.value.uint',
-			bytes_value TEXT PATH '$.value.bytes'
-		)) AS jt
-		WHERE jt.field_number = field_number;
-	DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+	DECLARE wire_elements JSON;
+	DECLARE wire_element JSON;
+	DECLARE wire_element_index INT;
+	DECLARE wire_element_count INT;
 
 	SET field_count = 0;
 
-	OPEN cur;
-	l1: LOOP
-		FETCH cur INTO wire_type, uint_value, bytes_value;
-		IF done THEN
-			LEAVE l1;
-		END IF;
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_element_index = 0;
+	SET wire_element_count = JSON_LENGTH(wire_elements);
+
+	l1: WHILE wire_element_index < wire_element_count DO
+		SET wire_element = JSON_EXTRACT(wire_elements, CONCAT('$[', wire_element_index, ']'));
+		SET wire_type = JSON_EXTRACT(wire_element, '$.t');
 
 		CASE wire_type
 		WHEN 0 THEN -- VARINT
+			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
 			IF repeated_index IS NULL OR repeated_index = field_count THEN
 				SET value = uint_value;
 			END IF;
 			SET field_count = field_count + 1;
 		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
 			IF repeated_index IS NULL THEN
 				SET message_text = CONCAT('_pb_wire_json_get_varint_field_as_uint64: unexpected wire_type (', wire_type, ')');
 				SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
@@ -724,8 +729,9 @@ BEGIN
 			SET message_text = CONCAT('_pb_wire_json_get_varint_field_as_uint64: unexpected wire_type (', wire_type, ')');
 			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
 		END CASE;
-	END LOOP;
-	CLOSE cur;
+
+		SET wire_element_index = wire_element_index + 1;
+	END WHILE;
 
 	-- Negative repeated_index is used when just counting the number of repeated elements.
 	IF repeated_index IS NOT NULL AND repeated_index >= 0 AND field_count <= repeated_index THEN
@@ -738,42 +744,34 @@ CREATE PROCEDURE _pb_wire_json_get_i64_field_as_uint64(IN wire_json JSON, IN fie
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
-	DECLARE done TINYINT DEFAULT FALSE;
 	DECLARE message_text TEXT;
 	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE bytes_value LONGBLOB;
 	DECLARE wire_type INT;
-
-	DECLARE cur CURSOR FOR
-		SELECT
-			jt.wire_type,
-			jt.uint_value,
-			FROM_BASE64(jt.bytes_value)
-		FROM JSON_TABLE(wire_json, '$[*]' COLUMNS (
-			field_number INT PATH '$.field_number',
-			wire_type INT PATH '$.wire_type',
-			uint_value BIGINT UNSIGNED PATH '$.value.uint',
-			bytes_value TEXT PATH '$.value.bytes'
-		)) AS jt
-		WHERE jt.field_number = field_number;
-	DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+	DECLARE wire_elements JSON;
+	DECLARE wire_element JSON;
+	DECLARE wire_element_index INT;
+	DECLARE wire_element_count INT;
 
 	SET field_count = 0;
 
-	OPEN cur;
-	l1: LOOP
-		FETCH cur INTO wire_type, uint_value, bytes_value;
-		IF done THEN
-			LEAVE l1;
-		END IF;
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_element_index = 0;
+	SET wire_element_count = JSON_LENGTH(wire_elements);
+
+	l1: WHILE wire_element_index < wire_element_count DO
+		SET wire_element = JSON_EXTRACT(wire_elements, CONCAT('$[', wire_element_index, ']'));
+		SET wire_type = JSON_EXTRACT(wire_element, '$.t');
 
 		CASE wire_type
 		WHEN 1 THEN -- I64
+			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
 			IF repeated_index IS NULL OR repeated_index = field_count THEN
 				SET value = uint_value;
 			END IF;
 			SET field_count = field_count + 1;
 		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
 			IF repeated_index IS NULL THEN
 				SET message_text = CONCAT('_pb_wire_json_get_i64_field_as_uint64: unexpected wire_type (', wire_type, ')');
 				SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
@@ -789,8 +787,9 @@ BEGIN
 			SET message_text = CONCAT('_pb_wire_json_get_i64_field_as_uint64: unexpected wire_type (', wire_type, ')');
 			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
 		END CASE;
-	END LOOP;
-	CLOSE cur;
+
+		SET wire_element_index = wire_element_index + 1;
+	END WHILE;
 
 	-- Negative repeated_index is used when just counting the number of repeated elements.
 	IF repeated_index IS NOT NULL AND repeated_index >= 0 AND field_count <= repeated_index THEN
@@ -803,42 +802,34 @@ CREATE PROCEDURE _pb_wire_json_get_i32_field_as_uint32(IN wire_json JSON, IN fie
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
-	DECLARE done TINYINT DEFAULT FALSE;
 	DECLARE message_text TEXT;
 	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE bytes_value LONGBLOB;
 	DECLARE wire_type INT;
-
-	DECLARE cur CURSOR FOR
-		SELECT
-			jt.wire_type,
-			jt.uint_value,
-			FROM_BASE64(jt.bytes_value)
-		FROM JSON_TABLE(wire_json, '$[*]' COLUMNS (
-			field_number INT PATH '$.field_number',
-			wire_type INT PATH '$.wire_type',
-			uint_value BIGINT UNSIGNED PATH '$.value.uint',
-			bytes_value TEXT PATH '$.value.bytes'
-		)) AS jt
-		WHERE jt.field_number = field_number;
-	DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+	DECLARE wire_elements JSON;
+	DECLARE wire_element JSON;
+	DECLARE wire_element_index INT;
+	DECLARE wire_element_count INT;
 
 	SET field_count = 0;
 
-	OPEN cur;
-	l1: LOOP
-		FETCH cur INTO wire_type, uint_value, bytes_value;
-		IF done THEN
-			LEAVE l1;
-		END IF;
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_element_index = 0;
+	SET wire_element_count = JSON_LENGTH(wire_elements);
+
+	l1: WHILE wire_element_index < wire_element_count DO
+		SET wire_element = JSON_EXTRACT(wire_elements, CONCAT('$[', wire_element_index, ']'));
+		SET wire_type = JSON_EXTRACT(wire_element, '$.t');
 
 		CASE wire_type
 		WHEN 5 THEN -- I32
+			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
 			IF repeated_index IS NULL OR repeated_index = field_count THEN
 				SET value = uint_value;
 			END IF;
 			SET field_count = field_count + 1;
 		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
 			IF repeated_index IS NULL THEN
 				SET message_text = CONCAT('_pb_wire_json_get_i32_field_as_uint32: unexpected wire_type (', wire_type, ')');
 				SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
@@ -854,8 +845,9 @@ BEGIN
 			SET message_text = CONCAT('_pb_wire_json_get_i32_field_as_uint32: unexpected wire_type (', wire_type, ')');
 			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
 		END CASE;
-	END LOOP;
-	CLOSE cur;
+
+		SET wire_element_index = wire_element_index + 1;
+	END WHILE;
 
 	-- Negative repeated_index is used when just counting the number of repeated elements.
 	IF repeated_index IS NOT NULL AND repeated_index >= 0 AND field_count <= repeated_index THEN
@@ -868,37 +860,28 @@ CREATE PROCEDURE _pb_wire_json_get_len_type_field(IN wire_json JSON, IN field_nu
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
-	DECLARE done TINYINT DEFAULT FALSE;
 	DECLARE message_text TEXT;
 	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE bytes_value LONGBLOB;
 	DECLARE wire_type INT;
-
-	DECLARE cur CURSOR FOR
-		SELECT
-			jt.wire_type,
-			jt.uint_value,
-			FROM_BASE64(jt.bytes_value)
-		FROM JSON_TABLE(wire_json, '$[*]' COLUMNS (
-			field_number INT PATH '$.field_number',
-			wire_type INT PATH '$.wire_type',
-			uint_value BIGINT UNSIGNED PATH '$.value.uint',
-			bytes_value TEXT PATH '$.value.bytes'
-		)) AS jt
-		WHERE jt.field_number = field_number;
-	DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+	DECLARE wire_elements JSON;
+	DECLARE wire_element JSON;
+	DECLARE wire_element_index INT;
+	DECLARE wire_element_count INT;
 
 	SET field_count = 0;
 
-	OPEN cur;
-	l1: LOOP
-		FETCH cur INTO wire_type, uint_value, bytes_value;
-		IF done THEN
-			LEAVE l1;
-		END IF;
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_element_index = 0;
+	SET wire_element_count = JSON_LENGTH(wire_elements);
+
+	l1: WHILE wire_element_index < wire_element_count DO
+		SET wire_element = JSON_EXTRACT(wire_elements, CONCAT('$[', wire_element_index, ']'));
+		SET wire_type = JSON_EXTRACT(wire_element, '$.t');
 
 		CASE wire_type
 		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
 			IF repeated_index IS NULL OR repeated_index = field_count THEN
 				SET value = bytes_value;
 			END IF;
@@ -907,8 +890,9 @@ BEGIN
 			SET message_text = CONCAT('_pb_wire_json_get_len_type_field: unexpected wire_type (', wire_type, ')');
 			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
 		END CASE;
-	END LOOP;
-	CLOSE cur;
+
+		SET wire_element_index = wire_element_index + 1;
+	END WHILE;
 
 	-- Negative repeated_index is used when just counting the number of repeated elements.
 	IF repeated_index IS NOT NULL AND repeated_index >= 0 AND field_count <= repeated_index THEN

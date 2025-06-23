@@ -296,13 +296,13 @@ SELECT pb_message_to_wire_json(_binary X'0A0B696E7433325F6669656C641801200128055
 ```
 
 ```json
-[
-  {"value": {"bytes": "aW50MzJfZmllbGQ="}, "wire_type": 2, "field_number": 1},
-  {"value": {"uint": 1}, "wire_type": 0, "field_number": 3},
-  {"value": {"uint": 1}, "wire_type": 0, "field_number": 4},
-  {"value": {"uint": 5}, "wire_type": 0, "field_number": 5},
-  {"value": {"bytes": "aW50MzJGaWVsZA=="}, "wire_type": 2, "field_number": 10}
-]
+{
+  "1": [{"i": 0, "n": 1, "t": 2, "v": "aW50MzJfZmllbGQ="}],
+  "3": [{"i": 1, "n": 3, "t": 0, "v": 1}],
+  "4": [{"i": 2, "n": 4, "t": 0, "v": 1}],
+  "5": [{"i": 3, "n": 5, "t": 0, "v": 5}],
+  "10": [{"i": 4, "n": 10, "t": 2, "v": "aW50MzJGaWVsZA=="}]
+}
 ```
 
 

@@ -5,19 +5,19 @@ import "testing"
 func TestMessageToWireJson(t *testing.T) {
 	// VARINT (0)
 	RunTestThatExpression(t, "pb_message_to_wire_json(_binary X'10ffffffff07')").
-		IsEqualToJson(`[{"value": {"uint": 2147483647}, "wire_type": 0, "field_number": 2}]`)
+		IsEqualToJson(`{"2":[{"i":0,"n":2,"t":0,"v":2147483647}]}`)
 	RunTestThatExpression(t, "pb_message_to_wire_json(_binary X'20ffffffffffffffffff01')").
-		IsEqualToJson(`[{"value": {"uint": 18446744073709551615}, "wire_type": 0, "field_number": 4}]`)
+		IsEqualToJson(`{"4":[{"i":0,"n":4,"t":0,"v":18446744073709551615}]}`)
 
 	// I64 (1)
 	RunTestThatExpression(t, "pb_message_to_wire_json(_binary X'61ffffffffffffffff')").
-		IsEqualToJson(`[{"value": {"uint": 18446744073709551615}, "wire_type": 1, "field_number": 12}]`)
+		IsEqualToJson(`{"12":[{"i":0,"n":12,"t":1,"v":18446744073709551615}]}`)
 
 	// I32 (5)
 	RunTestThatExpression(t, "pb_message_to_wire_json(_binary X'7dffffffff')").
-		IsEqualToJson(`[{"value": {"uint": 4294967295}, "wire_type": 5, "field_number": 15}]`)
+		IsEqualToJson(`{"15":[{"i":0,"n":15,"t":5,"v":4294967295}]}`)
 
 	// LEN (2)
 	RunTestThatExpression(t, "pb_message_to_wire_json(_binary X'4202080a')").
-		IsEqualToJson(`[{"value": {"bytes": "CAo="}, "wire_type": 2, "field_number": 8}]`)
+		IsEqualToJson(`{"8":[{"i":0,"n":8,"t":2,"v":"CAo="}]}`)
 }

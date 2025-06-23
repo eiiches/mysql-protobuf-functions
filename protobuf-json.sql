@@ -358,17 +358,20 @@ BEGIN
 	DECLARE wire_entry JSON;
 	DECLARE wire_json_index INT;
 	DECLARE wire_json_length INT;
+	DECLARE wire_elements JSON;
+
+	SET wire_elements = JSON_EXTRACT(wire_json, '$.*[*]');
 
 	SET wire_json_index = 0;
-	SET wire_json_length = JSON_LENGTH(wire_json);
+	SET wire_json_length = JSON_LENGTH(wire_elements);
 	l1: WHILE wire_json_index < wire_json_length DO
-		SET wire_entry = JSON_EXTRACT(wire_json, CONCAT('$[', wire_json_index, ']'));
-		SET wire_type = JSON_EXTRACT(wire_entry, '$.wire_type');
-		SET field_number = JSON_EXTRACT(wire_entry, '$.field_number');
+		SET wire_entry = JSON_EXTRACT(wire_elements, CONCAT('$[', wire_json_index, ']'));
+		SET wire_type = JSON_EXTRACT(wire_entry, '$.t');
+		SET field_number = JSON_EXTRACT(wire_entry, '$.n');
 
 		CASE wire_type
 		WHEN 0 THEN
-			SET uint_value = JSON_EXTRACT(wire_entry, '$.value.uint');
+			SET uint_value = CAST(JSON_EXTRACT(wire_entry, '$.v') AS UNSIGNED);
 			CASE field_number
 			WHEN 3 THEN
 				SET out_field_number = _pb_util_reinterpret_uint64_as_int64(uint_value);
@@ -382,7 +385,7 @@ BEGIN
 				SET oneof_index = _pb_util_reinterpret_uint64_as_int64(uint_value);
 			END CASE;
 		WHEN 2 THEN
-			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_entry, '$.value.bytes')));
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_entry, '$.v')));
 			CASE field_number
 			WHEN 1 THEN
 				SET field_name = CONVERT(bytes_value USING utf8mb4);
