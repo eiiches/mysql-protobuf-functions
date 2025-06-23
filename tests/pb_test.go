@@ -4,7 +4,8 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
+	"github.com/eiiches/mysql-protobuf-functions/internal/gomega/gmysql"
+	"github.com/eiiches/mysql-protobuf-functions/internal/moresql"
 	"github.com/onsi/gomega/types"
 	"testing"
 	"time"
@@ -35,14 +36,63 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
+type CallTestContext struct {
+	CallExpression string
+	Args           []any
+	T              *testing.T
+}
+
+func AssertThatCall(t *testing.T, callExpression string, args ...any) *CallTestContext {
+	return &CallTestContext{CallExpression: callExpression, Args: args, T: t}
+}
+
+func (this *CallTestContext) ShouldSucceed() {
+	g := NewWithT(this.T)
+
+	stmt, err := db.Prepare("CALL " + this.CallExpression)
+	g.Expect(err).NotTo(HaveOccurred())
+	defer func() {
+		g.Expect(stmt.Close()).To(Succeed())
+	}()
+
+	rows, err := stmt.Query(this.Args...)
+	g.Expect(err).NotTo(HaveOccurred())
+	defer func() {
+		g.Expect(rows.Close()).To(Succeed())
+	}()
+
+	for rows.Next() {
+		// do nothing
+	}
+
+	g.Expect(rows.Err()).NotTo(HaveOccurred(), "Unexpected error while iterating over rows.")
+}
+
 type ExpressionTestContext struct {
 	Expression string
 	Args       []any
 	T          *testing.T
+	RunFn      func(name string, testFn func(t *testing.T)) bool
 }
 
 func AssertThatExpression(t *testing.T, expression string, args ...any) *ExpressionTestContext {
-	return &ExpressionTestContext{Expression: expression, Args: args, T: t}
+	return &ExpressionTestContext{Expression: expression, Args: args, T: t, RunFn: func(name string, testFn func(t *testing.T)) bool {
+		testFn(t)
+		return true // unused
+	}}
+}
+
+func RunTestThatExpression(t *testing.T, expression string, args ...any) *ExpressionTestContext {
+	return AssertThatExpression(t, expression, args...).AsSubTest()
+}
+
+func (this *ExpressionTestContext) AsSubTest() *ExpressionTestContext {
+	return &ExpressionTestContext{
+		Expression: this.Expression,
+		Args:       this.Args,
+		T:          this.T,
+		RunFn:      this.T.Run,
+	}
 }
 
 func assertThatExpressionTo[T any](t *testing.T, matcher types.GomegaMatcher, expression string, args ...any) {
@@ -103,118 +153,132 @@ func assertThatExpressionToFailWith(t *testing.T, matcher types.GomegaMatcher, e
 	g.Fail(fmt.Sprintf("Expected an error, but got a row with value: %v", actual))
 }
 
-func runAssertThatExpressionIsEqualTo[T any](t *testing.T, method string, expected T, expression string, args ...any) {
-	t.Run(fmt.Sprintf("AssertThatExpression(`%s`, %v...).%s(%v)", expression, args, method, expected), func(t *testing.T) {
+func runAssertThatExpressionIsEqualTo[T any](runFn func(name string, fn func(t *testing.T)) bool, method string, expected T, expression string, args ...any) {
+	runFn(fmt.Sprintf("RunTestThatExpression(`%s`, %v...).%s(%v)", expression, args, method, expected), func(t *testing.T) {
 		assertThatExpressionTo[T](t, Equal(expected), expression, args...)
 	})
 }
 
 func (this *ExpressionTestContext) IsEqualToUint(expected uint64) {
-	runAssertThatExpressionIsEqualTo[uint64](this.T, "IsEqualToUint", expected, this.Expression, this.Args...)
+	runAssertThatExpressionIsEqualTo[uint64](this.RunFn, "IsEqualToUint", expected, this.Expression, this.Args...)
 }
 
 func (this *ExpressionTestContext) IsEqualToInt(expected int64) {
-	runAssertThatExpressionIsEqualTo[int64](this.T, "IsEqualToInt", expected, this.Expression, this.Args...)
+	runAssertThatExpressionIsEqualTo[int64](this.RunFn, "IsEqualToInt", expected, this.Expression, this.Args...)
 }
 
 func (this *ExpressionTestContext) IsEqualToDouble(expected float64) {
-	runAssertThatExpressionIsEqualTo[float64](this.T, "IsEqualToDouble", expected, this.Expression, this.Args...)
+	runAssertThatExpressionIsEqualTo[float64](this.RunFn, "IsEqualToDouble", expected, this.Expression, this.Args...)
 }
 
 func (this *ExpressionTestContext) IsEqualToFloat(expected float32) {
-	runAssertThatExpressionIsEqualTo[float32](this.T, "IsEqualToFloat", expected, this.Expression, this.Args...)
+	runAssertThatExpressionIsEqualTo[float32](this.RunFn, "IsEqualToFloat", expected, this.Expression, this.Args...)
 }
 
 func (this *ExpressionTestContext) IsEqualTo(expected interface{}) {
-	runAssertThatExpressionIsEqualTo[interface{}](this.T, "IsEqualTo", expected, this.Expression, this.Args...)
+	runAssertThatExpressionIsEqualTo[interface{}](this.RunFn, "IsEqualTo", expected, this.Expression, this.Args...)
 }
 
 func (this *ExpressionTestContext) IsEqualToString(expected string) {
-	runAssertThatExpressionIsEqualTo[string](this.T, "IsEqualToString", expected, this.Expression, this.Args...)
+	runAssertThatExpressionIsEqualTo[string](this.RunFn, "IsEqualToString", expected, this.Expression, this.Args...)
 }
 
 func (this *ExpressionTestContext) IsEqualToBytes(expected []byte) {
-	runAssertThatExpressionIsEqualTo[[]byte](this.T, "IsEqualToBytes", expected, this.Expression, this.Args...)
+	runAssertThatExpressionIsEqualTo[[]byte](this.RunFn, "IsEqualToBytes", expected, this.Expression, this.Args...)
 }
 
 func (this *ExpressionTestContext) IsEqualToBool(expected bool) {
-	runAssertThatExpressionIsEqualTo[bool](this.T, "IsEqualToBool", expected, this.Expression, this.Args...)
+	runAssertThatExpressionIsEqualTo[bool](this.RunFn, "IsEqualToBool", expected, this.Expression, this.Args...)
 }
 
 func (this *ExpressionTestContext) IsTrue() {
-	this.T.Run(fmt.Sprintf("AssertThatExpression(`%s`, %v...).IsTrue()", this.Expression, this.Args), func(t *testing.T) {
+	this.RunFn(fmt.Sprintf("RunTestThatExpression(`%s`, %v...).IsTrue()", this.Expression, this.Args), func(t *testing.T) {
 		assertThatExpressionTo[bool](this.T, BeTrue(), this.Expression, this.Args...)
 	})
 }
 
 func (this *ExpressionTestContext) IsFalse() {
-	this.T.Run(fmt.Sprintf("AssertThatExpression(`%s`, %v...).IsFalse()", this.Expression, this.Args), func(t *testing.T) {
+	this.RunFn(fmt.Sprintf("RunTestThatExpression(`%s`, %v...).IsFalse()", this.Expression, this.Args), func(t *testing.T) {
 		assertThatExpressionTo[bool](this.T, BeFalse(), this.Expression, this.Args...)
 	})
 }
 
 func (this *ExpressionTestContext) IsNull() {
-	this.T.Run(fmt.Sprintf("AssertThatExpression(`%s`, %v...).IsNull()", this.Expression, this.Args), func(t *testing.T) {
+	this.RunFn(fmt.Sprintf("RunTestThatExpression(`%s`, %v...).IsNull()", this.Expression, this.Args), func(t *testing.T) {
 		assertThatExpressionTo[interface{}](this.T, BeNil(), this.Expression, this.Args...)
 	})
 }
 
-func (this *ExpressionTestContext) ToSucceed() {
-	this.T.Run(fmt.Sprintf("AssertThatExpression(`%s`, %v...).ToSucceed()", this.Expression, this.Args), func(t *testing.T) {
-		assertThatExpressionTo[interface{}](t, SatisfyAny(BeNil(), Not(BeNil())), this.Expression, this.Args...)
+func (this *ExpressionTestContext) IsEqualToJson(expectedJson string) {
+	this.RunFn(fmt.Sprintf("RunTestThatExpression(`%s`, %v...).IsEqualToJson(%+v)", this.Expression, this.Args, expectedJson), func(t *testing.T) {
+		assertThatExpressionTo[string](t, MatchJSON(expectedJson), this.Expression, this.Args...)
 	})
 }
 
-func BeMySQLError(number uint16, sqlState string, messageMatcher types.GomegaMatcher) types.GomegaMatcher {
-	return &MySQLErrorMatcher{
-		Number:         number,
-		SQLState:       sqlState,
-		MessageMatcher: messageMatcher,
-	}
+func (this *ExpressionTestContext) ToSucceed() {
+	this.RunFn(fmt.Sprintf("RunTestThatExpression(`%s`, %v...).ToSucceed()", this.Expression, this.Args), func(t *testing.T) {
+		assertThatExpressionTo[interface{}](t, SatisfyAny(BeNil(), Not(BeNil())), this.Expression, this.Args...)
+	})
 }
-
-type MySQLErrorMatcher struct {
-	Number         uint16
-	SQLState       string
-	MessageMatcher types.GomegaMatcher
-}
-
-func (m *MySQLErrorMatcher) Match(actual interface{}) (success bool, err error) {
-	if actual == nil {
-		return false, nil
-	}
-	mysqlError, ok := actual.(*mysql.MySQLError)
-	if !ok {
-		return false, nil
-	}
-	if mysqlError.Number != m.Number {
-		return false, nil
-	}
-	if string(mysqlError.SQLState[:]) != m.SQLState {
-		return false, nil
-	}
-	if matches, err := m.MessageMatcher.Match(mysqlError.Message); err != nil {
-		return false, fmt.Errorf("error matching message: %w", err)
-	} else if !matches {
-		return false, nil
-	}
-	return true, nil
-}
-
-func (m *MySQLErrorMatcher) FailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n\t%#v\nto match\n\t%#v", actual, m)
-}
-
-func (m *MySQLErrorMatcher) NegatedFailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n\t%#v\nnot to match\n\t%#v", actual, m)
-}
-
-func (m *MySQLErrorMatcher) String() string {
-	return fmt.Sprintf("MySQLErrorMatcher(Number: %d, SQLState: %s, MessageMatcher: %s)", m.Number, m.SQLState, m.MessageMatcher)
-}
-
 func (this *ExpressionTestContext) ToFailWithSignalException(state string, containsMessage string) {
-	this.T.Run(fmt.Sprintf("AssertThatExpression(`%s`, %v...).ToFailWithSignalException(%v, %v)", this.Expression, this.Args, state, containsMessage), func(t *testing.T) {
-		assertThatExpressionToFailWith(t, BeMySQLError(1644, state, ContainSubstring(containsMessage)), this.Expression, this.Args...)
+	this.RunFn(fmt.Sprintf("RunTestThatExpression(`%s`, %v...).ToFailWithSignalException(%v, %v)", this.Expression, this.Args, state, containsMessage), func(t *testing.T) {
+		assertThatExpressionToFailWith(t, gmysql.BeMySQLError(1644, state, ContainSubstring(containsMessage)), this.Expression, this.Args...)
+	})
+}
+
+type StatementTestContext[T any] struct {
+	Statement string
+	Args      []any
+	T         *testing.T
+	RunFn     func(name string, testFn func(t *testing.T)) bool
+}
+
+func AssertThatStatement[T any](t *testing.T, statement string, args ...any) *StatementTestContext[T] {
+	return &StatementTestContext[T]{Statement: statement, Args: args, T: t, RunFn: func(name string, testFn func(t *testing.T)) bool {
+		testFn(t)
+		return true // unused
+	}}
+}
+
+func RunTestThatStatement[T any](t *testing.T, statement string, args ...any) *StatementTestContext[T] {
+	return AssertThatStatement[T](t, statement, args...).AsSubTest()
+}
+
+func (this *StatementTestContext[T]) AsSubTest() *StatementTestContext[T] {
+	return &StatementTestContext[T]{
+		Statement: this.Statement,
+		Args:      this.Args,
+		T:         this.T,
+		RunFn:     this.T.Run,
+	}
+}
+
+func (this *StatementTestContext[T]) ShouldReturnSingleRow(matcher types.GomegaMatcher) {
+	this.RunFn(fmt.Sprintf("RunTestThatStatement(`%s`, %v...).ShouldReturnSingleRow(%v)", this.Statement, this.Args, matcher), func(t *testing.T) {
+		g := NewWithT(this.T)
+
+		stmt, err := db.Prepare(this.Statement)
+		g.Expect(err).NotTo(HaveOccurred())
+		defer func() {
+			g.Expect(stmt.Close()).To(Succeed())
+		}()
+
+		rows, err := stmt.Query(this.Args...)
+		g.Expect(err).NotTo(HaveOccurred())
+		defer func() {
+			g.Expect(rows.Close()).To(Succeed())
+		}()
+
+		if !rows.Next() { // no rows or an error
+			g.Expect(rows.Err()).NotTo(HaveOccurred(), "Unexpected error while iterating over rows.")
+			g.Fail("Expected one row, but got none.")
+		}
+
+		row, err := moresql.ScanStruct[T](rows)
+		g.Expect(err).NotTo(HaveOccurred(), "Unexpected error while scanning row.")
+		g.Expect(row).To(matcher)
+
+		g.Expect(rows.Next()).To(BeFalse(), "Expected no more rows, but got another row.")
+		g.Expect(rows.Err()).NotTo(HaveOccurred(), "Unexpected error after scanning a row.")
 	})
 }
