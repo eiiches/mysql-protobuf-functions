@@ -17,5 +17,5 @@ jobs:
     - name: Test
       run: |
         set -exuo pipefail
-        make start-mysql await-mysql
+        make start-mysql
         make test
