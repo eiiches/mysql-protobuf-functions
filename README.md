@@ -85,6 +85,11 @@ message TestMessage {
 Function Reference
 ---------
 
+These field accessors do not recognize oneof groups or map fields.
+
+* If multiple fields within a oneof group are set, which is uncommon, the accessors will return values for all of them. Oneof semantics are not enforced.
+* A map is encoded as repeated messages on the wire and must be accessed accordingly.
+
 ### Getters — pb\_message\_get\_{type}\_field()
 
 Retrieves the value of a specified field from a Protobuf-encoded BLOB. This function is used to extract individual values from serialized Protocol Buffers messages stored as binary data.

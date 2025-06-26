@@ -1,0 +1,45 @@
+.PHONY: test
+test: purge reload ensure-test-database
+	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" $${GO_TEST_FLAGS:-}
+
+.PHONY: build
+build:
+	go run cmd/protobuf-accessors/main.go > protobuf-accessors.sql
+
+.PHONY: reload
+reload: build ensure-test-database
+	$(MYSQL_COMMAND) < debug.sql
+	$(MYSQL_COMMAND) < protobuf.sql
+	$(MYSQL_COMMAND) < protobuf-accessors.sql
+	$(MYSQL_COMMAND) < protobuf-descriptor.sql
+	$(MYSQL_COMMAND) < protobuf-json.sql
+
+.PHONY: purge
+purge: ensure-test-database
+	$(MYSQL_COMMAND) < purge.sql
+
+.PHONY: show-logs
+show-logs: ensure-test-database
+	$(MYSQL_COMMAND) -e 'SELECT * FROM DebugLog';
+
+.PHONY: start-profiling
+start-profiling: ensure-test-database
+	$(MYSQL_COMMAND) -e "UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'events_statements_history_long';"
+	$(MYSQL_COMMAND) -e "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE 'statement/%';"
+	$(MYSQL_COMMAND) -e "TRUNCATE TABLE performance_schema.events_statements_history_long;"
+
+.PHONY: stop-profiling
+stop-profiling: ensure-test-database
+	$(MYSQL_COMMAND) -e 'UPDATE performance_schema.setup_consumers SET ENABLED="NO" WHERE NAME = "events_statements_history_long"; select count(*) from performance_schema.events_statements_history_long;'
+	$(MYSQL_COMMAND) < scripts/perf-report.sql
+
+.PHONY: flamegraph
+flamegraph:
+	set -exuo pipefail; \
+	output=flamegraph-$$(date +%s).svg; \
+	go run cmd/mysql-profiler/main.go -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" | flamegraph.pl > $$output \
+		&& xdg-open $$output
+
+.PHONY: ensure-test-database
+ensure-test-database: download-mysql
+	$(MYSQL_COMMAND_NO_DB) -e 'CREATE DATABASE IF NOT EXISTS test';
