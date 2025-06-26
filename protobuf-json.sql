@@ -7,6 +7,147 @@ BEGIN
 	RETURN s;
 END $$
 
+DROP PROCEDURE IF EXISTS _pb_wire_json_get_primitive_field_as_json $$
+CREATE PROCEDURE _pb_wire_json_get_primitive_field_as_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN has_field_presence BOOLEAN, OUT field_json_value JSON)
+BEGIN
+	DECLARE message_text TEXT;
+	DECLARE boolean_value BOOLEAN;
+
+	CASE field_type
+	WHEN 1 THEN -- double
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_double_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = CAST(pb_wire_json_get_double_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+		END IF;
+	WHEN 2 THEN -- float
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_float_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = CAST(pb_wire_json_get_float_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+		END IF;
+	WHEN 3 THEN -- int64
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_int64_field_as_json_string_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_int64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+		END IF;
+	WHEN 4 THEN -- uint64
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_uint64_field_as_json_string_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_uint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+		END IF;
+	WHEN 5 THEN -- int32
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_int32_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = CAST(pb_wire_json_get_int32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+		END IF;
+	WHEN 6 THEN -- fixed64
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_fixed64_field_as_json_string_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_fixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+		END IF;
+	WHEN 7 THEN -- fixed32
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_fixed32_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = CAST(pb_wire_json_get_fixed32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+		END IF;
+	WHEN 8 THEN -- bool
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_bool_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET boolean_value = pb_wire_json_get_bool_field(wire_json, field_number, IF(has_field_presence, NULL, FALSE));
+			IF boolean_value IS NULL THEN
+				SET field_json_value = NULL;
+			ELSE
+				-- See https://bugs.mysql.com/bug.php?id=79813
+				SET field_json_value = CAST((boolean_value IS TRUE) AS JSON);
+			END IF;
+		END IF;
+	WHEN 9 THEN -- string
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_string_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = JSON_QUOTE(pb_wire_json_get_string_field(wire_json, field_number, IF(has_field_presence, NULL, '')));
+		END IF;
+	WHEN 12 THEN -- bytes
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_bytes_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = JSON_QUOTE(TO_BASE64(pb_wire_json_get_bytes_field(wire_json, field_number, IF(has_field_presence, NULL, _binary X''))));
+		END IF;
+	WHEN 13 THEN -- uint32
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_uint32_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = CAST(pb_wire_json_get_uint32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+		END IF;
+	WHEN 15 THEN -- sfixed32
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_sfixed32_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = CAST(pb_wire_json_get_sfixed32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+		END IF;
+	WHEN 16 THEN -- sfixed64
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_sfixed64_field_as_json_string_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_sfixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+		END IF;
+	WHEN 17 THEN -- sint32
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_sint32_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = CAST(pb_wire_json_get_sint32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+		END IF;
+	WHEN 18 THEN -- sint64
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_sint64_field_as_json_string_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_sint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+		END IF;
+	ELSE
+		SET message_text = CONCAT('_pb_message_to_json: unknown field_type `', field_type, '` for field `', field_name, '` (', field_number, ').');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END CASE;
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_enum_to_json $$
+CREATE PROCEDURE _pb_enum_to_json(IN set_name VARCHAR(64), IN full_type_name VARCHAR(512), IN enum_value_number INT, OUT result JSON)
+BEGIN
+	DECLARE enum_value_name TEXT;
+	DECLARE message_text TEXT;
+
+	IF NOT pb_descriptor_set_exists(set_name) THEN
+		SET message_text = CONCAT('_pb_enum_to_json: descriptor set `', set_name, '` does not exist');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+	IF NOT pb_descriptor_set_contains_enum_type(set_name, full_type_name) THEN
+		SET message_text = CONCAT('_pb_enum_to_json: message type `', full_type_name, '` does not exist in descriptor set `', set_name, '`');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	SELECT
+		enum_value.enum_value_name
+	FROM _Proto_EnumValueDescriptor enum_value
+	WHERE
+		enum_value.set_name = set_name
+		AND enum_value.type_name = full_type_name
+		AND enum_value.enum_value_number = enum_value_number
+	INTO
+		enum_value_name;
+
+	IF enum_value_name IS NULL THEN
+		SET result = NULL;
+	ELSE
+		SET result = JSON_QUOTE(enum_value_name);
+	END IF;
+END $$
+
 DROP PROCEDURE IF EXISTS _pb_message_to_json $$
 CREATE PROCEDURE _pb_message_to_json(IN set_name VARCHAR(64), IN full_type_name VARCHAR(512), IN buf LONGBLOB, OUT result JSON)
 BEGIN
@@ -23,6 +164,7 @@ BEGIN
 	DECLARE proto3_optional BOOLEAN;
 	DECLARE wire_json JSON;
 	DECLARE syntax TEXT;
+	DECLARE is_map BOOLEAN;
 	DECLARE is_repeated BOOLEAN;
 	DECLARE has_field_presence BOOLEAN;
 	DECLARE oneof_index INT;
@@ -30,15 +172,23 @@ BEGIN
 	DECLARE field_index INT;
 	DECLARE field_count INT;
 	DECLARE field_descriptor JSON;
+	DECLARE map_key_type INT;
+	DECLARE map_value_type INT;
+	DECLARE map_value_type_name TEXT;
 
 	DECLARE bytes_value LONGBLOB;
 	DECLARE nested_json_value JSON;
 	DECLARE field_json_value JSON;
+	DECLARE elements JSON;
+	DECLARE element JSON;
+	DECLARE map_key JSON;
+	DECLARE map_value JSON;
 
 	-- NOTE: always use alias in select columns, to avoid confusion with variables with the same name.
 	DECLARE cur CURSOR FOR
 		SELECT
 			file.syntax,
+			field_message_type.map_entry,
 			field.field_number,
 			field.field_name,
 			field.field_label,
@@ -48,6 +198,9 @@ BEGIN
 			field.proto3_optional,
 			field.oneof_index,
 			field.default_value,
+			map_key.field_type AS map_key_type,
+			map_value.field_type AS map_value_type,
+			map_value.field_type_name AS map_value_type_name,
 			field.field_descriptor
 		FROM _Proto_FieldDescriptor field
 			INNER JOIN _Proto_MessageDescriptor message USING (set_name, type_name)
@@ -60,6 +213,16 @@ BEGIN
 				field.field_type = 14
 				AND field.set_name = field_enum_type.set_name
 				AND field.field_type_name = field_enum_type.type_name
+			LEFT JOIN _Proto_FieldDescriptor map_key ON
+				field_message_type.map_entry IS TRUE
+				AND map_key.set_name = field.set_name
+				AND map_key.type_name = field_message_type.type_name
+				AND map_key.field_number = 1
+			LEFT JOIN _Proto_FieldDescriptor map_value ON
+				field_message_type.map_entry IS TRUE
+				AND map_value.set_name = field.set_name
+				AND map_value.type_name = field_message_type.type_name
+				AND map_value.field_number = 2
 		WHERE
 			field.set_name = set_name
 			AND field.type_name = full_type_name;
@@ -82,11 +245,11 @@ BEGIN
 
 	OPEN cur;
 
-	-- TODO: Support map and oneof.
+	-- TODO: Support oneof.
 
 	l1: LOOP
 		-- FETCH cur INTO syntax, field_descriptor;
-		FETCH cur INTO syntax, field_number, field_name, field_label, field_type, field_type_name, json_name, proto3_optional, oneof_index, default_value, field_descriptor;
+		FETCH cur INTO syntax, is_map, field_number, field_name, field_label, field_type, field_type_name, json_name, proto3_optional, oneof_index, default_value, map_key_type, map_value_type, map_value_type_name, field_descriptor;
 		IF done THEN
 			LEAVE l1;
 		END IF;
@@ -125,66 +288,34 @@ BEGIN
 				));
 
 		CASE field_type
-		WHEN 1 THEN -- double
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_double_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_double_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-			END IF;
-		WHEN 2 THEN -- float
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_float_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_float_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-			END IF;
-		WHEN 3 THEN -- int64
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_int64_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_int64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-			END IF;
-		WHEN 4 THEN -- uint64
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_uint64_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_uint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-			END IF;
-		WHEN 5 THEN -- int32
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_int32_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_int32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-			END IF;
-		WHEN 6 THEN -- fixed64
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_fixed64_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_fixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-			END IF;
-		WHEN 7 THEN -- fixed32
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_fixed32_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_fixed32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-			END IF;
-		WHEN 8 THEN -- bool
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_bool_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_bool_field(wire_json, field_number, IF(has_field_presence, NULL, FALSE)) AS JSON);
-			END IF;
-		WHEN 9 THEN -- string
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_string_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = JSON_QUOTE(pb_wire_json_get_string_field(wire_json, field_number, IF(has_field_presence, NULL, '')));
-			END IF;
 		WHEN 10 THEN -- group
 			SET message_text = CONCAT('_pb_message_to_json: unsupported field_type `', field_type, '` for field `', field_name, '` (', field_number, ').');
 			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
 		WHEN 11 THEN -- message
 			-- TODO: use pb_wire_json_get_repeated_message_field_as_json_array
-			IF is_repeated THEN
+			IF is_map THEN
+				SET elements = pb_wire_json_get_repeated_message_field_as_json_array(wire_json, field_number);
+				SET field_count = JSON_LENGTH(elements);
+				SET field_index = 0;
+				SET field_json_value = JSON_OBJECT();
+				WHILE field_index < field_count DO
+					SET element = pb_message_to_wire_json(FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(elements, CONCAT('$[', field_index, ']')))));
+					CALL _pb_wire_json_get_primitive_field_as_json(element, 1, map_key_type, FALSE, FALSE, map_key);
+					IF map_value_type = 11 THEN -- message
+						CALL _pb_message_to_json(set_name, map_value_type_name, pb_wire_json_get_message_field(element, 2, NULL), map_value);
+					ELSEIF map_value_type = 14 THEN -- enum
+						CALL _pb_enum_to_json(set_name, map_value_type_name, pb_wire_json_get_enum_field(element, 2, NULL), map_value);
+					ELSE
+						CALL _pb_wire_json_get_primitive_field_as_json(element, 2, map_value_type, FALSE, TRUE, map_value);
+					END IF;
+					IF JSON_TYPE(map_key) = 'STRING' THEN
+						SET field_json_value = JSON_SET(field_json_value, CONCAT('$.', map_key), map_value);
+					ELSE
+						SET field_json_value = JSON_SET(field_json_value, CONCAT('$."', map_key, '"'), map_value);
+					END IF;
+					SET field_index = field_index + 1;
+				END WHILE;
+			ELSEIF is_repeated THEN
 				SET field_count = pb_wire_json_get_repeated_message_field_count(wire_json, field_number);
 				SET field_index = 0;
 				SET field_json_value = JSON_ARRAY();
@@ -192,6 +323,7 @@ BEGIN
 					SET bytes_value = pb_wire_json_get_repeated_message_field(wire_json, field_number, field_index);
 					CALL _pb_message_to_json(set_name, field_type_name, bytes_value, nested_json_value);
 					SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', nested_json_value);
+					SET field_index = field_index + 1;
 				END WHILE;
 			ELSE
 				SET bytes_value = pb_wire_json_get_message_field(wire_json, field_number, NULL); -- message fields always have field presence
@@ -202,58 +334,28 @@ BEGIN
 					SET field_json_value = nested_json_value;
 				END IF;
 			END IF;
-		WHEN 12 THEN -- bytes
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_bytes_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(TO_BASE64(pb_wire_json_get_bytes_field(wire_json, field_number, IF(has_field_presence, NULL, _binary X''))) AS JSON);
-			END IF;
-		WHEN 13 THEN -- uint32
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_uint32_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_uint32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-			END IF;
 		WHEN 14 THEN -- enum
-			-- TODO: convert to enum name
 			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_enum_field_as_json_array(wire_json, field_number);
+				SET elements = pb_wire_json_get_repeated_enum_field_as_json_array(wire_json, field_number);
+				SET field_count = JSON_LENGTH(elements);
+				SET field_index = 0;
+				SET field_json_value = JSON_ARRAY();
+				WHILE field_index < field_count DO
+					SET element = JSON_EXTRACT(elements, CONCAT('$[', field_index, ']'));
+					CALL _pb_enum_to_json(set_name, field_type_name, element, nested_json_value);
+					SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', nested_json_value);
+					SET field_index = field_index + 1;
+				END WHILE;
 			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_enum_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-			END IF;
-		WHEN 15 THEN -- sfixed32
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_sfixed32_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_sfixed32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-			END IF;
-		WHEN 16 THEN -- sfixed64
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_sfixed64_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_sfixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-			END IF;
-		WHEN 17 THEN -- sint32
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_sint32_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_sint32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-			END IF;
-		WHEN 18 THEN -- sint64
-			IF is_repeated THEN
-				SET field_json_value = pb_wire_json_get_repeated_sint64_field_as_json_array(wire_json, field_number);
-			ELSE
-				SET field_json_value = CAST(pb_wire_json_get_sint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+				CALL _pb_enum_to_json(set_name, field_type_name, pb_wire_json_get_enum_field(wire_json, field_number, IF(has_field_presence, NULL, 0)), field_json_value);
 			END IF;
 		ELSE
-			SET message_text = CONCAT('_pb_message_to_json: unknown field_type `', field_type, '` for field `', field_name, '` (', field_number, ').');
-			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
+			CALL _pb_wire_json_get_primitive_field_as_json(wire_json, field_number, field_type, is_repeated, has_field_presence, field_json_value);
 		END CASE;
 
 		IF field_json_value IS NOT NULL THEN
 			SET result = JSON_SET(result, CONCAT('$.', IF(json_name IS NOT NULL, json_name, _pb_util_snake_to_lower_camel(field_name))), field_json_value);
 		END IF;
-
 	END LOOP;
 
 	CLOSE cur;

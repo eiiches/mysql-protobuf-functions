@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS _Proto_MessageDescriptor (
 	set_name VARCHAR(64) NOT NULL,
 	file_name VARCHAR(512) NOT NULL,
 	type_name VARCHAR(512) NOT NULL,
+	map_entry BOOLEAN NOT NULL,
 	message_options JSON NOT NULL,
 	features JSON NOT NULL,
 	message_descriptor JSON NOT NULL,
@@ -223,6 +224,7 @@ CREATE PROCEDURE _pb_insert_message_descriptor(IN set_name VARCHAR(64), IN file_
 BEGIN
 	DECLARE full_type_name TEXT;
 	DECLARE simple_type_name TEXT;
+	DECLARE map_entry BOOLEAN;
 	DECLARE field_descriptor_count INT;
 	DECLARE field_descriptor_index INT;
 	DECLARE field_descriptor LONGBLOB;
@@ -241,6 +243,7 @@ BEGIN
 	SET simple_type_name = pb_wire_json_get_string_field(message_descriptor_wire_json, 1, '');
 	SET full_type_name = CONCAT(parent_name, '.', simple_type_name);
 	SET message_options = pb_message_to_wire_json(pb_wire_json_get_message_field(message_descriptor_wire_json, 7, _binary X''));
+	SET map_entry = pb_wire_json_get_bool_field(message_options, 7, FALSE);
 
 	SET features = pb_message_to_wire_json(pb_wire_json_get_message_field(message_options, 12, _binary X''));
 
@@ -248,6 +251,7 @@ BEGIN
 		set_name,
 		file_name,
 		type_name,
+		map_entry,
 		message_options,
 		features,
 		message_descriptor
@@ -255,6 +259,7 @@ BEGIN
 		set_name,
 		file_name,
 		full_type_name,
+		map_entry,
 		message_options,
 		features,
 		message_descriptor_wire_json

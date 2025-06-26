@@ -1449,12 +1449,12 @@ BEGIN
 		CASE wire_type
 		WHEN 0 THEN
 			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
-			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_int64_as_int32(uint_value));
+			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_uint64_as_uint32(uint_value));
 		WHEN 2 THEN -- LEN
 			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
 			WHILE LENGTH(bytes_value) <> 0 DO
 				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
-				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_int64_as_int32(uint_value));
+				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_uint64_as_uint32(uint_value));
 			END WHILE;
 		ELSE
 			SET message_text = CONCAT('_pb_wire_json_get_repeated_uint32_field_as_json_array: unexpected wire_type (', wire_type, ')');
@@ -1500,12 +1500,12 @@ BEGIN
 		CASE current_wire_type
 		WHEN 0 THEN
 			CALL _pb_wire_read_varint_as_uint64(tail, uint_value, tail);
-			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_int64_as_int32(uint_value));
+			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_uint64_as_uint32(uint_value));
 		WHEN 2 THEN
 			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
 			WHILE LENGTH(bytes_value) <> 0 DO
 				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
-				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_int64_as_int32(uint_value));
+				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_uint64_as_uint32(uint_value));
 			END WHILE;
 		ELSE
 			SET message_text = CONCAT('_pb_message_get_repeated_uint32_field_as_json_array: unexpected wire_type (', current_wire_type, ')');
@@ -1620,6 +1620,104 @@ BEGIN
 	RETURN result;
 END $$
 
+DROP PROCEDURE IF EXISTS _pb_wire_json_get_repeated_int64_field_as_json_string_array $$
+CREATE PROCEDURE _pb_wire_json_get_repeated_int64_field_as_json_string_array(IN wire_json JSON, IN field_number INT, OUT result JSON)
+BEGIN
+	DECLARE message_text TEXT;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE wire_type INT;
+	DECLARE wire_elements JSON;
+	DECLARE wire_element JSON;
+	DECLARE wire_element_index INT;
+	DECLARE wire_element_count INT;
+
+	SET result = JSON_ARRAY();
+
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_element_index = 0;
+	SET wire_element_count = JSON_LENGTH(wire_elements);
+
+	l1: WHILE wire_element_index < wire_element_count DO
+		SET wire_element = JSON_EXTRACT(wire_elements, CONCAT('$[', wire_element_index, ']'));
+		SET wire_type = JSON_EXTRACT(wire_element, '$.t');
+
+		CASE wire_type
+		WHEN 0 THEN
+			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
+			SET result = JSON_ARRAY_APPEND(result, '$', CAST(_pb_util_reinterpret_uint64_as_int64(uint_value) AS CHAR));
+		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
+			WHILE LENGTH(bytes_value) <> 0 DO
+				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
+				SET result = JSON_ARRAY_APPEND(result, '$', CAST(_pb_util_reinterpret_uint64_as_int64(uint_value) AS CHAR));
+			END WHILE;
+		ELSE
+			SET message_text = CONCAT('_pb_wire_json_get_repeated_int64_field_as_json_string_array: unexpected wire_type (', wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
+
+		SET wire_element_index = wire_element_index + 1;
+	END WHILE;
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_get_repeated_int64_field_as_json_string_array $$
+CREATE FUNCTION pb_wire_json_get_repeated_int64_field_as_json_string_array(wire_json JSON, field_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wire_json_get_repeated_int64_field_as_json_string_array(wire_json, field_number, result);
+	RETURN result;
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_message_get_repeated_int64_field_as_json_string_array $$
+CREATE PROCEDURE _pb_message_get_repeated_int64_field_as_json_string_array(IN message LONGBLOB, IN field_number INT, OUT result JSON)
+BEGIN
+	DECLARE tag BIGINT;
+	DECLARE tail LONGBLOB;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE message_text TEXT;
+	DECLARE current_field_number INT;
+	DECLARE current_wire_type INT;
+
+	SET tail = message;
+	SET result = JSON_ARRAY();
+
+	l1: WHILE LENGTH(tail) <> 0 DO
+		CALL _pb_wire_read_varint_as_uint64(tail, tag, tail);
+		SET current_field_number = _pb_wire_get_field_number_from_tag(tag);
+		SET current_wire_type = _pb_wire_get_wire_type_from_tag(tag);
+
+		IF current_field_number != field_number THEN
+			CALL _pb_wire_skip(tail, current_wire_type, tail);
+			LEAVE l1;
+		END IF;
+
+		CASE current_wire_type
+		WHEN 0 THEN
+			CALL _pb_wire_read_varint_as_uint64(tail, uint_value, tail);
+			SET result = JSON_ARRAY_APPEND(result, '$', CAST(_pb_util_reinterpret_uint64_as_int64(uint_value) AS CHAR));
+		WHEN 2 THEN
+			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
+			WHILE LENGTH(bytes_value) <> 0 DO
+				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
+				SET result = JSON_ARRAY_APPEND(result, '$', CAST(_pb_util_reinterpret_uint64_as_int64(uint_value) AS CHAR));
+			END WHILE;
+		ELSE
+			SET message_text = CONCAT('_pb_message_get_repeated_int64_field_as_json_string_array: unexpected wire_type (', current_wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
+	END WHILE;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_repeated_int64_field_as_json_string_array $$
+CREATE FUNCTION pb_message_get_repeated_int64_field_as_json_string_array(message LONGBLOB, field_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_message_get_repeated_int64_field_as_json_string_array(message, field_number, result);
+	RETURN result;
+END $$
+
 DROP PROCEDURE IF EXISTS _pb_wire_json_get_repeated_uint64_field_as_json_array $$
 CREATE PROCEDURE _pb_wire_json_get_repeated_uint64_field_as_json_array(IN wire_json JSON, IN field_number INT, OUT result JSON)
 BEGIN
@@ -1715,6 +1813,104 @@ CREATE FUNCTION pb_message_get_repeated_uint64_field_as_json_array(message LONGB
 BEGIN
 	DECLARE result JSON;
 	CALL _pb_message_get_repeated_uint64_field_as_json_array(message, field_number, result);
+	RETURN result;
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_wire_json_get_repeated_uint64_field_as_json_string_array $$
+CREATE PROCEDURE _pb_wire_json_get_repeated_uint64_field_as_json_string_array(IN wire_json JSON, IN field_number INT, OUT result JSON)
+BEGIN
+	DECLARE message_text TEXT;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE wire_type INT;
+	DECLARE wire_elements JSON;
+	DECLARE wire_element JSON;
+	DECLARE wire_element_index INT;
+	DECLARE wire_element_count INT;
+
+	SET result = JSON_ARRAY();
+
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_element_index = 0;
+	SET wire_element_count = JSON_LENGTH(wire_elements);
+
+	l1: WHILE wire_element_index < wire_element_count DO
+		SET wire_element = JSON_EXTRACT(wire_elements, CONCAT('$[', wire_element_index, ']'));
+		SET wire_type = JSON_EXTRACT(wire_element, '$.t');
+
+		CASE wire_type
+		WHEN 0 THEN
+			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
+			SET result = JSON_ARRAY_APPEND(result, '$', CAST(uint_value AS CHAR));
+		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
+			WHILE LENGTH(bytes_value) <> 0 DO
+				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
+				SET result = JSON_ARRAY_APPEND(result, '$', CAST(uint_value AS CHAR));
+			END WHILE;
+		ELSE
+			SET message_text = CONCAT('_pb_wire_json_get_repeated_uint64_field_as_json_string_array: unexpected wire_type (', wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
+
+		SET wire_element_index = wire_element_index + 1;
+	END WHILE;
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_get_repeated_uint64_field_as_json_string_array $$
+CREATE FUNCTION pb_wire_json_get_repeated_uint64_field_as_json_string_array(wire_json JSON, field_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wire_json_get_repeated_uint64_field_as_json_string_array(wire_json, field_number, result);
+	RETURN result;
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_message_get_repeated_uint64_field_as_json_string_array $$
+CREATE PROCEDURE _pb_message_get_repeated_uint64_field_as_json_string_array(IN message LONGBLOB, IN field_number INT, OUT result JSON)
+BEGIN
+	DECLARE tag BIGINT;
+	DECLARE tail LONGBLOB;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE message_text TEXT;
+	DECLARE current_field_number INT;
+	DECLARE current_wire_type INT;
+
+	SET tail = message;
+	SET result = JSON_ARRAY();
+
+	l1: WHILE LENGTH(tail) <> 0 DO
+		CALL _pb_wire_read_varint_as_uint64(tail, tag, tail);
+		SET current_field_number = _pb_wire_get_field_number_from_tag(tag);
+		SET current_wire_type = _pb_wire_get_wire_type_from_tag(tag);
+
+		IF current_field_number != field_number THEN
+			CALL _pb_wire_skip(tail, current_wire_type, tail);
+			LEAVE l1;
+		END IF;
+
+		CASE current_wire_type
+		WHEN 0 THEN
+			CALL _pb_wire_read_varint_as_uint64(tail, uint_value, tail);
+			SET result = JSON_ARRAY_APPEND(result, '$', CAST(uint_value AS CHAR));
+		WHEN 2 THEN
+			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
+			WHILE LENGTH(bytes_value) <> 0 DO
+				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
+				SET result = JSON_ARRAY_APPEND(result, '$', CAST(uint_value AS CHAR));
+			END WHILE;
+		ELSE
+			SET message_text = CONCAT('_pb_message_get_repeated_uint64_field_as_json_string_array: unexpected wire_type (', current_wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
+	END WHILE;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_repeated_uint64_field_as_json_string_array $$
+CREATE FUNCTION pb_message_get_repeated_uint64_field_as_json_string_array(message LONGBLOB, field_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_message_get_repeated_uint64_field_as_json_string_array(message, field_number, result);
 	RETURN result;
 END $$
 
@@ -1911,6 +2107,104 @@ CREATE FUNCTION pb_message_get_repeated_sint64_field_as_json_array(message LONGB
 BEGIN
 	DECLARE result JSON;
 	CALL _pb_message_get_repeated_sint64_field_as_json_array(message, field_number, result);
+	RETURN result;
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_wire_json_get_repeated_sint64_field_as_json_string_array $$
+CREATE PROCEDURE _pb_wire_json_get_repeated_sint64_field_as_json_string_array(IN wire_json JSON, IN field_number INT, OUT result JSON)
+BEGIN
+	DECLARE message_text TEXT;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE wire_type INT;
+	DECLARE wire_elements JSON;
+	DECLARE wire_element JSON;
+	DECLARE wire_element_index INT;
+	DECLARE wire_element_count INT;
+
+	SET result = JSON_ARRAY();
+
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_element_index = 0;
+	SET wire_element_count = JSON_LENGTH(wire_elements);
+
+	l1: WHILE wire_element_index < wire_element_count DO
+		SET wire_element = JSON_EXTRACT(wire_elements, CONCAT('$[', wire_element_index, ']'));
+		SET wire_type = JSON_EXTRACT(wire_element, '$.t');
+
+		CASE wire_type
+		WHEN 0 THEN
+			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
+			SET result = JSON_ARRAY_APPEND(result, '$', CAST(_pb_util_reinterpret_uint64_as_sint64(uint_value) AS CHAR));
+		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
+			WHILE LENGTH(bytes_value) <> 0 DO
+				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
+				SET result = JSON_ARRAY_APPEND(result, '$', CAST(_pb_util_reinterpret_uint64_as_sint64(uint_value) AS CHAR));
+			END WHILE;
+		ELSE
+			SET message_text = CONCAT('_pb_wire_json_get_repeated_sint64_field_as_json_string_array: unexpected wire_type (', wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
+
+		SET wire_element_index = wire_element_index + 1;
+	END WHILE;
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_get_repeated_sint64_field_as_json_string_array $$
+CREATE FUNCTION pb_wire_json_get_repeated_sint64_field_as_json_string_array(wire_json JSON, field_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wire_json_get_repeated_sint64_field_as_json_string_array(wire_json, field_number, result);
+	RETURN result;
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_message_get_repeated_sint64_field_as_json_string_array $$
+CREATE PROCEDURE _pb_message_get_repeated_sint64_field_as_json_string_array(IN message LONGBLOB, IN field_number INT, OUT result JSON)
+BEGIN
+	DECLARE tag BIGINT;
+	DECLARE tail LONGBLOB;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE message_text TEXT;
+	DECLARE current_field_number INT;
+	DECLARE current_wire_type INT;
+
+	SET tail = message;
+	SET result = JSON_ARRAY();
+
+	l1: WHILE LENGTH(tail) <> 0 DO
+		CALL _pb_wire_read_varint_as_uint64(tail, tag, tail);
+		SET current_field_number = _pb_wire_get_field_number_from_tag(tag);
+		SET current_wire_type = _pb_wire_get_wire_type_from_tag(tag);
+
+		IF current_field_number != field_number THEN
+			CALL _pb_wire_skip(tail, current_wire_type, tail);
+			LEAVE l1;
+		END IF;
+
+		CASE current_wire_type
+		WHEN 0 THEN
+			CALL _pb_wire_read_varint_as_uint64(tail, uint_value, tail);
+			SET result = JSON_ARRAY_APPEND(result, '$', CAST(_pb_util_reinterpret_uint64_as_sint64(uint_value) AS CHAR));
+		WHEN 2 THEN
+			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
+			WHILE LENGTH(bytes_value) <> 0 DO
+				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
+				SET result = JSON_ARRAY_APPEND(result, '$', CAST(_pb_util_reinterpret_uint64_as_sint64(uint_value) AS CHAR));
+			END WHILE;
+		ELSE
+			SET message_text = CONCAT('_pb_message_get_repeated_sint64_field_as_json_string_array: unexpected wire_type (', current_wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
+	END WHILE;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_repeated_sint64_field_as_json_string_array $$
+CREATE FUNCTION pb_message_get_repeated_sint64_field_as_json_string_array(message LONGBLOB, field_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_message_get_repeated_sint64_field_as_json_string_array(message, field_number, result);
 	RETURN result;
 END $$
 
@@ -2502,6 +2796,104 @@ BEGIN
 	RETURN result;
 END $$
 
+DROP PROCEDURE IF EXISTS _pb_wire_json_get_repeated_fixed64_field_as_json_string_array $$
+CREATE PROCEDURE _pb_wire_json_get_repeated_fixed64_field_as_json_string_array(IN wire_json JSON, IN field_number INT, OUT result JSON)
+BEGIN
+	DECLARE message_text TEXT;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE wire_type INT;
+	DECLARE wire_elements JSON;
+	DECLARE wire_element JSON;
+	DECLARE wire_element_index INT;
+	DECLARE wire_element_count INT;
+
+	SET result = JSON_ARRAY();
+
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_element_index = 0;
+	SET wire_element_count = JSON_LENGTH(wire_elements);
+
+	l1: WHILE wire_element_index < wire_element_count DO
+		SET wire_element = JSON_EXTRACT(wire_elements, CONCAT('$[', wire_element_index, ']'));
+		SET wire_type = JSON_EXTRACT(wire_element, '$.t');
+
+		CASE wire_type
+		WHEN 1 THEN
+			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
+			SET result = JSON_ARRAY_APPEND(result, '$', CAST(uint_value AS CHAR));
+		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
+			WHILE LENGTH(bytes_value) <> 0 DO
+				CALL _pb_wire_read_i64_as_uint64(bytes_value, uint_value, bytes_value);
+				SET result = JSON_ARRAY_APPEND(result, '$', CAST(uint_value AS CHAR));
+			END WHILE;
+		ELSE
+			SET message_text = CONCAT('_pb_wire_json_get_repeated_fixed64_field_as_json_string_array: unexpected wire_type (', wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
+
+		SET wire_element_index = wire_element_index + 1;
+	END WHILE;
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_get_repeated_fixed64_field_as_json_string_array $$
+CREATE FUNCTION pb_wire_json_get_repeated_fixed64_field_as_json_string_array(wire_json JSON, field_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wire_json_get_repeated_fixed64_field_as_json_string_array(wire_json, field_number, result);
+	RETURN result;
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_message_get_repeated_fixed64_field_as_json_string_array $$
+CREATE PROCEDURE _pb_message_get_repeated_fixed64_field_as_json_string_array(IN message LONGBLOB, IN field_number INT, OUT result JSON)
+BEGIN
+	DECLARE tag BIGINT;
+	DECLARE tail LONGBLOB;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE message_text TEXT;
+	DECLARE current_field_number INT;
+	DECLARE current_wire_type INT;
+
+	SET tail = message;
+	SET result = JSON_ARRAY();
+
+	l1: WHILE LENGTH(tail) <> 0 DO
+		CALL _pb_wire_read_varint_as_uint64(tail, tag, tail);
+		SET current_field_number = _pb_wire_get_field_number_from_tag(tag);
+		SET current_wire_type = _pb_wire_get_wire_type_from_tag(tag);
+
+		IF current_field_number != field_number THEN
+			CALL _pb_wire_skip(tail, current_wire_type, tail);
+			LEAVE l1;
+		END IF;
+
+		CASE current_wire_type
+		WHEN 1 THEN
+			CALL _pb_wire_read_i64_as_uint64(tail, uint_value, tail);
+			SET result = JSON_ARRAY_APPEND(result, '$', CAST(uint_value AS CHAR));
+		WHEN 2 THEN
+			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
+			WHILE LENGTH(bytes_value) <> 0 DO
+				CALL _pb_wire_read_i64_as_uint64(bytes_value, uint_value, bytes_value);
+				SET result = JSON_ARRAY_APPEND(result, '$', CAST(uint_value AS CHAR));
+			END WHILE;
+		ELSE
+			SET message_text = CONCAT('_pb_message_get_repeated_fixed64_field_as_json_string_array: unexpected wire_type (', current_wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
+	END WHILE;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_repeated_fixed64_field_as_json_string_array $$
+CREATE FUNCTION pb_message_get_repeated_fixed64_field_as_json_string_array(message LONGBLOB, field_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_message_get_repeated_fixed64_field_as_json_string_array(message, field_number, result);
+	RETURN result;
+END $$
+
 DROP PROCEDURE IF EXISTS _pb_wire_json_get_repeated_sfixed64_field_as_json_array $$
 CREATE PROCEDURE _pb_wire_json_get_repeated_sfixed64_field_as_json_array(IN wire_json JSON, IN field_number INT, OUT result JSON)
 BEGIN
@@ -2597,6 +2989,104 @@ CREATE FUNCTION pb_message_get_repeated_sfixed64_field_as_json_array(message LON
 BEGIN
 	DECLARE result JSON;
 	CALL _pb_message_get_repeated_sfixed64_field_as_json_array(message, field_number, result);
+	RETURN result;
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_wire_json_get_repeated_sfixed64_field_as_json_string_array $$
+CREATE PROCEDURE _pb_wire_json_get_repeated_sfixed64_field_as_json_string_array(IN wire_json JSON, IN field_number INT, OUT result JSON)
+BEGIN
+	DECLARE message_text TEXT;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE wire_type INT;
+	DECLARE wire_elements JSON;
+	DECLARE wire_element JSON;
+	DECLARE wire_element_index INT;
+	DECLARE wire_element_count INT;
+
+	SET result = JSON_ARRAY();
+
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_element_index = 0;
+	SET wire_element_count = JSON_LENGTH(wire_elements);
+
+	l1: WHILE wire_element_index < wire_element_count DO
+		SET wire_element = JSON_EXTRACT(wire_elements, CONCAT('$[', wire_element_index, ']'));
+		SET wire_type = JSON_EXTRACT(wire_element, '$.t');
+
+		CASE wire_type
+		WHEN 1 THEN
+			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
+			SET result = JSON_ARRAY_APPEND(result, '$', CAST(_pb_util_reinterpret_uint64_as_int64(uint_value) AS CHAR));
+		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
+			WHILE LENGTH(bytes_value) <> 0 DO
+				CALL _pb_wire_read_i64_as_uint64(bytes_value, uint_value, bytes_value);
+				SET result = JSON_ARRAY_APPEND(result, '$', CAST(_pb_util_reinterpret_uint64_as_int64(uint_value) AS CHAR));
+			END WHILE;
+		ELSE
+			SET message_text = CONCAT('_pb_wire_json_get_repeated_sfixed64_field_as_json_string_array: unexpected wire_type (', wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
+
+		SET wire_element_index = wire_element_index + 1;
+	END WHILE;
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_get_repeated_sfixed64_field_as_json_string_array $$
+CREATE FUNCTION pb_wire_json_get_repeated_sfixed64_field_as_json_string_array(wire_json JSON, field_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wire_json_get_repeated_sfixed64_field_as_json_string_array(wire_json, field_number, result);
+	RETURN result;
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_message_get_repeated_sfixed64_field_as_json_string_array $$
+CREATE PROCEDURE _pb_message_get_repeated_sfixed64_field_as_json_string_array(IN message LONGBLOB, IN field_number INT, OUT result JSON)
+BEGIN
+	DECLARE tag BIGINT;
+	DECLARE tail LONGBLOB;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE message_text TEXT;
+	DECLARE current_field_number INT;
+	DECLARE current_wire_type INT;
+
+	SET tail = message;
+	SET result = JSON_ARRAY();
+
+	l1: WHILE LENGTH(tail) <> 0 DO
+		CALL _pb_wire_read_varint_as_uint64(tail, tag, tail);
+		SET current_field_number = _pb_wire_get_field_number_from_tag(tag);
+		SET current_wire_type = _pb_wire_get_wire_type_from_tag(tag);
+
+		IF current_field_number != field_number THEN
+			CALL _pb_wire_skip(tail, current_wire_type, tail);
+			LEAVE l1;
+		END IF;
+
+		CASE current_wire_type
+		WHEN 1 THEN
+			CALL _pb_wire_read_i64_as_uint64(tail, uint_value, tail);
+			SET result = JSON_ARRAY_APPEND(result, '$', CAST(_pb_util_reinterpret_uint64_as_int64(uint_value) AS CHAR));
+		WHEN 2 THEN
+			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
+			WHILE LENGTH(bytes_value) <> 0 DO
+				CALL _pb_wire_read_i64_as_uint64(bytes_value, uint_value, bytes_value);
+				SET result = JSON_ARRAY_APPEND(result, '$', CAST(_pb_util_reinterpret_uint64_as_int64(uint_value) AS CHAR));
+			END WHILE;
+		ELSE
+			SET message_text = CONCAT('_pb_message_get_repeated_sfixed64_field_as_json_string_array: unexpected wire_type (', current_wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
+	END WHILE;
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_get_repeated_sfixed64_field_as_json_string_array $$
+CREATE FUNCTION pb_message_get_repeated_sfixed64_field_as_json_string_array(message LONGBLOB, field_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_message_get_repeated_sfixed64_field_as_json_string_array(message, field_number, result);
 	RETURN result;
 END $$
 

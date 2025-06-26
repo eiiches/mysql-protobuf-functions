@@ -58,12 +58,18 @@ func (this *ProtoTestSupport) GetSerializedFileDescriptorSet() []byte {
 	return fdsBytes
 }
 
-func (this *ProtoTestSupport) JsonToProtobuf(name protoreflect.FullName, json string) []byte {
+func (this *ProtoTestSupport) JsonToDynamicMessage(name protoreflect.FullName, json string) protoreflect.Message {
 	messageType, err := this.Files.AsResolver().FindMessageByName(name)
 	this.G.Expect(err).NotTo(HaveOccurred())
 
 	dynamicMessage := messageType.New()
 	this.G.Expect(protojson.Unmarshal([]byte(json), dynamicMessage.Interface())).To(Succeed())
+
+	return dynamicMessage
+}
+
+func (this *ProtoTestSupport) JsonToProtobuf(name protoreflect.FullName, json string) []byte {
+	dynamicMessage := this.JsonToDynamicMessage(name, json)
 
 	serialized, err := proto.Marshal(dynamicMessage.Interface())
 	this.G.Expect(err).NotTo(HaveOccurred())

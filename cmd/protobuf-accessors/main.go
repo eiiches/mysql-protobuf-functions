@@ -36,6 +36,7 @@ type RepeatedAsJsonAccessor struct {
 	Expr                string
 	PackedUint64Decoder string
 	WireType            int
+	Suffix              string
 }
 
 func generateRepeatedNumbersAsJson() {
@@ -47,13 +48,15 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "_pb_util_cast_int64_as_int32(_pb_util_reinterpret_uint64_as_int64(uint_value))",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
+			Suffix:              "_as_json_array",
 		},
 		{
 			ProtoType:           "uint32",
 			SqlType:             "INT UNSIGNED",
-			Expr:                "_pb_util_cast_int64_as_int32(uint_value)",
+			Expr:                "_pb_util_cast_uint64_as_uint32(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
+			Suffix:              "_as_json_array",
 		},
 		{
 			ProtoType:           "int64",
@@ -61,6 +64,15 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "_pb_util_reinterpret_uint64_as_int64(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
+			Suffix:              "_as_json_array",
+		},
+		{
+			ProtoType:           "int64",
+			SqlType:             "BIGINT",
+			Expr:                "CAST(_pb_util_reinterpret_uint64_as_int64(uint_value) AS CHAR)",
+			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
+			WireType:            0,
+			Suffix:              "_as_json_string_array",
 		},
 		{
 			ProtoType:           "uint64",
@@ -68,6 +80,15 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "uint_value",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
+			Suffix:              "_as_json_array",
+		},
+		{
+			ProtoType:           "uint64",
+			SqlType:             "BIGINT UNSIGNED",
+			Expr:                "CAST(uint_value AS CHAR)",
+			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
+			WireType:            0,
+			Suffix:              "_as_json_string_array",
 		},
 		{
 			ProtoType:           "sint32",
@@ -75,6 +96,7 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "_pb_util_cast_int64_as_int32(_pb_util_reinterpret_uint64_as_sint64(uint_value))",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
+			Suffix:              "_as_json_array",
 		},
 		{
 			ProtoType:           "sint64",
@@ -82,6 +104,15 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "_pb_util_reinterpret_uint64_as_sint64(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
+			Suffix:              "_as_json_array",
+		},
+		{
+			ProtoType:           "sint64",
+			SqlType:             "BIGINT",
+			Expr:                "CAST(_pb_util_reinterpret_uint64_as_sint64(uint_value) AS CHAR)",
+			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
+			WireType:            0,
+			Suffix:              "_as_json_string_array",
 		},
 		{
 			ProtoType:           "enum",
@@ -89,6 +120,7 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "_pb_util_reinterpret_uint64_as_int64(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
+			Suffix:              "_as_json_array",
 		},
 		{
 			ProtoType:           "bool",
@@ -96,6 +128,7 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "uint_value <> 0",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
+			Suffix:              "_as_json_array",
 		},
 		{
 			ProtoType:           "fixed32",
@@ -103,6 +136,7 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "uint_value",
 			PackedUint64Decoder: "_pb_wire_read_i32_as_uint32",
 			WireType:            5,
+			Suffix:              "_as_json_array",
 		},
 		{
 			ProtoType:           "sfixed32",
@@ -110,6 +144,7 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "_pb_util_reinterpret_uint32_as_int32(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_i32_as_uint32",
 			WireType:            5,
+			Suffix:              "_as_json_array",
 		},
 		{
 			ProtoType:           "float",
@@ -117,6 +152,7 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "_pb_util_reinterpret_uint32_as_float(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_i32_as_uint32",
 			WireType:            5,
+			Suffix:              "_as_json_array",
 		},
 		{
 			ProtoType:           "fixed64",
@@ -124,6 +160,15 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "uint_value",
 			PackedUint64Decoder: "_pb_wire_read_i64_as_uint64",
 			WireType:            1,
+			Suffix:              "_as_json_array",
+		},
+		{
+			ProtoType:           "fixed64",
+			SqlType:             "BIGINT UNSIGNED",
+			Expr:                "CAST(uint_value AS CHAR)",
+			PackedUint64Decoder: "_pb_wire_read_i64_as_uint64",
+			WireType:            1,
+			Suffix:              "_as_json_string_array",
 		},
 		{
 			ProtoType:           "sfixed64",
@@ -131,6 +176,15 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "_pb_util_reinterpret_uint64_as_int64(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_i64_as_uint64",
 			WireType:            1,
+			Suffix:              "_as_json_array",
+		},
+		{
+			ProtoType:           "sfixed64",
+			SqlType:             "BIGINT",
+			Expr:                "CAST(_pb_util_reinterpret_uint64_as_int64(uint_value) AS CHAR)",
+			PackedUint64Decoder: "_pb_wire_read_i64_as_uint64",
+			WireType:            1,
+			Suffix:              "_as_json_string_array",
 		},
 		{
 			ProtoType:           "double",
@@ -138,6 +192,7 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "_pb_util_reinterpret_uint64_as_double(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_i64_as_uint64",
 			WireType:            1,
+			Suffix:              "_as_json_array",
 		},
 		{
 			ProtoType:           "bytes",
@@ -145,6 +200,7 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "TO_BASE64(bytes_value)",
 			PackedUint64Decoder: "",
 			WireType:            2,
+			Suffix:              "_as_json_array",
 		},
 		{
 			ProtoType:           "string",
@@ -152,6 +208,7 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "CONVERT(bytes_value USING utf8mb4)",
 			PackedUint64Decoder: "",
 			WireType:            2,
+			Suffix:              "_as_json_array",
 		},
 		{
 			ProtoType:           "message",
@@ -159,13 +216,14 @@ func generateRepeatedNumbersAsJson() {
 			Expr:                "TO_BASE64(bytes_value)",
 			PackedUint64Decoder: "",
 			WireType:            2,
+			Suffix:              "_as_json_array",
 		},
 	}
 
 	templateText := dedent.Pipe(`
 		|
-		|DROP PROCEDURE IF EXISTS _pb_wire_json_get_repeated_{{.ProtoType}}_field_as_json_array $$
-		|CREATE PROCEDURE _pb_wire_json_get_repeated_{{.ProtoType}}_field_as_json_array(IN wire_json JSON, IN field_number INT, OUT result JSON)
+		|DROP PROCEDURE IF EXISTS _pb_wire_json_get_repeated_{{.ProtoType}}_field{{.Suffix}} $$
+		|CREATE PROCEDURE _pb_wire_json_get_repeated_{{.ProtoType}}_field{{.Suffix}}(IN wire_json JSON, IN field_number INT, OUT result JSON)
 		|BEGIN
 		|	DECLARE message_text TEXT;
 		|	DECLARE uint_value BIGINT UNSIGNED;
@@ -203,7 +261,7 @@ func generateRepeatedNumbersAsJson() {
 		|			END WHILE;
 		|{{- end }}
 		|		ELSE
-		|			SET message_text = CONCAT('_pb_wire_json_get_repeated_{{.ProtoType}}_field_as_json_array: unexpected wire_type (', wire_type, ')');
+		|			SET message_text = CONCAT('_pb_wire_json_get_repeated_{{.ProtoType}}_field{{.Suffix}}: unexpected wire_type (', wire_type, ')');
 		|			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 		|		END CASE;
 		|
@@ -211,16 +269,16 @@ func generateRepeatedNumbersAsJson() {
 		|	END WHILE;
 		|END $$
 		|
-		|DROP FUNCTION IF EXISTS pb_wire_json_get_repeated_{{.ProtoType}}_field_as_json_array $$
-		|CREATE FUNCTION pb_wire_json_get_repeated_{{.ProtoType}}_field_as_json_array(wire_json JSON, field_number INT) RETURNS JSON DETERMINISTIC
+		|DROP FUNCTION IF EXISTS pb_wire_json_get_repeated_{{.ProtoType}}_field{{.Suffix}} $$
+		|CREATE FUNCTION pb_wire_json_get_repeated_{{.ProtoType}}_field{{.Suffix}}(wire_json JSON, field_number INT) RETURNS JSON DETERMINISTIC
 		|BEGIN
 		|	DECLARE result JSON;
-		|	CALL _pb_wire_json_get_repeated_{{.ProtoType}}_field_as_json_array(wire_json, field_number, result);
+		|	CALL _pb_wire_json_get_repeated_{{.ProtoType}}_field{{.Suffix}}(wire_json, field_number, result);
 		|	RETURN result;
 		|END $$
 		|
-		|DROP PROCEDURE IF EXISTS _pb_message_get_repeated_{{.ProtoType}}_field_as_json_array $$
-		|CREATE PROCEDURE _pb_message_get_repeated_{{.ProtoType}}_field_as_json_array(IN message LONGBLOB, IN field_number INT, OUT result JSON)
+		|DROP PROCEDURE IF EXISTS _pb_message_get_repeated_{{.ProtoType}}_field{{.Suffix}} $$
+		|CREATE PROCEDURE _pb_message_get_repeated_{{.ProtoType}}_field{{.Suffix}}(IN message LONGBLOB, IN field_number INT, OUT result JSON)
 		|BEGIN
 		|	DECLARE tag BIGINT;
 		|	DECLARE tail LONGBLOB;
@@ -264,17 +322,17 @@ func generateRepeatedNumbersAsJson() {
 		|			END WHILE;
 		|{{- end }}
 		|		ELSE
-		|			SET message_text = CONCAT('_pb_message_get_repeated_{{.ProtoType}}_field_as_json_array: unexpected wire_type (', current_wire_type, ')');
+		|			SET message_text = CONCAT('_pb_message_get_repeated_{{.ProtoType}}_field{{.Suffix}}: unexpected wire_type (', current_wire_type, ')');
 		|			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 		|		END CASE;
 		|	END WHILE;
 		|END $$
 		|
-		|DROP FUNCTION IF EXISTS pb_message_get_repeated_{{.ProtoType}}_field_as_json_array $$
-		|CREATE FUNCTION pb_message_get_repeated_{{.ProtoType}}_field_as_json_array(message LONGBLOB, field_number INT) RETURNS JSON DETERMINISTIC
+		|DROP FUNCTION IF EXISTS pb_message_get_repeated_{{.ProtoType}}_field{{.Suffix}} $$
+		|CREATE FUNCTION pb_message_get_repeated_{{.ProtoType}}_field{{.Suffix}}(message LONGBLOB, field_number INT) RETURNS JSON DETERMINISTIC
 		|BEGIN
 		|	DECLARE result JSON;
-		|	CALL _pb_message_get_repeated_{{.ProtoType}}_field_as_json_array(message, field_number, result);
+		|	CALL _pb_message_get_repeated_{{.ProtoType}}_field{{.Suffix}}(message, field_number, result);
 		|	RETURN result;
 		|END $$
 	`)
