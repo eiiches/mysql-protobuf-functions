@@ -14,6 +14,12 @@ func testMessageToJson(t *testing.T, fieldDefinition string, input string) {
 	p := testutils.NewProtoTestSupport(t, map[string]string{
 		"main.proto": fmt.Sprintf(dedent.Pipe(`
 			|syntax = "proto3";
+			|import "google/protobuf/timestamp.proto";
+			|import "google/protobuf/duration.proto";
+			|import "google/protobuf/struct.proto";
+			|import "google/protobuf/empty.proto";
+			|import "google/protobuf/wrappers.proto";
+			|import "google/protobuf/field_mask.proto";
 			|message Test {
 			|    %s
 			|}
@@ -510,5 +516,103 @@ func TestMessageToJsonOneof(t *testing.T) {
 		testMessageToJson(t, "oneof kind { int32 int32_field = 1; string string_field = 2; }", `{}`)
 		testMessageToJson(t, "oneof kind { int32 int32_field = 1; string string_field = 2; }", `{"int32Field": 42}`)
 		testMessageToJson(t, "oneof kind { int32 int32_field = 1; string string_field = 2; }", `{"stringField": "test"}`)
+	})
+}
+
+func TestMessageToJsonWkt(t *testing.T) {
+	t.Run("Timestamp", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.Timestamp timestamp_field = 1;", `{"timestampField": "1970-01-01T00:00:00Z"}`)
+		testMessageToJson(t, "google.protobuf.Timestamp timestamp_field = 1;", `{"timestampField": "1970-01-01T00:00:01Z"}`)
+		testMessageToJson(t, "google.protobuf.Timestamp timestamp_field = 1;", `{"timestampField": "2023-10-01T12:34:56.789Z"}`)
+	})
+
+	t.Run("Duration", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.Duration duration_field = 1;", `{"durationField": "0s"}`)
+		testMessageToJson(t, "google.protobuf.Duration duration_field = 1;", `{"durationField": "1.234s"}`)
+	})
+
+	t.Run("Struct", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.Struct struct_field = 1;", `{"structField": {}}`)
+		testMessageToJson(t, "google.protobuf.Struct struct_field = 1;", `{"structField": {"key": "value"}}`)
+		testMessageToJson(t, "google.protobuf.Struct struct_field = 1;", `{"structField": {"number": 123, "boolean": true}}`)
+	})
+
+	t.Run("ListValue", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.ListValue list_value_field = 1;", `{"listValueField": []}`)
+		testMessageToJson(t, "google.protobuf.ListValue list_value_field = 1;", `{"listValueField": ["string", 123, true]}`)
+	})
+
+	t.Run("Value", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.Value value_field = 1;", `{"valueField": {}}`)
+		testMessageToJson(t, "google.protobuf.Value value_field = 1;", `{"valueField": "string"}`)
+		testMessageToJson(t, "google.protobuf.Value value_field = 1;", `{"valueField": 123}`)
+		testMessageToJson(t, "google.protobuf.Value value_field = 1;", `{"valueField": true}`)
+	})
+
+	t.Run("Empty", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.Empty empty_field = 1;", `{}`)
+		testMessageToJson(t, "google.protobuf.Empty empty_field = 1;", `{"emptyField": {}}`)
+	})
+
+	t.Run("DoubleValue", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.DoubleValue double_value_field = 1;", `{}`)
+		testMessageToJson(t, "google.protobuf.DoubleValue double_value_field = 1;", `{"doubleValueField": 0}`)
+		testMessageToJson(t, "google.protobuf.DoubleValue double_value_field = 1;", `{"doubleValueField": 3.141592653589793}`)
+	})
+
+	t.Run("FloatValue", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.FloatValue float_value_field = 1;", `{}`)
+		testMessageToJson(t, "google.protobuf.FloatValue float_value_field = 1;", `{"floatValueField": 0}`)
+		testMessageToJson(t, "google.protobuf.FloatValue float_value_field = 1;", `{"floatValueField": 3.5}`)
+	})
+
+	t.Run("Int64Value", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.Int64Value int64_value_field = 1;", `{}`)
+		testMessageToJson(t, "google.protobuf.Int64Value int64_value_field = 1;", `{"int64ValueField": "0"}`)
+		testMessageToJson(t, "google.protobuf.Int64Value int64_value_field = 1;", `{"int64ValueField": "9223372036854775807"}`)
+		testMessageToJson(t, "google.protobuf.Int64Value int64_value_field = 1;", `{"int64ValueField": "-9223372036854775808"}`)
+	})
+
+	t.Run("UInt64Value", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.UInt64Value uint64_value_field = 1;", `{}`)
+		testMessageToJson(t, "google.protobuf.UInt64Value uint64_value_field = 1;", `{"uint64ValueField": "0"}`)
+		testMessageToJson(t, "google.protobuf.UInt64Value uint64_value_field = 1;", `{"uint64ValueField": "18446744073709551615"}`)
+	})
+
+	t.Run("Int32Value", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.Int32Value int32_value_field = 1;", `{}`)
+		testMessageToJson(t, "google.protobuf.Int32Value int32_value_field = 1;", `{"int32ValueField": 0}`)
+		testMessageToJson(t, "google.protobuf.Int32Value int32_value_field = 1;", `{"int32ValueField": 2147483647}`)
+		testMessageToJson(t, "google.protobuf.Int32Value int32_value_field = 1;", `{"int32ValueField": -2147483648}`)
+	})
+
+	t.Run("UInt32Value", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.UInt32Value uint32_value_field = 1;", `{}`)
+		testMessageToJson(t, "google.protobuf.UInt32Value uint32_value_field = 1;", `{"uint32ValueField": 0}`)
+		testMessageToJson(t, "google.protobuf.UInt32Value uint32_value_field = 1;", `{"uint32ValueField": 4294967295}`)
+	})
+
+	t.Run("BoolValue", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.BoolValue bool_value_field = 1;", `{}`)
+		testMessageToJson(t, "google.protobuf.BoolValue bool_value_field = 1;", `{"boolValueField": false}`)
+		testMessageToJson(t, "google.protobuf.BoolValue bool_value_field = 1;", `{"boolValueField": true}`)
+	})
+
+	t.Run("StringValue", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.StringValue string_value_field = 1;", `{}`)
+		testMessageToJson(t, "google.protobuf.StringValue string_value_field = 1;", `{"stringValueField": ""}`)
+		testMessageToJson(t, "google.protobuf.StringValue string_value_field = 1;", `{"stringValueField": "test"}`)
+	})
+
+	t.Run("BytesValue", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.BytesValue bytes_value_field = 1;", `{}`)
+		testMessageToJson(t, "google.protobuf.BytesValue bytes_value_field = 1;", `{"bytesValueField": ""}`)
+		testMessageToJson(t, "google.protobuf.BytesValue bytes_value_field = 1;", `{"bytesValueField": "dGVzdA=="}`) // Base64 for "test"
+	})
+
+	t.Run("FieldMask", func(t *testing.T) {
+		testMessageToJson(t, "google.protobuf.FieldMask field_mask_field = 1;", `{}`)
+		testMessageToJson(t, "google.protobuf.FieldMask field_mask_field = 1;", `{"fieldMaskField": ""}`)
+		testMessageToJson(t, "google.protobuf.FieldMask field_mask_field = 1;", `{"fieldMaskField": "path1,path2"}`)
 	})
 }

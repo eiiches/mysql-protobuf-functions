@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/bufbuild/protocompile"
 	"github.com/bufbuild/protocompile/linker"
+	"github.com/bufbuild/protocompile/wellknownimports"
 	. "github.com/onsi/gomega"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -25,9 +26,9 @@ func NewProtoTestSupport(t *testing.T, sources map[string]string) *ProtoTestSupp
 	g := NewWithT(t)
 
 	compiler := protocompile.Compiler{
-		Resolver: &protocompile.SourceResolver{
+		Resolver: wellknownimports.WithStandardImports(&protocompile.SourceResolver{
 			Accessor: protocompile.SourceAccessorFromMap(sources),
-		},
+		}),
 	}
 
 	files, err := compiler.Compile(context.Background(), slices.Collect(maps.Keys(sources))...)

@@ -150,7 +150,7 @@ END $$
 
 DROP PROCEDURE IF EXISTS _pb_message_to_json $$
 CREATE PROCEDURE _pb_message_to_json(IN set_name VARCHAR(64), IN full_type_name VARCHAR(512), IN buf LONGBLOB, OUT result JSON)
-BEGIN
+proc: BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
 	DECLARE done TINYINT DEFAULT FALSE;
@@ -237,6 +237,13 @@ BEGIN
 
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
+	IF full_type_name LIKE '.google.protobuf.%' THEN
+		SET result = _pb_wire_json_decode_wkt_as_json(pb_message_to_wire_json(buf), full_type_name);
+		IF result IS NOT NULL THEN
+			LEAVE proc;
+		END IF;
+	END IF;
+
 	IF NOT pb_descriptor_set_exists(set_name) THEN
 		SET message_text = CONCAT('_pb_message_to_json: descriptor set `', set_name, '` does not exist');
 		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
@@ -251,8 +258,6 @@ BEGIN
 	SET wire_json = pb_message_to_wire_json(buf);
 
 	OPEN cur;
-
-	-- TODO: Support oneof.
 
 	l1: LOOP
 		-- FETCH cur INTO syntax, field_descriptor;
@@ -528,4 +533,328 @@ BEGIN
 		END CASE;
 		SET wire_json_index = wire_json_index + 1;
 	END WHILE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_timestamp_as_json $$
+CREATE FUNCTION _pb_wire_json_decode_wkt_timestamp_as_json(wire_json JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE seconds BIGINT;
+	DECLARE nanos INT;
+
+	DECLARE elements JSON;
+	DECLARE element JSON;
+	DECLARE element_count INT;
+	DECLARE element_index INT;
+	DECLARE wire_type INT;
+	DECLARE field_number INT;
+	DECLARE uint_value BIGINT;
+	DECLARE datetime_part TEXT;
+
+	SET seconds = 0;
+	SET nanos = 0;
+
+	SET elements = JSON_EXTRACT(wire_json, '$.*[*]');
+	SET element_index = 0;
+	SET element_count = JSON_LENGTH(elements);
+	WHILE element_index < element_count DO
+		SET element = JSON_EXTRACT(elements, CONCAT('$[', element_index, ']'));
+		SET wire_type = JSON_EXTRACT(element, '$.t');
+		SET field_number = JSON_EXTRACT(element, '$.n');
+
+		CASE wire_type
+		WHEN 0 THEN
+			SET uint_value = CAST(JSON_EXTRACT(element, '$.v') AS UNSIGNED);
+			CASE field_number
+			WHEN 1 THEN
+				SET seconds = _pb_util_reinterpret_uint64_as_int64(uint_value);
+			WHEN 2 THEN
+				SET nanos = _pb_util_reinterpret_uint64_as_int64(uint_value);
+			END CASE;
+		END CASE;
+
+		SET element_index = element_index + 1;
+	END WHILE;
+
+	SET seconds = seconds + FLOOR(nanos / 1000000000);
+
+	IF seconds = 0 THEN
+		SET datetime_part = '1970-01-01 00:00:00';
+	ELSE
+		SET datetime_part = CONVERT_TZ(FROM_UNIXTIME(seconds), @@session.time_zone, '+00:00');
+	END IF;
+
+	RETURN JSON_QUOTE(CONCAT(REPLACE(datetime_part, " ", "T"), _pb_util_format_fractional_seconds(nanos), "Z"));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_duration_as_json $$
+CREATE FUNCTION _pb_wire_json_decode_wkt_duration_as_json(wire_json JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE seconds BIGINT;
+	DECLARE nanos INT;
+
+	DECLARE elements JSON;
+	DECLARE element JSON;
+	DECLARE element_count INT;
+	DECLARE element_index INT;
+	DECLARE wire_type INT;
+	DECLARE field_number INT;
+	DECLARE uint_value BIGINT;
+
+	SET seconds = 0;
+	SET nanos = 0;
+
+	SET elements = JSON_EXTRACT(wire_json, '$.*[*]');
+	SET element_index = 0;
+	SET element_count = JSON_LENGTH(elements);
+	WHILE element_index < element_count DO
+		SET element = JSON_EXTRACT(elements, CONCAT('$[', element_index, ']'));
+		SET wire_type = JSON_EXTRACT(element, '$.t');
+		SET field_number = JSON_EXTRACT(element, '$.n');
+
+		CASE wire_type
+		WHEN 0 THEN
+			SET uint_value = CAST(JSON_EXTRACT(element, '$.v') AS UNSIGNED);
+			CASE field_number
+			WHEN 1 THEN
+				SET seconds = _pb_util_reinterpret_uint64_as_int64(uint_value);
+			WHEN 2 THEN
+				SET nanos = _pb_util_reinterpret_uint64_as_int64(uint_value);
+			END CASE;
+		END CASE;
+
+		SET element_index = element_index + 1;
+	END WHILE;
+
+	SET seconds = seconds + FLOOR(nanos / 1000000000);
+
+	RETURN JSON_QUOTE(CONCAT(CAST(seconds AS CHAR), _pb_util_format_fractional_seconds(nanos), 's'));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_struct_as_json $$
+CREATE FUNCTION _pb_wire_json_decode_wkt_struct_as_json(wire_json JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE elements JSON;
+	DECLARE element JSON;
+	DECLARE element_count INT;
+	DECLARE element_index INT;
+	DECLARE wire_type INT;
+	DECLARE field_number INT;
+	DECLARE object_key TEXT;
+	DECLARE object_value JSON;
+	DECLARE result JSON;
+
+	SET result = JSON_OBJECT();
+
+	SET elements = JSON_EXTRACT(wire_json, '$.*[*]');
+	SET element_index = 0;
+	SET element_count = JSON_LENGTH(elements);
+	WHILE element_index < element_count DO
+		SET element = JSON_EXTRACT(elements, CONCAT('$[', element_index, ']'));
+		SET wire_type = JSON_EXTRACT(element, '$.t');
+		SET field_number = JSON_EXTRACT(element, '$.n');
+
+		CASE wire_type
+		WHEN 2 THEN
+			SET element = pb_message_to_wire_json(FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v'))));
+			CASE field_number
+			WHEN 1 THEN
+				SET object_key = pb_wire_json_get_string_field(element, 1, '');
+				SET object_value = _pb_wire_json_decode_wkt_value_as_json(pb_message_to_wire_json(pb_wire_json_get_message_field(element, 2, _binary X'')));
+				SET result = JSON_MERGE(result, JSON_OBJECT(object_key, object_value));
+			END CASE;
+		END CASE;
+
+		SET element_index = element_index + 1;
+	END WHILE;
+
+	RETURN result;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_value_as_json $$
+CREATE FUNCTION _pb_wire_json_decode_wkt_value_as_json(wire_json JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE elements JSON;
+	DECLARE element JSON;
+	DECLARE element_count INT;
+	DECLARE element_index INT;
+	DECLARE wire_type INT;
+	DECLARE field_number INT;
+	DECLARE result JSON;
+	DECLARE uint_value BIGINT;
+	DECLARE bytes_value LONGBLOB;
+
+	SET result = JSON_OBJECT();
+
+	SET elements = JSON_EXTRACT(wire_json, '$.*[*]');
+	SET element_index = 0;
+	SET element_count = JSON_LENGTH(elements);
+	WHILE element_index < element_count DO
+		SET element = JSON_EXTRACT(elements, CONCAT('$[', element_index, ']'));
+		SET wire_type = JSON_EXTRACT(element, '$.t');
+		SET field_number = JSON_EXTRACT(element, '$.n');
+
+		CASE wire_type
+		WHEN 0 THEN -- VARINT
+			SET uint_value = CAST(JSON_EXTRACT(element, '$.v') AS UNSIGNED);
+			CASE field_number
+			WHEN 1 THEN -- null_value
+				SET result = NULL;
+			WHEN 4 THEN -- bool_value
+				SET result = CAST(((uint_value <> 0) IS TRUE) AS JSON);
+			END CASE;
+		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
+			CASE field_number
+			WHEN 3 THEN -- string_value
+				SET result = JSON_QUOTE(CONVERT(bytes_value USING utf8mb4));
+			WHEN 5 THEN -- struct_value
+				SET result = _pb_wire_json_decode_wkt_struct_as_json(pb_message_to_wire_json(bytes_value));
+			WHEN 6 THEN -- list_value
+				SET result = _pb_wire_json_decode_wkt_list_value_as_json(pb_message_to_wire_json(bytes_value));
+			END CASE;
+		WHEN 1 THEN -- I64
+			SET uint_value = CAST(JSON_EXTRACT(element, '$.v') AS UNSIGNED);
+			CASE field_number
+			WHEN 2 THEN -- double_value
+				SET result = CAST(_pb_util_reinterpret_uint64_as_double(uint_value) AS JSON);
+			END CASE;
+		END CASE;
+
+		SET element_index = element_index + 1;
+	END WHILE;
+
+	RETURN result;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_list_value_as_json $$
+CREATE FUNCTION _pb_wire_json_decode_wkt_list_value_as_json(wire_json JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE elements JSON;
+	DECLARE element JSON;
+	DECLARE element_count INT;
+	DECLARE element_index INT;
+	DECLARE wire_type INT;
+	DECLARE field_number INT;
+	DECLARE result JSON;
+	DECLARE bytes_value LONGBLOB;
+
+	SET result = JSON_ARRAY();
+
+	SET elements = JSON_EXTRACT(wire_json, '$.*[*]');
+	SET element_index = 0;
+	SET element_count = JSON_LENGTH(elements);
+	WHILE element_index < element_count DO
+		SET element = JSON_EXTRACT(elements, CONCAT('$[', element_index, ']'));
+		SET wire_type = JSON_EXTRACT(element, '$.t');
+		SET field_number = JSON_EXTRACT(element, '$.n');
+
+		CASE wire_type
+		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
+			CASE field_number
+			WHEN 1 THEN -- values
+				SET result = JSON_ARRAY_APPEND(result, '$', _pb_wire_json_decode_wkt_value_as_json(pb_message_to_wire_json(bytes_value)));
+			END CASE;
+		END CASE;
+
+		SET element_index = element_index + 1;
+	END WHILE;
+
+	RETURN result;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_format_fractional_seconds $$
+CREATE FUNCTION _pb_util_format_fractional_seconds(nanos INT) RETURNS TEXT DETERMINISTIC
+BEGIN
+	SET nanos = nanos % 1000000000;
+	IF nanos = 0 THEN
+		RETURN '';
+	ELSEIF nanos % 1000000 = 0 THEN
+		RETURN CONCAT('.', CAST(FLOOR(nanos / 1000000) AS CHAR)); -- 3 digits
+	ELSEIF nanos % 1000 = 0 THEN
+		RETURN CONCAT('.', CAST(FLOOR(nanos / 1000) AS CHAR)); -- 6 digits
+	ELSE
+		RETURN CONCAT('.', CAST(nanos AS CHAR)); -- 9 digits
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_field_mask_as_json $$
+CREATE FUNCTION _pb_wire_json_decode_wkt_field_mask_as_json(wire_json JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE elements JSON;
+	DECLARE element JSON;
+	DECLARE element_count INT;
+	DECLARE element_index INT;
+	DECLARE wire_type INT;
+	DECLARE field_number INT;
+	DECLARE result TEXT;
+	DECLARE string_value TEXT;
+	DECLARE sep TEXT;
+
+	SET result = '';
+	SET sep = '';
+
+	SET elements = JSON_EXTRACT(wire_json, '$.*[*]');
+	SET element_index = 0;
+	SET element_count = JSON_LENGTH(elements);
+	WHILE element_index < element_count DO
+		SET element = JSON_EXTRACT(elements, CONCAT('$[', element_index, ']'));
+		SET wire_type = JSON_EXTRACT(element, '$.t');
+		SET field_number = JSON_EXTRACT(element, '$.n');
+
+		CASE wire_type
+		WHEN 2 THEN -- LEN
+			SET string_value = CONVERT(FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v'))) USING utf8mb4);
+			CASE field_number
+			WHEN 1 THEN -- values
+				SET result = CONCAT(result, sep, string_value);
+				SET sep = ',';
+			END CASE;
+		END CASE;
+
+		SET element_index = element_index + 1;
+	END WHILE;
+
+	RETURN JSON_QUOTE(result);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_as_json $$
+CREATE FUNCTION _pb_wire_json_decode_wkt_as_json(wire_json JSON, full_type_name TEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+	CASE full_type_name
+	WHEN '.google.protobuf.Timestamp' THEN
+		RETURN _pb_wire_json_decode_wkt_timestamp_as_json(wire_json);
+	WHEN '.google.protobuf.Duration' THEN
+		RETURN _pb_wire_json_decode_wkt_duration_as_json(wire_json);
+	WHEN '.google.protobuf.Struct' THEN
+		RETURN _pb_wire_json_decode_wkt_struct_as_json(wire_json);
+	WHEN '.google.protobuf.Value' THEN
+		RETURN _pb_wire_json_decode_wkt_value_as_json(wire_json);
+	WHEN '.google.protobuf.ListValue' THEN
+		RETURN _pb_wire_json_decode_wkt_list_value_as_json(wire_json);
+	WHEN '.google.protobuf.Empty' THEN
+		RETURN JSON_OBJECT();
+	WHEN '.google.protobuf.DoubleValue' THEN
+		RETURN CAST(pb_wire_json_get_double_field(wire_json, 1, 0.0) AS JSON);
+	WHEN '.google.protobuf.FloatValue' THEN
+		RETURN CAST(pb_wire_json_get_float_field(wire_json, 1, 0.0) AS JSON);
+	WHEN '.google.protobuf.Int64Value' THEN
+		RETURN JSON_QUOTE(CAST(pb_wire_json_get_int64_field(wire_json, 1, 0) AS CHAR));
+	WHEN '.google.protobuf.UInt64Value' THEN
+		RETURN JSON_QUOTE(CAST(pb_wire_json_get_uint64_field(wire_json, 1, 0) AS CHAR));
+	WHEN '.google.protobuf.Int32Value' THEN
+		RETURN CAST(pb_wire_json_get_int32_field(wire_json, 1, 0) AS JSON);
+	WHEN '.google.protobuf.UInt32Value' THEN
+		RETURN CAST(pb_wire_json_get_uint32_field(wire_json, 1, 0) AS JSON);
+	WHEN '.google.protobuf.BoolValue' THEN
+		RETURN CAST((pb_wire_json_get_bool_field(wire_json, 1, FALSE) IS TRUE) AS JSON);
+	WHEN '.google.protobuf.StringValue' THEN
+		RETURN JSON_QUOTE(pb_wire_json_get_string_field(wire_json, 1, ''));
+	WHEN '.google.protobuf.BytesValue' THEN
+		RETURN JSON_QUOTE(TO_BASE64(pb_wire_json_get_bytes_field(wire_json, 1, _binary X'')));
+	WHEN '.google.protobuf.FieldMask' THEN
+		RETURN _pb_wire_json_decode_wkt_field_mask_as_json(wire_json);
+	ELSE
+		RETURN NULL;
+	END CASE;
 END $$
