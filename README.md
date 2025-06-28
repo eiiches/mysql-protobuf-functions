@@ -1,418 +1,288 @@
-Pure-MySQL Protocol Buffer Functions
-====
+# MySQL Protocol Buffers Functions
 
-Warning: This project is in an early stage and may undergo significant changes that are not backward compatible.
+[![MySQL Version](https://img.shields.io/badge/MySQL-8.0.17%2B-blue)](https://dev.mysql.com/downloads/mysql/)
+[![Aurora MySQL](https://img.shields.io/badge/Aurora%20MySQL-3.04.0%2B-orange)](https://aws.amazon.com/rds/aurora/)
 
-Requirements
-------------
+A comprehensive library of MySQL stored functions and procedures for working with Protocol Buffers (protobuf) encoded data directly within MySQL databases. This project enables you to parse and query protobuf messages without requiring external applications or services.
 
-* MySQL 8.0.17 or later.
-  * JSON_TABLE() is added in 8.0.4 but needs 8.0.17 for [this bugfix](https://bugs.mysql.com/bug.php?id=92976).
+> ⚠️ **Early Development Warning**: This project is in active development and may introduce breaking changes.
 
-* Aurora MySQL 3.04.0 (oldest available 3.x I could test as of 2025/06) or later.
+## Features
 
-Install
-------
+- 🔍 **Field Access**: Extract specific fields from protobuf messages using field numbers
+- 🔄 **JSON Conversion**: Convert protobuf messages to JSON format for easier debugging
+- 🛠️ **Pure MySQL Implementation**: Written entirely in MySQL stored functions and procedures - no native libraries or external dependencies required
 
-Install stored functions and procedure by downloading and running the SQL files in MySQL.
+## Requirements
 
-```console
-$ mysql < protobuf.sql
-$ mysql < protobuf-accessors.sql
-```
+- **MySQL**: 8.0.17 or later
+  - JSON_TABLE() was added in 8.0.4 but requires 8.0.17 for [this critical bugfix](https://bugs.mysql.com/bug.php?id=92976)
+- **Aurora MySQL**: 3.04.0 (oldest available 3.x version as of June 2025) or later
 
-NOTE: All functions and procedures are prefixed with `_pb_` or `pb_` to avoid name conflicts.
-If you already use these names, be careful not to overwrite existing routines.
+## Installation
 
-(Optional) In addition, if you need `pb_message_to_json()` (a JSON conversion function), load the following SQL files.
+### Quick Start
 
-```console
-$ mysql < protobuf-descriptor.sql # (optional) for descriptor set support
-$ mysql < protobuf-json.sql # (optional) for json conversion support (incomplete)
-```
+1. **Clone the repository** to get the SQL files:
+   ```bash
+   git clone https://github.com/eiiches/mysql-protobuf-functions.git
+   cd mysql-protobuf-functions
+   ```
 
-NOTE: `protobuf-descriptor.sql` automatically creates several tables prefixed with `_Proto_` to store schema information.
+2. **Install core functions**:
+   ```bash
+   mysql -u your_username -p your_database < protobuf.sql
+   mysql -u your_username -p your_database < protobuf-accessors.sql
+   ```
 
-Example
--------
+3. **Install optional components** (for JSON conversion):
+   ```bash
+   mysql -u your_username -p your_database < protobuf-descriptor.sql
+   mysql -u your_username -p your_database < protobuf-json.sql
+   ```
 
-```sql
--- Get the value of a string field.
-mysql> SELECT pb_message_get_string_field(_binary X'100a2a03616263', 5 /* field_number */, '' /* default_value */);
-+---------------------------------------------------------------+
-| pb_message_get_string_field(_binary X'100a2a03616263', 5, '') |
-+---------------------------------------------------------------+
-| abc                                                           |
-+---------------------------------------------------------------+
-```
+### Important Notes
 
-```sql
--- Get the first element of a repeated int32 (packed) field.
-mysql> SELECT pb_message_get_repeated_int32_field(_binary X'3a03010203', 7 /* field_number */, 1 /* repeated_index */);
-+---------------------------------------------------------+
-| pb_message_get_int32_field(_binary X'3a03010203', 7, 0) |
-+---------------------------------------------------------+
-|                                                       2 |
-+---------------------------------------------------------+
-```
+- ⚠️ All functions and procedures use `_pb_` or `pb_` prefixes to avoid naming conflicts
+- ⚠️ The `protobuf-descriptor.sql` script creates tables prefixed with `_Proto_` for schema storage
+- 📝 Verify existing routines before installation to prevent overwrites
 
-```sql
--- Get int32 field from a nested message field.
-mysql> SELECT pb_message_get_int32_field(pb_message_get_message_field(_binary X'4202080a', 8, _binary X''), 1, 0);
-+-----------------------------------------------------------------------------------------------------+
-| pb_message_get_int32_field(pb_message_get_message_field(_binary X'4202080a', 8, _binary X''), 1, 0) |
-+-----------------------------------------------------------------------------------------------------+
-|                                                                                                  10 |
-+-----------------------------------------------------------------------------------------------------+
-```
+## Reference Manual
 
-Protobuf schema used in this example:
+Detailed documentation is available on the [project wiki](https://github.com/eiiches/mysql-protobuf-functions/wiki/Reference).
+
+## Tutorial
+
+This tutorial demonstrates the core functionality using a sample Protocol Buffers schema. Follow along to learn how to work with protobuf data in MySQL.
+
+<details>
+<summary>person.proto</summary>
 
 ```protobuf
 syntax = "proto3";
 
-message Test {
-   string string_field = 5;
-   repeated int32 repeated_int32_field = 7;
-   TestMessage message_field = 8;
-}
+import "google/protobuf/timestamp.proto";
 
-message TestMessage {
-   int32 int32_field = 1;
+message Person {
+  string name = 1;
+  int32 id = 2;
+  string email = 3;
+
+  enum PhoneType {
+    PHONE_TYPE_UNSPECIFIED = 0;
+    PHONE_TYPE_MOBILE = 1;
+    PHONE_TYPE_HOME = 2;
+    PHONE_TYPE_WORK = 3;
+  }
+
+  message PhoneNumber {
+    string number = 1;
+    PhoneType type = 2;
+  }
+
+  repeated PhoneNumber phones = 4;
+
+  google.protobuf.Timestamp last_updated = 5;
 }
 ```
 
-Function Reference
----------
-
-These field accessors do not recognize oneof groups or map fields.
-
-* If multiple fields within a oneof group are set, which is uncommon, the accessors will return values for all of them. Oneof semantics are not enforced.
-* A map is encoded as repeated messages on the wire and must be accessed accordingly.
-
-### Getters — pb\_message\_get\_{type}\_field()
-
-Retrieves the value of a specified field from a Protobuf-encoded BLOB. This function is used to extract individual values from serialized Protocol Buffers messages stored as binary data.
-
-##### Parameters
-
-* **message** — A `LONGBLOB` containing the serialized Protobuf message.
-* **field_number** — An `INT` specifying the field number, as defined in the Protobuf schema.
-* **default_value** — A default value to return when the field is not present. For proto3 without explicit field presence, this should be set to the [default value](https://protobuf.dev/programming-guides/proto3/#default) defined by the Protobuf specification. For proto2 messages, this should also be set to the [default value](https://protobuf.dev/programming-guides/proto2/#default) unless the field has an explicit `default` option that overrides the default value.
-
-##### Returns
-
-The value of the requested field, interpreted as the corresponding SQL type.
-
-##### Notes
-
-- The field number must match the one used in the `.proto` schema definition.
-- This function does not perform schema validation; it assumes the caller knows the correct field number and expected type.
-- MySQL does not support `+inf`, `-inf`, or `NaN`. Therefore, `float` and `double` variants return `NULL` instead if the corresponding field contains any of these values.
-- This function parses the message each time it is called. For better performance when accessing multiple fields, use `pb_message_to_wire_json()` to parse the message once, and then call `pb_wire_json_get_{type}_field()` for each field.
-
-##### Type Variants
-
-* `pb_message_get_bool_field`(message LONGBLOB, field_number INT, default_value BOOLEAN) → BOOLEAN
-* `pb_message_get_enum_field`(message LONGBLOB, field_number INT, default_value INT) → INT
-* `pb_message_get_int32_field`(message LONGBLOB, field_number INT, default_value INT) → INT
-* `pb_message_get_uint32_field`(message LONGBLOB, field_number INT, default_value INT) → INT UNSIGNED
-* `pb_message_get_sint32_field`(message LONGBLOB, field_number INT, default_value INT) → INT
-* `pb_message_get_fixed32_field`(message LONGBLOB, field_number INT, default_value INT UNSIGNED) → INT UNSIGNED
-* `pb_message_get_sfixed32_field`(message LONGBLOB, field_number INT, default_value INT) → INT
-* `pb_message_get_float_field`(message LONGBLOB, field_number INT, default_value FLOAT) → FLOAT
-* `pb_message_get_int64_field`(message LONGBLOB, field_number INT, default_value BIGINT) → BIGINT
-* `pb_message_get_uint64_field`(message LONGBLOB, field_number INT, default_value BIGINT UNSIGNED) → BIGINT UNSIGNED
-* `pb_message_get_sint64_field`(message LONGBLOB, field_number INT, default_value BIGINT) → BIGINT
-* `pb_message_get_fixed64_field`(message LONGBLOB, field_number INT, default_value BIGINT UNSIGNED) → BIGINT UNSIGNED
-* `pb_message_get_sfixed64_field`(message LONGBLOB, field_number INT, default_value BIGINT) → BIGINT
-* `pb_message_get_double_field`(message LONGBLOB, field_number INT, default_value DOUBLE) → DOUBLE
-* `pb_message_get_string_field`(message LONGBLOB, field_number INT, default_value TEXT) → TEXT
-* `pb_message_get_bytes_field`(message LONGBLOB, field_number INT, default_value LONGBLOB) → LONGBLOB
-* `pb_message_get_message_field`(message LONGBLOB, field_number INT, default_value LONGBLOB) → LONGBLOB
-
-### Getters — pb\_message\_get\_repeated\_{type}\_field()
-
-Retrieves the value of a specified field from a Protobuf-encoded BLOB. This function is used to extract individual values from serialized Protocol Buffers messages stored as binary data.
-
-##### Parameters
-
-* **message** — A `LONGBLOB` containing the serialized Protobuf message.
-* **field_number** — An `INT` specifying the field number, as defined in the Protobuf schema.
-* **repeated_index** — The zero-based index to retrieve.
-
-##### Returns
-
-The value of the requested field, interpreted as the corresponding SQL type.
-
-- If `repeated_index` exceeds the number of available elements, the function raises an "index out of range" error.
-
-##### Notes
-
-- The field number must match the one used in the `.proto` schema definition.
-- This function does not perform schema validation; it assumes the caller knows the correct field number and expected type.
-- MySQL does not support `+inf`, `-inf`, or `NaN`. Therefore, `float` and `double` variants return `NULL` instead if the corresponding field contains any of these values.
-
-##### Type Variants
-
-* `pb_message_get_repeated_bool_field`(message LONGBLOB, field_number INT, repeated_index INT) → BOOLEAN
-* `pb_message_get_repeated_enum_field`(message LONGBLOB, field_number INT, repeated_index INT) → INT
-* `pb_message_get_repeated_int32_field`(message LONGBLOB, field_number INT, repeated_index INT) → INT
-* `pb_message_get_repeated_uint32_field`(message LONGBLOB, field_number INT, repeated_index INT) → INT UNSIGNED
-* `pb_message_get_repeated_sint32_field`(message LONGBLOB, field_number INT, repeated_index INT) → INT
-* `pb_message_get_repeated_fixed32_field`(message LONGBLOB, field_number INT, repeated_index INT) → INT UNSIGNED
-* `pb_message_get_repeated_sfixed32_field`(message LONGBLOB, field_number INT, repeated_index INT) → INT
-* `pb_message_get_repeated_float_field`(message LONGBLOB, field_number INT, repeated_index INT) → FLOAT
-* `pb_message_get_repeated_int64_field`(message LONGBLOB, field_number INT, repeated_index INT) → BIGINT
-* `pb_message_get_repeated_uint64_field`(message LONGBLOB, field_number INT, repeated_index INT) → BIGINT UNSIGNED
-* `pb_message_get_repeated_sint64_field`(message LONGBLOB, field_number INT, repeated_index INT) → BIGINT
-* `pb_message_get_repeated_fixed64_field`(message LONGBLOB, field_number INT, repeated_index INT) → BIGINT UNSIGNED
-* `pb_message_get_repeated_sfixed64_field`(message LONGBLOB, field_number INT, repeated_index INT) → BIGINT
-* `pb_message_get_repeated_double_field`(message LONGBLOB, field_number INT, repeated_index INT) → DOUBLE
-* `pb_message_get_repeated_string_field`(message LONGBLOB, field_number INT, repeated_index INT) → TEXT
-* `pb_message_get_repeated_bytes_field`(message LONGBLOB, field_number INT, repeated_index INT) → LONGBLOB
-* `pb_message_get_repeated_message_field`(message LONGBLOB, field_number INT, repeated_index INT) → LONGBLOB
-
-### Getters — pb\_message\_get\_repeated\_{type}\_field_as_json_array()
-
-Retrieves the repeated values of a specified field as JSON array from a Protobuf-encoded BLOB.
-
-##### Parameters
-
-* **message** — A `LONGBLOB` containing the serialized Protobuf message.
-* **field_number** — An `INT` specifying the field number, as defined in the Protobuf schema.
-
-##### Returns
-
-An `JSON` array containing all elements of the specified field.
-
-##### Notes
-
-- The field number must match the one used in the `.proto` schema definition.
-- This function does not perform schema validation; it assumes the caller knows the correct field number and expected type.
-- MySQL does not support `+inf`, `-inf`, or `NaN`. Therefore, `float` and `double` variants return `NULL` instead if the corresponding field contains any of these values.
-
-##### Type Variants
-
-* `pb_message_get_repeated_bool_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_enum_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_int32_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_uint32_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_sint32_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_fixed32_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_sfixed32_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_float_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_int64_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_uint64_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_sint64_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_fixed64_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_sfixed64_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_double_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_string_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_bytes_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-* `pb_message_get_repeated_message_field_as_json_array`(message LONGBLOB, field_number INT) → JSON
-
-### Hazzers — pb\_message\_has\_{type}\_field()
-
-Checks whether a specific field is present in a Protobuf-encoded BLOB.
-This function is used to determine whether a field with [Field Presence](https://protobuf.dev/programming-guides/field_presence/) tracking is set in the encoded message.
-
-#### Parameters
-
-- **message** — A `LONGBLOB` containing the serialized Protobuf message.
-- **field_number** — An `INT` specifying the field number, as defined in the Protobuf schema.
-
-#### Returns
-
-A `BOOLEAN` indicating whether the specified field is present in the encoded message.
-
-#### Notes
-
-- In `proto3`, presence tracking for scalar fields is only available when the field is declared with the `optional` keyword.
-- Using this function on `repeated` fields is an error. Hazzers do not support packed repeated scalars and cannot be used to check their presence. Use `pb_message_get_repeated_{type}_field_count()` instead. 
-
-##### Type Variants
-
-* `pb_message_has_bool_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_enum_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_int32_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_uint32_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_sint32_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_fixed32_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_sfixed32_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_float_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_int64_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_uint64_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_sint64_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_fixed64_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_sfixed64_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_double_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_string_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_bytes_field`(message LONGBLOB, field_number INT) → BOOLEAN
-* `pb_message_has_message_field`(message LONGBLOB, field_number INT) → BOOLEAN
-
-### Repeated Field Counts — pb\_message\_get\_repeated\_{type}\_field_count()
-
-Returns the number of elements present in a repeated field of a Protobuf-encoded BLOB.
-To retreive the value of each element, use `pb_message_get_repeated_{type}_field()`.
-
-#### Parameters
-
-- **`message`** — A `LONGBLOB` containing the serialized Protobuf message.
-- **`field_number`** — An `INT` specifying the field number, as defined in the Protobuf schema.
-
-#### Returns
-
-An `INT` representing the number of elements in the specified repeated field.
-
-##### Type Variants
-
-* `pb_message_get_repeated_bool_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_enum_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_int32_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_uint32_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_sint32_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_fixed32_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_sfixed32_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_float_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_int64_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_uint64_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_sint64_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_fixed64_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_sfixed64_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_double_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_string_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_bytes_field_count`(message LONGBLOB, field_number INT) → INT
-* `pb_message_get_repeated_message_field_count`(message LONGBLOB, field_number INT) → INT
-
-### pb\_message\_to\_wire\_json()
-
-Decodes a protobuf-encoded BLOB into a JSON representation that are suitable for low-level inspection and debugging. The JSON output preserves the order and structure of the wire format.
-This function does not interpret the values beyond the wire-level format.
-
-##### Parameters
-
-- **message** (LONGBLOB) — Raw protobuf-encoded data.
-
-##### Example
+</details>
 
 ```sql
-SELECT pb_message_to_wire_json(_binary X'0A0B696E7433325F6669656C64180120012805520A696E7433324669656C64');
+-- $ protoc --encode=Person person.proto <<-EOF | xxd -p -c0
+-- name: "Agent Smith"
+-- id: 1
+-- email: "smith@example.com"
+-- phones: [{type: PHONE_TYPE_WORK, number: "+81-00-0000-0000"}]
+-- last_updated: {seconds: 1748781296, nanos: 789000000}
+-- EOF
+> CREATE TABLE Example (pb_data BLOB);
+> INSERT INTO Example (pb_data) VALUES (_binary X'0a0b4167656e7420536d69746810011a11736d697468406578616d706c652e636f6d22140a102b38312d30302d303030302d3030303010032a0c08f091f1c10610c0de9cf802');
 ```
 
-```json
+### Accessing Protobuf Fields
+
+Use the field accessor functions to extract data from protobuf messages:
+
+```sql
+-- Get id; The field number for id is 2.
+> SELECT pb_message_get_int32_field(pb_data, 2 /* field number */, 0 /* default value */) FROM Example;
+1
+
+-- Get email; email is 3
+> SELECT pb_message_get_string_field(pb_data, 3, '' /* default value */) FROM Example;
+smith@example.com
+
+-- Get phones[0].number; phones is 4, number is 1
+> SELECT pb_message_get_string_field(pb_message_get_repeated_message_field(pb_data, 4, 0), 1, '' /* default value */) FROM Example;
++81-00-0000-0000
+
+-- Get phones[0].type; phones is 4, type is 2
+> SELECT pb_message_get_enum_field(pb_message_get_repeated_message_field(pb_data, 4, 0), 2, 0 /* default value */) FROM Example;
+3
+```
+
+### Converting Protobuf to JSON
+
+> **Prerequisites**: This section requires both `protobuf-descriptor.sql` and `protobuf-json.sql` to be installed.
+
+#### Loading Protobuf Schema
+
+First, generate and load your protobuf schema into MySQL:
+
+```console
+$ protoc --descriptor_set_out=/dev/stdout --include_imports person.proto | xxd -p -c0
+0aff010a1f676f6f676c652f70726f746f6275662f74696d657374616d702e70726f746f120f676f6f676c652e70726f746f627566223b0a0954696d657374616d7012180a077365636f6e647318012001280352077365636f6e647312140a056e616e6f7318022001280552056e616e6f734285010a13636f6d2e676f6f676c652e70726f746f627566420e54696d657374616d7050726f746f50015a32676f6f676c652e676f6c616e672e6f72672f70726f746f6275662f74797065732f6b6e6f776e2f74696d657374616d707062f80101a20203475042aa021e476f6f676c652e50726f746f6275662e57656c6c4b6e6f776e5479706573620670726f746f330aa0030a0c706572736f6e2e70726f746f1a1f676f6f676c652f70726f746f6275662f74696d657374616d702e70726f746f22e6020a06506572736f6e12120a046e616d6518012001280952046e616d65120e0a0269641802200128055202696412140a05656d61696c1803200128095205656d61696c122b0a0670686f6e657318042003280b32132e506572736f6e2e50686f6e654e756d626572520670686f6e6573123d0a0c6c6173745f7570646174656418052001280b321a2e676f6f676c652e70726f746f6275662e54696d657374616d70520b6c617374557064617465641a4c0a0b50686f6e654e756d62657212160a066e756d62657218012001280952066e756d62657212250a047479706518022001280e32112e506572736f6e2e50686f6e655479706552047479706522680a0950686f6e6554797065121a0a1650484f4e455f545950455f554e535045434946494544100012150a1150484f4e455f545950455f4d4f42494c45100112130a0f50484f4e455f545950455f484f4d45100212130a0f50484f4e455f545950455f574f524b1003620670726f746f33
+```
+
+Alternatively, if you use Buf, you can use `buf build -o ${name}.binpb` to generate a binary FileDescriptorSet.
+
+```sql
+> CALL pb_descriptor_set_load('test', _binary X'0aff010a1f676f6f676c652f70726f746f6275662f74696d657374616d702e70726f746f120f676f6f676c652e70726f746f627566223b0a0954696d657374616d7012180a077365636f6e647318012001280352077365636f6e647312140a056e616e6f7318022001280552056e616e6f734285010a13636f6d2e676f6f676c652e70726f746f627566420e54696d657374616d7050726f746f50015a32676f6f676c652e676f6c616e672e6f72672f70726f746f6275662f74797065732f6b6e6f776e2f74696d657374616d707062f80101a20203475042aa021e476f6f676c652e50726f746f6275662e57656c6c4b6e6f776e5479706573620670726f746f330aa0030a0c706572736f6e2e70726f746f1a1f676f6f676c652f70726f746f6275662f74696d657374616d702e70726f746f22e6020a06506572736f6e12120a046e616d6518012001280952046e616d65120e0a0269641802200128055202696412140a05656d61696c1803200128095205656d61696c122b0a0670686f6e657318042003280b32132e506572736f6e2e50686f6e654e756d626572520670686f6e6573123d0a0c6c6173745f7570646174656418052001280b321a2e676f6f676c652e70726f746f6275662e54696d657374616d70520b6c617374557064617465641a4c0a0b50686f6e654e756d62657212160a066e756d62657218012001280952066e756d62657212250a047479706518022001280e32112e506572736f6e2e50686f6e655479706552047479706522680a0950686f6e6554797065121a0a1650484f4e455f545950455f554e535045434946494544100012150a1150484f4e455f545950455f4d4f42494c45100112130a0f50484f4e455f545950455f484f4d45100212130a0f50484f4e455f545950455f574f524b1003620670726f746f33');
+```
+
+You can now reference this schema using the identifier `'test'`.
+
+#### JSON Conversion
+
+Once your schema is loaded, convert protobuf messages to JSON:
+
+```sql
+> SELECT pb_message_to_json('test', '.Person', pb_data) FROM Example;
 {
-  "1": [{"i": 0, "n": 1, "t": 2, "v": "aW50MzJfZmllbGQ="}],
-  "3": [{"i": 1, "n": 3, "t": 0, "v": 1}],
-  "4": [{"i": 2, "n": 4, "t": 0, "v": 1}],
-  "5": [{"i": 3, "n": 5, "t": 0, "v": 5}],
-  "10": [{"i": 4, "n": 10, "t": 2, "v": "aW50MzJGaWVsZA=="}]
+  "id": 1,
+  "name": "Agent Smith",
+  "email": "smith@example.com",
+  "phones": [
+    {"type": "PHONE_TYPE_WORK", "number": "+81-00-0000-0000"}
+  ],
+  "lastUpdated": "2025-06-01T12:34:56.789Z"
 }
 ```
 
+**Pro Tip**: Create a VIEW for easier debugging:
 
-[Experimental] Descriptor Set Functions &amp; Procedures
--------------------
+```sql
+CREATE VIEW ExampleDebugView AS
+  SELECT
+      *,
+      pb_message_to_json('test', '.Person', pb_data) AS pb_data_json
+  FROM Example;
+```
 
-### Load File Descriptor Set — CALL pb\_descriptor\_set\_load()
+```sql
+> SELECT pb_data_json FROM ExampleDebugView;
+{"id": 1, "name": "Agent Smith", "email": "smith@example.com", "phones": [{"type": "PHONE_TYPE_WORK", "number": "+81-00-0000-0000"}], "lastUpdated": "2025-06-01T12:34:56.789Z"}
 
-Loads a compiled Protobuf `FileDescriptorSet` into internal database tables.
-This procedure registers the schema information required for operations that depend on message descriptors, such as `pb_message_to_json()`.
+> SELECT pb_data_json->'$.name' FROM ExampleDebugView;
+"Agent Smith"
+```
 
-#### Parameters
+### Advanced: Indexing Protobuf Fields
 
-- IN **set_name** (VARCHAR(64)) — A user-defined identifier that is used to distinguish file descriptor sets.
-  This allows multiple descriptor sets to coexist without conflict.
+While MySQL doesn't allow using stored functions in functional indexes or generated columns, you can use `TRIGGER` to mimic a generated column and create an `INDEX` or any other constraints on that generated column.
 
-- IN **file_descriptor_set** (LONGBLOB) — A binary-encoded `FileDescriptorSet`, typically generated using the `protoc --descriptor_set_out` or `buf build -o ${name}.binpb`.
-  The input must conform to the `google.protobuf.FileDescriptorSet` message format.
+#### Using Protobuf Fields as a PRIMARY KEY
 
-#### Notes
+Let's add an `id` column to the Example table, populate the column from `pb_data`, and make the column the primary key of the table.
 
-- This procedure is only intended for use cases where Protobuf schema information is required.
-  - Getters and hazzers (`pb_message_get_{type}_field()`, `pb_message_get_{type}_field_count()`, `pb_message_has_{type}_field()`) don't require this procedure.
-- If a descriptor set with the same `set_name` already exists, the procedure will fail.
+```sql
+> ALTER TABLE Example ADD COLUMN id INT NOT NULL FIRST;
+> UPDATE Example SET id = pb_message_get_int32_field(pb_data, 2, 0);
+> ALTER TABLE Example ADD PRIMARY KEY (id);
 
-### Delete File Descriptor Set — CALL pb\_descriptor\_set\_delete()
+> SHOW CREATE TABLE Example;
+CREATE TABLE `Example` (
+  `id` int NOT NULL,
+  `pb_data` blob,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 
-Deletes a previously loaded descriptor set from internal tables.
-This procedure is used to clean up resources created by `pb_descriptor_set_load()`.
+> SELECT id FROM Example;
+1
+```
 
-#### Parameters
+Rather than manually keeping the MySQL `id` column and protobuf `id` field in sync, you can use triggers to automatically populate the `id` column from the protobuf data.
 
-- IN **`set_name`** `VARCHAR(64)` — The identifier used when the descriptor set was loaded.
+```sql
+CREATE TRIGGER Example_set_id_on_update
+   BEFORE UPDATE ON Example
+   FOR EACH ROW
+      SET NEW.id = pb_message_get_int32_field(NEW.pb_data, 2, 0);
 
-#### Notes
+CREATE TRIGGER Example_set_id_on_insert
+   BEFORE INSERT ON Example
+   FOR EACH ROW
+      SET NEW.id = pb_message_get_int32_field(NEW.pb_data, 2, 0);
+```
 
-- If the specified descriptor set does not exist, the procedure performs no action.
+```sql
+-- With TRIGGER, id is automatically derived from pb_data.
+-- protoc --encode=Person person.proto <<-EOF | xxd -p -c0
+-- name: "Thomas A. Anderson"
+-- id: 2
+-- email: "thomas@example.com"
+-- phones: [{type: PHONE_TYPE_HOME, number: "+81-00-0000-0000"}]
+-- last_updated: {seconds: 1748781296, nanos: 789000000}
+-- EOF
+> INSERT INTO Example (pb_data) VALUES (_binary X'0a1254686f6d617320412e20416e646572736f6e10021a1274686f6d6173406578616d706c652e636f6d22140a102b38312d30302d303030302d3030303010022a0c08f091f1c10610c0de9cf802');
+```
 
-### [Function] pb\_descriptor\_set\_exists()
+#### Enforcing a UNIQUE constraint on a Protobuf Field
 
-TBD
+You can also add a `name` column that is automatically derived from `pb_data` and create a UNIQUE INDEX on that column. This enforces name uniqueness and enables faster name-based lookup.
 
-### [Function] pb\_descriptor\_set\_contains\_message\_type()
+```sql
+ALTER TABLE Example ADD COLUMN name VARCHAR(255) NOT NULL AFTER id;
+UPDATE Example SET name = pb_message_get_string_field(pb_data, 1, '');
+ALTER TABLE Example ADD UNIQUE INDEX (name);
 
-TBD
+CREATE TRIGGER Example_set_name_on_update
+   BEFORE UPDATE ON Example
+   FOR EACH ROW
+      SET NEW.name = pb_message_get_string_field(NEW.pb_data, 1, '');
 
-### [Function] pb\_descriptor\_set\_contains\_enum\_type()
+CREATE TRIGGER Example_set_name_on_insert
+   BEFORE INSERT ON Example
+   FOR EACH ROW
+      SET NEW.name = pb_message_get_string_field(NEW.pb_data, 1, '');
+```
 
-TBD
+```sql
+-- protoc --encode=Person person.proto <<-EOF | xxd -p -c0
+-- name: "Mr. Anderson"
+-- id: 2
+-- email: "thomas@example.com"
+-- phones: [{type: PHONE_TYPE_HOME, number: "+81-00-0000-0000"}]
+-- last_updated: {seconds: 1748781296, nanos: 789000000}
+-- EOF
+> UPDATE Example SET pb_data = _binary X'0a0c4d722e20416e646572736f6e10021a1274686f6d6173406578616d706c652e636f6d22140a102b38312d30302d303030302d3030303010022a0c08f091f1c10610c0de9cf802' WHERE id = 2;
 
-[Incomplete] JSON Conversion Functions &amp; Procedures
------
+> SELECT name FROM Example;
+Agent Smith
+Mr. Anderson -- Automatically updated by TRIGGER
+```
 
-### [Function] pb\_message\_to\_json()
+TODO: Multi-Valued Index on Protobuf Fields
 
-Converts a Protobuf-encoded BLOB into a JSON object using the specified type and schema set. This function deserializes a Protocol Buffers message into a human-readable and structured JSON format.
+## Roadmap
 
-This function is primarily intended for debugging or inspection. It should not be used in production code. JSON relies on field names rather than field numbers, which compromises a key benefit of Protocol Buffers: the ability to rename fields without breaking compatibility. Instead, applications should read and decode the raw Protobuf-encoded BLOB directly.
+- [ ] **Setter Functions**: Add functions to modify protobuf messages
+  - `pb_message_set_{type}_field(data, field_number, value)`
+  - `pb_message_add_repeated_{type}_field(data, field_number, value)`
+  - `pb_message_set_repeated_{type}_field(data, field_number, repeated_index, value)`
+  - `pb_message_clear_{type}_field(data, field_number)`
+  - `pb_message_clear_repeated_{type}_field(data, field_number)`
+- [ ] **[Editions](https://protobuf.dev/editions/overview/) Support in JSON Conversion**
 
-Each reader can use its own descriptor set (i.e., reader schema), allowing it to remain unaffected by schema changes and independently control when to adopt schema updates.
+## Limitations
 
-##### Parameters
+- [Groups](https://protobuf.dev/programming-guides/encoding/#groups) are not supported.
 
-* **set_name** — A `VARCHAR(64)` specifying the name of the schema set containing the compiled Protobuf descriptors.
-* **full_type_name** — A `VARCHAR(512)` representing the fully-qualified name of the Protobuf message type (e.g., `.my.package.MessageType`). A fully-qualified name always starts with a dot.
-* **message** — A `LONGBLOB` containing the serialized Protobuf message to be converted.
+## Contributing
 
-##### Returns
+Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
 
-A `JSON` object that represents the Protobuf message, with field names and values corresponding to those defined in the Protobuf schema.
+## License
 
-##### Errors
-
-* Returns an error if the set_name or full_type_name cannot be resolved.
-* Returns an error if the buf is not a valid serialized message of the given type.
-
-TODO
-----
-
-* Add setters.
-  * `pb_message_set_{type}_field(data, field_number, value)`
-  * `pb_message_add_repeated_int32_field(data, field_number, value)`
-  * `pb_message_set_repeated_int32_field(data, field_number, repeated_index, value)`
-  * `pb_message_clear_{type}_field(data, field_number)`
-  * `pb_message_clear_repeated_{type}_field(data, field_number)`
-* Implement map support.
-
-Limitation
-----------
-
-* Currently, MySQL doesn't allow using stored functions in functional indexes or generated columns. Use triggers or views instead.
-
-   ```sql
-   CREATE TABLE Example (protobuf_data BLOB, generated_field INT, INDEX (generated_field));
-   CREATE TRIGGER Example_set_generated_field_on_update
-       BEFORE UPDATE ON Example
-       FOR EACH ROW SET NEW.generated_field = pb_message_get_int32_field(NEW.protobuf_data, 1, 0);
-   CREATE TRIGGER Example_set_generated_field_on_insert
-       BEFORE INSERT ON Example
-       FOR EACH ROW SET NEW.generated_field = pb_message_get_int32_field(NEW.protobuf_data, 1, 0);
-   ```
-
-   ```sql
-   CREATE TABLE Example (protobuf_data BLOB);
-   CREATE VIEW ExampleView AS SELECT pb_message_get_int32_field(protobuf_data, 1, 0) FROM Example;
-   ```
-
-* [Groups](https://protobuf.dev/programming-guides/encoding/#groups) are not, and probably will not be supported.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
