@@ -504,3 +504,11 @@ func TestMessageToJsonMapValue(t *testing.T) {
 		testMessageToJson(t, "map<string, MessageType> message_value_map_field = 1;", `{"messageValueMapField": {"a": {"value": 0}, "b": {"value": 12345}}}`)
 	})
 }
+
+func TestMessageToJsonOneof(t *testing.T) {
+	t.Run("oneof", func(t *testing.T) {
+		testMessageToJson(t, "oneof kind { int32 int32_field = 1; string string_field = 2; }", `{}`)
+		testMessageToJson(t, "oneof kind { int32 int32_field = 1; string string_field = 2; }", `{"int32Field": 42}`)
+		testMessageToJson(t, "oneof kind { int32 int32_field = 1; string string_field = 2; }", `{"stringField": "test"}`)
+	})
+}

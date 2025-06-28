@@ -73,6 +73,17 @@ CREATE TABLE IF NOT EXISTS _Proto_EnumValueDescriptor (
 	FOREIGN KEY (`set_name`, `type_name`) REFERENCES _Proto_EnumDescriptor (`set_name`, `type_name`) ON DELETE CASCADE
 ) $$
 
+CREATE TABLE IF NOT EXISTS _Proto_OneofDescriptor (
+	set_name VARCHAR(64) NOT NULL,
+	type_name VARCHAR(512) NOT NULL,
+	oneof_name VARCHAR(128) NOT NULL,
+	oneof_options JSON NOT NULL,
+	features JSON NOT NULL,
+	oneof_descriptor JSON NOT NULL,
+	PRIMARY KEY (`set_name`, `type_name`, `oneof_name`),
+	FOREIGN KEY (`set_name`, `type_name`) REFERENCES _Proto_MessageDescriptor (`set_name`, `type_name`) ON DELETE CASCADE
+) $$
+
 DROP PROCEDURE IF EXISTS _pb_insert_field_descriptor_proto $$
 CREATE PROCEDURE _pb_insert_field_descriptor_proto(IN set_name VARCHAR(64), IN full_type_name TEXT, IN field_descriptor LONGBLOB)
 BEGIN
@@ -135,6 +146,36 @@ BEGIN
 		field_options,
 		features,
 		field_descriptor_wire_json
+	);
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_insert_oneof_descriptor $$
+CREATE PROCEDURE _pb_insert_oneof_descriptor(IN set_name VARCHAR(64), IN full_type_name TEXT, IN oneof_descriptor LONGBLOB)
+BEGIN
+	DECLARE oneof_descriptor_wire_json JSON;
+	DECLARE oneof_name TEXT;
+	DECLARE oneof_options JSON;
+	DECLARE features JSON;
+
+	SET oneof_descriptor_wire_json = pb_message_to_wire_json(oneof_descriptor);
+	SET oneof_name = pb_wire_json_get_string_field(oneof_descriptor_wire_json, 1, NULL);
+	SET oneof_options = pb_message_to_wire_json(pb_wire_json_get_message_field(oneof_descriptor_wire_json, 2, _binary X''));
+	SET features = pb_message_to_wire_json(pb_wire_json_get_message_field(oneof_options, 1, _binary X''));
+
+	INSERT INTO _Proto_OneofDescriptor (
+		set_name,
+		type_name,
+		oneof_name,
+		oneof_options,
+		features,
+		oneof_descriptor
+	) VALUES (
+		set_name,
+		full_type_name,
+		oneof_name,
+		oneof_options,
+		features,
+		oneof_descriptor_wire_json
 	);
 END $$
 
@@ -234,6 +275,9 @@ BEGIN
 	DECLARE enum_descriptor_count INT;
 	DECLARE enum_descriptor_index INT;
 	DECLARE enum_descriptor LONGBLOB;
+	DECLARE oneof_descriptor_count INT;
+	DECLARE oneof_descriptor_index INT;
+	DECLARE oneof_descriptor LONGBLOB;
 	DECLARE message_options JSON;
 	DECLARE features JSON;
 	DECLARE message_descriptor_wire_json JSON;
@@ -287,6 +331,14 @@ BEGIN
 		SET enum_descriptor = pb_wire_json_get_repeated_message_field(message_descriptor_wire_json, 4, enum_descriptor_index);
 		CALL _pb_insert_enum_descriptor(set_name, file_name, full_type_name, enum_descriptor);
 		SET enum_descriptor_index = enum_descriptor_index + 1;
+	END WHILE;
+
+	SET oneof_descriptor_count = pb_wire_json_get_repeated_message_field_count(message_descriptor_wire_json, 8);
+	SET oneof_descriptor_index = 0;
+	WHILE oneof_descriptor_index < oneof_descriptor_count DO
+		SET oneof_descriptor = pb_wire_json_get_repeated_message_field(message_descriptor_wire_json, 8, oneof_descriptor_index);
+		CALL _pb_insert_oneof_descriptor(set_name, full_type_name, oneof_descriptor);
+		SET oneof_descriptor_index = oneof_descriptor_index + 1;
 	END WHILE;
 END $$
 

@@ -184,6 +184,12 @@ BEGIN
 	DECLARE map_key JSON;
 	DECLARE map_value JSON;
 
+	DECLARE oneofs JSON;
+	DECLARE oneof_priority INT;
+	DECLARE oneof_priority_prev INT;
+
+	DECLARE json_field_name TEXT;
+
 	-- NOTE: always use alias in select columns, to avoid confusion with variables with the same name.
 	DECLARE cur CURSOR FOR
 		SELECT
@@ -241,6 +247,7 @@ BEGIN
 	END IF;
 
 	SET result = JSON_OBJECT();
+	SET oneofs = JSON_OBJECT();
 	SET wire_json = pb_message_to_wire_json(buf);
 
 	OPEN cur;
@@ -354,9 +361,29 @@ BEGIN
 		END CASE;
 
 		IF field_json_value IS NOT NULL THEN
-			SET result = JSON_SET(result, CONCAT('$.', IF(json_name IS NOT NULL, json_name, _pb_util_snake_to_lower_camel(field_name))), field_json_value);
+			SET json_field_name = IF(json_name IS NOT NULL, json_name, _pb_util_snake_to_lower_camel(field_name));
+			IF oneof_index IS NOT NULL AND NOT proto3_optional THEN
+				SET elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+				SET oneof_priority = JSON_EXTRACT(elements, CONCAT('$[', JSON_LENGTH(elements)-1, '].i'));
+				SET oneof_priority_prev = JSON_EXTRACT(oneofs, CONCAT('$."', oneof_index, '".i'));
+				IF oneof_priority_prev IS NULL OR oneof_priority_prev < oneof_priority THEN
+					SET oneofs = JSON_SET(oneofs, CONCAT('$."', oneof_index, '"'), JSON_OBJECT('i', oneof_priority, 'v', JSON_OBJECT(json_field_name, field_json_value)));
+				END IF;
+			ELSE
+				SET result = JSON_SET(result, CONCAT('$.', json_field_name), field_json_value);
+			END IF;
 		END IF;
 	END LOOP;
+
+	SET elements = JSON_EXTRACT(oneofs, '$.*.v');
+	SET field_index = 0;
+	SET field_count = JSON_LENGTH(elements);
+
+	WHILE field_index < field_count DO
+		SET field_json_value = JSON_EXTRACT(elements, CONCAT('$[', field_index, ']'));
+		SET result = JSON_MERGE(result, field_json_value);
+		SET field_index = field_index + 1;
+	END WHILE;
 
 	CLOSE cur;
 END $$
