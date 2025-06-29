@@ -494,6 +494,18 @@ func generateWireJsonSetters(input *Input, accessors []*Accessor) {
 		|BEGIN
 		|	RETURN {{.Procedure.AddRepeatedFunction}}({{.Input.Name}}, field_number, {{.ConvertExpr}});
 		|END $$
+		|
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_clear_{{.ProtoType}}_field $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_clear_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT) RETURNS {{.Input.SqlType}} DETERMINISTIC
+		|BEGIN
+		|	RETURN _pb_wire_json_clear_field({{.Input.Name}}, field_number);
+		|END $$
+		|
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_clear_repeated_{{.ProtoType}}_field $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_clear_repeated_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT) RETURNS {{.Input.SqlType}} DETERMINISTIC
+		|BEGIN
+		|	RETURN _pb_wire_json_clear_field({{.Input.Name}}, field_number);
+		|END $$
 	`)
 
 	tmpl, err := template.New("setter").Parse(setterTemplateText)

@@ -1263,6 +1263,14 @@ BEGIN
 	END IF;
 END $$
 
+-- Private: Clear field (removes the entire field from wire JSON)
+DROP FUNCTION IF EXISTS _pb_wire_json_clear_field $$
+CREATE FUNCTION _pb_wire_json_clear_field(wire_json JSON, field_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	RETURN JSON_REMOVE(wire_json, field_path);
+END $$
+
 -- Private: Set VARINT field (int32, int64, uint32, uint64, sint32, sint64, enum, bool)
 DROP FUNCTION IF EXISTS _pb_wire_json_set_varint_field $$
 CREATE FUNCTION _pb_wire_json_set_varint_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
