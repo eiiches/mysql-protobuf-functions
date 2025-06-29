@@ -351,6 +351,154 @@ BEGIN
     END IF;
 END $$
 
+-- Missing reverse conversion functions needed for setters
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_int64_as_uint64 $$
+CREATE FUNCTION _pb_util_reinterpret_int64_as_uint64(value BIGINT) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+	RETURN CAST(value AS UNSIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_int32_as_uint32 $$
+CREATE FUNCTION _pb_util_reinterpret_int32_as_uint32(value INT) RETURNS INT UNSIGNED DETERMINISTIC
+BEGIN
+	-- Handle negative values using 2's complement representation
+	IF value < 0 THEN
+		RETURN CAST(4294967296 + value AS UNSIGNED);
+	ELSE
+		RETURN CAST(value AS UNSIGNED);
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_float_as_uint32 $$
+CREATE FUNCTION _pb_util_reinterpret_float_as_uint32(value FLOAT) RETURNS INT UNSIGNED DETERMINISTIC
+BEGIN
+    DECLARE bits BIGINT UNSIGNED;
+    DECLARE sign_bit BIGINT UNSIGNED;
+    DECLARE exponent BIGINT;
+    DECLARE fraction BIGINT UNSIGNED;
+
+    IF value IS NULL THEN
+        RETURN 0x7FC00000; -- NaN
+    ELSEIF value != value THEN -- NaN check
+        RETURN 0x7FC00000;
+    END IF;
+
+    -- Handle zero values (including negative zero)
+    IF value = 0 THEN
+        -- Use string conversion to detect negative zero
+        -- Negative zero shows as "-0" in string representation
+        SET sign_bit = IF(CAST(value AS CHAR) LIKE '-%', 1, 0);
+        -- Return signed zero: +0.0 = 0x00000000, -0.0 = 0x80000000
+        RETURN sign_bit << 31;
+    END IF;
+    
+    -- Capture sign for non-zero values
+    SET sign_bit = IF(value < 0, 1, 0);
+    SET value = ABS(value);
+
+    -- Check for infinity
+    IF value >= 3.4028235e+38 THEN
+        RETURN (sign_bit << 31) | 0x7F800000;
+    END IF;
+
+    IF value < 1.1754944e-38 THEN -- subnormal threshold
+        SET exponent = 0;
+        SET fraction = ROUND(value / 1.4012985e-45); -- 2^-149
+        IF fraction > 0x7FFFFF THEN
+            SET fraction = 0x7FFFFF;
+        END IF;
+    ELSE -- normal number
+        SET exponent = FLOOR(LOG(2, value)) + 127;
+        IF exponent < 0 THEN
+            SET exponent = 0;
+            SET fraction = 0;
+        ELSEIF exponent >= 255 THEN
+            RETURN (sign_bit << 31) | 0x7F800000; -- infinity
+        ELSE
+            SET fraction = ROUND((value / POW(2, exponent - 127) - 1) * POW(2, 23));
+            IF fraction > 0x7FFFFF THEN
+                SET fraction = 0x7FFFFF;
+            END IF;
+        END IF;
+    END IF;
+
+    RETURN (sign_bit << 31) | (CAST(exponent AS UNSIGNED) << 23) | (fraction & 0x7FFFFF);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_sint64_as_uint64 $$
+CREATE FUNCTION _pb_util_reinterpret_sint64_as_uint64(value BIGINT) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+	-- ZigZag encoding: maps signed integers to unsigned integers
+	-- For negative values: result = (abs(value) - 1) * 2 + 1
+	-- For non-negative values: result = value * 2
+	IF value < 0 THEN
+		-- Handle minimum int64 (-9223372036854775808) specially to avoid overflow
+		IF value = -9223372036854775808 THEN
+			RETURN 18446744073709551615; -- (2^63 - 1) * 2 + 1 = 2^64 - 1
+		ELSE
+			RETURN (CAST(-value AS UNSIGNED) - 1) * 2 + 1;
+		END IF;
+	ELSE
+		RETURN CAST(value AS UNSIGNED) * 2;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_double_as_uint64 $$
+CREATE FUNCTION _pb_util_reinterpret_double_as_uint64(value DOUBLE) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+    DECLARE bits BIGINT UNSIGNED;
+    DECLARE sign_bit BIGINT UNSIGNED;
+    DECLARE exponent BIGINT;
+    DECLARE fraction BIGINT UNSIGNED;
+
+    IF value IS NULL THEN
+        RETURN 0x7FF8000000000000; -- NaN
+    ELSEIF value != value THEN -- NaN check
+        RETURN 0x7FF8000000000000;
+    END IF;
+
+    -- Handle zero values (including negative zero)
+    IF value = 0 THEN
+        -- Use string conversion to detect negative zero
+        -- Negative zero shows as "-0" in string representation
+        SET sign_bit = IF(CAST(value AS CHAR) LIKE '-%', 1, 0);
+        -- Return signed zero: +0.0 = 0x0000000000000000, -0.0 = 0x8000000000000000
+        RETURN sign_bit << 63;
+    END IF;
+    
+    -- Capture sign for non-zero values
+    SET sign_bit = IF(value < 0, 1, 0);
+    SET value = ABS(value);
+
+    -- Check for infinity
+    IF value >= 1.7976931348623157e+308 THEN
+        RETURN (sign_bit << 63) | 0x7FF0000000000000;
+    END IF;
+
+    IF value < 2.2250738585072014e-308 THEN -- subnormal threshold
+        SET exponent = 0;
+        SET fraction = ROUND(value / 4.9406564584124654e-324); -- 2^-1074
+        IF fraction > 0xFFFFFFFFFFFFF THEN
+            SET fraction = 0xFFFFFFFFFFFFF;
+        END IF;
+    ELSE -- normal number
+        SET exponent = FLOOR(LOG(2, value)) + 1023;
+        IF exponent < 0 THEN
+            SET exponent = 0;
+            SET fraction = 0;
+        ELSEIF exponent >= 2047 THEN
+            RETURN (sign_bit << 63) | 0x7FF0000000000000; -- infinity
+        ELSE
+            SET fraction = ROUND((value / POW(2, exponent - 1023) - 1) * POW(2, 52));
+            IF fraction > 0xFFFFFFFFFFFFF THEN
+                SET fraction = 0xFFFFFFFFFFFFF;
+            END IF;
+        END IF;
+    END IF;
+
+    RETURN (sign_bit << 63) | (CAST(exponent AS UNSIGNED) << 52) | (fraction & 0xFFFFFFFFFFFFF);
+END $$
+
 DROP FUNCTION IF EXISTS _pb_wire_get_field_number_from_tag $$
 CREATE FUNCTION _pb_wire_get_field_number_from_tag(tag INT) RETURNS INT DETERMINISTIC
 BEGIN
@@ -910,4 +1058,271 @@ DROP FUNCTION IF EXISTS _pb_util_cast_int64_as_int32 $$
 CREATE FUNCTION _pb_util_cast_int64_as_int32(value BIGINT) RETURNS INT DETERMINISTIC
 BEGIN
 	RETURN value;
+END $$
+
+-- =============================================================================
+-- Wire Encoding Functions (for converting back to protobuf binary format)
+-- =============================================================================
+
+-- Convert unsigned integer to binary (little-endian)
+DROP FUNCTION IF EXISTS _pb_util_uint32_to_bin $$
+CREATE FUNCTION _pb_util_uint32_to_bin(value INT UNSIGNED) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN UNHEX(CONCAT(
+		LPAD(HEX(value & 0xFF), 2, '0'),
+		LPAD(HEX((value >> 8) & 0xFF), 2, '0'),
+		LPAD(HEX((value >> 16) & 0xFF), 2, '0'),
+		LPAD(HEX((value >> 24) & 0xFF), 2, '0')
+	));
+END $$
+
+-- Convert unsigned 64-bit integer to binary (little-endian)
+DROP FUNCTION IF EXISTS _pb_util_uint64_to_bin $$
+CREATE FUNCTION _pb_util_uint64_to_bin(value BIGINT UNSIGNED) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	DECLARE low32 INT UNSIGNED DEFAULT value & 0xFFFFFFFF;
+	DECLARE high32 INT UNSIGNED DEFAULT (value >> 32) & 0xFFFFFFFF;
+	RETURN CONCAT(_pb_util_uint32_to_bin(low32), _pb_util_uint32_to_bin(high32));
+END $$
+
+-- Encode varint (unsigned integer with variable length encoding)
+DROP PROCEDURE IF EXISTS _pb_wire_write_varint $$
+CREATE PROCEDURE _pb_wire_write_varint(IN value BIGINT UNSIGNED, OUT encoded LONGBLOB)
+BEGIN
+	DECLARE result LONGBLOB DEFAULT _binary '';
+	WHILE value >= 0x80 DO
+		SET result = CONCAT(result, CHAR((value & 0x7F) | 0x80));
+		SET value = value >> 7;
+	END WHILE;
+	SET result = CONCAT(result, CHAR(value & 0x7F));
+	SET encoded = result;
+END $$
+
+-- Write tag (field number + wire type)
+DROP PROCEDURE IF EXISTS _pb_wire_write_tag $$
+CREATE PROCEDURE _pb_wire_write_tag(IN field_number INT, IN wire_type INT, OUT encoded LONGBLOB)
+BEGIN
+	DECLARE tag BIGINT UNSIGNED DEFAULT (field_number << 3) | wire_type;
+	CALL _pb_wire_write_varint(tag, encoded);
+END $$
+
+-- Write 32-bit integer (little-endian)
+DROP PROCEDURE IF EXISTS _pb_wire_write_i32 $$
+CREATE PROCEDURE _pb_wire_write_i32(IN value INT UNSIGNED, OUT encoded LONGBLOB)
+BEGIN
+	SET encoded = _pb_util_uint32_to_bin(value);
+END $$
+
+-- Write 64-bit integer (little-endian)
+DROP PROCEDURE IF EXISTS _pb_wire_write_i64 $$
+CREATE PROCEDURE _pb_wire_write_i64(IN value BIGINT UNSIGNED, OUT encoded LONGBLOB)
+BEGIN
+	SET encoded = _pb_util_uint64_to_bin(value);
+END $$
+
+-- Write length-delimited data (length prefix + data)
+DROP PROCEDURE IF EXISTS _pb_wire_write_len_type $$
+CREATE PROCEDURE _pb_wire_write_len_type(IN data LONGBLOB, OUT encoded LONGBLOB)
+BEGIN
+	DECLARE length_encoded LONGBLOB;
+	CALL _pb_wire_write_varint(LENGTH(data), length_encoded);
+	SET encoded = CONCAT(length_encoded, data);
+END $$
+
+-- Main function: Convert wire JSON to protobuf binary message
+DROP PROCEDURE IF EXISTS _pb_wire_json_to_message $$
+CREATE PROCEDURE _pb_wire_json_to_message(IN wire_json JSON, OUT message LONGBLOB)
+BEGIN
+	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
+
+	DECLARE done INT DEFAULT FALSE;
+	DECLARE element_index INT;
+	DECLARE field_number INT;
+	DECLARE wire_type INT;
+	DECLARE v_value JSON;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE tag_encoded LONGBLOB;
+	DECLARE value_encoded LONGBLOB;
+	DECLARE message_text TEXT;
+
+	-- Cursor to read elements sorted by index 'i' using JSON_TABLE
+	DECLARE element_cursor CURSOR FOR
+		SELECT i, n, t, v
+		FROM JSON_TABLE(
+			JSON_EXTRACT(wire_json, '$.*[*]'),
+			'$[*]' COLUMNS (
+				i INT PATH '$.i',
+				n INT PATH '$.n',
+				t INT PATH '$.t',
+				v JSON PATH '$.v'
+			)
+		) jt
+		ORDER BY i;
+
+	DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+	SET message = _binary '';
+
+	OPEN element_cursor;
+
+	read_loop: LOOP
+		FETCH element_cursor INTO element_index, field_number, wire_type, v_value;
+		IF done THEN
+			LEAVE read_loop;
+		END IF;
+
+		-- Write tag (field number + wire type)
+		CALL _pb_wire_write_tag(field_number, wire_type, tag_encoded);
+		SET message = CONCAT(message, tag_encoded);
+
+		-- Write value based on wire type
+		CASE wire_type
+		WHEN 0 THEN -- VARINT
+			SET uint_value = CAST(v_value AS UNSIGNED);
+			CALL _pb_wire_write_varint(uint_value, value_encoded);
+			SET message = CONCAT(message, value_encoded);
+		WHEN 1 THEN -- I64
+			SET uint_value = CAST(v_value AS UNSIGNED);
+			CALL _pb_wire_write_i64(uint_value, value_encoded);
+			SET message = CONCAT(message, value_encoded);
+		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(v_value));
+			CALL _pb_wire_write_len_type(bytes_value, value_encoded);
+			SET message = CONCAT(message, value_encoded);
+		WHEN 5 THEN -- I32
+			SET uint_value = CAST(v_value AS UNSIGNED);
+			CALL _pb_wire_write_i32(uint_value, value_encoded);
+			SET message = CONCAT(message, value_encoded);
+		ELSE
+			SET message_text = CONCAT('_pb_wire_json_to_message: unsupported wire type (', wire_type, ')');
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
+		END CASE;
+	END LOOP;
+
+	CLOSE element_cursor;
+END $$
+
+-- Public function: Convert wire JSON to protobuf binary message
+DROP FUNCTION IF EXISTS pb_wire_json_to_message $$
+CREATE FUNCTION pb_wire_json_to_message(wire_json JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	DECLARE result LONGBLOB;
+	CALL _pb_wire_json_to_message(wire_json, result);
+	RETURN result;
+END $$
+
+-- =============================================================================
+-- Wire JSON Setter Functions (for modifying wire JSON fields)
+-- =============================================================================
+
+-- Helper function to get the next available index for wire JSON elements
+DROP FUNCTION IF EXISTS _pb_wire_json_get_next_index $$
+CREATE FUNCTION _pb_wire_json_get_next_index(wire_json JSON) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE max_index INT;
+	
+	-- Use the same JSON_TABLE pattern as pb_wire_json_as_table to get max index
+	SELECT COALESCE(MAX(i), -1) INTO max_index
+	FROM JSON_TABLE(
+		JSON_EXTRACT(wire_json, '$.*[*]'),
+		'$[*]' COLUMNS (
+			i INT PATH '$.i'
+		)
+	) jt;
+	
+	RETURN max_index + 1;
+END $$
+
+-- Helper function to set a field in wire JSON with proper wire type
+DROP FUNCTION IF EXISTS _pb_wire_json_set_field $$
+CREATE FUNCTION _pb_wire_json_set_field(
+	wire_json JSON,
+	field_number INT,
+	wire_type INT,
+	value JSON,
+	replace_all BOOLEAN
+) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE next_index INT;
+	DECLARE new_element JSON;
+	
+	-- Get the next available index
+	SET next_index = _pb_wire_json_get_next_index(wire_json);
+	
+	-- Create the new wire element
+	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', wire_type, 'v', value);
+	
+	-- If replace_all is true or field doesn't exist, replace the entire field
+	IF replace_all OR NOT JSON_CONTAINS_PATH(wire_json, 'one', field_path) THEN
+		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
+	ELSE
+		-- Append to existing field array
+		RETURN JSON_ARRAY_APPEND(wire_json, field_path, new_element);
+	END IF;
+END $$
+
+-- Private: Clear field (removes the entire field from wire JSON)
+DROP FUNCTION IF EXISTS _pb_wire_json_clear_field $$
+CREATE FUNCTION _pb_wire_json_clear_field(wire_json JSON, field_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	RETURN JSON_REMOVE(wire_json, field_path);
+END $$
+
+-- Private: Set VARINT field (int32, int64, uint32, uint64, sint32, sint64, enum, bool)
+DROP FUNCTION IF EXISTS _pb_wire_json_set_varint_field $$
+CREATE FUNCTION _pb_wire_json_set_varint_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 0, CAST(value AS JSON), TRUE);
+END $$
+
+-- Private: Set I64 field (fixed64, sfixed64, double)
+DROP FUNCTION IF EXISTS _pb_wire_json_set_i64_field $$
+CREATE FUNCTION _pb_wire_json_set_i64_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 1, CAST(value AS JSON), TRUE);
+END $$
+
+-- Private: Set I32 field (fixed32, sfixed32, float)
+DROP FUNCTION IF EXISTS _pb_wire_json_set_i32_field $$
+CREATE FUNCTION _pb_wire_json_set_i32_field(wire_json JSON, field_number INT, value INT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 5, CAST(value AS JSON), TRUE);
+END $$
+
+-- Private: Set length-delimited field (string, bytes, message)
+DROP FUNCTION IF EXISTS _pb_wire_json_set_len_field $$
+CREATE FUNCTION _pb_wire_json_set_len_field(wire_json JSON, field_number INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 2, JSON_QUOTE(TO_BASE64(value)), TRUE);
+END $$
+
+-- Private: Add to repeated VARINT field
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_varint_field $$
+CREATE FUNCTION _pb_wire_json_add_repeated_varint_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 0, CAST(value AS JSON), FALSE);
+END $$
+
+-- Private: Add to repeated I64 field
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_i64_field $$
+CREATE FUNCTION _pb_wire_json_add_repeated_i64_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 1, CAST(value AS JSON), FALSE);
+END $$
+
+-- Private: Add to repeated I32 field
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_i32_field $$
+CREATE FUNCTION _pb_wire_json_add_repeated_i32_field(wire_json JSON, field_number INT, value INT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 5, CAST(value AS JSON), FALSE);
+END $$
+
+-- Private: Add to repeated length-delimited field
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_len_field $$
+CREATE FUNCTION _pb_wire_json_add_repeated_len_field(wire_json JSON, field_number INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 2, JSON_QUOTE(TO_BASE64(value)), FALSE);
 END $$
