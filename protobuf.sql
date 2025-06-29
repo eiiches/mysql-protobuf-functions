@@ -351,6 +351,135 @@ BEGIN
     END IF;
 END $$
 
+-- Missing reverse conversion functions needed for setters
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_int64_as_uint64 $$
+CREATE FUNCTION _pb_util_reinterpret_int64_as_uint64(value BIGINT) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+	RETURN CAST(value AS UNSIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_int32_as_uint32 $$
+CREATE FUNCTION _pb_util_reinterpret_int32_as_uint32(value INT) RETURNS INT UNSIGNED DETERMINISTIC
+BEGIN
+	-- Handle negative values using 2's complement representation
+	IF value < 0 THEN
+		RETURN CAST(4294967296 + value AS UNSIGNED);
+	ELSE
+		RETURN CAST(value AS UNSIGNED);
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_float_as_uint32 $$
+CREATE FUNCTION _pb_util_reinterpret_float_as_uint32(value FLOAT) RETURNS INT UNSIGNED DETERMINISTIC
+BEGIN
+    DECLARE bits BIGINT UNSIGNED;
+    DECLARE sign_bit BIGINT UNSIGNED;
+    DECLARE exponent BIGINT;
+    DECLARE fraction BIGINT UNSIGNED;
+
+    IF value IS NULL THEN
+        RETURN 0x7FC00000; -- NaN
+    ELSEIF value = 0 THEN
+        -- For zero, just return 0 (positive zero)
+        RETURN 0;
+    ELSEIF value != value THEN -- NaN check
+        RETURN 0x7FC00000;
+    END IF;
+
+    SET sign_bit = IF(value < 0, 1, 0);
+    SET value = ABS(value);
+
+    -- Check for infinity
+    IF value >= 3.4028235e+38 THEN
+        RETURN (sign_bit << 31) | 0x7F800000;
+    END IF;
+
+    IF value < 1.1754944e-38 THEN -- subnormal threshold
+        SET exponent = 0;
+        SET fraction = ROUND(value / 1.4012985e-45); -- 2^-149
+        IF fraction > 0x7FFFFF THEN
+            SET fraction = 0x7FFFFF;
+        END IF;
+    ELSE -- normal number
+        SET exponent = FLOOR(LOG(2, value)) + 127;
+        IF exponent < 0 THEN
+            SET exponent = 0;
+            SET fraction = 0;
+        ELSEIF exponent >= 255 THEN
+            RETURN (sign_bit << 31) | 0x7F800000; -- infinity
+        ELSE
+            SET fraction = ROUND((value / POW(2, exponent - 127) - 1) * POW(2, 23));
+            IF fraction > 0x7FFFFF THEN
+                SET fraction = 0x7FFFFF;
+            END IF;
+        END IF;
+    END IF;
+
+    RETURN (sign_bit << 31) | (CAST(exponent AS UNSIGNED) << 23) | (fraction & 0x7FFFFF);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_sint64_as_uint64 $$
+CREATE FUNCTION _pb_util_reinterpret_sint64_as_uint64(value BIGINT) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+	-- ZigZag encoding: maps signed integers to unsigned integers
+	-- For negative values: result = (abs(value) - 1) * 2 + 1
+	-- For non-negative values: result = value * 2
+	IF value < 0 THEN
+		RETURN (CAST(-value AS UNSIGNED) - 1) * 2 + 1;
+	ELSE
+		RETURN CAST(value AS UNSIGNED) * 2;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_double_as_uint64 $$
+CREATE FUNCTION _pb_util_reinterpret_double_as_uint64(value DOUBLE) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+    DECLARE bits BIGINT UNSIGNED;
+    DECLARE sign_bit BIGINT UNSIGNED;
+    DECLARE exponent BIGINT;
+    DECLARE fraction BIGINT UNSIGNED;
+
+    IF value IS NULL THEN
+        RETURN 0x7FF8000000000000; -- NaN
+    ELSEIF value = 0 THEN
+        -- For zero, just return 0 (positive zero)
+        RETURN 0;
+    ELSEIF value != value THEN -- NaN check
+        RETURN 0x7FF8000000000000;
+    END IF;
+
+    SET sign_bit = IF(value < 0, 1, 0);
+    SET value = ABS(value);
+
+    -- Check for infinity
+    IF value >= 1.7976931348623157e+308 THEN
+        RETURN (sign_bit << 63) | 0x7FF0000000000000;
+    END IF;
+
+    IF value < 2.2250738585072014e-308 THEN -- subnormal threshold
+        SET exponent = 0;
+        SET fraction = ROUND(value / 4.9406564584124654e-324); -- 2^-1074
+        IF fraction > 0xFFFFFFFFFFFFF THEN
+            SET fraction = 0xFFFFFFFFFFFFF;
+        END IF;
+    ELSE -- normal number
+        SET exponent = FLOOR(LOG(2, value)) + 1023;
+        IF exponent < 0 THEN
+            SET exponent = 0;
+            SET fraction = 0;
+        ELSEIF exponent >= 2047 THEN
+            RETURN (sign_bit << 63) | 0x7FF0000000000000; -- infinity
+        ELSE
+            SET fraction = ROUND((value / POW(2, exponent - 1023) - 1) * POW(2, 52));
+            IF fraction > 0xFFFFFFFFFFFFF THEN
+                SET fraction = 0xFFFFFFFFFFFFF;
+            END IF;
+        END IF;
+    END IF;
+
+    RETURN (sign_bit << 63) | (CAST(exponent AS UNSIGNED) << 52) | (fraction & 0xFFFFFFFFFFFFF);
+END $$
+
 DROP FUNCTION IF EXISTS _pb_wire_get_field_number_from_tag $$
 CREATE FUNCTION _pb_wire_get_field_number_from_tag(tag INT) RETURNS INT DETERMINISTIC
 BEGIN
@@ -1062,4 +1191,111 @@ BEGIN
 	DECLARE result LONGBLOB;
 	CALL _pb_wire_json_to_message(wire_json, result);
 	RETURN result;
+END $$
+
+-- =============================================================================
+-- Wire JSON Setter Functions (for modifying wire JSON fields)
+-- =============================================================================
+
+-- Helper function to get the next available index for wire JSON elements
+DROP FUNCTION IF EXISTS _pb_wire_json_get_next_index $$
+CREATE FUNCTION _pb_wire_json_get_next_index(wire_json JSON) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE max_index INT;
+	
+	-- Use the same JSON_TABLE pattern as pb_wire_json_as_table to get max index
+	SELECT COALESCE(MAX(i), -1) INTO max_index
+	FROM JSON_TABLE(
+		JSON_EXTRACT(wire_json, '$.*[*]'),
+		'$[*]' COLUMNS (
+			i INT PATH '$.i'
+		)
+	) jt;
+	
+	RETURN max_index + 1;
+END $$
+
+-- Helper function to set a field in wire JSON with proper wire type
+DROP FUNCTION IF EXISTS _pb_wire_json_set_field $$
+CREATE FUNCTION _pb_wire_json_set_field(
+	wire_json JSON,
+	field_number INT,
+	wire_type INT,
+	value JSON,
+	replace_all BOOLEAN
+) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE next_index INT;
+	DECLARE new_element JSON;
+	
+	-- Get the next available index
+	SET next_index = _pb_wire_json_get_next_index(wire_json);
+	
+	-- Create the new wire element
+	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', wire_type, 'v', value);
+	
+	-- If replace_all is true or field doesn't exist, replace the entire field
+	IF replace_all OR NOT JSON_CONTAINS_PATH(wire_json, 'one', field_path) THEN
+		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
+	ELSE
+		-- Append to existing field array
+		RETURN JSON_ARRAY_APPEND(wire_json, field_path, new_element);
+	END IF;
+END $$
+
+-- Private: Set VARINT field (int32, int64, uint32, uint64, sint32, sint64, enum, bool)
+DROP FUNCTION IF EXISTS _pb_wire_json_set_varint_field $$
+CREATE FUNCTION _pb_wire_json_set_varint_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 0, CAST(value AS JSON), TRUE);
+END $$
+
+-- Private: Set I64 field (fixed64, sfixed64, double)
+DROP FUNCTION IF EXISTS _pb_wire_json_set_i64_field $$
+CREATE FUNCTION _pb_wire_json_set_i64_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 1, CAST(value AS JSON), TRUE);
+END $$
+
+-- Private: Set I32 field (fixed32, sfixed32, float)
+DROP FUNCTION IF EXISTS _pb_wire_json_set_i32_field $$
+CREATE FUNCTION _pb_wire_json_set_i32_field(wire_json JSON, field_number INT, value INT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 5, CAST(value AS JSON), TRUE);
+END $$
+
+-- Private: Set length-delimited field (string, bytes, message)
+DROP FUNCTION IF EXISTS _pb_wire_json_set_len_field $$
+CREATE FUNCTION _pb_wire_json_set_len_field(wire_json JSON, field_number INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 2, JSON_QUOTE(TO_BASE64(value)), TRUE);
+END $$
+
+-- Private: Add to repeated VARINT field
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_varint_field $$
+CREATE FUNCTION _pb_wire_json_add_repeated_varint_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 0, CAST(value AS JSON), FALSE);
+END $$
+
+-- Private: Add to repeated I64 field
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_i64_field $$
+CREATE FUNCTION _pb_wire_json_add_repeated_i64_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 1, CAST(value AS JSON), FALSE);
+END $$
+
+-- Private: Add to repeated I32 field
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_i32_field $$
+CREATE FUNCTION _pb_wire_json_add_repeated_i32_field(wire_json JSON, field_number INT, value INT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 5, CAST(value AS JSON), FALSE);
+END $$
+
+-- Private: Add to repeated length-delimited field
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_len_field $$
+CREATE FUNCTION _pb_wire_json_add_repeated_len_field(wire_json JSON, field_number INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 2, JSON_QUOTE(TO_BASE64(value)), FALSE);
 END $$
