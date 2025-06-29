@@ -70,6 +70,16 @@ func (this *ProtoTestSupport) JsonToDynamicMessage(name protoreflect.FullName, j
 	return dynamicMessage
 }
 
+func (this *ProtoTestSupport) GetMessageDescriptor(name protoreflect.FullName) protoreflect.MessageDescriptor {
+	return this.GetMessageType(name).Descriptor()
+}
+
+func (this *ProtoTestSupport) GetMessageType(name protoreflect.FullName) protoreflect.MessageType {
+	messageType, err := this.Files.AsResolver().FindMessageByName(name)
+	this.G.Expect(err).NotTo(HaveOccurred())
+	return messageType
+}
+
 func (this *ProtoTestSupport) JsonToProtobuf(name protoreflect.FullName, json string) []byte {
 	dynamicMessage := this.JsonToDynamicMessage(name, json)
 

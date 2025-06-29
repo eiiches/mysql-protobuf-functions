@@ -31,8 +31,8 @@ func TestUtilReinterpretUint64AsDouble(t *testing.T) {
 	RunTestThatExpression(t, "_pb_util_reinterpret_uint64_as_double(0b0000000000001111111111111111111111111111111111111111111111111111)").IsEqualToDouble(2.2250738585072009e-308)
 	RunTestThatExpression(t, "_pb_util_reinterpret_uint64_as_double(0b0000000000010000000000000000000000000000000000000000000000000000)").IsEqualToDouble(2.2250738585072014e-308)
 	RunTestThatExpression(t, "_pb_util_reinterpret_uint64_as_double(0b0111111111101111111111111111111111111111111111111111111111111111)").IsEqualToDouble(1.7976931348623157e+308)
-	RunTestThatExpression(t, "_pb_util_reinterpret_uint64_as_double(0b0000000000000000000000000000000000000000000000000000000000000000)").IsEqualToDouble(0)
-	RunTestThatExpression(t, "_pb_util_reinterpret_uint64_as_double(0b1000000000000000000000000000000000000000000000000000000000000000)").IsEqualToDouble(-0)
+	RunTestThatExpression(t, "_pb_util_reinterpret_uint64_as_double(0b0000000000000000000000000000000000000000000000000000000000000000)").IsPositiveZero()
+	RunTestThatExpression(t, "_pb_util_reinterpret_uint64_as_double(0b1000000000000000000000000000000000000000000000000000000000000000)").IsNegativeZero()
 	RunTestThatExpression(t, "_pb_util_reinterpret_uint64_as_double(0b0111111111110000000000000000000000000000000000000000000000000000)").IsNull() /* +Inf */
 	RunTestThatExpression(t, "_pb_util_reinterpret_uint64_as_double(0b1111111111110000000000000000000000000000000000000000000000000000)").IsNull() /* -Inf */
 	RunTestThatExpression(t, "_pb_util_reinterpret_uint64_as_double(0b0111111111110000000000000000000000000000000000000000000000000001)").IsNull() /* sNaN */
@@ -54,8 +54,8 @@ func TestUtilReinterpretUint32AsFloat(t *testing.T) {
 	RunTestThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x3F800000)").IsEqualToFloat(1)                // 1.0
 	RunTestThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x3F800001)").IsEqualToFloat(1.0000001192)     // Smallest number larger than one
 	RunTestThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0xC0000000)").IsEqualToFloat(-2)               // -2.0
-	RunTestThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x00000000)").IsEqualToFloat(0)                // +0.0
-	RunTestThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x80000000)").IsEqualToFloat(-0)               // -0.0
+	RunTestThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x00000000)").IsPositiveZero()                 // +0.0
+	RunTestThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x80000000)").IsNegativeZero()                 // -0.0
 
 	// Special values
 	RunTestThatExpression(t, "_pb_util_reinterpret_uint32_as_float(0x7F800000)").IsNull() /* +Inf */

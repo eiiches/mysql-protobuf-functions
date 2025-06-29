@@ -6,6 +6,7 @@ require (
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/onsi/gomega v1.37.0
+	github.com/samber/lo v1.51.0
 	github.com/urfave/cli/v3 v3.3.8
 	google.golang.org/protobuf v1.36.5
 )
