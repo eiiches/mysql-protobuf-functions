@@ -911,3 +911,155 @@ CREATE FUNCTION _pb_util_cast_int64_as_int32(value BIGINT) RETURNS INT DETERMINI
 BEGIN
 	RETURN value;
 END $$
+
+-- =============================================================================
+-- Wire Encoding Functions (for converting back to protobuf binary format)
+-- =============================================================================
+
+-- Convert unsigned integer to binary (little-endian)
+DROP FUNCTION IF EXISTS _pb_util_uint32_to_bin $$
+CREATE FUNCTION _pb_util_uint32_to_bin(value INT UNSIGNED) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN UNHEX(CONCAT(
+		LPAD(HEX(value & 0xFF), 2, '0'),
+		LPAD(HEX((value >> 8) & 0xFF), 2, '0'),
+		LPAD(HEX((value >> 16) & 0xFF), 2, '0'),
+		LPAD(HEX((value >> 24) & 0xFF), 2, '0')
+	));
+END $$
+
+-- Convert unsigned 64-bit integer to binary (little-endian)
+DROP FUNCTION IF EXISTS _pb_util_uint64_to_bin $$
+CREATE FUNCTION _pb_util_uint64_to_bin(value BIGINT UNSIGNED) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	DECLARE low32 INT UNSIGNED DEFAULT value & 0xFFFFFFFF;
+	DECLARE high32 INT UNSIGNED DEFAULT (value >> 32) & 0xFFFFFFFF;
+	RETURN CONCAT(_pb_util_uint32_to_bin(low32), _pb_util_uint32_to_bin(high32));
+END $$
+
+-- Encode varint (unsigned integer with variable length encoding)
+DROP PROCEDURE IF EXISTS _pb_wire_write_varint $$
+CREATE PROCEDURE _pb_wire_write_varint(IN value BIGINT UNSIGNED, OUT encoded LONGBLOB)
+BEGIN
+	DECLARE result LONGBLOB DEFAULT _binary '';
+	WHILE value >= 0x80 DO
+		SET result = CONCAT(result, CHAR((value & 0x7F) | 0x80));
+		SET value = value >> 7;
+	END WHILE;
+	SET result = CONCAT(result, CHAR(value & 0x7F));
+	SET encoded = result;
+END $$
+
+-- Write tag (field number + wire type)
+DROP PROCEDURE IF EXISTS _pb_wire_write_tag $$
+CREATE PROCEDURE _pb_wire_write_tag(IN field_number INT, IN wire_type INT, OUT encoded LONGBLOB)
+BEGIN
+	DECLARE tag BIGINT UNSIGNED DEFAULT (field_number << 3) | wire_type;
+	CALL _pb_wire_write_varint(tag, encoded);
+END $$
+
+-- Write 32-bit integer (little-endian)
+DROP PROCEDURE IF EXISTS _pb_wire_write_i32 $$
+CREATE PROCEDURE _pb_wire_write_i32(IN value INT UNSIGNED, OUT encoded LONGBLOB)
+BEGIN
+	SET encoded = _pb_util_uint32_to_bin(value);
+END $$
+
+-- Write 64-bit integer (little-endian)
+DROP PROCEDURE IF EXISTS _pb_wire_write_i64 $$
+CREATE PROCEDURE _pb_wire_write_i64(IN value BIGINT UNSIGNED, OUT encoded LONGBLOB)
+BEGIN
+	SET encoded = _pb_util_uint64_to_bin(value);
+END $$
+
+-- Write length-delimited data (length prefix + data)
+DROP PROCEDURE IF EXISTS _pb_wire_write_len_type $$
+CREATE PROCEDURE _pb_wire_write_len_type(IN data LONGBLOB, OUT encoded LONGBLOB)
+BEGIN
+	DECLARE length_encoded LONGBLOB;
+	CALL _pb_wire_write_varint(LENGTH(data), length_encoded);
+	SET encoded = CONCAT(length_encoded, data);
+END $$
+
+-- Main function: Convert wire JSON to protobuf binary message
+DROP PROCEDURE IF EXISTS _pb_wire_json_to_message $$
+CREATE PROCEDURE _pb_wire_json_to_message(IN wire_json JSON, OUT message LONGBLOB)
+BEGIN
+	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
+
+	DECLARE done INT DEFAULT FALSE;
+	DECLARE element_index INT;
+	DECLARE field_number INT;
+	DECLARE wire_type INT;
+	DECLARE v_value JSON;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE tag_encoded LONGBLOB;
+	DECLARE value_encoded LONGBLOB;
+	DECLARE message_text TEXT;
+
+	-- Cursor to read elements sorted by index 'i' using JSON_TABLE
+	DECLARE element_cursor CURSOR FOR
+		SELECT i, n, t, v
+		FROM JSON_TABLE(
+			JSON_EXTRACT(wire_json, '$.*[*]'),
+			'$[*]' COLUMNS (
+				i INT PATH '$.i',
+				n INT PATH '$.n',
+				t INT PATH '$.t',
+				v JSON PATH '$.v'
+			)
+		) jt
+		ORDER BY i;
+
+	DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+	SET message = _binary '';
+
+	OPEN element_cursor;
+
+	read_loop: LOOP
+		FETCH element_cursor INTO element_index, field_number, wire_type, v_value;
+		IF done THEN
+			LEAVE read_loop;
+		END IF;
+
+		-- Write tag (field number + wire type)
+		CALL _pb_wire_write_tag(field_number, wire_type, tag_encoded);
+		SET message = CONCAT(message, tag_encoded);
+
+		-- Write value based on wire type
+		CASE wire_type
+		WHEN 0 THEN -- VARINT
+			SET uint_value = CAST(v_value AS UNSIGNED);
+			CALL _pb_wire_write_varint(uint_value, value_encoded);
+			SET message = CONCAT(message, value_encoded);
+		WHEN 1 THEN -- I64
+			SET uint_value = CAST(v_value AS UNSIGNED);
+			CALL _pb_wire_write_i64(uint_value, value_encoded);
+			SET message = CONCAT(message, value_encoded);
+		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(v_value));
+			CALL _pb_wire_write_len_type(bytes_value, value_encoded);
+			SET message = CONCAT(message, value_encoded);
+		WHEN 5 THEN -- I32
+			SET uint_value = CAST(v_value AS UNSIGNED);
+			CALL _pb_wire_write_i32(uint_value, value_encoded);
+			SET message = CONCAT(message, value_encoded);
+		ELSE
+			SET message_text = CONCAT('_pb_wire_json_to_message: unsupported wire type (', wire_type, ')');
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
+		END CASE;
+	END LOOP;
+
+	CLOSE element_cursor;
+END $$
+
+-- Public function: Convert wire JSON to protobuf binary message
+DROP FUNCTION IF EXISTS pb_wire_json_to_message $$
+CREATE FUNCTION pb_wire_json_to_message(wire_json JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	DECLARE result LONGBLOB;
+	CALL _pb_wire_json_to_message(wire_json, result);
+	RETURN result;
+END $$
