@@ -379,13 +379,20 @@ BEGIN
 
     IF value IS NULL THEN
         RETURN 0x7FC00000; -- NaN
-    ELSEIF value = 0 THEN
-        -- For zero, just return 0 (positive zero)
-        RETURN 0;
     ELSEIF value != value THEN -- NaN check
         RETURN 0x7FC00000;
     END IF;
 
+    -- Handle zero values (including negative zero)
+    IF value = 0 THEN
+        -- Use string conversion to detect negative zero
+        -- Negative zero shows as "-0" in string representation
+        SET sign_bit = IF(CAST(value AS CHAR) LIKE '-%', 1, 0);
+        -- Return signed zero: +0.0 = 0x00000000, -0.0 = 0x80000000
+        RETURN sign_bit << 31;
+    END IF;
+    
+    -- Capture sign for non-zero values
     SET sign_bit = IF(value < 0, 1, 0);
     SET value = ABS(value);
 
@@ -425,7 +432,12 @@ BEGIN
 	-- For negative values: result = (abs(value) - 1) * 2 + 1
 	-- For non-negative values: result = value * 2
 	IF value < 0 THEN
-		RETURN (CAST(-value AS UNSIGNED) - 1) * 2 + 1;
+		-- Handle minimum int64 (-9223372036854775808) specially to avoid overflow
+		IF value = -9223372036854775808 THEN
+			RETURN 18446744073709551615; -- (2^63 - 1) * 2 + 1 = 2^64 - 1
+		ELSE
+			RETURN (CAST(-value AS UNSIGNED) - 1) * 2 + 1;
+		END IF;
 	ELSE
 		RETURN CAST(value AS UNSIGNED) * 2;
 	END IF;
@@ -441,13 +453,20 @@ BEGIN
 
     IF value IS NULL THEN
         RETURN 0x7FF8000000000000; -- NaN
-    ELSEIF value = 0 THEN
-        -- For zero, just return 0 (positive zero)
-        RETURN 0;
     ELSEIF value != value THEN -- NaN check
         RETURN 0x7FF8000000000000;
     END IF;
 
+    -- Handle zero values (including negative zero)
+    IF value = 0 THEN
+        -- Use string conversion to detect negative zero
+        -- Negative zero shows as "-0" in string representation
+        SET sign_bit = IF(CAST(value AS CHAR) LIKE '-%', 1, 0);
+        -- Return signed zero: +0.0 = 0x0000000000000000, -0.0 = 0x8000000000000000
+        RETURN sign_bit << 63;
+    END IF;
+    
+    -- Capture sign for non-zero values
     SET sign_bit = IF(value < 0, 1, 0);
     SET value = ABS(value);
 

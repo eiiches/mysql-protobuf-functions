@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"github.com/eiiches/mysql-protobuf-functions/internal/gomega/gfloat"
 	"github.com/eiiches/mysql-protobuf-functions/internal/gomega/gmysql"
 	"github.com/eiiches/mysql-protobuf-functions/internal/moresql"
 	"github.com/onsi/gomega/types"
@@ -173,6 +174,18 @@ func (this *ExpressionTestContext) IsEqualToDouble(expected float64) {
 
 func (this *ExpressionTestContext) IsEqualToFloat(expected float32) {
 	runAssertThatExpressionIsEqualTo[float32](this.RunFn, "IsEqualToFloat", expected, this.Expression, this.Args...)
+}
+
+func (this *ExpressionTestContext) IsNegativeZero() {
+	this.RunFn(fmt.Sprintf("RunTestThatExpression(`%s`, %v...).IsNegativeZero()", this.Expression, this.Args), func(t *testing.T) {
+		assertThatExpressionTo[float64](t, gfloat.BeNegativeZero(), this.Expression, this.Args...)
+	})
+}
+
+func (this *ExpressionTestContext) IsPositiveZero() {
+	this.RunFn(fmt.Sprintf("RunTestThatExpression(`%s`, %v...).IsPositiveZero()", this.Expression, this.Args), func(t *testing.T) {
+		assertThatExpressionTo[float64](t, gfloat.BePositiveZero(), this.Expression, this.Args...)
+	})
 }
 
 func (this *ExpressionTestContext) IsEqualTo(expected interface{}) {

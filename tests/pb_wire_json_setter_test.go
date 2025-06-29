@@ -74,7 +74,7 @@ func TestWireJsonAddRepeatedFunctions(t *testing.T) {
 		IsEqualToJson(`{"1": [{"i": 0, "n": 1, "t": 1, "v": 18446744073709551160}]}`)
 
 	RunTestThatExpression(t, "pb_wire_json_add_repeated_double_field('{}', 1, 2.5)").
-		IsEqualToJson(`{"1": [{"i": 0, "n": 1, "t": 1, "v": 4611686018427387904}]}`)
+		IsEqualToJson(`{"1": [{"i": 0, "n": 1, "t": 1, "v": 4612811918334230528}]}`)
 
 	// Test LEN repeated types
 	RunTestThatExpression(t, "pb_wire_json_add_repeated_string_field('{}', 2, 'first')").
