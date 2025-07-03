@@ -195,7 +195,7 @@ SELECT pb_message_add_repeated_message_field(
   pb_data,
   4, -- phones field
   pb_message_set_enum_field(
-    pb_message_set_string_field(_binary '', 1, '+81-00-0000-0001'), -- number field
+    pb_message_set_string_field(pb_message_new(), 1, '+81-00-0000-0001'), -- number field
     2, 1 -- type = PHONE_TYPE_MOBILE
   )
 ) AS person_with_phone FROM Example LIMIT 1;

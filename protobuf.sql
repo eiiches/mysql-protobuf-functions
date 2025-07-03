@@ -808,6 +808,13 @@ BEGIN
 	END WHILE;
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_new $$
+CREATE FUNCTION pb_message_new() RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	-- Return an empty protobuf message
+	RETURN _binary X'';
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_to_wire_json $$
 CREATE FUNCTION pb_message_to_wire_json(buf LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -1200,6 +1207,13 @@ BEGIN
 	END LOOP;
 
 	CLOSE element_cursor;
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_new $$
+CREATE FUNCTION pb_wire_json_new() RETURNS JSON DETERMINISTIC
+BEGIN
+	-- Return an empty wire JSON object
+	RETURN JSON_OBJECT();
 END $$
 
 -- Public function: Convert wire JSON to protobuf binary message
