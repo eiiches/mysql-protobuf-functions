@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/urfave/cli/v3"
 	"log"
 	"os"
 	"text/template"
+
+	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/urfave/cli/v3"
 )
 
 type AccessProcedure struct {
@@ -40,7 +41,6 @@ type RepeatedAsJsonAccessor struct {
 }
 
 func generateRepeatedNumbersAsJson() {
-
 	accessors := []*RepeatedAsJsonAccessor{
 		{
 			ProtoType:           "int32",

@@ -16,6 +16,7 @@ jobs:
           go.sum
     - name: Test
       run: |
-        set -exuo pipefail
-        make start-mysql
-        make test
+        make start-mysql test
+    - name: Format Check
+      run: |
+        go tool gofumpt -d .

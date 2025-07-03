@@ -2,6 +2,10 @@ package testutils
 
 import (
 	"context"
+	"maps"
+	"slices"
+	"testing"
+
 	"github.com/bufbuild/protocompile"
 	"github.com/bufbuild/protocompile/linker"
 	"github.com/bufbuild/protocompile/wellknownimports"
@@ -11,9 +15,6 @@ import (
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
-	"maps"
-	"slices"
-	"testing"
 )
 
 type ProtoTestSupport struct {

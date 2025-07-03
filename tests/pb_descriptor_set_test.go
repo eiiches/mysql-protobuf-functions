@@ -1,6 +1,8 @@
 package main
 
 import (
+	"testing"
+
 	"github.com/eiiches/mysql-protobuf-functions/internal/protoreflectutils"
 	. "github.com/onsi/gomega"
 	"google.golang.org/protobuf/proto"
@@ -16,7 +18,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/typepb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-	"testing"
 )
 
 func TestDescriptorSetLoadWkt(t *testing.T) {

@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
 	"github.com/eiiches/mysql-protobuf-functions/internal/testutils"
 	. "github.com/onsi/gomega"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"testing"
 )
 
 func testMessageToJson(t *testing.T, fieldDefinition string, input string) {

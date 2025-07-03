@@ -2,6 +2,7 @@ package gmysql
 
 import (
 	"fmt"
+
 	"github.com/go-sql-driver/mysql"
 	"github.com/onsi/gomega/types"
 )

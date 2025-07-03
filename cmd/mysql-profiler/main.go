@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"database/sql"
-	"github.com/eiiches/mysql-protobuf-functions/internal/mysqlprofiler"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/urfave/cli/v3"
 	"log"
 	"os"
 	"time"
+
+	"github.com/eiiches/mysql-protobuf-functions/internal/mysqlprofiler"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/urfave/cli/v3"
 )
 
 func main() {

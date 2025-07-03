@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/eiiches/mysql-protobuf-functions/internal/gomega/gmysql"
 	"github.com/eiiches/mysql-protobuf-functions/internal/moresql"
 	"github.com/onsi/gomega/types"
-	"testing"
-	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	. "github.com/onsi/gomega"
@@ -220,6 +221,7 @@ func (this *ExpressionTestContext) ToSucceed() {
 		assertThatExpressionTo[interface{}](t, SatisfyAny(BeNil(), Not(BeNil())), this.Expression, this.Args...)
 	})
 }
+
 func (this *ExpressionTestContext) ToFailWithSignalException(state string, containsMessage string) {
 	this.RunFn(fmt.Sprintf("RunTestThatExpression(`%s`, %v...).ToFailWithSignalException(%v, %v)", this.Expression, this.Args, state, containsMessage), func(t *testing.T) {
 		assertThatExpressionToFailWith(t, gmysql.BeMySQLError(1644, state, ContainSubstring(containsMessage)), this.Expression, this.Args...)
