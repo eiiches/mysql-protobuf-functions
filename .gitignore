@@ -1,2 +1,8 @@
 /.idea
 /flamegraph-*.svg
+/*.sql.instrumented
+/coverage.lcov
+/coverage-html/
+/perf.data
+/perf.data.old
+/mysql.pid

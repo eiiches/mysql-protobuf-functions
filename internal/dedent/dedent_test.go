@@ -1,9 +1,10 @@
 package dedent_test
 
 import (
+	"testing"
+
 	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
 	. "github.com/onsi/gomega"
-	"testing"
 )
 
 func TestPipe(t *testing.T) {

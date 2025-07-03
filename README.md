@@ -3,13 +3,14 @@
 [![MySQL Version](https://img.shields.io/badge/MySQL-8.0.17%2B-blue)](https://dev.mysql.com/downloads/mysql/)
 [![Aurora MySQL](https://img.shields.io/badge/Aurora%20MySQL-3.04.0%2B-orange)](https://aws.amazon.com/rds/aurora/)
 
-A comprehensive library of MySQL stored functions and procedures for working with Protocol Buffers (protobuf) encoded data directly within MySQL databases. This project enables you to parse and query protobuf messages without requiring external applications or services.
+A comprehensive library of MySQL stored functions and procedures for working with Protocol Buffers (protobuf) encoded data directly within MySQL databases. This project enables you to parse, query, and manipulate protobuf messages without requiring external applications or services.
 
 > ⚠️ **Early Development Warning**: This project is in active development and may introduce breaking changes.
 
 ## Features
 
 - 🔍 **Field Access**: Extract specific fields from protobuf messages using field numbers
+- ✏️ **Message Manipulation**: Create, modify, and update protobuf messages directly in MySQL - set fields, add/remove repeated elements, and clear fields
 - 🔄 **JSON Conversion**: Convert protobuf messages to JSON format for easier debugging
 - 🛠️ **Pure MySQL Implementation**: Written entirely in MySQL stored functions and procedures - no native libraries or external dependencies required
 
@@ -178,6 +179,44 @@ CREATE VIEW ExampleDebugView AS
 "Agent Smith"
 ```
 
+### Modifying Messages
+
+You can modify existing protobuf messages by setting, adding, or clearing fields:
+
+```sql
+-- Set individual fields
+SELECT pb_message_set_int32_field(
+  pb_message_set_string_field(pb_data, 1, 'New Name'),
+  2, 25
+) AS updated_person FROM Example LIMIT 1;
+
+-- Add elements to repeated fields (create a new phone number)
+SELECT pb_message_add_repeated_message_field(
+  pb_data,
+  4, -- phones field
+  pb_message_set_enum_field(
+    pb_message_set_string_field(pb_message_new(), 1, '+81-00-0000-0001'), -- number field
+    2, 1 -- type = PHONE_TYPE_MOBILE
+  )
+) AS person_with_phone FROM Example LIMIT 1;
+
+-- Clear fields
+SELECT pb_message_clear_string_field(
+  pb_data,
+  3  -- Clear email field
+) AS person_no_email FROM Example LIMIT 1;
+
+-- Modify specific elements in repeated fields
+SELECT pb_message_set_repeated_message_field(
+  pb_data,
+  4, 0, -- phones[0]
+  pb_message_set_enum_field(
+    pb_message_get_repeated_message_field(pb_data, 4, 0), -- get existing phone (phones[0])
+    2, 1 -- set type = PHONE_TYPE_MOBILE
+  )
+) AS person_mobile_phone FROM Example LIMIT 1;
+```
+
 ### Advanced: Indexing Protobuf Fields
 
 While MySQL doesn't allow using stored functions in functional indexes or generated columns, you can use `TRIGGER` to mimic a generated column and create an `INDEX` or any other constraints on that generated column.
@@ -267,17 +306,32 @@ TODO: Multi-Valued Index on Protobuf Fields
 
 ## Roadmap
 
-- [ ] **Setter Functions**: Add functions to modify protobuf messages
-  - `pb_message_set_{type}_field(data, field_number, value)`
-  - `pb_message_add_repeated_{type}_field(data, field_number, value)`
-  - `pb_message_set_repeated_{type}_field(data, field_number, repeated_index, value)`
-  - `pb_message_clear_{type}_field(data, field_number)`
-  - `pb_message_clear_repeated_{type}_field(data, field_number)`
 - [ ] **[Editions](https://protobuf.dev/editions/overview/) Support in JSON Conversion**
 
 ## Limitations
 
 - [Groups](https://protobuf.dev/programming-guides/encoding/#groups) are not supported.
+
+## Known Issues
+
+### MySQL Stored Program Cache Bug
+
+**Issue**: When many stored functions are used in a single connection and the `stored_program_cache` limit is reached, MySQL exhibits unpredictable behavior:
+
+- **MySQL 9.3.0**: Functions silently return `NULL` instead of the expected result
+- **MySQL 8.0.x**: Functions fail with `Function does not exist` error
+
+**Root Cause**: [MySQL Bug #95825](https://bugs.mysql.com/bug.php?id=95825)
+
+**Workaround**: Increase the stored program cache size:
+```sql
+SET GLOBAL stored_program_cache = 512;  -- Default is 256
+```
+
+**Impact**:
+- Most applications won't encounter this issue as the default cache size (256) is sufficient for typical usage
+- This primarily affects comprehensive test suites or applications using many different protobuf functions in a single connection
+- Related discussion: [Percona Forums](https://forums.percona.com/t/intermittent-stored-function-does-not-exist-problem/5143)
 
 ## Contributing
 

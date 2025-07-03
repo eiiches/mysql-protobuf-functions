@@ -43,3 +43,39 @@ flamegraph:
 .PHONY: ensure-test-database
 ensure-test-database: download-mysql
 	$(MYSQL_COMMAND_NO_DB) -e 'CREATE DATABASE IF NOT EXISTS test';
+
+.PHONY: coverage
+coverage: instrument-files load-instrumented-files run-coverage-tests generate-coverage-report
+	xdg-open coverage-html/index.html
+
+.PHONY: instrument-files
+instrument-files:
+	go run cmd/mysql-coverage/main.go instrument protobuf.sql protobuf-accessors.sql protobuf-descriptor.sql protobuf-json.sql
+
+.PHONY: load-instrumented-files
+load-instrumented-files: instrument-files ensure-test-database
+	$(MYSQL_COMMAND) < purge.sql
+	$(MYSQL_COMMAND) < debug.sql
+	go run cmd/mysql-coverage/main.go init --database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)"
+	$(MYSQL_COMMAND) < protobuf.sql.instrumented
+	$(MYSQL_COMMAND) < protobuf-accessors.sql.instrumented
+	$(MYSQL_COMMAND) < protobuf-descriptor.sql.instrumented
+	$(MYSQL_COMMAND) < protobuf-json.sql.instrumented
+
+.PHONY: run-coverage-tests
+run-coverage-tests: load-instrumented-files
+	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" $${GO_TEST_FLAGS:-}
+
+.PHONY: generate-coverage-report
+generate-coverage-report: run-coverage-tests
+	go run cmd/mysql-coverage/main.go lcov --database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" --output coverage.lcov
+	genhtml coverage.lcov --output-directory coverage-html --title "MySQL Protobuf Functions Coverage Report"
+	@echo ""
+	@echo "=== COVERAGE REPORT GENERATED ==="
+	@echo "HTML Report: coverage-html/index.html"
+	@echo "LCOV Data: coverage.lcov"
+	@echo ""
+
+.PHONY: format
+format:
+	go tool gofumpt -l -w .

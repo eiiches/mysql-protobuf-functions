@@ -2,8 +2,9 @@ package moresql
 
 import (
 	"database/sql"
-	"github.com/eiiches/mysql-protobuf-functions/internal/caseconv"
 	"reflect"
+
+	"github.com/eiiches/mysql-protobuf-functions/internal/caseconv"
 )
 
 func ScanStruct[T any](rows *sql.Rows) (*T, error) {

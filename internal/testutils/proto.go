@@ -2,6 +2,10 @@ package testutils
 
 import (
 	"context"
+	"maps"
+	"slices"
+	"testing"
+
 	"github.com/bufbuild/protocompile"
 	"github.com/bufbuild/protocompile/linker"
 	"github.com/bufbuild/protocompile/wellknownimports"
@@ -11,9 +15,6 @@ import (
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
-	"maps"
-	"slices"
-	"testing"
 )
 
 type ProtoTestSupport struct {
@@ -67,6 +68,16 @@ func (this *ProtoTestSupport) JsonToDynamicMessage(name protoreflect.FullName, j
 	this.G.Expect(protojson.Unmarshal([]byte(json), dynamicMessage.Interface())).To(Succeed())
 
 	return dynamicMessage
+}
+
+func (this *ProtoTestSupport) GetMessageDescriptor(name protoreflect.FullName) protoreflect.MessageDescriptor {
+	return this.GetMessageType(name).Descriptor()
+}
+
+func (this *ProtoTestSupport) GetMessageType(name protoreflect.FullName) protoreflect.MessageType {
+	messageType, err := this.Files.AsResolver().FindMessageByName(name)
+	this.G.Expect(err).NotTo(HaveOccurred())
+	return messageType
 }
 
 func (this *ProtoTestSupport) JsonToProtobuf(name protoreflect.FullName, json string) []byte {

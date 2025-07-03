@@ -3,9 +3,10 @@ package mysqlprofiler
 import (
 	"database/sql"
 	"fmt"
-	"github.com/eiiches/mysql-protobuf-functions/internal/moremaps"
 	"math"
 	"strings"
+
+	"github.com/eiiches/mysql-protobuf-functions/internal/moremaps"
 )
 
 func RunProfile(db *sql.DB) {

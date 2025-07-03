@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
 	"github.com/eiiches/mysql-protobuf-functions/internal/testutils"
 	. "github.com/onsi/gomega"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"testing"
 )
 
 func testMessageToJson(t *testing.T, fieldDefinition string, input string) {
@@ -49,7 +50,7 @@ func testMessageToJson(t *testing.T, fieldDefinition string, input string) {
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(expectedJson).To(MatchJSON(input), "Test case is invalid: input should match the output of protojson.Marshal(input).")
 
-	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?)", descriptorSetName, typeName, serializedBinary).IsEqualToJson(string(expectedJson))
+	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?)", descriptorSetName, typeName, serializedBinary).IsEqualToJsonString(string(expectedJson))
 }
 
 func TestMessageToJsonSingularFields(t *testing.T) {
