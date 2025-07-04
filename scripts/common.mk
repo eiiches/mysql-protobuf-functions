@@ -16,7 +16,14 @@ reload: build ensure-test-database
 
 .PHONY: purge
 purge: ensure-test-database
-	$(MYSQL_COMMAND) < purge.sql
+	$(MYSQL_COMMAND) -N -B -e "SELECT CONCAT('DROP ', r.routine_type, ' IF EXISTS ', r.routine_name, ';') AS DROP_STATEMENTS FROM information_schema.routines r WHERE r.routine_schema = database() AND (r.routine_name LIKE 'pb_%' OR r.routine_name LIKE '_pb_%');" | $(MYSQL_COMMAND)
+	$(MYSQL_COMMAND) -e "DROP TABLE IF EXISTS _Proto_OneofDescriptor;"
+	$(MYSQL_COMMAND) -e "DROP TABLE IF EXISTS _Proto_EnumValueDescriptor;"
+	$(MYSQL_COMMAND) -e "DROP TABLE IF EXISTS _Proto_FieldDescriptor;"
+	$(MYSQL_COMMAND) -e "DROP TABLE IF EXISTS _Proto_EnumDescriptor;"
+	$(MYSQL_COMMAND) -e "DROP TABLE IF EXISTS _Proto_MessageDescriptor;"
+	$(MYSQL_COMMAND) -e "DROP TABLE IF EXISTS _Proto_FileDescriptor;"
+	$(MYSQL_COMMAND) -e "DROP TABLE IF EXISTS _Proto_FileDescriptorSet;"
 
 .PHONY: show-logs
 show-logs: ensure-test-database
@@ -45,7 +52,7 @@ ensure-test-database: download-mysql
 	$(MYSQL_COMMAND_NO_DB) -e 'CREATE DATABASE IF NOT EXISTS test';
 
 .PHONY: coverage
-coverage: instrument-files load-instrumented-files run-coverage-tests generate-coverage-report
+coverage: purge instrument-files load-instrumented-files run-coverage-tests generate-coverage-report
 	xdg-open coverage-html/index.html
 
 .PHONY: instrument-files
@@ -54,7 +61,6 @@ instrument-files:
 
 .PHONY: load-instrumented-files
 load-instrumented-files: instrument-files ensure-test-database
-	$(MYSQL_COMMAND) < purge.sql
 	$(MYSQL_COMMAND) < debug.sql
 	go run cmd/mysql-coverage/main.go init --database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)"
 	$(MYSQL_COMMAND) < protobuf.sql.instrumented
