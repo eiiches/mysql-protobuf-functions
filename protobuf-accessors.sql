@@ -675,6 +675,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_int32_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_int32_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_int32_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_int32_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_int32_field_element $$
 CREATE FUNCTION pb_message_insert_repeated_int32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -715,6 +721,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_int64_field_element $$
 CREATE FUNCTION pb_message_add_repeated_int64_field_element(message LONGBLOB, field_number INT, value BIGINT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_int64_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_int64_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_int64_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_int64_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_int64_field_element $$
@@ -759,6 +771,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_uint32_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_uint32_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_uint32_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_uint32_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_uint32_field_element $$
 CREATE FUNCTION pb_message_insert_repeated_uint32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT UNSIGNED, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -799,6 +817,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_uint64_field_element $$
 CREATE FUNCTION pb_message_add_repeated_uint64_field_element(message LONGBLOB, field_number INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_uint64_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_uint64_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_uint64_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_uint64_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_uint64_field_element $$
@@ -843,6 +867,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_sint32_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_sint32_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_sint32_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_sint32_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_sint32_field_element $$
 CREATE FUNCTION pb_message_insert_repeated_sint32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -883,6 +913,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_sint64_field_element $$
 CREATE FUNCTION pb_message_add_repeated_sint64_field_element(message LONGBLOB, field_number INT, value BIGINT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_sint64_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_sint64_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_sint64_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_sint64_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_sint64_field_element $$
@@ -927,6 +963,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_enum_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_enum_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_enum_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_enum_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_enum_field_element $$
 CREATE FUNCTION pb_message_insert_repeated_enum_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -967,6 +1009,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_bool_field_element $$
 CREATE FUNCTION pb_message_add_repeated_bool_field_element(message LONGBLOB, field_number INT, value BOOLEAN, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_bool_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_bool_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_bool_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_bool_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_bool_field_element $$
@@ -1011,6 +1059,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_fixed32_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_fixed32_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_fixed32_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_fixed32_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_fixed32_field_element $$
 CREATE FUNCTION pb_message_insert_repeated_fixed32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT UNSIGNED, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -1051,6 +1105,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_sfixed32_field_element $$
 CREATE FUNCTION pb_message_add_repeated_sfixed32_field_element(message LONGBLOB, field_number INT, value INT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_sfixed32_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_sfixed32_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_sfixed32_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_sfixed32_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_sfixed32_field_element $$
@@ -1095,6 +1155,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_float_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_float_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_float_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_float_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_float_field_element $$
 CREATE FUNCTION pb_message_insert_repeated_float_field_element(message LONGBLOB, field_number INT, repeated_index INT, value FLOAT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -1135,6 +1201,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_fixed64_field_element $$
 CREATE FUNCTION pb_message_add_repeated_fixed64_field_element(message LONGBLOB, field_number INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_fixed64_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_fixed64_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_fixed64_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_fixed64_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_fixed64_field_element $$
@@ -1179,6 +1251,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_sfixed64_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_sfixed64_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_sfixed64_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_sfixed64_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_sfixed64_field_element $$
 CREATE FUNCTION pb_message_insert_repeated_sfixed64_field_element(message LONGBLOB, field_number INT, repeated_index INT, value BIGINT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -1219,6 +1297,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_double_field_element $$
 CREATE FUNCTION pb_message_add_repeated_double_field_element(message LONGBLOB, field_number INT, value DOUBLE, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_double_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_double_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_double_field_elements(message LONGBLOB, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_double_field_elements(pb_message_to_wire_json(message), field_number, value_array, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_double_field_element $$
@@ -1263,6 +1347,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_bytes_field_element(pb_message_to_wire_json(message), field_number, value));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_bytes_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_bytes_field_elements(message LONGBLOB, field_number INT, value_array JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_bytes_field_elements(pb_message_to_wire_json(message), field_number, value_array));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_bytes_field_element $$
 CREATE FUNCTION pb_message_insert_repeated_bytes_field_element(message LONGBLOB, field_number INT, repeated_index INT, value LONGBLOB) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -1305,6 +1395,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_string_field_element(pb_message_to_wire_json(message), field_number, value));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_string_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_string_field_elements(message LONGBLOB, field_number INT, value_array JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_string_field_elements(pb_message_to_wire_json(message), field_number, value_array));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_string_field_element $$
 CREATE FUNCTION pb_message_insert_repeated_string_field_element(message LONGBLOB, field_number INT, repeated_index INT, value LONGTEXT) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -1345,6 +1441,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_message_field_element $$
 CREATE FUNCTION pb_message_add_repeated_message_field_element(message LONGBLOB, field_number INT, value LONGBLOB) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_message_field_element(pb_message_to_wire_json(message), field_number, value));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_add_all_repeated_message_field_elements $$
+CREATE FUNCTION pb_message_add_all_repeated_message_field_elements(message LONGBLOB, field_number INT, value_array JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_message_field_elements(pb_message_to_wire_json(message), field_number, value_array));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_insert_repeated_message_field_element $$
@@ -2052,6 +2154,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_int32_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_int32_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_int32_field_elements(wire_json, field_number, value_array, use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_int32_field_element $$
 CREATE FUNCTION pb_wire_json_insert_repeated_int32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2092,6 +2200,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_int64_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_int64_field_element(wire_json JSON, field_number INT, value BIGINT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_int64_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_int64_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_int64_field_elements(wire_json, field_number, value_array, use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_int64_field_element $$
@@ -2136,6 +2250,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, value, use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_uint32_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_uint32_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_uint32_field_elements(wire_json, field_number, value_array, use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_uint32_field_element $$
 CREATE FUNCTION pb_wire_json_insert_repeated_uint32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2176,6 +2296,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_uint64_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_uint64_field_element(wire_json JSON, field_number INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, value, use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_uint64_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_uint64_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_uint64_field_elements(wire_json, field_number, value_array, use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_uint64_field_element $$
@@ -2220,6 +2346,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_sint64_as_uint64(value), use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_sint32_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_sint32_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_sint32_field_elements(wire_json, field_number, value_array, use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_sint32_field_element $$
 CREATE FUNCTION pb_wire_json_insert_repeated_sint32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2260,6 +2392,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_sint64_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_sint64_field_element(wire_json JSON, field_number INT, value BIGINT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_sint64_as_uint64(value), use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_sint64_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_sint64_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_sint64_field_elements(wire_json, field_number, value_array, use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_sint64_field_element $$
@@ -2304,6 +2442,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_enum_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_enum_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_enum_field_elements(wire_json, field_number, value_array, use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_enum_field_element $$
 CREATE FUNCTION pb_wire_json_insert_repeated_enum_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2344,6 +2488,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_bool_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_bool_field_element(wire_json JSON, field_number INT, value BOOLEAN, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, IF(value, 1, 0), use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_bool_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_bool_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_bool_field_elements(wire_json, field_number, value_array, use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_bool_field_element $$
@@ -2388,6 +2538,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_i32_field_element(wire_json, field_number, value, use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_fixed32_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_fixed32_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_fixed32_field_elements(wire_json, field_number, value_array, use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_fixed32_field_element $$
 CREATE FUNCTION pb_wire_json_insert_repeated_fixed32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2428,6 +2584,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_sfixed32_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_sfixed32_field_element(wire_json JSON, field_number INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_i32_field_element(wire_json, field_number, _pb_util_reinterpret_int32_as_uint32(value), use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_sfixed32_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_sfixed32_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_sfixed32_field_elements(wire_json, field_number, value_array, use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_sfixed32_field_element $$
@@ -2472,6 +2634,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_i32_field_element(wire_json, field_number, _pb_util_reinterpret_float_as_uint32(value), use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_float_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_float_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_float_field_elements(wire_json, field_number, value_array, use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_float_field_element $$
 CREATE FUNCTION pb_wire_json_insert_repeated_float_field_element(wire_json JSON, field_number INT, repeated_index INT, value FLOAT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2512,6 +2680,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_fixed64_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_fixed64_field_element(wire_json JSON, field_number INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_i64_field_element(wire_json, field_number, value, use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_fixed64_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_fixed64_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_fixed64_field_elements(wire_json, field_number, value_array, use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_fixed64_field_element $$
@@ -2556,6 +2730,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_i64_field_element(wire_json, field_number, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_sfixed64_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_sfixed64_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_sfixed64_field_elements(wire_json, field_number, value_array, use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_sfixed64_field_element $$
 CREATE FUNCTION pb_wire_json_insert_repeated_sfixed64_field_element(wire_json JSON, field_number INT, repeated_index INT, value BIGINT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2596,6 +2776,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_double_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_double_field_element(wire_json JSON, field_number INT, value DOUBLE, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_i64_field_element(wire_json, field_number, _pb_util_reinterpret_double_as_uint64(value), use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_double_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_double_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_double_field_elements(wire_json, field_number, value_array, use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_double_field_element $$
@@ -2640,6 +2826,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_len_field_element(wire_json, field_number, value);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_bytes_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_bytes_field_elements(wire_json JSON, field_number INT, value_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_bytes_field_elements(wire_json, field_number, value_array);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_bytes_field_element $$
 CREATE FUNCTION pb_wire_json_insert_repeated_bytes_field_element(wire_json JSON, field_number INT, repeated_index INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2682,6 +2874,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_len_field_element(wire_json, field_number, CONVERT(value USING binary));
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_string_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_string_field_elements(wire_json JSON, field_number INT, value_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_string_field_elements(wire_json, field_number, value_array);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_string_field_element $$
 CREATE FUNCTION pb_wire_json_insert_repeated_string_field_element(wire_json JSON, field_number INT, repeated_index INT, value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2722,6 +2920,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_message_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_message_field_element(wire_json JSON, field_number INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_len_field_element(wire_json, field_number, value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_message_field_elements $$
+CREATE FUNCTION pb_wire_json_add_all_repeated_message_field_elements(wire_json JSON, field_number INT, value_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_add_all_repeated_message_field_elements(wire_json, field_number, value_array);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_message_field_element $$
@@ -4871,5 +5075,984 @@ CREATE FUNCTION pb_message_get_repeated_message_field_as_json_array(message LONG
 BEGIN
 	DECLARE result JSON;
 	CALL _pb_message_get_repeated_message_field_as_json_array(message, field_number, result);
+	RETURN result;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_int32_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_int32_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value INT;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			CALL _pb_wire_write_varint(_pb_util_reinterpret_int64_as_uint64(current_value), temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			SET result = _pb_wire_json_add_repeated_varint_field_element(result, field_number, _pb_util_reinterpret_int64_as_uint64(current_value), FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_int64_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_int64_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value BIGINT;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS SIGNED);
+			CALL _pb_wire_write_varint(_pb_util_reinterpret_int64_as_uint64(current_value), temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS SIGNED);
+			SET result = _pb_wire_json_add_repeated_varint_field_element(result, field_number, _pb_util_reinterpret_int64_as_uint64(current_value), FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_uint32_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_uint32_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value INT UNSIGNED;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			CALL _pb_wire_write_varint(current_value, temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			SET result = _pb_wire_json_add_repeated_varint_field_element(result, field_number, current_value, FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_uint64_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_uint64_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value BIGINT UNSIGNED;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS UNSIGNED);
+			CALL _pb_wire_write_varint(current_value, temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS UNSIGNED);
+			SET result = _pb_wire_json_add_repeated_varint_field_element(result, field_number, current_value, FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_sint32_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_sint32_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value INT;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			CALL _pb_wire_write_varint(_pb_util_reinterpret_sint64_as_uint64(current_value), temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			SET result = _pb_wire_json_add_repeated_varint_field_element(result, field_number, _pb_util_reinterpret_sint64_as_uint64(current_value), FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_sint64_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_sint64_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value BIGINT;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS SIGNED);
+			CALL _pb_wire_write_varint(_pb_util_reinterpret_sint64_as_uint64(current_value), temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS SIGNED);
+			SET result = _pb_wire_json_add_repeated_varint_field_element(result, field_number, _pb_util_reinterpret_sint64_as_uint64(current_value), FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_enum_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_enum_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value INT;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			CALL _pb_wire_write_varint(_pb_util_reinterpret_int64_as_uint64(current_value), temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			SET result = _pb_wire_json_add_repeated_varint_field_element(result, field_number, _pb_util_reinterpret_int64_as_uint64(current_value), FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_bool_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_bool_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value BOOLEAN;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			CALL _pb_wire_write_varint(IF(current_value, 1, 0), temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			SET result = _pb_wire_json_add_repeated_varint_field_element(result, field_number, IF(current_value, 1, 0), FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_fixed32_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_fixed32_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value INT UNSIGNED;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			CALL _pb_wire_write_i32(current_value, temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			SET result = _pb_wire_json_add_repeated_i32_field_element(result, field_number, current_value, FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_sfixed32_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_sfixed32_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value INT;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			CALL _pb_wire_write_i32(_pb_util_reinterpret_int32_as_uint32(current_value), temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			SET result = _pb_wire_json_add_repeated_i32_field_element(result, field_number, _pb_util_reinterpret_int32_as_uint32(current_value), FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_float_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_float_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value FLOAT;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			CALL _pb_wire_write_i32(_pb_util_reinterpret_float_as_uint32(current_value), temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			SET result = _pb_wire_json_add_repeated_i32_field_element(result, field_number, _pb_util_reinterpret_float_as_uint32(current_value), FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_fixed64_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_fixed64_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value BIGINT UNSIGNED;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS UNSIGNED);
+			CALL _pb_wire_write_i64(current_value, temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS UNSIGNED);
+			SET result = _pb_wire_json_add_repeated_i64_field_element(result, field_number, current_value, FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_sfixed64_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_sfixed64_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value BIGINT;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS SIGNED);
+			CALL _pb_wire_write_i64(_pb_util_reinterpret_int64_as_uint64(current_value), temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS SIGNED);
+			SET result = _pb_wire_json_add_repeated_i64_field_element(result, field_number, _pb_util_reinterpret_int64_as_uint64(current_value), FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_double_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_double_field_elements(wire_json JSON, field_number INT, value_array JSON, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value DOUBLE;
+	DECLARE result JSON;
+	DECLARE packed_data LONGBLOB DEFAULT '';
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE new_element JSON;
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE next_index INT;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	IF use_packed THEN
+		-- Build packed data
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			CALL _pb_wire_write_i64(_pb_util_reinterpret_double_as_uint64(current_value), temp_encoded);
+			SET packed_data = CONCAT(packed_data, temp_encoded);
+			SET i = i + 1;
+		END WHILE;
+
+		-- Get existing field array
+		SET field_array = JSON_EXTRACT(result, field_path);
+
+		-- Check if we can append to existing packed field
+		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+			-- Check if last element is packed (wire type 2)
+			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+				-- Append to existing packed data
+				SET packed_data = CONCAT(
+					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+					packed_data
+				);
+				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+			END IF;
+		END IF;
+
+		-- Create new packed element
+		SET next_index = _pb_wire_json_get_next_index(result);
+		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+
+		IF field_array IS NULL THEN
+			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		ELSE
+			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		END IF;
+	ELSE
+		-- Add unpacked elements
+		WHILE i < array_length DO
+			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
+			SET result = _pb_wire_json_add_repeated_i64_field_element(result, field_number, _pb_util_reinterpret_double_as_uint64(current_value), FALSE);
+			SET i = i + 1;
+		END WHILE;
+		RETURN result;
+	END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_bytes_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_bytes_field_elements(wire_json JSON, field_number INT, value_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value LONGBLOB;
+	DECLARE result JSON;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	-- Non-packable types - always add as separate elements
+	WHILE i < array_length DO
+		SET current_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))));
+		SET result = _pb_wire_json_add_repeated_len_field_element(result, field_number, current_value);
+		SET i = i + 1;
+	END WHILE;
+	RETURN result;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_string_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_string_field_elements(wire_json JSON, field_number INT, value_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value LONGTEXT;
+	DECLARE result JSON;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	-- Non-packable types - always add as separate elements
+	WHILE i < array_length DO
+		SET current_value = JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']')));
+		SET result = _pb_wire_json_add_repeated_len_field_element(result, field_number, CONVERT(current_value USING binary));
+		SET i = i + 1;
+	END WHILE;
+	RETURN result;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_message_field_elements $$
+CREATE FUNCTION _pb_wire_json_add_all_repeated_message_field_elements(wire_json JSON, field_number INT, value_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE array_length INT;
+	DECLARE current_value LONGBLOB;
+	DECLARE result JSON;
+
+	SET result = wire_json;
+	SET array_length = JSON_LENGTH(value_array);
+
+	IF array_length = 0 THEN
+		RETURN result;
+	END IF;
+	-- Non-packable types - always add as separate elements
+	WHILE i < array_length DO
+		SET current_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))));
+		SET result = _pb_wire_json_add_repeated_len_field_element(result, field_number, current_value);
+		SET i = i + 1;
+	END WHILE;
 	RETURN result;
 END $$

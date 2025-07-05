@@ -503,6 +503,8 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 
 	generateRepeatedNumbersAsJson()
 
+	generateBulkAddFunctions()
+
 	return nil
 }
 
@@ -523,6 +525,12 @@ func generateWireJsonSetters(input *Input, accessors []*Accessor) {
 		|{{- else}}
 		|	RETURN {{.Procedure.AddRepeatedElementFunction}}({{.Input.Name}}, field_number, {{.ConvertExpr}});
 		|{{- end}}
+		|END $$
+		|
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_add_all_repeated_{{.ProtoType}}_field_elements $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_add_all_repeated_{{.ProtoType}}_field_elements({{.Input.Name}} {{.Input.SqlType}}, field_number INT, value_array JSON{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
+		|BEGIN
+		|	RETURN _pb_wire_json_add_all_repeated_{{.ProtoType}}_field_elements({{.Input.Name}}, field_number, value_array{{if .SupportsPacked}}, use_packed{{end}});
 		|END $$
 		|
 		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_insert_repeated_{{.ProtoType}}_field_element $$
@@ -587,6 +595,12 @@ func generateMessageSetters(input *Input, accessors []*Accessor) {
 		|	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_{{.ProtoType}}_field_element(pb_message_to_wire_json({{.Input.Name}}), field_number, value{{if .SupportsPacked}}, use_packed{{end}}));
 		|END $$
 		|
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_add_all_repeated_{{.ProtoType}}_field_elements $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_add_all_repeated_{{.ProtoType}}_field_elements({{.Input.Name}} {{.Input.SqlType}}, field_number INT, value_array JSON{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
+		|BEGIN
+		|	RETURN pb_wire_json_to_message(pb_wire_json_add_all_repeated_{{.ProtoType}}_field_elements(pb_message_to_wire_json({{.Input.Name}}), field_number, value_array{{if .SupportsPacked}}, use_packed{{end}}));
+		|END $$
+		|
 		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_insert_repeated_{{.ProtoType}}_field_element $$
 		|CREATE FUNCTION pb_{{.Input.Kind}}_insert_repeated_{{.ProtoType}}_field_element({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT, value {{.SqlType}}{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
 		|BEGIN
@@ -624,6 +638,138 @@ func generateMessageSetters(input *Input, accessors []*Accessor) {
 	}
 
 	for _, accessor := range accessors {
+		if err := tmpl.Execute(os.Stdout, accessor); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func generateBulkAddFunctions() {
+	// Group accessors by type category
+	type BulkAccessor struct {
+		ProtoType       string
+		SqlType         string
+		ConvertExpr     string
+		JsonExtractExpr string
+		WireType        int
+		WriteFunction   string
+		SupportsPacked  bool
+	}
+
+	bulkAccessors := []*BulkAccessor{
+		// VARINT types
+		{ProtoType: "int32", SqlType: "INT", ConvertExpr: "_pb_util_reinterpret_int64_as_uint64(current_value)", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
+		{ProtoType: "int64", SqlType: "BIGINT", ConvertExpr: "_pb_util_reinterpret_int64_as_uint64(current_value)", JsonExtractExpr: "CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS SIGNED)", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
+		{ProtoType: "uint32", SqlType: "INT UNSIGNED", ConvertExpr: "current_value", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
+		{ProtoType: "uint64", SqlType: "BIGINT UNSIGNED", ConvertExpr: "current_value", JsonExtractExpr: "CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS UNSIGNED)", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
+		{ProtoType: "sint32", SqlType: "INT", ConvertExpr: "_pb_util_reinterpret_sint64_as_uint64(current_value)", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
+		{ProtoType: "sint64", SqlType: "BIGINT", ConvertExpr: "_pb_util_reinterpret_sint64_as_uint64(current_value)", JsonExtractExpr: "CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS SIGNED)", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
+		{ProtoType: "enum", SqlType: "INT", ConvertExpr: "_pb_util_reinterpret_int64_as_uint64(current_value)", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
+		{ProtoType: "bool", SqlType: "BOOLEAN", ConvertExpr: "IF(current_value, 1, 0)", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
+
+		// I32 types
+		{ProtoType: "fixed32", SqlType: "INT UNSIGNED", ConvertExpr: "current_value", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 5, WriteFunction: "_pb_wire_write_i32", SupportsPacked: true},
+		{ProtoType: "sfixed32", SqlType: "INT", ConvertExpr: "_pb_util_reinterpret_int32_as_uint32(current_value)", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 5, WriteFunction: "_pb_wire_write_i32", SupportsPacked: true},
+		{ProtoType: "float", SqlType: "FLOAT", ConvertExpr: "_pb_util_reinterpret_float_as_uint32(current_value)", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 5, WriteFunction: "_pb_wire_write_i32", SupportsPacked: true},
+
+		// I64 types
+		{ProtoType: "fixed64", SqlType: "BIGINT UNSIGNED", ConvertExpr: "current_value", JsonExtractExpr: "CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS UNSIGNED)", WireType: 1, WriteFunction: "_pb_wire_write_i64", SupportsPacked: true},
+		{ProtoType: "sfixed64", SqlType: "BIGINT", ConvertExpr: "_pb_util_reinterpret_int64_as_uint64(current_value)", JsonExtractExpr: "CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS SIGNED)", WireType: 1, WriteFunction: "_pb_wire_write_i64", SupportsPacked: true},
+		{ProtoType: "double", SqlType: "DOUBLE", ConvertExpr: "_pb_util_reinterpret_double_as_uint64(current_value)", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 1, WriteFunction: "_pb_wire_write_i64", SupportsPacked: true},
+
+		// Length-delimited types (no packed encoding)
+		{ProtoType: "bytes", SqlType: "LONGBLOB", ConvertExpr: "current_value", JsonExtractExpr: "FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))))", WireType: 2, WriteFunction: "", SupportsPacked: false},
+		{ProtoType: "string", SqlType: "LONGTEXT", ConvertExpr: "CONVERT(current_value USING binary)", JsonExtractExpr: "JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']')))", WireType: 2, WriteFunction: "", SupportsPacked: false},
+		{ProtoType: "message", SqlType: "LONGBLOB", ConvertExpr: "current_value", JsonExtractExpr: "FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))))", WireType: 2, WriteFunction: "", SupportsPacked: false},
+	}
+
+	bulkTemplateText := dedent.Pipe(`
+		|
+		|DROP FUNCTION IF EXISTS _pb_wire_json_add_all_repeated_{{.ProtoType}}_field_elements $$
+		|CREATE FUNCTION _pb_wire_json_add_all_repeated_{{.ProtoType}}_field_elements(wire_json JSON, field_number INT, value_array JSON{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS JSON DETERMINISTIC
+		|BEGIN
+		|	DECLARE i INT DEFAULT 0;
+		|	DECLARE array_length INT;
+		|	DECLARE current_value {{.SqlType}};
+		|	DECLARE result JSON;
+		|{{- if .SupportsPacked}}
+		|	DECLARE packed_data LONGBLOB DEFAULT '';
+		|	DECLARE temp_encoded LONGBLOB;
+		|	DECLARE new_element JSON;
+		|	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+		|	DECLARE field_array JSON;
+		|	DECLARE next_index INT;
+		|{{- end}}
+		|
+		|	SET result = wire_json;
+		|	SET array_length = JSON_LENGTH(value_array);
+		|
+		|	IF array_length = 0 THEN
+		|		RETURN result;
+		|	END IF;
+		|
+		|{{- if .SupportsPacked}}
+		|	IF use_packed THEN
+		|		-- Build packed data
+		|		WHILE i < array_length DO
+		|			SET current_value = {{.JsonExtractExpr}};
+		|			CALL {{.WriteFunction}}({{.ConvertExpr}}, temp_encoded);
+		|			SET packed_data = CONCAT(packed_data, temp_encoded);
+		|			SET i = i + 1;
+		|		END WHILE;
+		|
+		|		-- Get existing field array
+		|		SET field_array = JSON_EXTRACT(result, field_path);
+		|
+		|		-- Check if we can append to existing packed field
+		|		IF field_array IS NOT NULL AND JSON_LENGTH(field_array) > 0 THEN
+		|			-- Check if last element is packed (wire type 2)
+		|			IF JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].t')) = 2 THEN
+		|				-- Append to existing packed data
+		|				SET packed_data = CONCAT(
+		|					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
+		|					packed_data
+		|				);
+		|				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+		|			END IF;
+		|		END IF;
+		|
+		|		-- Create new packed element
+		|		SET next_index = _pb_wire_json_get_next_index(result);
+		|		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+		|
+		|		IF field_array IS NULL THEN
+		|			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));
+		|		ELSE
+		|			RETURN JSON_ARRAY_APPEND(result, field_path, new_element);
+		|		END IF;
+		|	ELSE
+		|		-- Add unpacked elements
+		|		WHILE i < array_length DO
+		|			SET current_value = {{.JsonExtractExpr}};
+		|			SET result = _pb_wire_json_add_repeated_{{if eq .WireType 0}}varint{{else if eq .WireType 1}}i64{{else if eq .WireType 5}}i32{{else if eq .WireType 2}}len{{end}}_field_element(result, field_number, {{.ConvertExpr}}, FALSE);
+		|			SET i = i + 1;
+		|		END WHILE;
+		|		RETURN result;
+		|	END IF;
+		|{{- else}}
+		|	-- Non-packable types - always add as separate elements
+		|	WHILE i < array_length DO
+		|		SET current_value = {{.JsonExtractExpr}};
+		|		SET result = _pb_wire_json_add_repeated_len_field_element(result, field_number, {{.ConvertExpr}});
+		|		SET i = i + 1;
+		|	END WHILE;
+		|	RETURN result;
+		|{{- end}}
+		|END $$
+	`)
+
+	tmpl, err := template.New("bulk").Parse(bulkTemplateText)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, accessor := range bulkAccessors {
 		if err := tmpl.Execute(os.Stdout, accessor); err != nil {
 			panic(err)
 		}
