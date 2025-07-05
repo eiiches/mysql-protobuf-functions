@@ -12,7 +12,7 @@ include scripts/common.mk
 
 .PHONY: start-mysql
 start-mysql: download-mysql
-	docker run -d --rm --name test-mysql -p $(MYSQL_BIND_ADDRESS):$(MYSQL_PORT):3306 -e MYSQL_ALLOW_EMPTY_PASSWORD=true -e MYSQL_DATABASE=test mysql:8.0.17 --performance-schema-events-statements-history-long-size=1000000 --stored_program_cache=512
+	docker run -d --rm --name test-mysql -p $(MYSQL_BIND_ADDRESS):$(MYSQL_PORT):3306 -e MYSQL_ALLOW_EMPTY_PASSWORD=true -e MYSQL_DATABASE=test mysql:8.0.17 --performance-schema-events-statements-history-long-size=1000000 --stored_program_cache=1024
 	set -euxo pipefail; \
 	until $(MYSQL_COMMAND) -e 'select 1'; do \
 		sleep 1; \
