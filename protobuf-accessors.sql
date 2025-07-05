@@ -675,6 +675,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_int32_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_int32_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_int32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_int32_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_set_repeated_int32_field_element $$
 CREATE FUNCTION pb_message_set_repeated_int32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -709,6 +715,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_int64_field_element $$
 CREATE FUNCTION pb_message_add_repeated_int64_field_element(message LONGBLOB, field_number INT, value BIGINT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_int64_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_int64_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_int64_field_element(message LONGBLOB, field_number INT, repeated_index INT, value BIGINT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_int64_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_set_repeated_int64_field_element $$
@@ -747,6 +759,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_uint32_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_uint32_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_uint32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT UNSIGNED, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_uint32_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_set_repeated_uint32_field_element $$
 CREATE FUNCTION pb_message_set_repeated_uint32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT UNSIGNED) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -781,6 +799,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_uint64_field_element $$
 CREATE FUNCTION pb_message_add_repeated_uint64_field_element(message LONGBLOB, field_number INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_uint64_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_uint64_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_uint64_field_element(message LONGBLOB, field_number INT, repeated_index INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_uint64_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_set_repeated_uint64_field_element $$
@@ -819,6 +843,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_sint32_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_sint32_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_sint32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_sint32_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_set_repeated_sint32_field_element $$
 CREATE FUNCTION pb_message_set_repeated_sint32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -853,6 +883,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_sint64_field_element $$
 CREATE FUNCTION pb_message_add_repeated_sint64_field_element(message LONGBLOB, field_number INT, value BIGINT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_sint64_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_sint64_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_sint64_field_element(message LONGBLOB, field_number INT, repeated_index INT, value BIGINT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_sint64_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_set_repeated_sint64_field_element $$
@@ -891,6 +927,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_enum_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_enum_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_enum_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_enum_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_set_repeated_enum_field_element $$
 CREATE FUNCTION pb_message_set_repeated_enum_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -925,6 +967,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_bool_field_element $$
 CREATE FUNCTION pb_message_add_repeated_bool_field_element(message LONGBLOB, field_number INT, value BOOLEAN, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_bool_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_bool_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_bool_field_element(message LONGBLOB, field_number INT, repeated_index INT, value BOOLEAN, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_bool_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_set_repeated_bool_field_element $$
@@ -963,6 +1011,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_fixed32_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_fixed32_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_fixed32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT UNSIGNED, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_fixed32_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_set_repeated_fixed32_field_element $$
 CREATE FUNCTION pb_message_set_repeated_fixed32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT UNSIGNED) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -997,6 +1051,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_sfixed32_field_element $$
 CREATE FUNCTION pb_message_add_repeated_sfixed32_field_element(message LONGBLOB, field_number INT, value INT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_sfixed32_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_sfixed32_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_sfixed32_field_element(message LONGBLOB, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_sfixed32_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_set_repeated_sfixed32_field_element $$
@@ -1035,6 +1095,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_float_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_float_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_float_field_element(message LONGBLOB, field_number INT, repeated_index INT, value FLOAT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_float_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_set_repeated_float_field_element $$
 CREATE FUNCTION pb_message_set_repeated_float_field_element(message LONGBLOB, field_number INT, repeated_index INT, value FLOAT) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -1069,6 +1135,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_fixed64_field_element $$
 CREATE FUNCTION pb_message_add_repeated_fixed64_field_element(message LONGBLOB, field_number INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_fixed64_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_fixed64_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_fixed64_field_element(message LONGBLOB, field_number INT, repeated_index INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_fixed64_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_set_repeated_fixed64_field_element $$
@@ -1107,6 +1179,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_sfixed64_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_sfixed64_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_sfixed64_field_element(message LONGBLOB, field_number INT, repeated_index INT, value BIGINT, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_sfixed64_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_set_repeated_sfixed64_field_element $$
 CREATE FUNCTION pb_message_set_repeated_sfixed64_field_element(message LONGBLOB, field_number INT, repeated_index INT, value BIGINT) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -1141,6 +1219,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_double_field_element $$
 CREATE FUNCTION pb_message_add_repeated_double_field_element(message LONGBLOB, field_number INT, value DOUBLE, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_double_field_element(pb_message_to_wire_json(message), field_number, value, use_packed));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_double_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_double_field_element(message LONGBLOB, field_number INT, repeated_index INT, value DOUBLE, use_packed BOOLEAN) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_double_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value, use_packed));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_set_repeated_double_field_element $$
@@ -1179,6 +1263,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_bytes_field_element(pb_message_to_wire_json(message), field_number, value));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_bytes_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_bytes_field_element(message LONGBLOB, field_number INT, repeated_index INT, value LONGBLOB) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_bytes_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_set_repeated_bytes_field_element $$
 CREATE FUNCTION pb_message_set_repeated_bytes_field_element(message LONGBLOB, field_number INT, repeated_index INT, value LONGBLOB) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -1215,6 +1305,12 @@ BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_string_field_element(pb_message_to_wire_json(message), field_number, value));
 END $$
 
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_string_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_string_field_element(message LONGBLOB, field_number INT, repeated_index INT, value LONGTEXT) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_string_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value));
+END $$
+
 DROP FUNCTION IF EXISTS pb_message_set_repeated_string_field_element $$
 CREATE FUNCTION pb_message_set_repeated_string_field_element(message LONGBLOB, field_number INT, repeated_index INT, value LONGTEXT) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
@@ -1249,6 +1345,12 @@ DROP FUNCTION IF EXISTS pb_message_add_repeated_message_field_element $$
 CREATE FUNCTION pb_message_add_repeated_message_field_element(message LONGBLOB, field_number INT, value LONGBLOB) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_message_field_element(pb_message_to_wire_json(message), field_number, value));
+END $$
+
+DROP FUNCTION IF EXISTS pb_message_insert_repeated_message_field_element $$
+CREATE FUNCTION pb_message_insert_repeated_message_field_element(message LONGBLOB, field_number INT, repeated_index INT, value LONGBLOB) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_message_field_element(pb_message_to_wire_json(message), field_number, repeated_index, value));
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_set_repeated_message_field_element $$
@@ -1950,6 +2052,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_int32_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_int32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_int32_field_element $$
 CREATE FUNCTION pb_wire_json_set_repeated_int32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -1984,6 +2092,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_int64_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_int64_field_element(wire_json JSON, field_number INT, value BIGINT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_int64_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_int64_field_element(wire_json JSON, field_number INT, repeated_index INT, value BIGINT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_int64_field_element $$
@@ -2022,6 +2136,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, value, use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_uint32_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_uint32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_varint_field_element(wire_json, field_number, repeated_index, value, use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_uint32_field_element $$
 CREATE FUNCTION pb_wire_json_set_repeated_uint32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT UNSIGNED) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2056,6 +2176,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_uint64_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_uint64_field_element(wire_json JSON, field_number INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, value, use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_uint64_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_uint64_field_element(wire_json JSON, field_number INT, repeated_index INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_varint_field_element(wire_json, field_number, repeated_index, value, use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_uint64_field_element $$
@@ -2094,6 +2220,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_sint64_as_uint64(value), use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_sint32_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_sint32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_sint64_as_uint64(value), use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_sint32_field_element $$
 CREATE FUNCTION pb_wire_json_set_repeated_sint32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2128,6 +2260,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_sint64_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_sint64_field_element(wire_json JSON, field_number INT, value BIGINT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_sint64_as_uint64(value), use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_sint64_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_sint64_field_element(wire_json JSON, field_number INT, repeated_index INT, value BIGINT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_sint64_as_uint64(value), use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_sint64_field_element $$
@@ -2166,6 +2304,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_enum_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_enum_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_enum_field_element $$
 CREATE FUNCTION pb_wire_json_set_repeated_enum_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2200,6 +2344,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_bool_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_bool_field_element(wire_json JSON, field_number INT, value BOOLEAN, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, IF(value, 1, 0), use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_bool_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_bool_field_element(wire_json JSON, field_number INT, repeated_index INT, value BOOLEAN, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_varint_field_element(wire_json, field_number, repeated_index, IF(value, 1, 0), use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_bool_field_element $$
@@ -2238,6 +2388,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_i32_field_element(wire_json, field_number, value, use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_fixed32_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_fixed32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_i32_field_element(wire_json, field_number, repeated_index, value, use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_fixed32_field_element $$
 CREATE FUNCTION pb_wire_json_set_repeated_fixed32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT UNSIGNED) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2272,6 +2428,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_sfixed32_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_sfixed32_field_element(wire_json JSON, field_number INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_i32_field_element(wire_json, field_number, _pb_util_reinterpret_int32_as_uint32(value), use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_sfixed32_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_sfixed32_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_i32_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int32_as_uint32(value), use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_sfixed32_field_element $$
@@ -2310,6 +2472,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_i32_field_element(wire_json, field_number, _pb_util_reinterpret_float_as_uint32(value), use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_float_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_float_field_element(wire_json JSON, field_number INT, repeated_index INT, value FLOAT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_i32_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_float_as_uint32(value), use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_float_field_element $$
 CREATE FUNCTION pb_wire_json_set_repeated_float_field_element(wire_json JSON, field_number INT, repeated_index INT, value FLOAT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2344,6 +2512,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_fixed64_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_fixed64_field_element(wire_json JSON, field_number INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_i64_field_element(wire_json, field_number, value, use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_fixed64_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_fixed64_field_element(wire_json JSON, field_number INT, repeated_index INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_i64_field_element(wire_json, field_number, repeated_index, value, use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_fixed64_field_element $$
@@ -2382,6 +2556,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_i64_field_element(wire_json, field_number, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_sfixed64_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_sfixed64_field_element(wire_json JSON, field_number INT, repeated_index INT, value BIGINT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_i64_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_sfixed64_field_element $$
 CREATE FUNCTION pb_wire_json_set_repeated_sfixed64_field_element(wire_json JSON, field_number INT, repeated_index INT, value BIGINT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2416,6 +2596,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_double_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_double_field_element(wire_json JSON, field_number INT, value DOUBLE, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_i64_field_element(wire_json, field_number, _pb_util_reinterpret_double_as_uint64(value), use_packed);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_double_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_double_field_element(wire_json JSON, field_number INT, repeated_index INT, value DOUBLE, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_i64_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_double_as_uint64(value), use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_double_field_element $$
@@ -2454,6 +2640,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_len_field_element(wire_json, field_number, value);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_bytes_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_bytes_field_element(wire_json JSON, field_number INT, repeated_index INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_len_field_element(wire_json, field_number, repeated_index, value);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_bytes_field_element $$
 CREATE FUNCTION pb_wire_json_set_repeated_bytes_field_element(wire_json JSON, field_number INT, repeated_index INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2490,6 +2682,12 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_len_field_element(wire_json, field_number, CONVERT(value USING binary));
 END $$
 
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_string_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_string_field_element(wire_json JSON, field_number INT, repeated_index INT, value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_len_field_element(wire_json, field_number, repeated_index, CONVERT(value USING binary));
+END $$
+
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_string_field_element $$
 CREATE FUNCTION pb_wire_json_set_repeated_string_field_element(wire_json JSON, field_number INT, repeated_index INT, value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2524,6 +2722,12 @@ DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_message_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_message_field_element(wire_json JSON, field_number INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN _pb_wire_json_add_repeated_len_field_element(wire_json, field_number, value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_message_field_element $$
+CREATE FUNCTION pb_wire_json_insert_repeated_message_field_element(wire_json JSON, field_number INT, repeated_index INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN _pb_wire_json_insert_repeated_len_field_element(wire_json, field_number, repeated_index, value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_message_field_element $$

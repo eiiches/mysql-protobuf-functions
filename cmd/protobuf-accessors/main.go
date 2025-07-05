@@ -20,6 +20,7 @@ type WireTypeAccessor struct {
 	AddRepeatedElementFunction    string
 	SetRepeatedElementFunction    string
 	RemoveRepeatedElementFunction string
+	InsertRepeatedElementFunction string
 }
 
 type Accessor struct {
@@ -416,6 +417,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_varint_field_element",
 			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_varint_field_element",
 			RemoveRepeatedElementFunction: "_pb_wire_json_remove_repeated_varint_field_element",
+			InsertRepeatedElementFunction: "_pb_wire_json_insert_repeated_varint_field_element",
 		}
 
 		getI64FieldAsUint64 := &WireTypeAccessor{
@@ -426,6 +428,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_i64_field_element",
 			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_i64_field_element",
 			RemoveRepeatedElementFunction: "_pb_wire_json_remove_repeated_i64_field_element",
+			InsertRepeatedElementFunction: "_pb_wire_json_insert_repeated_i64_field_element",
 		}
 
 		getI32FieldAsUint64 := &WireTypeAccessor{
@@ -436,6 +439,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_i32_field_element",
 			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_i32_field_element",
 			RemoveRepeatedElementFunction: "_pb_wire_json_remove_repeated_i32_field_element",
+			InsertRepeatedElementFunction: "_pb_wire_json_insert_repeated_i32_field_element",
 		}
 
 		getLengthDelimitedField := &WireTypeAccessor{
@@ -446,6 +450,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_len_field_element",
 			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_len_field_element",
 			RemoveRepeatedElementFunction: "_pb_wire_json_remove_repeated_len_field_element",
+			InsertRepeatedElementFunction: "_pb_wire_json_insert_repeated_len_field_element",
 		}
 
 		accessors := []*Accessor{
@@ -520,6 +525,16 @@ func generateWireJsonSetters(input *Input, accessors []*Accessor) {
 		|{{- end}}
 		|END $$
 		|
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_insert_repeated_{{.ProtoType}}_field_element $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_insert_repeated_{{.ProtoType}}_field_element({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT, value {{.SqlType}}{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
+		|BEGIN
+		|{{- if .Procedure.SupportsPacked}}
+		|	RETURN {{.Procedure.InsertRepeatedElementFunction}}({{.Input.Name}}, field_number, repeated_index, {{.ConvertExpr}}{{if .SupportsPacked}}, use_packed{{else}}, FALSE{{end}});
+		|{{- else}}
+		|	RETURN {{.Procedure.InsertRepeatedElementFunction}}({{.Input.Name}}, field_number, repeated_index, {{.ConvertExpr}});
+		|{{- end}}
+		|END $$
+		|
 		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field_element $$
 		|CREATE FUNCTION pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field_element({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT, value {{.SqlType}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
 		|BEGIN
@@ -570,6 +585,12 @@ func generateMessageSetters(input *Input, accessors []*Accessor) {
 		|CREATE FUNCTION pb_{{.Input.Kind}}_add_repeated_{{.ProtoType}}_field_element({{.Input.Name}} {{.Input.SqlType}}, field_number INT, value {{.SqlType}}{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
 		|BEGIN
 		|	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_{{.ProtoType}}_field_element(pb_message_to_wire_json({{.Input.Name}}), field_number, value{{if .SupportsPacked}}, use_packed{{end}}));
+		|END $$
+		|
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_insert_repeated_{{.ProtoType}}_field_element $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_insert_repeated_{{.ProtoType}}_field_element({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT, value {{.SqlType}}{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
+		|BEGIN
+		|	RETURN pb_wire_json_to_message(pb_wire_json_insert_repeated_{{.ProtoType}}_field_element(pb_message_to_wire_json({{.Input.Name}}), field_number, repeated_index, value{{if .SupportsPacked}}, use_packed{{end}}));
 		|END $$
 		|
 		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field_element $$

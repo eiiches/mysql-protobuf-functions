@@ -2173,3 +2173,496 @@ BEGIN
 	RETURN _pb_wire_json_add_repeated_field_element(wire_json, field_number, 2, JSON_QUOTE(TO_BASE64(value)));
 END $$
 
+-- Private: Insert into repeated VARINT field
+DROP FUNCTION IF EXISTS _pb_wire_json_insert_repeated_varint_field_element $$
+CREATE FUNCTION _pb_wire_json_insert_repeated_varint_field_element(
+	wire_json JSON,
+	field_number INT,
+	repeated_index INT,
+	value BIGINT UNSIGNED,
+	use_packed BOOLEAN
+) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE new_field_array JSON DEFAULT JSON_ARRAY();
+	DECLARE array_index INT DEFAULT 0;
+	DECLARE element JSON;
+	DECLARE element_wire_type INT;
+	DECLARE next_wire_index INT;
+	DECLARE new_element JSON;
+	DECLARE logical_position INT DEFAULT 0;
+	DECLARE inserted BOOLEAN DEFAULT FALSE;
+	-- Variables for processing elements
+	DECLARE packed_data LONGBLOB;
+	DECLARE temp_value BIGINT UNSIGNED;
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE result_packed_data LONGBLOB DEFAULT '';
+
+	-- Get the field array (null if doesn't exist)
+	SET field_array = JSON_EXTRACT(wire_json, field_path);
+
+	-- Calculate wire index once
+	SET next_wire_index = _pb_wire_json_get_next_index(wire_json);
+
+	-- If field doesn't exist, create new field with single element
+	IF field_array IS NULL THEN
+		IF repeated_index = 0 THEN
+			IF use_packed THEN
+				CALL _pb_wire_write_varint(value, temp_encoded);
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', TO_BASE64(temp_encoded));
+				SET next_wire_index = next_wire_index + 1;
+			ELSE
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 0, 'v', CAST(value AS JSON));
+				SET next_wire_index = next_wire_index + 1;
+			END IF;
+			RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
+		ELSE
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
+		END IF;
+	END IF;
+
+	-- Process existing elements while building new array directly
+	WHILE array_index < JSON_LENGTH(field_array) DO
+		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
+		SET element_wire_type = JSON_EXTRACT(element, '$.t');
+
+		IF element_wire_type = 2 THEN
+			-- Packed field - process each packed value
+			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
+			WHILE LENGTH(packed_data) > 0 DO
+				CALL _pb_wire_read_varint_as_uint64(packed_data, temp_value, packed_data);
+
+				-- Check if we need to insert here
+				IF NOT inserted AND logical_position = repeated_index THEN
+					IF use_packed THEN
+						CALL _pb_wire_write_varint(value, temp_encoded);
+						SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+					ELSE
+						SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 0, 'v', CAST(value AS JSON));
+						SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+						SET next_wire_index = next_wire_index + 1;
+					END IF;
+					SET inserted = TRUE;
+				END IF;
+
+				-- Add current value
+				IF use_packed THEN
+					CALL _pb_wire_write_varint(temp_value, temp_encoded);
+					SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+				ELSE
+					SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 0, 'v', CAST(temp_value AS JSON));
+					SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+					SET next_wire_index = next_wire_index + 1;
+				END IF;
+
+				SET logical_position = logical_position + 1;
+			END WHILE;
+		ELSE
+			-- Unpacked field - process single value
+			SET temp_value = CAST(JSON_EXTRACT(element, '$.v') AS UNSIGNED);
+
+			-- Check if we need to insert here
+			IF NOT inserted AND logical_position = repeated_index THEN
+				IF use_packed THEN
+					CALL _pb_wire_write_varint(value, temp_encoded);
+					SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+				ELSE
+					SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 0, 'v', CAST(value AS JSON));
+					SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+					SET next_wire_index = next_wire_index + 1;
+				END IF;
+				SET inserted = TRUE;
+			END IF;
+
+			-- Add current value
+			IF use_packed THEN
+				CALL _pb_wire_write_varint(temp_value, temp_encoded);
+				SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+			ELSE
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 0, 'v', CAST(temp_value AS JSON));
+				SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+				SET next_wire_index = next_wire_index + 1;
+			END IF;
+
+			SET logical_position = logical_position + 1;
+		END IF;
+
+		SET array_index = array_index + 1;
+	END WHILE;
+
+	-- Check if we need to append at the end
+	IF NOT inserted THEN
+		IF repeated_index = logical_position THEN
+			IF use_packed THEN
+				CALL _pb_wire_write_varint(value, temp_encoded);
+				SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+			ELSE
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 0, 'v', CAST(value AS JSON));
+				SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+			END IF;
+		ELSE
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
+		END IF;
+	END IF;
+
+	-- Return result based on format
+	IF use_packed THEN
+		SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', TO_BASE64(result_packed_data));
+		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
+	ELSE
+		RETURN JSON_SET(wire_json, field_path, new_field_array);
+	END IF;
+END $$
+
+-- Private: Insert into repeated I64 field
+DROP FUNCTION IF EXISTS _pb_wire_json_insert_repeated_i64_field_element $$
+CREATE FUNCTION _pb_wire_json_insert_repeated_i64_field_element(
+	wire_json JSON,
+	field_number INT,
+	repeated_index INT,
+	value BIGINT UNSIGNED,
+	use_packed BOOLEAN
+) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE new_field_array JSON DEFAULT JSON_ARRAY();
+	DECLARE array_index INT DEFAULT 0;
+	DECLARE element JSON;
+	DECLARE element_wire_type INT;
+	DECLARE next_wire_index INT;
+	DECLARE new_element JSON;
+	DECLARE logical_position INT DEFAULT 0;
+	DECLARE inserted BOOLEAN DEFAULT FALSE;
+	-- Variables for processing elements
+	DECLARE packed_data LONGBLOB;
+	DECLARE temp_value BIGINT UNSIGNED;
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE result_packed_data LONGBLOB DEFAULT '';
+
+	-- Get the field array (null if doesn't exist)
+	-- Calculate wire index once
+	SET next_wire_index = _pb_wire_json_get_next_index(wire_json);
+
+	SET field_array = JSON_EXTRACT(wire_json, field_path);
+
+	-- If field doesn't exist, create new field with single element
+	IF field_array IS NULL THEN
+		IF repeated_index = 0 THEN
+			IF use_packed THEN
+				CALL _pb_wire_write_i64(value, temp_encoded);
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', TO_BASE64(temp_encoded));
+				SET next_wire_index = next_wire_index + 1;
+			ELSE
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 1, 'v', CAST(value AS JSON));
+				SET next_wire_index = next_wire_index + 1;
+			END IF;
+			RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
+		ELSE
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
+		END IF;
+	END IF;
+
+	-- Process existing elements while building new array directly
+	WHILE array_index < JSON_LENGTH(field_array) DO
+		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
+		SET element_wire_type = JSON_EXTRACT(element, '$.t');
+
+		IF element_wire_type = 2 THEN
+			-- Packed field - process each packed value
+			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
+			WHILE LENGTH(packed_data) > 0 DO
+				CALL _pb_wire_read_i64_as_uint64(packed_data, temp_value, packed_data);
+
+				-- Check if we need to insert here
+				IF NOT inserted AND logical_position = repeated_index THEN
+					IF use_packed THEN
+						CALL _pb_wire_write_i64(value, temp_encoded);
+						SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+					ELSE
+						SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 1, 'v', CAST(value AS JSON));
+						SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+						SET next_wire_index = next_wire_index + 1;
+					END IF;
+					SET inserted = TRUE;
+				END IF;
+
+				-- Add current value
+				IF use_packed THEN
+					CALL _pb_wire_write_i64(temp_value, temp_encoded);
+					SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+				ELSE
+					SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 1, 'v', CAST(temp_value AS JSON));
+					SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+					SET next_wire_index = next_wire_index + 1;
+				END IF;
+
+				SET logical_position = logical_position + 1;
+			END WHILE;
+		ELSE
+			-- Unpacked field - process single value
+			SET temp_value = CAST(JSON_EXTRACT(element, '$.v') AS UNSIGNED);
+
+			-- Check if we need to insert here
+			IF NOT inserted AND logical_position = repeated_index THEN
+				IF use_packed THEN
+					CALL _pb_wire_write_i64(value, temp_encoded);
+					SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+				ELSE
+					SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 1, 'v', CAST(value AS JSON));
+					SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+					SET next_wire_index = next_wire_index + 1;
+				END IF;
+				SET inserted = TRUE;
+			END IF;
+
+			-- Add current value
+			IF use_packed THEN
+				CALL _pb_wire_write_i64(temp_value, temp_encoded);
+				SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+			ELSE
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 1, 'v', CAST(temp_value AS JSON));
+				SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+				SET next_wire_index = next_wire_index + 1;
+			END IF;
+
+			SET logical_position = logical_position + 1;
+		END IF;
+
+		SET array_index = array_index + 1;
+	END WHILE;
+
+	-- Check if we need to append at the end
+	IF NOT inserted THEN
+		IF repeated_index = logical_position THEN
+			IF use_packed THEN
+				CALL _pb_wire_write_i64(value, temp_encoded);
+				SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+			ELSE
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 1, 'v', CAST(value AS JSON));
+				SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+			END IF;
+		ELSE
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
+		END IF;
+	END IF;
+
+	-- Return result based on format
+	IF use_packed THEN
+		SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', TO_BASE64(result_packed_data));
+		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
+	ELSE
+		RETURN JSON_SET(wire_json, field_path, new_field_array);
+	END IF;
+END $$
+
+-- Private: Insert into repeated I32 field
+DROP FUNCTION IF EXISTS _pb_wire_json_insert_repeated_i32_field_element $$
+CREATE FUNCTION _pb_wire_json_insert_repeated_i32_field_element(
+	wire_json JSON,
+	field_number INT,
+	repeated_index INT,
+	value INT UNSIGNED,
+	use_packed BOOLEAN
+) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE new_field_array JSON DEFAULT JSON_ARRAY();
+	DECLARE array_index INT DEFAULT 0;
+	DECLARE element JSON;
+	DECLARE element_wire_type INT;
+	DECLARE next_wire_index INT;
+	DECLARE new_element JSON;
+	DECLARE logical_position INT DEFAULT 0;
+	DECLARE inserted BOOLEAN DEFAULT FALSE;
+	-- Variables for processing elements
+	DECLARE packed_data LONGBLOB;
+	DECLARE temp_value INT UNSIGNED;
+	DECLARE temp_encoded LONGBLOB;
+	DECLARE result_packed_data LONGBLOB DEFAULT '';
+
+	-- Get the field array (null if doesn't exist)
+	-- Calculate wire index once
+	SET next_wire_index = _pb_wire_json_get_next_index(wire_json);
+
+	SET field_array = JSON_EXTRACT(wire_json, field_path);
+
+	-- If field doesn't exist, create new field with single element
+	IF field_array IS NULL THEN
+		IF repeated_index = 0 THEN
+			IF use_packed THEN
+				CALL _pb_wire_write_i32(value, temp_encoded);
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', TO_BASE64(temp_encoded));
+				SET next_wire_index = next_wire_index + 1;
+			ELSE
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 5, 'v', CAST(value AS JSON));
+				SET next_wire_index = next_wire_index + 1;
+			END IF;
+			RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
+		ELSE
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
+		END IF;
+	END IF;
+
+	-- Process existing elements while building new array directly
+	WHILE array_index < JSON_LENGTH(field_array) DO
+		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
+		SET element_wire_type = JSON_EXTRACT(element, '$.t');
+
+		IF element_wire_type = 2 THEN
+			-- Packed field - process each packed value
+			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
+			WHILE LENGTH(packed_data) > 0 DO
+				CALL _pb_wire_read_i32_as_uint32(packed_data, temp_value, packed_data);
+
+				-- Check if we need to insert here
+				IF NOT inserted AND logical_position = repeated_index THEN
+					IF use_packed THEN
+						CALL _pb_wire_write_i32(value, temp_encoded);
+						SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+					ELSE
+						SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 5, 'v', CAST(value AS JSON));
+						SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+						SET next_wire_index = next_wire_index + 1;
+					END IF;
+					SET inserted = TRUE;
+				END IF;
+
+				-- Add current value
+				IF use_packed THEN
+					CALL _pb_wire_write_i32(temp_value, temp_encoded);
+					SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+				ELSE
+					SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 5, 'v', CAST(temp_value AS JSON));
+					SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+					SET next_wire_index = next_wire_index + 1;
+				END IF;
+
+				SET logical_position = logical_position + 1;
+			END WHILE;
+		ELSE
+			-- Unpacked field - process single value
+			SET temp_value = CAST(JSON_EXTRACT(element, '$.v') AS UNSIGNED);
+
+			-- Check if we need to insert here
+			IF NOT inserted AND logical_position = repeated_index THEN
+				IF use_packed THEN
+					CALL _pb_wire_write_i32(value, temp_encoded);
+					SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+				ELSE
+					SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 5, 'v', CAST(value AS JSON));
+					SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+					SET next_wire_index = next_wire_index + 1;
+				END IF;
+				SET inserted = TRUE;
+			END IF;
+
+			-- Add current value
+			IF use_packed THEN
+				CALL _pb_wire_write_i32(temp_value, temp_encoded);
+				SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+			ELSE
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 5, 'v', CAST(temp_value AS JSON));
+				SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+				SET next_wire_index = next_wire_index + 1;
+			END IF;
+
+			SET logical_position = logical_position + 1;
+		END IF;
+
+		SET array_index = array_index + 1;
+	END WHILE;
+
+	-- Check if we need to append at the end
+	IF NOT inserted THEN
+		IF repeated_index = logical_position THEN
+			IF use_packed THEN
+				CALL _pb_wire_write_i32(value, temp_encoded);
+				SET result_packed_data = CONCAT(result_packed_data, temp_encoded);
+			ELSE
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 5, 'v', CAST(value AS JSON));
+				SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+			END IF;
+		ELSE
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
+		END IF;
+	END IF;
+
+	-- Return result based on format
+	IF use_packed THEN
+		SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', TO_BASE64(result_packed_data));
+		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
+	ELSE
+		RETURN JSON_SET(wire_json, field_path, new_field_array);
+	END IF;
+END $$
+
+-- Private: Insert into repeated length-delimited field
+DROP FUNCTION IF EXISTS _pb_wire_json_insert_repeated_len_field_element $$
+CREATE FUNCTION _pb_wire_json_insert_repeated_len_field_element(
+	wire_json JSON,
+	field_number INT,
+	repeated_index INT,
+	value LONGBLOB
+) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_array JSON;
+	DECLARE new_field_array JSON DEFAULT JSON_ARRAY();
+	DECLARE logical_values JSON DEFAULT JSON_ARRAY();
+	DECLARE array_index INT DEFAULT 0;
+	DECLARE element JSON;
+	DECLARE next_wire_index INT;
+	DECLARE new_element JSON;
+	DECLARE i INT DEFAULT 0;
+	DECLARE temp_value JSON;
+	DECLARE encoded_value JSON DEFAULT JSON_QUOTE(TO_BASE64(value));
+
+	-- Get the field array (null if doesn't exist)
+	-- Calculate wire index once
+	SET next_wire_index = _pb_wire_json_get_next_index(wire_json);
+
+	SET field_array = JSON_EXTRACT(wire_json, field_path);
+
+	-- If field doesn't exist, create new field with single element
+	IF field_array IS NULL THEN
+		IF repeated_index = 0 THEN
+			SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', encoded_value);
+			SET next_wire_index = next_wire_index + 1;
+			RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
+		ELSE
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
+		END IF;
+	END IF;
+
+	-- Extract all logical values from existing wire elements (length-delimited fields are never packed)
+	WHILE array_index < JSON_LENGTH(field_array) DO
+		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
+		SET temp_value = JSON_EXTRACT(element, '$.v');
+		SET logical_values = JSON_ARRAY_APPEND(logical_values, '$', temp_value);
+		SET array_index = array_index + 1;
+	END WHILE;
+
+	-- Check bounds
+	IF repeated_index < 0 OR repeated_index > JSON_LENGTH(logical_values) THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
+	END IF;
+
+	-- Insert new value at the specified position
+	SET logical_values = JSON_ARRAY_INSERT(logical_values, CONCAT('$[', repeated_index, ']'), encoded_value);
+
+	-- Rebuild as unpacked wire elements
+	SET i = 0;
+	WHILE i < JSON_LENGTH(logical_values) DO
+		SET temp_value = JSON_EXTRACT(logical_values, CONCAT('$[', i, ']'));
+		SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', temp_value);
+		SET next_wire_index = next_wire_index + 1;
+		SET new_field_array = JSON_ARRAY_APPEND(new_field_array, '$', new_element);
+		SET i = i + 1;
+	END WHILE;
+
+	-- Replace the field array with the new one
+	RETURN JSON_SET(wire_json, field_path, new_field_array);
+END $$
