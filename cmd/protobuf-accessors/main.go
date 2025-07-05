@@ -566,6 +566,12 @@ func generateWireJsonSetters(input *Input, accessors []*Accessor) {
 		|BEGIN
 		|	RETURN _pb_wire_json_clear_field({{.Input.Name}}, field_number);
 		|END $$
+		|
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT, value_array JSON{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS JSON DETERMINISTIC
+		|BEGIN
+		|	RETURN pb_wire_json_add_all_repeated_{{.ProtoType}}_field_elements(pb_wire_json_clear_repeated_{{.ProtoType}}_field({{.Input.Name}}, field_number), field_number, value_array{{if .SupportsPacked}}, use_packed{{end}});
+		|END $$
 	`)
 
 	tmpl, err := template.New("setter").Parse(setterTemplateText)
@@ -629,6 +635,12 @@ func generateMessageSetters(input *Input, accessors []*Accessor) {
 		|CREATE FUNCTION pb_{{.Input.Kind}}_clear_repeated_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT) RETURNS {{.Input.SqlType}} DETERMINISTIC
 		|BEGIN
 		|	RETURN pb_wire_json_to_message(pb_wire_json_clear_repeated_{{.ProtoType}}_field(pb_message_to_wire_json({{.Input.Name}}), field_number));
+		|END $$
+		|
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT, value_array JSON{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS LONGBLOB DETERMINISTIC
+		|BEGIN
+		|	RETURN pb_wire_json_to_message(pb_wire_json_set_repeated_{{.ProtoType}}_field(pb_message_to_wire_json({{.Input.Name}}), field_number, value_array{{if .SupportsPacked}}, use_packed{{end}}));
 		|END $$
 	`)
 
