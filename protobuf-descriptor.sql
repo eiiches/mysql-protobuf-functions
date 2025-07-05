@@ -254,7 +254,7 @@ BEGIN
 	SET enum_value_descriptor_count = pb_wire_json_get_repeated_message_field_count(enum_descriptor_wire_json, 2);
 	SET enum_value_descriptor_index = 0;
 	WHILE enum_value_descriptor_index < enum_value_descriptor_count DO
-		SET enum_value_descriptor = pb_wire_json_get_repeated_message_field(enum_descriptor_wire_json, 2, enum_value_descriptor_index);
+		SET enum_value_descriptor = pb_wire_json_get_repeated_message_field_element(enum_descriptor_wire_json, 2, enum_value_descriptor_index);
 		CALL _pb_insert_enum_value_descriptor(set_name, full_type_name, enum_value_descriptor);
 		SET enum_value_descriptor_index = enum_value_descriptor_index + 1;
 	END WHILE;
@@ -312,7 +312,7 @@ BEGIN
 	SET field_descriptor_count = pb_wire_json_get_repeated_message_field_count(message_descriptor_wire_json, 2);
 	SET field_descriptor_index = 0;
 	WHILE field_descriptor_index < field_descriptor_count DO
-		SET field_descriptor = pb_wire_json_get_repeated_message_field(message_descriptor_wire_json, 2, field_descriptor_index);
+		SET field_descriptor = pb_wire_json_get_repeated_message_field_element(message_descriptor_wire_json, 2, field_descriptor_index);
 		CALL _pb_insert_field_descriptor_proto(set_name, full_type_name, field_descriptor);
 		SET field_descriptor_index = field_descriptor_index + 1;
 	END WHILE;
@@ -320,7 +320,7 @@ BEGIN
 	SET nested_descriptor_count = pb_wire_json_get_repeated_message_field_count(message_descriptor_wire_json, 3);
 	SET nested_descriptor_index = 0;
 	WHILE nested_descriptor_index < nested_descriptor_count DO
-		SET nested_descriptor = pb_wire_json_get_repeated_message_field(message_descriptor_wire_json, 3, nested_descriptor_index);
+		SET nested_descriptor = pb_wire_json_get_repeated_message_field_element(message_descriptor_wire_json, 3, nested_descriptor_index);
 		CALL _pb_insert_message_descriptor(set_name, file_name, full_type_name, nested_descriptor);
 		SET nested_descriptor_index = nested_descriptor_index + 1;
 	END WHILE;
@@ -328,7 +328,7 @@ BEGIN
 	SET enum_descriptor_count = pb_wire_json_get_repeated_message_field_count(message_descriptor_wire_json, 4);
 	SET enum_descriptor_index = 0;
 	WHILE enum_descriptor_index < enum_descriptor_count DO
-		SET enum_descriptor = pb_wire_json_get_repeated_message_field(message_descriptor_wire_json, 4, enum_descriptor_index);
+		SET enum_descriptor = pb_wire_json_get_repeated_message_field_element(message_descriptor_wire_json, 4, enum_descriptor_index);
 		CALL _pb_insert_enum_descriptor(set_name, file_name, full_type_name, enum_descriptor);
 		SET enum_descriptor_index = enum_descriptor_index + 1;
 	END WHILE;
@@ -336,7 +336,7 @@ BEGIN
 	SET oneof_descriptor_count = pb_wire_json_get_repeated_message_field_count(message_descriptor_wire_json, 8);
 	SET oneof_descriptor_index = 0;
 	WHILE oneof_descriptor_index < oneof_descriptor_count DO
-		SET oneof_descriptor = pb_wire_json_get_repeated_message_field(message_descriptor_wire_json, 8, oneof_descriptor_index);
+		SET oneof_descriptor = pb_wire_json_get_repeated_message_field_element(message_descriptor_wire_json, 8, oneof_descriptor_index);
 		CALL _pb_insert_oneof_descriptor(set_name, full_type_name, oneof_descriptor);
 		SET oneof_descriptor_index = oneof_descriptor_index + 1;
 	END WHILE;
@@ -392,7 +392,7 @@ BEGIN
 	SET message_descriptor_count = pb_wire_json_get_repeated_message_field_count(file_descriptor_wire_json, 4);
 	SET message_descriptor_index = 0;
 	WHILE message_descriptor_index < message_descriptor_count DO
-		SET message_descriptor = pb_wire_json_get_repeated_message_field(file_descriptor_wire_json, 4, message_descriptor_index);
+		SET message_descriptor = pb_wire_json_get_repeated_message_field_element(file_descriptor_wire_json, 4, message_descriptor_index);
 		CALL _pb_insert_message_descriptor(set_name, file_name, IF(package_name = '', '', CONCAT('.', package_name)), message_descriptor);
 		SET message_descriptor_index = message_descriptor_index + 1;
 	END WHILE;
@@ -400,7 +400,7 @@ BEGIN
 	SET enum_descriptor_count = pb_wire_json_get_repeated_message_field_count(file_descriptor_wire_json, 5);
 	SET enum_descriptor_index = 0;
 	WHILE enum_descriptor_index < enum_descriptor_count DO
-		SET enum_descriptor = pb_wire_json_get_repeated_message_field(file_descriptor_wire_json, 5, enum_descriptor_index);
+		SET enum_descriptor = pb_wire_json_get_repeated_message_field_element(file_descriptor_wire_json, 5, enum_descriptor_index);
 		CALL _pb_insert_enum_descriptor(set_name, file_name, IF(package_name = '', '', CONCAT('.', package_name)), enum_descriptor);
 		SET enum_descriptor_index = enum_descriptor_index + 1;
 	END WHILE;
@@ -442,7 +442,7 @@ BEGIN
 	SET file_descriptor_count = pb_wire_json_get_repeated_message_field_count(file_descriptor_set_wire_json, 1);
 	SET file_descriptor_index = 0;
 	WHILE file_descriptor_index < file_descriptor_count DO
-		SET file_descriptor = pb_wire_json_get_repeated_message_field(file_descriptor_set_wire_json, 1, file_descriptor_index);
+		SET file_descriptor = pb_wire_json_get_repeated_message_field_element(file_descriptor_set_wire_json, 1, file_descriptor_index);
 		CALL _pb_insert_file_descriptor(set_name, file_descriptor);
 		SET file_descriptor_index = file_descriptor_index + 1;
 	END WHILE;

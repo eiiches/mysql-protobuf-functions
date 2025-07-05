@@ -1271,8 +1271,8 @@ BEGIN
 END $$
 
 -- Private: Add to repeated field (appends new element)
-DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_field $$
-CREATE FUNCTION _pb_wire_json_add_repeated_field(
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_field_element $$
+CREATE FUNCTION _pb_wire_json_add_repeated_field_element(
 	wire_json JSON,
 	field_number INT,
 	wire_type INT,
@@ -2134,42 +2134,42 @@ BEGIN
 END $$
 
 -- Private: Add to repeated VARINT field
-DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_varint_field $$
-CREATE FUNCTION _pb_wire_json_add_repeated_varint_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_varint_field_element $$
+CREATE FUNCTION _pb_wire_json_add_repeated_varint_field_element(wire_json JSON, field_number INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	IF use_packed THEN
 		RETURN _pb_wire_json_add_packed_varint_field(wire_json, field_number, value);
 	ELSE
-		RETURN _pb_wire_json_add_repeated_field(wire_json, field_number, 0, CAST(value AS JSON));
+		RETURN _pb_wire_json_add_repeated_field_element(wire_json, field_number, 0, CAST(value AS JSON));
 	END IF;
 END $$
 
 -- Private: Add to repeated I64 field
-DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_i64_field $$
-CREATE FUNCTION _pb_wire_json_add_repeated_i64_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_i64_field_element $$
+CREATE FUNCTION _pb_wire_json_add_repeated_i64_field_element(wire_json JSON, field_number INT, value BIGINT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	IF use_packed THEN
 		RETURN _pb_wire_json_add_packed_i64_field(wire_json, field_number, value);
 	ELSE
-		RETURN _pb_wire_json_add_repeated_field(wire_json, field_number, 1, CAST(value AS JSON));
+		RETURN _pb_wire_json_add_repeated_field_element(wire_json, field_number, 1, CAST(value AS JSON));
 	END IF;
 END $$
 
 -- Private: Add to repeated I32 field
-DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_i32_field $$
-CREATE FUNCTION _pb_wire_json_add_repeated_i32_field(wire_json JSON, field_number INT, value INT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_i32_field_element $$
+CREATE FUNCTION _pb_wire_json_add_repeated_i32_field_element(wire_json JSON, field_number INT, value INT UNSIGNED, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
 	IF use_packed THEN
 		RETURN _pb_wire_json_add_packed_i32_field(wire_json, field_number, value);
 	ELSE
-		RETURN _pb_wire_json_add_repeated_field(wire_json, field_number, 5, CAST(value AS JSON));
+		RETURN _pb_wire_json_add_repeated_field_element(wire_json, field_number, 5, CAST(value AS JSON));
 	END IF;
 END $$
 
 -- Private: Add to repeated length-delimited field
-DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_len_field $$
-CREATE FUNCTION _pb_wire_json_add_repeated_len_field(wire_json JSON, field_number INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_len_field_element $$
+CREATE FUNCTION _pb_wire_json_add_repeated_len_field_element(wire_json JSON, field_number INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN _pb_wire_json_add_repeated_field(wire_json, field_number, 2, JSON_QUOTE(TO_BASE64(value)));
+	RETURN _pb_wire_json_add_repeated_field_element(wire_json, field_number, 2, JSON_QUOTE(TO_BASE64(value)));
 END $$
 

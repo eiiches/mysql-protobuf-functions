@@ -13,7 +13,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-func TestRandomizedSetRepeatedField(t *testing.T) {
+func TestRandomizedSetRepeatedFieldElement(t *testing.T) {
 	test := func(t *testing.T, protoFieldType string, setFunction string, supportsPacked bool, generator func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value)) {
 		for _, usePacked := range lo.Ternary(supportsPacked, []string{"true", "false"}, []string{""}) {
 			t.Run(fmt.Sprintf("%s/usePacked=%v", protoFieldType, usePacked), func(t *testing.T) {
@@ -45,87 +45,87 @@ func TestRandomizedSetRepeatedField(t *testing.T) {
 		}
 	}
 
-	test(t, "repeated float", "pb_{kind}_set_repeated_float_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated float", "pb_{kind}_set_repeated_float_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Float(rng, false, false)
 		return newValue, protoreflect.ValueOfFloat32(newValue)
 	})
 
-	test(t, "repeated double", "pb_{kind}_set_repeated_double_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated double", "pb_{kind}_set_repeated_double_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Double(rng, false, false)
 		return newValue, protoreflect.ValueOfFloat64(newValue)
 	})
 
-	test(t, "repeated int32", "pb_{kind}_set_repeated_int32_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated int32", "pb_{kind}_set_repeated_int32_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Int32(rng)
 		return newValue, protoreflect.ValueOfInt32(newValue)
 	})
 
-	test(t, "repeated int64", "pb_{kind}_set_repeated_int64_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated int64", "pb_{kind}_set_repeated_int64_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Int64(rng)
 		return newValue, protoreflect.ValueOfInt64(newValue)
 	})
 
-	test(t, "repeated uint32", "pb_{kind}_set_repeated_uint32_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated uint32", "pb_{kind}_set_repeated_uint32_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Uint32(rng)
 		return newValue, protoreflect.ValueOfUint32(newValue)
 	})
 
-	test(t, "repeated uint64", "pb_{kind}_set_repeated_uint64_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated uint64", "pb_{kind}_set_repeated_uint64_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Uint64(rng)
 		return newValue, protoreflect.ValueOfUint64(newValue)
 	})
 
-	test(t, "repeated bool", "pb_{kind}_set_repeated_bool_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated bool", "pb_{kind}_set_repeated_bool_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Bool(rng)
 		return newValue, protoreflect.ValueOfBool(newValue)
 	})
 
-	test(t, "repeated string", "pb_{kind}_set_repeated_string_field", false, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated string", "pb_{kind}_set_repeated_string_field_element", false, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.String(rng, 5)
 		return newValue, protoreflect.ValueOfString(newValue)
 	})
 
-	test(t, "repeated bytes", "pb_{kind}_set_repeated_bytes_field", false, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated bytes", "pb_{kind}_set_repeated_bytes_field_element", false, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Bytes(rng, 5)
 		return newValue, protoreflect.ValueOfBytes(newValue)
 	})
 
-	test(t, "repeated sint32", "pb_{kind}_set_repeated_sint32_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated sint32", "pb_{kind}_set_repeated_sint32_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Int32(rng)
 		return newValue, protoreflect.ValueOfInt32(newValue)
 	})
 
-	test(t, "repeated sint64", "pb_{kind}_set_repeated_sint64_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated sint64", "pb_{kind}_set_repeated_sint64_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Int64(rng)
 		return newValue, protoreflect.ValueOfInt64(newValue)
 	})
 
-	test(t, "repeated fixed32", "pb_{kind}_set_repeated_fixed32_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated fixed32", "pb_{kind}_set_repeated_fixed32_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Uint32(rng)
 		return newValue, protoreflect.ValueOfUint32(newValue)
 	})
 
-	test(t, "repeated fixed64", "pb_{kind}_set_repeated_fixed64_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated fixed64", "pb_{kind}_set_repeated_fixed64_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Uint64(rng)
 		return newValue, protoreflect.ValueOfUint64(newValue)
 	})
 
-	test(t, "repeated sfixed32", "pb_{kind}_set_repeated_sfixed32_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated sfixed32", "pb_{kind}_set_repeated_sfixed32_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Int32(rng)
 		return newValue, protoreflect.ValueOfInt32(newValue)
 	})
 
-	test(t, "repeated sfixed64", "pb_{kind}_set_repeated_sfixed64_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated sfixed64", "pb_{kind}_set_repeated_sfixed64_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Int64(rng)
 		return newValue, protoreflect.ValueOfInt64(newValue)
 	})
 
-	test(t, "repeated EnumType", "pb_{kind}_set_repeated_enum_field", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated EnumType", "pb_{kind}_set_repeated_enum_field_element", true, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Enum(rng, fieldDescriptor.Enum())
 		return newValue, protoreflect.ValueOfEnum(newValue)
 	})
 
-	test(t, "repeated MessageType", "pb_{kind}_set_repeated_message_field", false, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
+	test(t, "repeated MessageType", "pb_{kind}_set_repeated_message_field_element", false, func(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescriptor) (interface{}, protoreflect.Value) {
 		newValue := protorandom.Message(rng, fieldDescriptor.Message(), nil)
 		return newValue.Interface(), protoreflect.ValueOfMessage(newValue)
 	})

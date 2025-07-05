@@ -12,21 +12,21 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-type AccessProcedure struct {
-	Name                              string
-	SqlType                           string
-	SetterName                        string
-	AddRepeatedFunction               string
-	AddRepeatedFunctionSupportsPacked bool
-	SetRepeatedFunction               string
-	RemoveRepeatedFunction            string
+type WireTypeAccessor struct {
+	SqlType                       string
+	SupportsPacked                bool
+	GetFunction                   string
+	SetFunction                   string
+	AddRepeatedElementFunction    string
+	SetRepeatedElementFunction    string
+	RemoveRepeatedElementFunction string
 }
 
 type Accessor struct {
 	ProtoType      string
 	SqlType        string
 	ReturnExpr     string
-	Procedure      *AccessProcedure
+	Procedure      *WireTypeAccessor
 	Input          *Input
 	ConvertExpr    string
 	SupportsPacked bool
@@ -369,7 +369,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 		|BEGIN
 		|	DECLARE value {{.Procedure.SqlType}};
 		|	DECLARE field_count INT;
-		|	CALL {{.Procedure.Name}}({{.Input.Name}}, field_number, NULL, value, field_count);
+		|	CALL {{.Procedure.GetFunction}}({{.Input.Name}}, field_number, NULL, value, field_count);
 		|	IF field_count = 0 THEN
 		|		RETURN default_value;
 		|	END IF;
@@ -381,16 +381,16 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 		|BEGIN
 		|	DECLARE value {{.Procedure.SqlType}};
 		|	DECLARE field_count INT;
-		|	CALL {{.Procedure.Name}}({{.Input.Name}}, field_number, NULL, value, field_count);
+		|	CALL {{.Procedure.GetFunction}}({{.Input.Name}}, field_number, NULL, value, field_count);
 		|	RETURN field_count > 0;
 		|END $$
 		|
-		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_get_repeated_{{.ProtoType}}_field $$
-		|CREATE FUNCTION pb_{{.Input.Kind}}_get_repeated_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT) RETURNS {{.SqlType}} DETERMINISTIC
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_get_repeated_{{.ProtoType}}_field_element $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_get_repeated_{{.ProtoType}}_field_element({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT) RETURNS {{.SqlType}} DETERMINISTIC
 		|BEGIN
 		|	DECLARE value {{.Procedure.SqlType}};
 		|	DECLARE field_count INT;
-		|	CALL {{.Procedure.Name}}({{.Input.Name}}, field_number, repeated_index, value, field_count);
+		|	CALL {{.Procedure.GetFunction}}({{.Input.Name}}, field_number, repeated_index, value, field_count);
 		|	RETURN {{.ReturnExpr}};
 		|END $$
 		|
@@ -399,7 +399,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 		|BEGIN
 		|	DECLARE value {{.Procedure.SqlType}};
 		|	DECLARE field_count INT;
-		|	CALL {{.Procedure.Name}}({{.Input.Name}}, field_number, -1, value, field_count);
+		|	CALL {{.Procedure.GetFunction}}({{.Input.Name}}, field_number, -1, value, field_count);
 		|	RETURN field_count;
 		|END $$
 	`)
@@ -408,44 +408,44 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 
 	for _, input := range inputs {
 
-		getVarintFieldAsUint64 := &AccessProcedure{
-			Name:                              fmt.Sprintf("_pb_%s_get_varint_field_as_uint64", input.Kind),
-			SqlType:                           "BIGINT UNSIGNED",
-			SetterName:                        "_pb_wire_json_set_varint_field",
-			AddRepeatedFunction:               "_pb_wire_json_add_repeated_varint_field",
-			AddRepeatedFunctionSupportsPacked: true,
-			SetRepeatedFunction:               "_pb_wire_json_set_repeated_varint_field_element",
-			RemoveRepeatedFunction:            "_pb_wire_json_remove_repeated_varint_field_element",
+		getVarintFieldAsUint64 := &WireTypeAccessor{
+			SqlType:                       "BIGINT UNSIGNED",
+			SupportsPacked:                true,
+			GetFunction:                   fmt.Sprintf("_pb_%s_get_varint_field_as_uint64", input.Kind),
+			SetFunction:                   "_pb_wire_json_set_varint_field",
+			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_varint_field_element",
+			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_varint_field_element",
+			RemoveRepeatedElementFunction: "_pb_wire_json_remove_repeated_varint_field_element",
 		}
 
-		getI64FieldAsUint64 := &AccessProcedure{
-			Name:                              fmt.Sprintf("_pb_%s_get_i64_field_as_uint64", input.Kind),
-			SqlType:                           "BIGINT UNSIGNED",
-			SetterName:                        "_pb_wire_json_set_i64_field",
-			AddRepeatedFunction:               "_pb_wire_json_add_repeated_i64_field",
-			AddRepeatedFunctionSupportsPacked: true,
-			SetRepeatedFunction:               "_pb_wire_json_set_repeated_i64_field_element",
-			RemoveRepeatedFunction:            "_pb_wire_json_remove_repeated_i64_field_element",
+		getI64FieldAsUint64 := &WireTypeAccessor{
+			SqlType:                       "BIGINT UNSIGNED",
+			SupportsPacked:                true,
+			GetFunction:                   fmt.Sprintf("_pb_%s_get_i64_field_as_uint64", input.Kind),
+			SetFunction:                   "_pb_wire_json_set_i64_field",
+			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_i64_field_element",
+			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_i64_field_element",
+			RemoveRepeatedElementFunction: "_pb_wire_json_remove_repeated_i64_field_element",
 		}
 
-		getI32FieldAsUint64 := &AccessProcedure{
-			Name:                              fmt.Sprintf("_pb_%s_get_i32_field_as_uint32", input.Kind),
-			SqlType:                           "INT UNSIGNED",
-			SetterName:                        "_pb_wire_json_set_i32_field",
-			AddRepeatedFunction:               "_pb_wire_json_add_repeated_i32_field",
-			AddRepeatedFunctionSupportsPacked: true,
-			SetRepeatedFunction:               "_pb_wire_json_set_repeated_i32_field_element",
-			RemoveRepeatedFunction:            "_pb_wire_json_remove_repeated_i32_field_element",
+		getI32FieldAsUint64 := &WireTypeAccessor{
+			SqlType:                       "INT UNSIGNED",
+			SupportsPacked:                true,
+			GetFunction:                   fmt.Sprintf("_pb_%s_get_i32_field_as_uint32", input.Kind),
+			SetFunction:                   "_pb_wire_json_set_i32_field",
+			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_i32_field_element",
+			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_i32_field_element",
+			RemoveRepeatedElementFunction: "_pb_wire_json_remove_repeated_i32_field_element",
 		}
 
-		getLengthDelimitedField := &AccessProcedure{
-			Name:                              fmt.Sprintf("_pb_%s_get_len_type_field", input.Kind),
-			SqlType:                           "LONGBLOB",
-			SetterName:                        "_pb_wire_json_set_len_field",
-			AddRepeatedFunction:               "_pb_wire_json_add_repeated_len_field",
-			AddRepeatedFunctionSupportsPacked: false,
-			SetRepeatedFunction:               "_pb_wire_json_set_repeated_len_field_element",
-			RemoveRepeatedFunction:            "_pb_wire_json_remove_repeated_len_field_element",
+		getLengthDelimitedField := &WireTypeAccessor{
+			SqlType:                       "LONGBLOB",
+			SupportsPacked:                false,
+			GetFunction:                   fmt.Sprintf("_pb_%s_get_len_type_field", input.Kind),
+			SetFunction:                   "_pb_wire_json_set_len_field",
+			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_len_field_element",
+			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_len_field_element",
+			RemoveRepeatedElementFunction: "_pb_wire_json_remove_repeated_len_field_element",
 		}
 
 		accessors := []*Accessor{
@@ -507,29 +507,29 @@ func generateWireJsonSetters(input *Input, accessors []*Accessor) {
 		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_set_{{.ProtoType}}_field $$
 		|CREATE FUNCTION pb_{{.Input.Kind}}_set_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT, value {{.SqlType}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
 		|BEGIN
-		|	RETURN {{.Procedure.SetterName}}({{.Input.Name}}, field_number, {{.ConvertExpr}});
+		|	RETURN {{.Procedure.SetFunction}}({{.Input.Name}}, field_number, {{.ConvertExpr}});
 		|END $$
 		|
-		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_add_repeated_{{.ProtoType}}_field $$
-		|CREATE FUNCTION pb_{{.Input.Kind}}_add_repeated_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT, value {{.SqlType}}{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_add_repeated_{{.ProtoType}}_field_element $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_add_repeated_{{.ProtoType}}_field_element({{.Input.Name}} {{.Input.SqlType}}, field_number INT, value {{.SqlType}}{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
 		|BEGIN
-		|{{- if .Procedure.AddRepeatedFunctionSupportsPacked}}
-		|	RETURN {{.Procedure.AddRepeatedFunction}}({{.Input.Name}}, field_number, {{.ConvertExpr}}{{if .SupportsPacked}}, use_packed{{else}}, FALSE{{end}});
+		|{{- if .Procedure.SupportsPacked}}
+		|	RETURN {{.Procedure.AddRepeatedElementFunction}}({{.Input.Name}}, field_number, {{.ConvertExpr}}{{if .SupportsPacked}}, use_packed{{else}}, FALSE{{end}});
 		|{{- else}}
-		|	RETURN {{.Procedure.AddRepeatedFunction}}({{.Input.Name}}, field_number, {{.ConvertExpr}});
+		|	RETURN {{.Procedure.AddRepeatedElementFunction}}({{.Input.Name}}, field_number, {{.ConvertExpr}});
 		|{{- end}}
 		|END $$
 		|
-		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field $$
-		|CREATE FUNCTION pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT, value {{.SqlType}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field_element $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field_element({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT, value {{.SqlType}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
 		|BEGIN
-		|	RETURN {{.Procedure.SetRepeatedFunction}}({{.Input.Name}}, field_number, repeated_index, {{.ConvertExpr}});
+		|	RETURN {{.Procedure.SetRepeatedElementFunction}}({{.Input.Name}}, field_number, repeated_index, {{.ConvertExpr}});
 		|END $$
 		|
-		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_remove_repeated_{{.ProtoType}}_field $$
-		|CREATE FUNCTION pb_{{.Input.Kind}}_remove_repeated_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT) RETURNS {{.Input.SqlType}} DETERMINISTIC
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_remove_repeated_{{.ProtoType}}_field_element $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_remove_repeated_{{.ProtoType}}_field_element({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT) RETURNS {{.Input.SqlType}} DETERMINISTIC
 		|BEGIN
-		|	RETURN {{.Procedure.RemoveRepeatedFunction}}({{.Input.Name}}, field_number, repeated_index);
+		|	RETURN {{.Procedure.RemoveRepeatedElementFunction}}({{.Input.Name}}, field_number, repeated_index);
 		|END $$
 		|
 		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_clear_{{.ProtoType}}_field $$
@@ -566,22 +566,22 @@ func generateMessageSetters(input *Input, accessors []*Accessor) {
 		|	RETURN pb_wire_json_to_message(pb_wire_json_set_{{.ProtoType}}_field(pb_message_to_wire_json({{.Input.Name}}), field_number, value));
 		|END $$
 		|
-		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_add_repeated_{{.ProtoType}}_field $$
-		|CREATE FUNCTION pb_{{.Input.Kind}}_add_repeated_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT, value {{.SqlType}}{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_add_repeated_{{.ProtoType}}_field_element $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_add_repeated_{{.ProtoType}}_field_element({{.Input.Name}} {{.Input.SqlType}}, field_number INT, value {{.SqlType}}{{if .SupportsPacked}}, use_packed BOOLEAN{{end}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
 		|BEGIN
-		|	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_{{.ProtoType}}_field(pb_message_to_wire_json({{.Input.Name}}), field_number, value{{if .SupportsPacked}}, use_packed{{end}}));
+		|	RETURN pb_wire_json_to_message(pb_wire_json_add_repeated_{{.ProtoType}}_field_element(pb_message_to_wire_json({{.Input.Name}}), field_number, value{{if .SupportsPacked}}, use_packed{{end}}));
 		|END $$
 		|
-		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field $$
-		|CREATE FUNCTION pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT, value {{.SqlType}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field_element $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_set_repeated_{{.ProtoType}}_field_element({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT, value {{.SqlType}}) RETURNS {{.Input.SqlType}} DETERMINISTIC
 		|BEGIN
-		|	RETURN pb_wire_json_to_message(pb_wire_json_set_repeated_{{.ProtoType}}_field(pb_message_to_wire_json({{.Input.Name}}), field_number, repeated_index, value));
+		|	RETURN pb_wire_json_to_message(pb_wire_json_set_repeated_{{.ProtoType}}_field_element(pb_message_to_wire_json({{.Input.Name}}), field_number, repeated_index, value));
 		|END $$
 		|
-		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_remove_repeated_{{.ProtoType}}_field $$
-		|CREATE FUNCTION pb_{{.Input.Kind}}_remove_repeated_{{.ProtoType}}_field({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT) RETURNS {{.Input.SqlType}} DETERMINISTIC
+		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_remove_repeated_{{.ProtoType}}_field_element $$
+		|CREATE FUNCTION pb_{{.Input.Kind}}_remove_repeated_{{.ProtoType}}_field_element({{.Input.Name}} {{.Input.SqlType}}, field_number INT, repeated_index INT) RETURNS {{.Input.SqlType}} DETERMINISTIC
 		|BEGIN
-		|	RETURN pb_wire_json_to_message(pb_wire_json_remove_repeated_{{.ProtoType}}_field(pb_message_to_wire_json({{.Input.Name}}), field_number, repeated_index));
+		|	RETURN pb_wire_json_to_message(pb_wire_json_remove_repeated_{{.ProtoType}}_field_element(pb_message_to_wire_json({{.Input.Name}}), field_number, repeated_index));
 		|END $$
 		|
 		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_clear_{{.ProtoType}}_field $$

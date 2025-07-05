@@ -82,9 +82,9 @@ func TestWireJsonGetInt32Field(t *testing.T) {
 
 func TestWireJsonGetRepeatedInt32Field(t *testing.T) {
 	// packed repeated
-	RunTestThatExpression(t, "pb_wire_json_get_repeated_int32_field(pb_message_to_wire_json(_binary X'3a03010203'), 7, 0)").IsEqualToInt(1)
-	RunTestThatExpression(t, "pb_wire_json_get_repeated_int32_field(pb_message_to_wire_json(_binary X'3a03010203'), 7, 1)").IsEqualToInt(2)
-	RunTestThatExpression(t, "pb_wire_json_get_repeated_int32_field(pb_message_to_wire_json(_binary X'3a03010203'), 7, 2)").IsEqualToInt(3)
+	RunTestThatExpression(t, "pb_wire_json_get_repeated_int32_field_element(pb_message_to_wire_json(_binary X'3a03010203'), 7, 0)").IsEqualToInt(1)
+	RunTestThatExpression(t, "pb_wire_json_get_repeated_int32_field_element(pb_message_to_wire_json(_binary X'3a03010203'), 7, 1)").IsEqualToInt(2)
+	RunTestThatExpression(t, "pb_wire_json_get_repeated_int32_field_element(pb_message_to_wire_json(_binary X'3a03010203'), 7, 2)").IsEqualToInt(3)
 }
 
 func TestWireJsonGetRepeatedInt32FieldCount(t *testing.T) {

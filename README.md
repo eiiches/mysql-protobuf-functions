@@ -115,11 +115,11 @@ Use the field accessor functions to extract data from protobuf messages:
 smith@example.com
 
 -- Get phones[0].number; phones is 4, number is 1
-> SELECT pb_message_get_string_field(pb_message_get_repeated_message_field(pb_data, 4, 0), 1, '' /* default value */) FROM Example;
+> SELECT pb_message_get_string_field(pb_message_get_repeated_message_field_element(pb_data, 4, 0), 1, '' /* default value */) FROM Example;
 +81-00-0000-0000
 
 -- Get phones[0].type; phones is 4, type is 2
-> SELECT pb_message_get_enum_field(pb_message_get_repeated_message_field(pb_data, 4, 0), 2, 0 /* default value */) FROM Example;
+> SELECT pb_message_get_enum_field(pb_message_get_repeated_message_field_element(pb_data, 4, 0), 2, 0 /* default value */) FROM Example;
 3
 ```
 
@@ -191,7 +191,7 @@ SELECT pb_message_set_int32_field(
 ) AS updated_person FROM Example LIMIT 1;
 
 -- Add elements to repeated fields (create a new phone number)
-SELECT pb_message_add_repeated_message_field(
+SELECT pb_message_add_repeated_message_field_element(
   pb_data,
   4, -- phones field
   pb_message_set_enum_field(
@@ -207,11 +207,11 @@ SELECT pb_message_clear_string_field(
 ) AS person_no_email FROM Example LIMIT 1;
 
 -- Modify specific elements in repeated fields
-SELECT pb_message_set_repeated_message_field(
+SELECT pb_message_set_repeated_message_field_element(
   pb_data,
   4, 0, -- phones[0]
   pb_message_set_enum_field(
-    pb_message_get_repeated_message_field(pb_data, 4, 0), -- get existing phone (phones[0])
+    pb_message_get_repeated_message_field_element(pb_data, 4, 0), -- get existing phone (phones[0])
     2, 1 -- set type = PHONE_TYPE_MOBILE
   )
 ) AS person_mobile_phone FROM Example LIMIT 1;

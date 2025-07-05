@@ -84,9 +84,9 @@ func TestMessageGetInt32Field(t *testing.T) {
 
 func TestMessageGetRepeatedInt32Field(t *testing.T) {
 	// packed repeated
-	RunTestThatExpression(t, "pb_message_get_repeated_int32_field(_binary X'3a03010203', 7, 0)").IsEqualToInt(1)
-	RunTestThatExpression(t, "pb_message_get_repeated_int32_field(_binary X'3a03010203', 7, 1)").IsEqualToInt(2)
-	RunTestThatExpression(t, "pb_message_get_repeated_int32_field(_binary X'3a03010203', 7, 2)").IsEqualToInt(3)
+	RunTestThatExpression(t, "pb_message_get_repeated_int32_field_element(_binary X'3a03010203', 7, 0)").IsEqualToInt(1)
+	RunTestThatExpression(t, "pb_message_get_repeated_int32_field_element(_binary X'3a03010203', 7, 1)").IsEqualToInt(2)
+	RunTestThatExpression(t, "pb_message_get_repeated_int32_field_element(_binary X'3a03010203', 7, 2)").IsEqualToInt(3)
 }
 
 func TestMessageGetRepeatedInt32FieldCount(t *testing.T) {

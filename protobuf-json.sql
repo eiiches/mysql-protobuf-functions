@@ -332,7 +332,7 @@ proc: BEGIN
 				SET field_index = 0;
 				SET field_json_value = JSON_ARRAY();
 				WHILE field_index < field_count DO
-					SET bytes_value = pb_wire_json_get_repeated_message_field(wire_json, field_number, field_index);
+					SET bytes_value = pb_wire_json_get_repeated_message_field_element(wire_json, field_number, field_index);
 					CALL _pb_message_to_json(set_name, field_type_name, bytes_value, nested_json_value);
 					SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', nested_json_value);
 					SET field_index = field_index + 1;
