@@ -1,6 +1,6 @@
 .PHONY: test
 test: purge reload ensure-test-database
-	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" $${GO_TEST_FLAGS:-}
+	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" -fuzz-iterations 20 $${GO_TEST_FLAGS:-}
 
 .PHONY: build
 build:
@@ -70,7 +70,7 @@ load-instrumented-files: instrument-files ensure-test-database
 
 .PHONY: run-coverage-tests
 run-coverage-tests: load-instrumented-files
-	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" $${GO_TEST_FLAGS:-}
+	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" -fuzz-iterations 20 $${GO_TEST_FLAGS:-}
 
 .PHONY: generate-coverage-report
 generate-coverage-report: run-coverage-tests

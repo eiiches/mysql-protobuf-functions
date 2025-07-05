@@ -26,10 +26,14 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-var db *sql.DB
+var (
+	db         *sql.DB
+	iterations = 100
+)
 
 func TestMain(m *testing.M) {
 	dataSourceName := flag.String("database", "", "Database connection string. Example: user:password@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local")
+	flag.IntVar(&iterations, "fuzz-iterations", 100, "Number of iterations for fuzz/random testing")
 	flag.Parse()
 
 	if *dataSourceName == "" {

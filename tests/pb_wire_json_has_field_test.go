@@ -20,7 +20,7 @@ func TestRandomizedWireJsonHasField(t *testing.T) {
 				seed := time.Now().UnixNano()
 				t.Logf("Using seed = %d.", seed)
 				rng := rand.New(rand.NewSource(seed))
-				for i := 0; i < 100; i++ {
+				for i := 0; i < iterations; i++ {
 					input := protorandom.Message(rng, messageType.Descriptor(), nil)
 					expectedHasValue := input.Has(valueField)
 
