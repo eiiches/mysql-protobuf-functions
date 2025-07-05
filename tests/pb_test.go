@@ -402,6 +402,12 @@ func (this *ExpressionTestContext) IsEqualToProto(expectedProto proto.Message) {
 	})
 }
 
+func (this *ExpressionTestContext) IsEqualOrCloseToProto(expectedProto proto.Message, equalOrCloseFn func(a, b float64, floatSize int) bool) {
+	this.RunFn(fmt.Sprintf("RunTestThatExpression(`%s`,%s).IsEqualOrCloseToProto(%s)", this.Expression, formatArguments(this.Args...), formatArguments(expectedProto)), func(t *testing.T) {
+		assertThatExpressionTo[[]byte](t, gproto.EqualProto(expectedProto).WithFloatEqualFn(equalOrCloseFn), this.Expression, this.Args...)
+	})
+}
+
 type StatementTestContext[T any] struct {
 	Statement string
 	Args      []any

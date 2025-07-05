@@ -5,46 +5,62 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/onsi/gomega/types"
+	"github.com/eiiches/mysql-protobuf-functions/internal/moreproto"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
-func EqualProto(expectedMessage proto.Message) types.GomegaMatcher {
-	return &equalProtoMatcher{expectedMessage: expectedMessage}
+func EqualProto(expectedMessage proto.Message) *EqualProtoMatcher {
+	return &EqualProtoMatcher{expectedMessage: expectedMessage}
 }
 
-type equalProtoMatcher struct {
+type EqualProtoMatcher struct {
 	expectedMessage proto.Message
+	equalOrCloseFn  func(a, b float64, floatSize int) bool
 }
 
-func (m *equalProtoMatcher) Match(actual interface{}) (success bool, err error) {
+func (m *EqualProtoMatcher) WithFloatEqualFn(equalOrCloseFn func(a, b float64, floatSize int) bool) *EqualProtoMatcher {
+	return &EqualProtoMatcher{
+		expectedMessage: m.expectedMessage,
+		equalOrCloseFn:  equalOrCloseFn,
+	}
+}
+
+func (m *EqualProtoMatcher) Match(actual interface{}) (success bool, err error) {
 	if actual == nil {
 		return false, nil
 	}
+
+	var actualMessage proto.Message
 	switch actualTyped := actual.(type) {
 	case proto.Message:
-		return proto.Equal(actualTyped, m.expectedMessage), nil
+		actualMessage = actualTyped
 	case []byte:
 		empty := m.expectedMessage.ProtoReflect().New()
 		if err := proto.Unmarshal(actualTyped, empty.Interface()); err != nil {
 			return false, fmt.Errorf("error unmarshalling bytes: %w", err)
 		}
-		return proto.Equal(empty.Interface().(proto.Message), m.expectedMessage), nil
+		actualMessage = empty.Interface().(proto.Message)
 	default:
 		return false, fmt.Errorf("expected a proto.Message or []byte, got %T", actual)
 	}
+
+	if m.equalOrCloseFn == nil {
+		return proto.Equal(actualMessage, m.expectedMessage), nil
+	}
+
+	return moreproto.EqualOrClose(actualMessage, m.expectedMessage, m.equalOrCloseFn), nil
 }
 
-func (m *equalProtoMatcher) FailureMessage(actual interface{}) (message string) {
+func (m *EqualProtoMatcher) FailureMessage(actual interface{}) (message string) {
 	return m.formatComparisonMessage(actual, "to match")
 }
 
-func (m *equalProtoMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+func (m *EqualProtoMatcher) NegatedFailureMessage(actual interface{}) (message string) {
 	return m.formatComparisonMessage(actual, "not to match")
 }
 
-func (m *equalProtoMatcher) formatComparisonMessage(actual interface{}, relation string) string {
+func (m *EqualProtoMatcher) formatComparisonMessage(actual interface{}, relation string) string {
 	actualStr := formatMessageWithContext(actual, m.expectedMessage)
 	expectedStr := formatMessage(m.expectedMessage)
 
@@ -86,7 +102,7 @@ func formatProtoMessage(msg proto.Message) string {
 		Multiline: true,
 		Indent:    "  ",
 	}
-	
+
 	var result string
 	if data, err := marshaler.Marshal(msg); err == nil {
 		result = string(data)
@@ -111,7 +127,7 @@ func formatByteSlice(data []byte, expectedMessage proto.Message) string {
 	if len(data) == 0 {
 		return "[]byte{} (empty)"
 	}
-	
+
 	hexStr := hex.EncodeToString(data)
 	result := fmt.Sprintf("[]byte{%d bytes}\nHex: %s", len(data), hexStr)
 
@@ -130,6 +146,6 @@ func formatByteSlice(data []byte, expectedMessage proto.Message) string {
 			result += fmt.Sprintf("\nFailed to parse as proto: %v", err)
 		}
 	}
-	
+
 	return result
 }
