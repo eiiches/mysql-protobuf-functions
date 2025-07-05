@@ -1234,7 +1234,7 @@ DROP FUNCTION IF EXISTS _pb_wire_json_get_next_index $$
 CREATE FUNCTION _pb_wire_json_get_next_index(wire_json JSON) RETURNS INT DETERMINISTIC
 BEGIN
 	DECLARE max_index INT;
-	
+
 	-- Use the same JSON_TABLE pattern as pb_wire_json_as_table to get max index
 	SELECT COALESCE(MAX(i), -1) INTO max_index
 	FROM JSON_TABLE(
@@ -1243,7 +1243,7 @@ BEGIN
 			i INT PATH '$.i'
 		)
 	) jt;
-	
+
 	RETURN max_index + 1;
 END $$
 
@@ -1259,13 +1259,13 @@ BEGIN
 	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
 	DECLARE next_index INT;
 	DECLARE new_element JSON;
-	
+
 	-- Get the next available index
 	SET next_index = _pb_wire_json_get_next_index(wire_json);
-	
+
 	-- Create the new wire element
 	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', wire_type, 'v', value);
-	
+
 	-- Replace the entire field
 	RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
 END $$
@@ -1282,13 +1282,13 @@ BEGIN
 	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
 	DECLARE next_index INT;
 	DECLARE new_element JSON;
-	
+
 	-- Get the next available index
 	SET next_index = _pb_wire_json_get_next_index(wire_json);
-	
+
 	-- Create the new wire element
 	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', wire_type, 'v', value);
-	
+
 	-- If field doesn't exist, create it; otherwise append
 	IF NOT JSON_CONTAINS_PATH(wire_json, 'one', field_path) THEN
 		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
@@ -1329,30 +1329,30 @@ BEGIN
 	DECLARE temp_value BIGINT UNSIGNED;
 	DECLARE temp_encoded LONGBLOB;
 	DECLARE found_target BOOLEAN DEFAULT FALSE;
-	
+
 	-- Get the field array
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-	
+
 	-- Check if field exists
 	IF field_array IS NULL THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
 	END IF;
-	
+
 	-- Find the target index across all array elements
 	WHILE array_index < JSON_LENGTH(field_array) DO
 		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
 		SET element_wire_type = JSON_EXTRACT(element, '$.t');
-		
+
 		IF element_wire_type = 2 THEN
 			-- Packed field - decode, modify, and re-encode
 			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
 			SET new_packed_data = '';
 			SET found_target = FALSE;
-			
+
 			-- Decode packed varints and rebuild with modification
 			WHILE LENGTH(packed_data) > 0 DO
 				CALL _pb_wire_read_varint_as_uint64(packed_data, temp_value, packed_data);
-				
+
 				IF current_index = repeated_index THEN
 					-- Replace this element with new value
 					CALL _pb_wire_write_varint(value, temp_encoded);
@@ -1361,11 +1361,11 @@ BEGIN
 					-- Keep original element
 					CALL _pb_wire_write_varint(temp_value, temp_encoded);
 				END IF;
-				
+
 				SET new_packed_data = CONCAT(new_packed_data, temp_encoded);
 				SET current_index = current_index + 1;
 			END WHILE;
-			
+
 			-- If we found the target, update and return
 			IF found_target THEN
 				SET original_index = JSON_EXTRACT(element, '$.i');
@@ -1384,10 +1384,10 @@ BEGIN
 			END IF;
 			SET current_index = current_index + 1;
 		END IF;
-		
+
 		SET array_index = array_index + 1;
 	END WHILE;
-	
+
 	-- Index not found
 	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
 END $$
@@ -1416,30 +1416,30 @@ BEGIN
 	DECLARE temp_value BIGINT UNSIGNED;
 	DECLARE temp_encoded LONGBLOB;
 	DECLARE found_target BOOLEAN DEFAULT FALSE;
-	
+
 	-- Get the field array
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-	
+
 	-- Check if field exists
 	IF field_array IS NULL THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
 	END IF;
-	
+
 	-- Find the target index across all array elements
 	WHILE array_index < JSON_LENGTH(field_array) DO
 		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
 		SET element_wire_type = JSON_EXTRACT(element, '$.t');
-		
+
 		IF element_wire_type = 2 THEN
 			-- Packed field - decode, modify, and re-encode
 			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
 			SET new_packed_data = '';
 			SET found_target = FALSE;
-			
+
 			-- Decode packed I64 values and rebuild with modification
 			WHILE LENGTH(packed_data) > 0 DO
 				CALL _pb_wire_read_i64_as_uint64(packed_data, temp_value, packed_data);
-				
+
 				IF current_index = repeated_index THEN
 					-- Replace this element with new value
 					CALL _pb_wire_write_i64(value, temp_encoded);
@@ -1448,11 +1448,11 @@ BEGIN
 					-- Keep original element
 					CALL _pb_wire_write_i64(temp_value, temp_encoded);
 				END IF;
-				
+
 				SET new_packed_data = CONCAT(new_packed_data, temp_encoded);
 				SET current_index = current_index + 1;
 			END WHILE;
-			
+
 			-- If we found the target, update and return
 			IF found_target THEN
 				SET original_index = JSON_EXTRACT(element, '$.i');
@@ -1471,10 +1471,10 @@ BEGIN
 			END IF;
 			SET current_index = current_index + 1;
 		END IF;
-		
+
 		SET array_index = array_index + 1;
 	END WHILE;
-	
+
 	-- Index not found
 	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
 END $$
@@ -1503,30 +1503,30 @@ BEGIN
 	DECLARE temp_value INT UNSIGNED;
 	DECLARE temp_encoded LONGBLOB;
 	DECLARE found_target BOOLEAN DEFAULT FALSE;
-	
+
 	-- Get the field array
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-	
+
 	-- Check if field exists
 	IF field_array IS NULL THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
 	END IF;
-	
+
 	-- Find the target index across all array elements
 	WHILE array_index < JSON_LENGTH(field_array) DO
 		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
 		SET element_wire_type = JSON_EXTRACT(element, '$.t');
-		
+
 		IF element_wire_type = 2 THEN
 			-- Packed field - decode, modify, and re-encode
 			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
 			SET new_packed_data = '';
 			SET found_target = FALSE;
-			
+
 			-- Decode packed I32 values and rebuild with modification
 			WHILE LENGTH(packed_data) > 0 DO
 				CALL _pb_wire_read_i32_as_uint32(packed_data, temp_value, packed_data);
-				
+
 				IF current_index = repeated_index THEN
 					-- Replace this element with new value
 					CALL _pb_wire_write_i32(value, temp_encoded);
@@ -1535,11 +1535,11 @@ BEGIN
 					-- Keep original element
 					CALL _pb_wire_write_i32(temp_value, temp_encoded);
 				END IF;
-				
+
 				SET new_packed_data = CONCAT(new_packed_data, temp_encoded);
 				SET current_index = current_index + 1;
 			END WHILE;
-			
+
 			-- If we found the target, update and return
 			IF found_target THEN
 				SET original_index = JSON_EXTRACT(element, '$.i');
@@ -1558,10 +1558,10 @@ BEGIN
 			END IF;
 			SET current_index = current_index + 1;
 		END IF;
-		
+
 		SET array_index = array_index + 1;
 	END WHILE;
-	
+
 	-- Index not found
 	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
 END $$
@@ -1584,20 +1584,20 @@ BEGIN
 	DECLARE original_index INT;
 	DECLARE new_element JSON;
 	DECLARE element_path TEXT;
-	
+
 	-- Get the field array
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-	
+
 	-- Check if field exists
 	IF field_array IS NULL THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
 	END IF;
-	
+
 	-- Find the target index across all array elements
 	WHILE array_index < JSON_LENGTH(field_array) DO
 		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
 		SET element_wire_type = JSON_EXTRACT(element, '$.t');
-		
+
 		-- LEN fields are always wire type 2, so all elements should match
 		IF element_wire_type = 2 THEN
 			IF current_index = repeated_index THEN
@@ -1609,10 +1609,10 @@ BEGIN
 			END IF;
 			SET current_index = current_index + 1;
 		END IF;
-		
+
 		SET array_index = array_index + 1;
 	END WHILE;
-	
+
 	-- Index not found
 	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
 END $$
@@ -1640,30 +1640,30 @@ BEGIN
 	DECLARE found_target BOOLEAN DEFAULT FALSE;
 	DECLARE original_index INT;
 	DECLARE new_element JSON;
-	
+
 	-- Get the field array
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-	
+
 	-- Check if field exists
 	IF field_array IS NULL THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
 	END IF;
-	
+
 	-- Find the target index across all array elements
 	WHILE array_index < JSON_LENGTH(field_array) DO
 		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
 		SET element_wire_type = JSON_EXTRACT(element, '$.t');
-		
+
 		IF element_wire_type = 2 THEN
 			-- Packed field - decode, remove element, and re-encode
 			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
 			SET new_packed_data = '';
 			SET found_target = FALSE;
-			
+
 			-- Decode packed varints and rebuild without target element
 			WHILE LENGTH(packed_data) > 0 DO
 				CALL _pb_wire_read_varint_as_uint64(packed_data, temp_value, packed_data);
-				
+
 				IF current_index = repeated_index THEN
 					-- Skip this element (remove it)
 					SET found_target = TRUE;
@@ -1672,10 +1672,10 @@ BEGIN
 					CALL _pb_wire_write_varint(temp_value, temp_encoded);
 					SET new_packed_data = CONCAT(new_packed_data, temp_encoded);
 				END IF;
-				
+
 				SET current_index = current_index + 1;
 			END WHILE;
-			
+
 			-- If we found the target, update and return
 			IF found_target THEN
 				SET original_index = JSON_EXTRACT(element, '$.i');
@@ -1712,10 +1712,10 @@ BEGIN
 			END IF;
 			SET current_index = current_index + 1;
 		END IF;
-		
+
 		SET array_index = array_index + 1;
 	END WHILE;
-	
+
 	-- Index not found
 	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
 END $$
@@ -1743,30 +1743,30 @@ BEGIN
 	DECLARE found_target BOOLEAN DEFAULT FALSE;
 	DECLARE original_index INT;
 	DECLARE new_element JSON;
-	
+
 	-- Get the field array
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-	
+
 	-- Check if field exists
 	IF field_array IS NULL THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
 	END IF;
-	
+
 	-- Find the target index across all array elements
 	WHILE array_index < JSON_LENGTH(field_array) DO
 		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
 		SET element_wire_type = JSON_EXTRACT(element, '$.t');
-		
+
 		IF element_wire_type = 2 THEN
 			-- Packed field - decode, remove element, and re-encode
 			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
 			SET new_packed_data = '';
 			SET found_target = FALSE;
-			
+
 			-- Decode packed I64 values and rebuild without target element
 			WHILE LENGTH(packed_data) > 0 DO
 				CALL _pb_wire_read_i64_as_uint64(packed_data, temp_value, packed_data);
-				
+
 				IF current_index = repeated_index THEN
 					-- Skip this element (remove it)
 					SET found_target = TRUE;
@@ -1775,10 +1775,10 @@ BEGIN
 					CALL _pb_wire_write_i64(temp_value, temp_encoded);
 					SET new_packed_data = CONCAT(new_packed_data, temp_encoded);
 				END IF;
-				
+
 				SET current_index = current_index + 1;
 			END WHILE;
-			
+
 			-- If we found the target, update and return
 			IF found_target THEN
 				SET original_index = JSON_EXTRACT(element, '$.i');
@@ -1815,10 +1815,10 @@ BEGIN
 			END IF;
 			SET current_index = current_index + 1;
 		END IF;
-		
+
 		SET array_index = array_index + 1;
 	END WHILE;
-	
+
 	-- Index not found
 	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
 END $$
@@ -1846,30 +1846,30 @@ BEGIN
 	DECLARE found_target BOOLEAN DEFAULT FALSE;
 	DECLARE original_index INT;
 	DECLARE new_element JSON;
-	
+
 	-- Get the field array
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-	
+
 	-- Check if field exists
 	IF field_array IS NULL THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
 	END IF;
-	
+
 	-- Find the target index across all array elements
 	WHILE array_index < JSON_LENGTH(field_array) DO
 		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
 		SET element_wire_type = JSON_EXTRACT(element, '$.t');
-		
+
 		IF element_wire_type = 2 THEN
 			-- Packed field - decode, remove element, and re-encode
 			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
 			SET new_packed_data = '';
 			SET found_target = FALSE;
-			
+
 			-- Decode packed I32 values and rebuild without target element
 			WHILE LENGTH(packed_data) > 0 DO
 				CALL _pb_wire_read_i32_as_uint32(packed_data, temp_value, packed_data);
-				
+
 				IF current_index = repeated_index THEN
 					-- Skip this element (remove it)
 					SET found_target = TRUE;
@@ -1878,10 +1878,10 @@ BEGIN
 					CALL _pb_wire_write_i32(temp_value, temp_encoded);
 					SET new_packed_data = CONCAT(new_packed_data, temp_encoded);
 				END IF;
-				
+
 				SET current_index = current_index + 1;
 			END WHILE;
-			
+
 			-- If we found the target, update and return
 			IF found_target THEN
 				SET original_index = JSON_EXTRACT(element, '$.i');
@@ -1918,10 +1918,10 @@ BEGIN
 			END IF;
 			SET current_index = current_index + 1;
 		END IF;
-		
+
 		SET array_index = array_index + 1;
 	END WHILE;
-	
+
 	-- Index not found
 	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
 END $$
@@ -1941,20 +1941,20 @@ BEGIN
 	DECLARE element JSON;
 	DECLARE element_wire_type INT;
 	DECLARE element_path TEXT;
-	
+
 	-- Get the field array
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-	
+
 	-- Check if field exists
 	IF field_array IS NULL THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
 	END IF;
-	
+
 	-- Find the target index across all array elements
 	WHILE array_index < JSON_LENGTH(field_array) DO
 		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
 		SET element_wire_type = JSON_EXTRACT(element, '$.t');
-		
+
 		-- LEN fields are always wire type 2 and don't support packed encoding
 		IF element_wire_type = 2 THEN
 			IF current_index = repeated_index THEN
@@ -1971,10 +1971,10 @@ BEGIN
 			END IF;
 			SET current_index = current_index + 1;
 		END IF;
-		
+
 		SET array_index = array_index + 1;
 	END WHILE;
-	
+
 	-- Index not found
 	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
 END $$
@@ -1991,13 +1991,13 @@ BEGIN
 	DECLARE next_index INT;
 	DECLARE new_element JSON;
 	DECLARE last_index INT;
-	
+
 	-- Get the field array (null if doesn't exist)
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-	
+
 	-- Encode the new varint value
 	CALL _pb_wire_write_varint(value, new_varint);
-	
+
 	-- Check if field exists and last element is LEN (wire type 2)
 	IF field_array IS NOT NULL THEN
 		SET last_index = JSON_LENGTH(field_array) - 1;
@@ -2009,11 +2009,11 @@ BEGIN
 			RETURN JSON_SET(wire_json, CONCAT(field_path, '[', last_index, '].v'), TO_BASE64(packed_data));
 		END IF;
 	END IF;
-	
+
 	-- Create new packed element
 	SET next_index = _pb_wire_json_get_next_index(wire_json);
 	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(new_varint));
-	
+
 	IF field_array IS NULL THEN
 		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
 	ELSE
@@ -2033,13 +2033,13 @@ BEGIN
 	DECLARE next_index INT;
 	DECLARE new_element JSON;
 	DECLARE last_index INT;
-	
+
 	-- Get the field array (null if doesn't exist)
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-	
+
 	-- Encode the new I64 value (8 bytes little-endian)
 	CALL _pb_wire_write_i64(value, new_i64);
-	
+
 	-- Check if field exists and last element is LEN (wire type 2)
 	IF field_array IS NOT NULL THEN
 		SET last_index = JSON_LENGTH(field_array) - 1;
@@ -2051,11 +2051,11 @@ BEGIN
 			RETURN JSON_SET(wire_json, CONCAT(field_path, '[', last_index, '].v'), TO_BASE64(packed_data));
 		END IF;
 	END IF;
-	
+
 	-- Create new packed element
 	SET next_index = _pb_wire_json_get_next_index(wire_json);
 	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(new_i64));
-	
+
 	IF field_array IS NULL THEN
 		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
 	ELSE
@@ -2075,13 +2075,13 @@ BEGIN
 	DECLARE next_index INT;
 	DECLARE new_element JSON;
 	DECLARE last_index INT;
-	
+
 	-- Get the field array (null if doesn't exist)
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-	
+
 	-- Encode the new I32 value (4 bytes little-endian)
 	CALL _pb_wire_write_i32(value, new_i32);
-	
+
 	-- Check if field exists and last element is LEN (wire type 2)
 	IF field_array IS NOT NULL THEN
 		SET last_index = JSON_LENGTH(field_array) - 1;
@@ -2093,11 +2093,11 @@ BEGIN
 			RETURN JSON_SET(wire_json, CONCAT(field_path, '[', last_index, '].v'), TO_BASE64(packed_data));
 		END IF;
 	END IF;
-	
+
 	-- Create new packed element
 	SET next_index = _pb_wire_json_get_next_index(wire_json);
 	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(new_i32));
-	
+
 	IF field_array IS NULL THEN
 		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
 	ELSE

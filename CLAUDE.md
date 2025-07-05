@@ -84,12 +84,19 @@ make flamegraph
 go run cmd/protobuf-accessors/main.go > protobuf-accessors.sql
 ```
 
+### Code Formatting
+```bash
+# Format Go code (run after modifying Go code)
+make format
+```
+
 ## Development Workflow
 
 1. **SQL Development**: Core protobuf functionality is implemented in MySQL stored functions/procedures
 2. **Go Tools**: Supporting tools for code generation, testing, and profiling
-3. **Test-Driven**: Tests run against live MySQL instance to verify SQL function behavior
-4. **Performance Focus**: Built-in profiling and flamegraph generation for performance analysis
+3. **Code Formatting**: Always run `make format` after modifying Go code to ensure consistent formatting
+4. **Test-Driven**: Tests run against live MySQL instance to verify SQL function behavior
+5. **Performance Focus**: Built-in profiling and flamegraph generation for performance analysis
 
 ## Database Schema
 
@@ -100,3 +107,7 @@ The project creates tables prefixed with `_Proto_` for protobuf schema storage a
 - Tests require a running MySQL instance (started with `make start-mysql`)
 - Database connection string must be provided via `-database` flag
 - Tests use Gomega for assertions and custom MySQL matchers
+
+## Development Best Practices
+
+- Remove any trailing whitespaces after editing SQL files
