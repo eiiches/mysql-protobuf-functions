@@ -7,6 +7,10 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     steps:
     - uses: actions/checkout@v4.2.2
     - uses: actions/setup-go@v5
@@ -20,3 +24,9 @@ jobs:
     - name: Format Check
       run: |
         go tool gofumpt -d .
+    - name: Generate and Post Coverage Report
+      run: |
+        make coverage-ci
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_PR_NUMBER: ${{ github.event.number }}

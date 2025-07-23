@@ -221,7 +221,7 @@ BEGIN
 	RETURN value;
 END $$
 
-DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_int64;
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_int64 $$
 CREATE FUNCTION _pb_util_reinterpret_uint64_as_int64(value BIGINT UNSIGNED) RETURNS BIGINT DETERMINISTIC
 BEGIN
 	IF value <= 0x7fffffffffffffff THEN
@@ -231,7 +231,7 @@ BEGIN
 	END IF;
 END $$
 
-DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint32_as_int32;
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint32_as_int32 $$
 CREATE FUNCTION _pb_util_reinterpret_uint32_as_int32(value INT UNSIGNED) RETURNS INT DETERMINISTIC
 BEGIN
 	IF value <= 0x7fffffff THEN
@@ -241,7 +241,7 @@ BEGIN
 	END IF;
 END $$
 
-DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_int32;
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_int32 $$
 CREATE FUNCTION _pb_util_reinterpret_uint64_as_int32(value BIGINT UNSIGNED) RETURNS INT DETERMINISTIC
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
@@ -257,19 +257,19 @@ BEGIN
 	);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_uint32;
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_uint32 $$
 CREATE FUNCTION _pb_util_reinterpret_uint64_as_uint32(value BIGINT UNSIGNED) RETURNS INT UNSIGNED DETERMINISTIC
 BEGIN
 	RETURN value;
 END $$
 
-DROP FUNCTION IF EXISTS _pb_util_zigzag_decode_uint64;
+DROP FUNCTION IF EXISTS _pb_util_zigzag_decode_uint64 $$
 CREATE FUNCTION _pb_util_zigzag_decode_uint64(value BIGINT UNSIGNED) RETURNS BIGINT UNSIGNED DETERMINISTIC
 BEGIN
 	RETURN (value >> 1) ^ - (value & 1);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_util_zigzag_encode_uint64;
+DROP FUNCTION IF EXISTS _pb_util_zigzag_encode_uint64 $$
 CREATE FUNCTION _pb_util_zigzag_encode_uint64(value BIGINT UNSIGNED) RETURNS BIGINT UNSIGNED DETERMINISTIC
 BEGIN
 	-- ZigZag encoding formula: (n << 1) ^ (n >> 63)
@@ -286,7 +286,7 @@ BEGIN
 	RETURN (value << 1) ^ -(value >> 63);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_util_swap_endian_32;
+DROP FUNCTION IF EXISTS _pb_util_swap_endian_32 $$
 CREATE FUNCTION _pb_util_swap_endian_32(value INT UNSIGNED) RETURNS INT UNSIGNED DETERMINISTIC
 BEGIN
 	RETURN ((value & 0xff) << 24)
@@ -295,7 +295,7 @@ BEGIN
 		| ((value >> 24) & 0xff);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_util_swap_endian_64;
+DROP FUNCTION IF EXISTS _pb_util_swap_endian_64 $$
 CREATE FUNCTION _pb_util_swap_endian_64(value BIGINT UNSIGNED) RETURNS BIGINT UNSIGNED DETERMINISTIC
 BEGIN
 	RETURN ((value & 0xff) << 56)
@@ -308,7 +308,7 @@ BEGIN
 		| ((value >> 56) & 0xff);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_sint64;
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_sint64 $$
 CREATE FUNCTION _pb_util_reinterpret_uint64_as_sint64(value BIGINT UNSIGNED) RETURNS BIGINT DETERMINISTIC
 BEGIN
 	RETURN _pb_util_reinterpret_uint64_as_int64(_pb_util_zigzag_decode_uint64(value));

@@ -1,0 +1,460 @@
+{
+package sqlflowparser
+
+import (
+    "strings"
+)
+
+// Helper function to create Position from pigeon position
+func makePosition(pos position) Position {
+    return Position{
+        Line:   pos.line,
+        Column: pos.col,
+        Offset: pos.offset,
+    }
+}
+
+// Helper function to create BaseStatement from pigeon context
+func makeBaseStatement(c *current) BaseStatement {
+    return BaseStatement{
+        Pos:   makePosition(c.pos),
+        Label: "", // Will be set by Statement rule if label exists
+        Text:  string(c.text), // Current matched text
+    }
+}
+
+// Helper function to convert interface{} to []StatementAST
+func toStatementList(v interface{}) []StatementAST {
+    if v == nil {
+        return nil
+    }
+    if list, ok := v.([]StatementAST); ok {
+        return list
+    }
+    if stmt, ok := v.(StatementAST); ok {
+        return []StatementAST{stmt}
+    }
+    return nil
+}
+
+// Helper function to convert interface{} to string
+func toString(v interface{}) string {
+    if v == nil {
+        return ""
+    }
+    if s, ok := v.(string); ok {
+        return s
+    }
+    if b, ok := v.([]byte); ok {
+        return string(b)
+    }
+    return ""
+}
+
+// Helper function to convert interface{} to []Parameter
+func toParameterList(v interface{}) []Parameter {
+    if v == nil {
+        return nil
+    }
+    if list, ok := v.([]Parameter); ok {
+        return list
+    }
+    return nil
+}
+
+// Helper function to convert interface{} to []ElseIfClause
+func toElseIfList(v interface{}) []ElseIfClause {
+    if v == nil {
+        return nil
+    }
+    if list, ok := v.([]ElseIfClause); ok {
+        return list
+    }
+    // Handle []interface{} containing ElseIfClause elements
+    if list, ok := v.([]interface{}); ok {
+        var result []ElseIfClause
+        for _, item := range list {
+            if clause, ok := item.(ElseIfClause); ok {
+                result = append(result, clause)
+            }
+        }
+        return result
+    }
+    return nil
+}
+
+// Helper function to convert interface{} to []WhenClause
+func toWhenList(v interface{}) []WhenClause {
+    if v == nil {
+        return nil
+    }
+    if list, ok := v.([]WhenClause); ok {
+        return list
+    }
+    // Handle []interface{} containing WhenClause elements
+    if list, ok := v.([]interface{}); ok {
+        var result []WhenClause
+        for _, item := range list {
+            if clause, ok := item.(WhenClause); ok {
+                result = append(result, clause)
+            }
+        }
+        return result
+    }
+    return nil
+}
+}
+
+// Main entry point - parse a single SQL statement
+Input <- _ stmt:Statement EOF {
+    return stmt, nil
+}
+
+// Statement types - focus on control flow and procedure/function boundaries
+Statement <- label:Label? !ELSEIF !ELSE !END !UNTIL !WHEN stmt:(CreateProcedureStmt / CreateFunctionStmt / DeclareStmt / IfStmt / WhileStmt / LoopStmt / RepeatStmt / CaseStmt / BeginStmt / LeaveStmt / IterateStmt / ReturnStmt / GenericStmt) _ {
+    if label != nil {
+		stmt.(StatementAST).SetLabel(label.(string))
+    }
+    return stmt, nil
+}
+
+Label <- label:IdentifierName _ ":" _ {
+    return label, nil
+}
+
+// Keywords with word boundaries
+CREATE <- "CREATE"i ![a-zA-Z0-9_]
+PROCEDURE <- "PROCEDURE"i ![a-zA-Z0-9_]
+FUNCTION <- "FUNCTION"i ![a-zA-Z0-9_]
+RETURNS <- "RETURNS"i ![a-zA-Z0-9_]
+DROP <- "DROP"i ![a-zA-Z0-9_]
+IF <- "IF"i ![a-zA-Z0-9_]
+THEN <- "THEN"i ![a-zA-Z0-9_]
+ELSEIF <- "ELSEIF"i ![a-zA-Z0-9_]
+ELSE <- "ELSE"i ![a-zA-Z0-9_]
+END <- "END"i ![a-zA-Z0-9_]
+WHILE <- "WHILE"i ![a-zA-Z0-9_]
+DO <- "DO"i ![a-zA-Z0-9_]
+LOOP <- "LOOP"i ![a-zA-Z0-9_]
+REPEAT <- "REPEAT"i ![a-zA-Z0-9_]
+UNTIL <- "UNTIL"i ![a-zA-Z0-9_]
+CASE <- "CASE"i ![a-zA-Z0-9_]
+WHEN <- "WHEN"i ![a-zA-Z0-9_]
+BEGIN <- "BEGIN"i ![a-zA-Z0-9_]
+LEAVE <- "LEAVE"i ![a-zA-Z0-9_]
+ITERATE <- "ITERATE"i ![a-zA-Z0-9_]
+RETURN <- "RETURN"i ![a-zA-Z0-9_]
+DECLARE <- "DECLARE"i ![a-zA-Z0-9_]
+IN <- "IN"i ![a-zA-Z0-9_]
+OUT <- "OUT"i ![a-zA-Z0-9_]
+INOUT <- "INOUT"i ![a-zA-Z0-9_]
+UNSIGNED <- "UNSIGNED"i ![a-zA-Z0-9_]
+SIGNED <- "SIGNED"i ![a-zA-Z0-9_]
+ZEROFILL <- "ZEROFILL"i ![a-zA-Z0-9_]
+DETERMINISTIC <- "DETERMINISTIC"i ![a-zA-Z0-9_]
+NOT <- "NOT"i ![a-zA-Z0-9_]
+READS <- "READS"i ![a-zA-Z0-9_]
+SQL <- "SQL"i ![a-zA-Z0-9_]
+DATA <- "DATA"i ![a-zA-Z0-9_]
+MODIFIES <- "MODIFIES"i ![a-zA-Z0-9_]
+NO <- "NO"i ![a-zA-Z0-9_]
+CONTAINS <- "CONTAINS"i ![a-zA-Z0-9_]
+SECURITY <- "SECURITY"i ![a-zA-Z0-9_]
+DEFINER <- "DEFINER"i ![a-zA-Z0-9_]
+INVOKER <- "INVOKER"i ![a-zA-Z0-9_]
+
+// CREATE PROCEDURE
+CreateProcedureStmt <- CREATE _ PROCEDURE _ name:IdentifierName _ "(" _ params:ParameterList? _ ")" _ body:Statement {
+    return &CreateProcedureStmt{
+        BaseStatement: makeBaseStatement(c),
+        Name:         toString(name),
+        Parameters:   toParameterList(params),
+        Body:         toStatementList(body),
+    }, nil
+}
+
+// CREATE FUNCTION
+CreateFunctionStmt <- CREATE _ FUNCTION _ name:IdentifierName _ "(" _ params:ParameterList? _ ")" _ RETURNS _ returnType:TypeName _ attributes:FunctionAttributes? _ body:Statement {
+    return &CreateFunctionStmt{
+        BaseStatement: makeBaseStatement(c),
+        Name:         toString(name),
+        Parameters:   toParameterList(params),
+        ReturnType:   toString(returnType),
+        Body:         toStatementList(body),
+    }, nil
+}
+
+// IF statement
+IfStmt <- IF _ condition:ConsumeUntilTHEN _ THEN _ thenStmts:StatementList _ elseifs:ElseIfClause* _ elseClause:ElseClause? _ END _ IF {
+    return &IfStmt{
+        BaseStatement: makeBaseStatement(c),
+        Condition:     condition.(string),
+        Then:          toStatementList(thenStmts),
+        ElseIfs:       toElseIfList(elseifs),
+        Else:          toStatementList(elseClause),
+    }, nil
+}
+
+// ELSEIF clause
+ElseIfClause <- ELSEIF _ condition:ConsumeUntilTHEN _ THEN _ stmts:StatementList _ {
+    return ElseIfClause{
+        BaseStatement: makeBaseStatement(c),
+        Condition:     condition.(string),
+        Then:          toStatementList(stmts),
+    }, nil
+}
+
+// ELSE clause
+ElseClause <- ELSE _ stmts:StatementList _ {
+    return toStatementList(stmts), nil
+}
+
+// WHILE statement
+WhileStmt <- WHILE _ condition:ConsumeUntilDO _ DO _ body:StatementList _ END _ WHILE {
+    return &WhileStmt{
+        BaseStatement: makeBaseStatement(c),
+        Condition:     condition.(string),
+        Body:          toStatementList(body),
+    }, nil
+}
+
+// LOOP statement
+LoopStmt <- LOOP _ body:StatementList _ END _ LOOP {
+    return &LoopStmt{
+        BaseStatement: makeBaseStatement(c),
+        Body:          toStatementList(body),
+    }, nil
+}
+
+// REPEAT statement
+RepeatStmt <- REPEAT _ body:StatementList _ UNTIL _ condition:ConsumeUntilEND _ END _ REPEAT {
+    return &RepeatStmt{
+        BaseStatement: makeBaseStatement(c),
+        Body:          toStatementList(body),
+        Condition:     condition.(string),
+    }, nil
+}
+
+// CASE statement
+CaseStmt <- CASE _ expr:ConsumeUntilWHEN _ whens:WhenClause+ _ elseClause:ElseClause? _ END _ CASE {
+    return &CaseStmt{
+        BaseStatement: makeBaseStatement(c),
+        Expression:    expr.(string),
+        WhenClauses:   toWhenList(whens),
+        Else:          toStatementList(elseClause),
+    }, nil
+}
+
+// WHEN clause
+WhenClause <- WHEN _ condition:ConsumeUntilTHEN _ THEN _ stmts:StatementList _ {
+    return WhenClause{
+        BaseStatement: makeBaseStatement(c),
+        Condition:     condition.(string),
+        Then:          toStatementList(stmts),
+    }, nil
+}
+
+// BEGIN...END block
+BeginStmt <- BEGIN _ body:StatementList _ END {
+    return &BeginStmt{
+        BaseStatement: makeBaseStatement(c),
+        Body:          toStatementList(body),
+    }, nil
+}
+
+// Quoted strings
+QuotedString <- SingleQuotedString / DoubleQuotedString / BacktickString
+
+// Single quoted string with escape handling
+SingleQuotedString <- "'" content:SingleQuoteContent* "'" {
+    var result []byte
+    result = append(result, '\'')
+    for _, part := range content.([]interface{}) {
+        result = append(result, part.([]byte)...)
+    }
+    result = append(result, '\'')
+    return result, nil
+}
+
+SingleQuoteContent <- "''" { return []byte("''"), nil } / 
+                     "\\'" { return []byte("\\'"), nil } / 
+                     "\\n" { return []byte("\\n"), nil } /
+                     "\\\\" { return []byte("\\\\"), nil } /
+                     [^'\\] { return c.text, nil }
+
+// Double quoted string with escape handling
+DoubleQuotedString <- '"' content:DoubleQuoteContent* '"' {
+    var result []byte
+    result = append(result, '"')
+    for _, part := range content.([]interface{}) {
+        result = append(result, part.([]byte)...)
+    }
+    result = append(result, '"')
+    return result, nil
+}
+
+DoubleQuoteContent <- "\"\"" { return []byte("\"\""), nil } / 
+                     "\\\"" { return []byte("\\\""), nil } / 
+                     "\\n" { return []byte("\\n"), nil } /
+                     "\\\\" { return []byte("\\\\"), nil } /
+                     [^"\\] { return c.text, nil }
+
+BacktickString <- '`' content:BacktickContent* '`' {
+    var result []byte
+    result = append(result, '`')
+    for _, part := range content.([]interface{}) {
+        result = append(result, part.([]byte)...)
+    }
+    result = append(result, '`')
+    return result, nil
+}
+
+BacktickContent <- "``" { return []byte("``"), nil } / [^`] { return c.text, nil }
+
+// Comments
+Comment <- LineComment / BlockComment
+
+LineComment <- ( "--" ([ \t] [^\r\n]*)? / "#" [^\r\n]* ) ("\r\n" / "\n" / "\r" / EOF) {
+    return c.text, nil
+}
+
+BlockComment <- "/*" content:( !"*/" . )* "*/" {
+    return c.text, nil
+}
+
+// LEAVE statement
+LeaveStmt <- LEAVE _ label:IdentifierName? {
+    stmt := &LeaveStmt{
+        BaseStatement: makeBaseStatement(c),
+    }
+    // Override the Label field with the referenced label
+    stmt.Label = toString(label)
+    return stmt, nil
+}
+
+// ITERATE statement
+IterateStmt <- ITERATE _ label:IdentifierName {
+    stmt := &IterateStmt{
+        BaseStatement: makeBaseStatement(c),
+    }
+    // Override the Label field with the referenced label
+    stmt.Label = toString(label)
+    return stmt, nil
+}
+
+// RETURN statement
+ReturnStmt <- RETURN _ expr:ConsumeUntilSemicolon {
+    return &ReturnStmt{
+        BaseStatement: makeBaseStatement(c),
+    }, nil
+}
+
+// DECLARE statement
+DeclareStmt <- DECLARE _ text:ConsumeUntilSemicolon {
+    return &DeclareStmt{
+        BaseStatement: makeBaseStatement(c),
+    }, nil
+}
+
+// Generic SQL statement (anything we don't specifically parse)
+GenericStmt <- kind:IdentifierName _ text:ConsumeUntilSemicolon {
+    return &GenericStmt{
+        BaseStatement: makeBaseStatement(c),
+    }, nil
+}
+
+SQLContentAny <- QuotedString / Comment / Whitespace / "(" _ (SQLContentAny _)* ")" / !"(" !")" .
+
+ConsumeUntilSemicolon <- (QuotedString / Comment / Whitespace / "(" _ (SQLContentAny _)* ")" / !";" !"(" !")" .)* {
+	return strings.TrimSpace(string(c.text)), nil
+}
+ConsumeUntilEND <- (QuotedString / Comment / Whitespace / "(" _ (SQLContentAny _)* ")" / !"END" !"(" !")" .)* {
+	return strings.TrimSpace(string(c.text)), nil
+}
+ConsumeUntilTHEN <- (QuotedString / Comment / Whitespace / "(" _ (SQLContentAny _)* ")" / !"THEN" !"(" !")" .)* {
+	return strings.TrimSpace(string(c.text)), nil
+}
+ConsumeUntilDO <- (QuotedString / Comment / Whitespace / "(" _ (SQLContentAny _)* ")" / !"DO" !"(" !")" .)* {
+	return strings.TrimSpace(string(c.text)), nil
+}
+ConsumeUntilWHEN <- (QuotedString / Comment / Whitespace / "(" _ (SQLContentAny _)* ")" / !"WHEN" !"(" !")" .)* {
+	return strings.TrimSpace(string(c.text)), nil
+}
+
+// Statement list
+StatementList <- stmts:(Statement _ ";" _)+ {
+    var result []StatementAST
+    for _, item := range stmts.([]interface{}) {
+        if arr, ok := item.([]interface{}); ok && len(arr) > 0 {
+            if stmt, ok := arr[0].(StatementAST); ok {
+                result = append(result, stmt)
+            }
+        }
+    }
+    return result, nil
+}
+
+// Parameter list
+ParameterList <- first:Parameter rest:(_ "," _ Parameter)* {
+    params := []Parameter{first.(Parameter)}
+    for _, item := range rest.([]interface{}) {
+        if arr, ok := item.([]interface{}); ok && len(arr) > 3 {
+            if param, ok := arr[3].(Parameter); ok {
+                params = append(params, param)
+            }
+        }
+    }
+    return params, nil
+}
+
+// Parameter
+Parameter <- mode:ParameterMode? _ name:IdentifierName _ dataType:TypeName {
+    return Parameter{
+        Mode: toString(mode),
+        Name: toString(name),
+        Type: toString(dataType),
+    }, nil
+}
+
+// Parameter mode
+ParameterMode <- (IN / OUT / INOUT) {
+    return strings.ToUpper(string(c.text)), nil
+}
+
+// Variable list
+VariableList <- first:IdentifierName rest:(_ "," _ IdentifierName)* {
+    vars := []string{toString(first)}
+    for _, item := range rest.([]interface{}) {
+        if arr, ok := item.([]interface{}); ok && len(arr) > 3 {
+            vars = append(vars, toString(arr[3]))
+        }
+    }
+    return vars, nil
+}
+
+// Type name
+TypeName <- baseType:[A-Za-z][A-Za-z0-9_]* params:("(" [0-9]+ ("," [0-9]+)? ")")? modifiers:(_ (UNSIGNED / SIGNED / ZEROFILL))* {
+    return string(c.text), nil
+}
+
+// Identifier
+IdentifierName <- [A-Za-z_][A-Za-z0-9_]* {
+    return string(c.text), nil
+}
+
+// Function attributes (DETERMINISTIC, etc.)
+FunctionAttributes <- attribute:(FunctionAttribute _)+ {
+    return attribute, nil
+}
+
+FunctionAttribute <- DETERMINISTIC / NOT _ DETERMINISTIC / READS _ SQL _ DATA / MODIFIES _ SQL _ DATA / NO _ SQL / CONTAINS _ SQL / SQL _ SECURITY _ (DEFINER / INVOKER) {
+    return strings.ToUpper(string(c.text)), nil
+}
+
+Whitespace <- [ \t\r\n]+
+
+// Whitespace or Comment
+_ <- (Comment / Whitespace)*
+
+// End of file
+EOF <- !.
