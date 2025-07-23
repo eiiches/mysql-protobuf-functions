@@ -82,6 +82,21 @@ generate-coverage-report: run-coverage-tests
 	@echo "LCOV Data: coverage.lcov"
 	@echo ""
 
+.PHONY: generate-coverage-lcov
+generate-coverage-lcov: run-coverage-tests
+	go run cmd/mysql-coverage/main.go lcov --database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" --output coverage.lcov
+	@echo ""
+	@echo "=== LCOV COVERAGE DATA GENERATED ==="
+	@echo "LCOV Data: coverage.lcov"
+	@echo ""
+
+.PHONY: post-coverage-comment
+post-coverage-comment: generate-coverage-lcov
+	go run cmd/mysql-coverage/main.go github-comment --lcov-file coverage.lcov --github-pr-number $(GITHUB_PR_NUMBER)
+
+.PHONY: coverage-ci
+coverage-ci: generate-coverage-lcov post-coverage-comment
+
 .PHONY: format
 format:
 	go tool gofumpt -l -w .
