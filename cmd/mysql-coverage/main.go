@@ -12,10 +12,11 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
-	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/urfave/cli/v3"
+
+	"github.com/eiiches/mysql-protobuf-functions/internal/mysql/sqlinstrument"
 )
 
 func main() {
@@ -129,104 +130,30 @@ func instrumentAction(ctx context.Context, command *cli.Command) error {
 }
 
 func instrumentSQL(input io.Reader, output io.Writer, filename string) error {
-	scanner := bufio.NewScanner(input)
+	// Read all input content
+	content, err := io.ReadAll(input)
+	if err != nil {
+		return fmt.Errorf("failed to read input: %w", err)
+	}
+
+	// Create AST-based instrumenter
+	instrumenter := sqlinstrument.NewInstrumenter(filename)
+
+	// Instrument the SQL content
+	instrumentedSQL, err := instrumenter.InstrumentSQL(content)
+	if err != nil {
+		return fmt.Errorf("failed to instrument SQL: %w", err)
+	}
+
+	// Write the instrumented SQL to output
 	writer := bufio.NewWriter(output)
 	defer writer.Flush()
 
-	lineNumber := 0
-	currentProcedureOrFunction := ""
-	insideBody := false
-	inCursorDeclaration := false
-
-	// Regex patterns
-	createProcedurePattern := regexp.MustCompile(`(?i)^\s*CREATE\s+(PROCEDURE|FUNCTION)\s+(\w+)`)
-	dropProcedurePattern := regexp.MustCompile(`(?i)^\s*DROP\s+(PROCEDURE|FUNCTION)\s+IF\s+EXISTS\s+(\w+)`)
-	declarationPattern := regexp.MustCompile(`(?i)^\s*(DECLARE|BEGIN|END|DELIMITER)`)
-	beginPattern := regexp.MustCompile(`(?i)^\s*BEGIN\s*$`)
-	endPattern := regexp.MustCompile(`(?i)^\s*END\s*\$\$\s*$`)
-	statementStartPattern := regexp.MustCompile(`(?i)^\s*(IF|RETURN|SET|SELECT|INSERT|UPDATE|DELETE|CALL|SIGNAL|WHILE|REPEAT|LOOP|CASE|ITERATE|LEAVE)\b`)
-	cursorDeclarePattern := regexp.MustCompile(`(?i)^\s*DECLARE\s+\w+\s+CURSOR\s+FOR\s*$`)
-	cursorSelectPattern := regexp.MustCompile(`(?i)^\s*SELECT\b`)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		lineNumber++
-		trimmedLine := strings.TrimSpace(line)
-
-		// Check if this is a DROP statement
-		if match := dropProcedurePattern.FindStringSubmatch(line); match != nil {
-			currentProcedureOrFunction = match[2]
-			insideBody = false
-		}
-
-		// Check if this is a CREATE PROCEDURE/FUNCTION statement
-		if match := createProcedurePattern.FindStringSubmatch(line); match != nil {
-			currentProcedureOrFunction = match[2]
-			insideBody = false
-		}
-
-		// Check if we're entering the function/procedure body
-		if beginPattern.MatchString(trimmedLine) && currentProcedureOrFunction != "" {
-			insideBody = true
-		}
-
-		// Check if we're leaving the function/procedure body
-		if endPattern.MatchString(trimmedLine) {
-			insideBody = false
-		}
-
-		// Check if we're starting a cursor declaration
-		if cursorDeclarePattern.MatchString(trimmedLine) {
-			inCursorDeclaration = true
-		}
-
-		// Check if we're ending a cursor declaration (line ends with semicolon)
-		if inCursorDeclaration && strings.HasSuffix(trimmedLine, ";") {
-			inCursorDeclaration = false
-		}
-
-		// Check if this line starts a statement that should be instrumented
-		shouldInstrument := currentProcedureOrFunction != "" &&
-			insideBody &&
-			statementStartPattern.MatchString(trimmedLine) &&
-			!declarationPattern.MatchString(trimmedLine) &&
-			!(inCursorDeclaration && cursorSelectPattern.MatchString(trimmedLine))
-
-		if shouldInstrument {
-			// Insert instrumentation call at the beginning of the line before the statement
-			instrumentCall := fmt.Sprintf("CALL __record_coverage('%s', '%s', %d); ",
-				filename, currentProcedureOrFunction, lineNumber)
-
-			// Get the leading whitespace from the original line
-			leadingWhitespace := ""
-			for _, char := range line {
-				if char == ' ' || char == '\t' {
-					leadingWhitespace += string(char)
-				} else {
-					break
-				}
-			}
-
-			// Create instrumented line with same indentation
-			instrumentedLine := leadingWhitespace + instrumentCall + strings.TrimLeft(line, " \t")
-			if _, err := writer.WriteString(instrumentedLine + "\n"); err != nil {
-				return err
-			}
-		} else {
-			// Write the original line
-			if _, err := writer.WriteString(line + "\n"); err != nil {
-				return err
-			}
-		}
-
-		// Reset current procedure/function if we hit END $$
-		if trimmedLine == "END $$" {
-			currentProcedureOrFunction = ""
-			insideBody = false
-		}
+	if _, err := writer.WriteString(instrumentedSQL); err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
 	}
 
-	return scanner.Err()
+	return nil
 }
 
 func lcovAction(ctx context.Context, command *cli.Command) error {
