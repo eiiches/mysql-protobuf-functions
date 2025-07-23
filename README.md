@@ -311,7 +311,6 @@ TODO: Multi-Valued Index on Protobuf Fields
 - [ ] Add `pb_{message,wire_json}_search_repeated_message_field_by_{type}_key(message, field_number, key_field_number, key, default_value)` function (finds the first one)
 - [ ] JSON to Protobuf Conversion
 - [x] Protobuf to JSON Conversion
-  - [ ] Fix NULL conversion bug
   - [ ] **[Editions](https://protobuf.dev/editions/overview/) Support**
 
 ## Limitations

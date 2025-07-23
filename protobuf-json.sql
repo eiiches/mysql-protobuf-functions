@@ -237,6 +237,11 @@ proc: BEGIN
 
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
+	IF buf IS NULL THEN
+		SET result = NULL;
+		LEAVE proc;
+	END IF;
+
 	IF full_type_name LIKE '.google.protobuf.%' THEN
 		SET result = _pb_wire_json_decode_wkt_as_json(pb_message_to_wire_json(buf), full_type_name);
 		IF result IS NOT NULL THEN

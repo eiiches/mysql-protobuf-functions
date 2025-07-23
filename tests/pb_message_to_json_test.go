@@ -617,3 +617,24 @@ func TestMessageToJsonWkt(t *testing.T) {
 		testMessageToJson(t, "google.protobuf.FieldMask field_mask_field = 1;", `{"fieldMaskField": "path1,path2"}`)
 	})
 }
+
+func TestMessageToJsonNullInput(t *testing.T) {
+	p := testutils.NewProtoTestSupport(t, map[string]string{
+		"main.proto": `
+			syntax = "proto3";
+			message Test {
+				int32 value = 1;
+			}
+		`,
+	})
+
+	descriptorSetName := "a"
+	typeName := ".Test"
+
+	AssertThatCall(t, "pb_descriptor_set_load(?, ?)", descriptorSetName, p.GetSerializedFileDescriptorSet()).ShouldSucceed()
+	defer func() {
+		AssertThatCall(t, "pb_descriptor_set_delete(?)", descriptorSetName).ShouldSucceed()
+	}()
+
+	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?)", descriptorSetName, typeName, nil).IsNull()
+}
