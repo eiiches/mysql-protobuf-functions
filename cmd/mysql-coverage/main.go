@@ -450,9 +450,8 @@ func initAction(ctx context.Context, command *cli.Command) error {
 			filename VARCHAR(255) NOT NULL,
 			function_name VARCHAR(255) NOT NULL,
 			line_number INT NOT NULL,
-			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			INDEX idx_coverage (filename, function_name, line_number)
-		)`
+			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		) ENGINE = ARCHIVE`
 
 	if _, err := db.Exec(createTableSQL); err != nil {
 		return fmt.Errorf("failed to create __CoverageEvent table: %v", err)
