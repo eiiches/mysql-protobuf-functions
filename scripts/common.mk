@@ -1,5 +1,6 @@
 .PHONY: test
 test: purge reload ensure-test-database
+	go test ./internal/...
 	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" -fuzz-iterations 20 $${GO_TEST_FLAGS:-}
 
 .PHONY: build
