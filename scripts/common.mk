@@ -57,6 +57,7 @@ coverage: purge instrument-files load-instrumented-files run-coverage-tests gene
 
 .PHONY: instrument-files
 instrument-files:
+	go tool pigeon -o internal/mysql/sqlflowparser/mysql_ast_parser.go internal/mysql/sqlflowparser/mysql_ast.peg
 	go run cmd/mysql-coverage/main.go instrument protobuf.sql protobuf-accessors.sql protobuf-descriptor.sql protobuf-json.sql
 
 .PHONY: load-instrumented-files

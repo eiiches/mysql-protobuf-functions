@@ -16,6 +16,7 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/mna/pigeon v1.3.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
@@ -25,4 +26,7 @@ require (
 	mvdan.cc/gofumpt v0.8.0 // indirect
 )
 
-tool mvdan.cc/gofumpt
+tool (
+	github.com/mna/pigeon
+	mvdan.cc/gofumpt
+)
