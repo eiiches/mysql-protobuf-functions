@@ -39,6 +39,15 @@ func TestRandomizedSetRepeatedFieldElement(t *testing.T) {
 							RunTestThatExpression(t, fmt.Sprintf("%s(?, 2, ?, ?)", strings.ReplaceAll(setFunction, "{kind}", "message")), input.Interface(), index, newValue).
 								IsEqualToProto(expected.Interface())
 						}
+
+						// Test setting an element at an index that is out of bounds
+						for _, outOfBoundsIndex := range []int{-1, input.Get(valueField).List().Len()} {
+							newValue, _ := generator(rng, valueField)
+							RunTestThatExpression(t, fmt.Sprintf("pb_wire_json_to_message(%s(pb_message_to_wire_json(?), 2, ?, ?))", strings.ReplaceAll(setFunction, "{kind}", "wire_json")), input.Interface(), outOfBoundsIndex, newValue).
+								ToFailWithSignalException("45000", "Index out of bounds")
+							RunTestThatExpression(t, fmt.Sprintf("%s(?, 2, ?, ?)", strings.ReplaceAll(setFunction, "{kind}", "message")), input.Interface(), outOfBoundsIndex, newValue).
+								ToFailWithSignalException("45000", "Index out of bounds")
+						}
 					}
 				})
 			})

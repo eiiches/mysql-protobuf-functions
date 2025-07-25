@@ -1329,21 +1329,18 @@ BEGIN
 	DECLARE temp_value BIGINT UNSIGNED;
 	DECLARE temp_encoded LONGBLOB;
 	DECLARE found_target BOOLEAN DEFAULT FALSE;
+	DECLARE message_text TEXT;
 
 	-- Get the field array
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-
-	-- Check if field exists
-	IF field_array IS NULL THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
-	END IF;
 
 	-- Find the target index across all array elements
 	WHILE array_index < JSON_LENGTH(field_array) DO
 		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
 		SET element_wire_type = JSON_EXTRACT(element, '$.t');
 
-		IF element_wire_type = 2 THEN
+		CASE element_wire_type
+		WHEN 2 THEN
 			-- Packed field - decode, modify, and re-encode
 			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
 			SET new_packed_data = '';
@@ -1373,7 +1370,7 @@ BEGIN
 				SET element_path = CONCAT(field_path, '[', array_index, ']');
 				RETURN JSON_SET(wire_json, element_path, new_element);
 			END IF;
-		ELSE
+		WHEN 0 THEN
 			-- Non-packed field (wire type 0 for VARINT)
 			IF current_index = repeated_index THEN
 				-- Found the target index - preserve original index and replace value
@@ -1383,7 +1380,10 @@ BEGIN
 				RETURN JSON_SET(wire_json, element_path, new_element);
 			END IF;
 			SET current_index = current_index + 1;
-		END IF;
+		ELSE
+			SET message_text = CONCAT('_pb_wire_json_set_repeated_varint_field_element: unexpected wire_type (', wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
 
 		SET array_index = array_index + 1;
 	END WHILE;
@@ -1416,21 +1416,18 @@ BEGIN
 	DECLARE temp_value BIGINT UNSIGNED;
 	DECLARE temp_encoded LONGBLOB;
 	DECLARE found_target BOOLEAN DEFAULT FALSE;
+	DECLARE message_text TEXT;
 
 	-- Get the field array
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-
-	-- Check if field exists
-	IF field_array IS NULL THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
-	END IF;
 
 	-- Find the target index across all array elements
 	WHILE array_index < JSON_LENGTH(field_array) DO
 		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
 		SET element_wire_type = JSON_EXTRACT(element, '$.t');
 
-		IF element_wire_type = 2 THEN
+		CASE element_wire_type
+		WHEN 2 THEN
 			-- Packed field - decode, modify, and re-encode
 			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
 			SET new_packed_data = '';
@@ -1460,7 +1457,7 @@ BEGIN
 				SET element_path = CONCAT(field_path, '[', array_index, ']');
 				RETURN JSON_SET(wire_json, element_path, new_element);
 			END IF;
-		ELSE
+		WHEN 1 THEN
 			-- Non-packed field (wire type 1 for I64)
 			IF current_index = repeated_index THEN
 				-- Found the target index - preserve original index and replace value
@@ -1470,7 +1467,10 @@ BEGIN
 				RETURN JSON_SET(wire_json, element_path, new_element);
 			END IF;
 			SET current_index = current_index + 1;
-		END IF;
+		ELSE
+			SET message_text = CONCAT('_pb_wire_json_set_repeated_i64_field_element: unexpected wire_type (', wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
 
 		SET array_index = array_index + 1;
 	END WHILE;
@@ -1503,21 +1503,18 @@ BEGIN
 	DECLARE temp_value INT UNSIGNED;
 	DECLARE temp_encoded LONGBLOB;
 	DECLARE found_target BOOLEAN DEFAULT FALSE;
+	DECLARE message_text TEXT;
 
 	-- Get the field array
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-
-	-- Check if field exists
-	IF field_array IS NULL THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
-	END IF;
 
 	-- Find the target index across all array elements
 	WHILE array_index < JSON_LENGTH(field_array) DO
 		SET element = JSON_EXTRACT(field_array, CONCAT('$[', array_index, ']'));
 		SET element_wire_type = JSON_EXTRACT(element, '$.t');
 
-		IF element_wire_type = 2 THEN
+		CASE element_wire_type
+		WHEN 2 THEN
 			-- Packed field - decode, modify, and re-encode
 			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v')));
 			SET new_packed_data = '';
@@ -1547,7 +1544,7 @@ BEGIN
 				SET element_path = CONCAT(field_path, '[', array_index, ']');
 				RETURN JSON_SET(wire_json, element_path, new_element);
 			END IF;
-		ELSE
+		WHEN 5 THEN
 			-- Non-packed field (wire type 5 for I32)
 			IF current_index = repeated_index THEN
 				-- Found the target index - preserve original index and replace value
@@ -1557,7 +1554,10 @@ BEGIN
 				RETURN JSON_SET(wire_json, element_path, new_element);
 			END IF;
 			SET current_index = current_index + 1;
-		END IF;
+		ELSE
+			SET message_text = CONCAT('_pb_wire_json_set_repeated_i32_field_element: unexpected wire_type (', wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
 
 		SET array_index = array_index + 1;
 	END WHILE;
@@ -1584,14 +1584,10 @@ BEGIN
 	DECLARE original_index INT;
 	DECLARE new_element JSON;
 	DECLARE element_path TEXT;
+	DECLARE message_text TEXT;
 
 	-- Get the field array
 	SET field_array = JSON_EXTRACT(wire_json, field_path);
-
-	-- Check if field exists
-	IF field_array IS NULL THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
-	END IF;
 
 	-- Find the target index across all array elements
 	WHILE array_index < JSON_LENGTH(field_array) DO
@@ -1599,7 +1595,8 @@ BEGIN
 		SET element_wire_type = JSON_EXTRACT(element, '$.t');
 
 		-- LEN fields are always wire type 2, so all elements should match
-		IF element_wire_type = 2 THEN
+		CASE element_wire_type
+		WHEN 2 THEN
 			IF current_index = repeated_index THEN
 				-- Found the target index - preserve original index and replace value
 				SET original_index = JSON_EXTRACT(element, '$.i');
@@ -1608,7 +1605,10 @@ BEGIN
 				RETURN JSON_SET(wire_json, element_path, new_element);
 			END IF;
 			SET current_index = current_index + 1;
-		END IF;
+		ELSE
+			SET message_text = CONCAT('_pb_wire_json_set_repeated_len_field_element: unexpected wire_type (', element_wire_type, ')');
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END CASE;
 
 		SET array_index = array_index + 1;
 	END WHILE;
@@ -1646,7 +1646,7 @@ BEGIN
 
 	-- Check if field exists
 	IF field_array IS NULL THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
 	END IF;
 
 	-- Find the target index across all array elements
@@ -1749,7 +1749,7 @@ BEGIN
 
 	-- Check if field exists
 	IF field_array IS NULL THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
 	END IF;
 
 	-- Find the target index across all array elements
@@ -1852,7 +1852,7 @@ BEGIN
 
 	-- Check if field exists
 	IF field_array IS NULL THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
 	END IF;
 
 	-- Find the target index across all array elements
@@ -1947,7 +1947,7 @@ BEGIN
 
 	-- Check if field exists
 	IF field_array IS NULL THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Field does not exist';
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Index out of bounds';
 	END IF;
 
 	-- Find the target index across all array elements
