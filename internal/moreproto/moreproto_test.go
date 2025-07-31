@@ -37,7 +37,8 @@ func TestEqualOrCloseUnknownFields(t *testing.T) {
 
 	// Create a message with unknown fields by adding some arbitrary bytes
 	data1, _ := proto.Marshal(msg1)
-	data2 := append(data1, 0x08, 0x42) // Add unknown field with tag 1, value 66
+	data2 := append([]byte(nil), data1...) // Copy data1 to avoid modifying it
+	data2 = append(data2, 0x08, 0x42)      // Add unknown field with tag 1, value 66
 
 	var msgWithUnknown wrapperspb.DoubleValue
 	g.Expect(proto.Unmarshal(data2, &msgWithUnknown)).To(Succeed())

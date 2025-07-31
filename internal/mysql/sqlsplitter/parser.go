@@ -51,10 +51,7 @@ func (p *Parser) Parse() ([]Statement, error) {
 
 		// Check for DELIMITER statement only at the beginning of a line
 		if p.isAtStartOfLine() && p.isDelimiterStatement() {
-			stmt, err := p.parseDelimiterStatement()
-			if err != nil {
-				return nil, err
-			}
+			stmt := p.parseDelimiterStatement()
 			stmt.LineNo = startLine
 			stmt.StartPos = startPos
 			stmt.EndPos = p.pos
@@ -63,10 +60,7 @@ func (p *Parser) Parse() ([]Statement, error) {
 		}
 
 		// Parse SQL statement
-		stmt, err := p.parseSQLStatement()
-		if err != nil {
-			return nil, err
-		}
+		stmt := p.parseSQLStatement()
 		if stmt.Text != "" {
 			stmt.LineNo = startLine
 			stmt.StartPos = startPos
@@ -115,7 +109,7 @@ func (p *Parser) isDelimiterStatementAtCurrentPos() bool {
 	return strings.ToLower(word) == "delimiter"
 }
 
-func (p *Parser) parseDelimiterStatement() (Statement, error) {
+func (p *Parser) parseDelimiterStatement() Statement {
 	p.skipWhitespace()
 
 	// Skip "DELIMITER" keyword
@@ -130,10 +124,10 @@ func (p *Parser) parseDelimiterStatement() (Statement, error) {
 	return Statement{
 		Text: "DELIMITER " + newDelim,
 		Type: "DELIMITER",
-	}, nil
+	}
 }
 
-func (p *Parser) parseSQLStatement() (Statement, error) {
+func (p *Parser) parseSQLStatement() Statement {
 	var content strings.Builder
 
 	for p.pos < len(p.input) {
@@ -152,13 +146,14 @@ func (p *Parser) parseSQLStatement() (Statement, error) {
 		}
 
 		// Handle different content types
-		if p.isStringStart() {
+		switch {
+		case p.isStringStart():
 			str := p.parseString()
 			content.WriteString(str)
-		} else if p.isCommentStart() {
+		case p.isCommentStart():
 			comment := p.parseComment()
 			content.WriteString(comment)
-		} else {
+		default:
 			// Regular character
 			ch := p.input[p.pos]
 			content.WriteByte(ch)
@@ -181,7 +176,7 @@ func (p *Parser) parseSQLStatement() (Statement, error) {
 	return Statement{
 		Text: text,
 		Type: statementType,
-	}, nil
+	}
 }
 
 func (p *Parser) isAtDelimiter() bool {
@@ -319,29 +314,11 @@ func (p *Parser) parseComment() string {
 
 	var result strings.Builder
 
-	if p.pos+1 < len(p.input) && p.input[p.pos] == '-' && p.input[p.pos+1] == '-' {
+	switch {
+	case p.pos+1 < len(p.input) && p.input[p.pos] == '-' && p.input[p.pos+1] == '-':
 		// Line comment starting with --
-		for p.pos < len(p.input) && p.input[p.pos] != '\n' && p.input[p.pos] != '\r' {
-			result.WriteByte(p.input[p.pos])
-			p.pos++
-		}
-		// Include the newline if present
-		if p.pos < len(p.input) && (p.input[p.pos] == '\n' || p.input[p.pos] == '\r') {
-			result.WriteByte(p.input[p.pos])
-			if p.input[p.pos] == '\n' {
-				p.line++
-				p.lineStart = p.pos + 1
-			}
-			p.pos++
-			// Handle \r\n
-			if p.pos < len(p.input) && p.input[p.pos-1] == '\r' && p.input[p.pos] == '\n' {
-				result.WriteByte(p.input[p.pos])
-				p.line++
-				p.lineStart = p.pos + 1
-				p.pos++
-			}
-		}
-	} else if p.pos+1 < len(p.input) && p.input[p.pos] == '/' && p.input[p.pos+1] == '*' {
+		p.parseLineCommentContent(&result)
+	case p.pos+1 < len(p.input) && p.input[p.pos] == '/' && p.input[p.pos+1] == '*':
 		// Block comment
 		result.WriteByte(p.input[p.pos])
 		p.pos++
@@ -362,28 +339,9 @@ func (p *Parser) parseComment() string {
 			}
 			p.pos++
 		}
-	} else if p.input[p.pos] == '#' {
+	case p.input[p.pos] == '#':
 		// Line comment starting with #
-		for p.pos < len(p.input) && p.input[p.pos] != '\n' && p.input[p.pos] != '\r' {
-			result.WriteByte(p.input[p.pos])
-			p.pos++
-		}
-		// Include the newline if present
-		if p.pos < len(p.input) && (p.input[p.pos] == '\n' || p.input[p.pos] == '\r') {
-			result.WriteByte(p.input[p.pos])
-			if p.input[p.pos] == '\n' {
-				p.line++
-				p.lineStart = p.pos + 1
-			}
-			p.pos++
-			// Handle \r\n
-			if p.pos < len(p.input) && p.input[p.pos-1] == '\r' && p.input[p.pos] == '\n' {
-				result.WriteByte(p.input[p.pos])
-				p.line++
-				p.lineStart = p.pos + 1
-				p.pos++
-			}
-		}
+		p.parseLineCommentContent(&result)
 	}
 
 	return result.String()
@@ -451,9 +409,29 @@ func (p *Parser) readDelimiterValue() string {
 
 func (p *Parser) updateLineInfo() {
 	// Update line information for consumed delimiter
-	for i := 0; i < len(p.delimiter); i++ {
-		if p.pos-len(p.delimiter)+i < len(p.input) && p.input[p.pos-len(p.delimiter)+i] == '\n' {
-			// This would have been handled during parsing, but just in case
+	// Line tracking is handled during parsing, so this is currently a no-op
+}
+
+// parseLineCommentContent parses the content of a line comment (-- or #) to the end of line
+func (p *Parser) parseLineCommentContent(result *strings.Builder) {
+	for p.pos < len(p.input) && p.input[p.pos] != '\n' && p.input[p.pos] != '\r' {
+		result.WriteByte(p.input[p.pos])
+		p.pos++
+	}
+	// Include the newline if present
+	if p.pos < len(p.input) && (p.input[p.pos] == '\n' || p.input[p.pos] == '\r') {
+		result.WriteByte(p.input[p.pos])
+		if p.input[p.pos] == '\n' {
+			p.line++
+			p.lineStart = p.pos + 1
+		}
+		p.pos++
+		// Handle \r\n
+		if p.pos < len(p.input) && p.input[p.pos-1] == '\r' && p.input[p.pos] == '\n' {
+			result.WriteByte(p.input[p.pos])
+			p.line++
+			p.lineStart = p.pos + 1
+			p.pos++
 		}
 	}
 }

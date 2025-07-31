@@ -88,6 +88,9 @@ go run cmd/protobuf-accessors/main.go > protobuf-accessors.sql
 ```bash
 # Format Go code (run after modifying Go code)
 make format
+
+# Run Go linting (check code quality and style)
+make lint
 ```
 
 ## Development Workflow

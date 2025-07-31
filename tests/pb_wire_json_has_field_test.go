@@ -13,7 +13,7 @@ import (
 
 func TestRandomizedWireJsonHasField(t *testing.T) {
 	test := func(t *testing.T, protoFieldType string, hasFunction string) {
-		t.Run(fmt.Sprintf("%s", protoFieldType), func(t *testing.T) {
+		t.Run(protoFieldType, func(t *testing.T) {
 			GivenFieldDefinitions(t, fmt.Sprintf("int32 a = 1; %s value = 2; int32 b = 3;", protoFieldType), func(messageType protoreflect.MessageType) {
 				valueField := messageType.Descriptor().Fields().ByName("value")
 

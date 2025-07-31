@@ -21,7 +21,7 @@ import (
 )
 
 func TestDescriptorSetLoadWkt(t *testing.T) {
-	test := func(fileDescriptor protoreflect.FileDescriptor, fn func(setName string, t *testing.T)) {
+	test := func(fileDescriptor protoreflect.FileDescriptor, fn func(t *testing.T, setName string)) {
 		name := fileDescriptor.Path()
 		t.Run(name, func(t *testing.T) {
 			g := NewWithT(t)
@@ -31,21 +31,21 @@ func TestDescriptorSetLoadWkt(t *testing.T) {
 			AssertThatCall(t, "pb_descriptor_set_delete(?)", name).ShouldSucceed()
 			AssertThatCall(t, "pb_descriptor_set_load(?, ?)", name, fileDescriptorSetBytes).ShouldSucceed()
 			AssertThatExpression(t, "pb_descriptor_set_exists(?)", name).IsTrue()
-			fn(name, t)
+			fn(t, name)
 		})
 	}
 
-	test(anypb.File_google_protobuf_any_proto, func(setName string, t *testing.T) {
+	test(anypb.File_google_protobuf_any_proto, func(t *testing.T, setName string) {
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.Any").IsTrue()
 	})
 
-	test(apipb.File_google_protobuf_api_proto, func(setName string, t *testing.T) {})
+	test(apipb.File_google_protobuf_api_proto, func(t *testing.T, setName string) {})
 
-	test(durationpb.File_google_protobuf_duration_proto, func(setName string, t *testing.T) {
+	test(durationpb.File_google_protobuf_duration_proto, func(t *testing.T, setName string) {
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.Duration").IsTrue()
 	})
 
-	test(descriptorpb.File_google_protobuf_descriptor_proto, func(setName string, t *testing.T) {
+	test(descriptorpb.File_google_protobuf_descriptor_proto, func(t *testing.T, setName string) {
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.FileDescriptorSet").IsTrue()
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.DescriptorProto").IsTrue()
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.FieldDescriptorProto").IsTrue()
@@ -56,28 +56,28 @@ func TestDescriptorSetLoadWkt(t *testing.T) {
 		RunTestThatExpression(t, "pb_descriptor_set_contains_enum_type(?, ?)", setName, ".google.protobuf.FieldDescriptorProto.Label").IsTrue()
 	})
 
-	test(emptypb.File_google_protobuf_empty_proto, func(setName string, t *testing.T) {
+	test(emptypb.File_google_protobuf_empty_proto, func(t *testing.T, setName string) {
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.Empty").IsTrue()
 	})
 
-	test(fieldmaskpb.File_google_protobuf_field_mask_proto, func(setName string, t *testing.T) {
+	test(fieldmaskpb.File_google_protobuf_field_mask_proto, func(t *testing.T, setName string) {
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.FieldMask").IsTrue()
 	})
 
-	test(sourcecontextpb.File_google_protobuf_source_context_proto, func(setName string, t *testing.T) {})
+	test(sourcecontextpb.File_google_protobuf_source_context_proto, func(t *testing.T, setName string) {})
 
-	test(structpb.File_google_protobuf_struct_proto, func(setName string, t *testing.T) {
+	test(structpb.File_google_protobuf_struct_proto, func(t *testing.T, setName string) {
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.Struct").IsTrue()
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.Value").IsTrue()
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.ListValue").IsTrue()
 		RunTestThatExpression(t, "pb_descriptor_set_contains_enum_type(?, ?)", setName, ".google.protobuf.NullValue").IsTrue()
 	})
 
-	test(timestamppb.File_google_protobuf_timestamp_proto, func(setName string, t *testing.T) {
+	test(timestamppb.File_google_protobuf_timestamp_proto, func(t *testing.T, setName string) {
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.Timestamp").IsTrue()
 	})
 
-	test(typepb.File_google_protobuf_type_proto, func(setName string, t *testing.T) {
+	test(typepb.File_google_protobuf_type_proto, func(t *testing.T, setName string) {
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.Type").IsTrue()
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.Field").IsTrue()
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.Enum").IsTrue()
@@ -88,7 +88,7 @@ func TestDescriptorSetLoadWkt(t *testing.T) {
 		RunTestThatExpression(t, "pb_descriptor_set_contains_enum_type(?, ?)", setName, ".google.protobuf.Syntax").IsTrue()
 	})
 
-	test(wrapperspb.File_google_protobuf_wrappers_proto, func(setName string, t *testing.T) {
+	test(wrapperspb.File_google_protobuf_wrappers_proto, func(t *testing.T, setName string) {
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.DoubleValue").IsTrue()
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.FloatValue").IsTrue()
 		RunTestThatExpression(t, "pb_descriptor_set_contains_message_type(?, ?)", setName, ".google.protobuf.Int64Value").IsTrue()

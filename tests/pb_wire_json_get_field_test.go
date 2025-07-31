@@ -15,7 +15,7 @@ import (
 
 func TestRandomizedWireJsonGetField(t *testing.T) {
 	test := func(t *testing.T, protoFieldType string, getFunction string, defaultValue interface{}, extractValue func(input protoreflect.Message, field protoreflect.FieldDescriptor) interface{}) {
-		t.Run(fmt.Sprintf("%s", protoFieldType), func(t *testing.T) {
+		t.Run(protoFieldType, func(t *testing.T) {
 			GivenFieldDefinitions(t, fmt.Sprintf("int32 a = 1; %s value = 2; int32 b = 3;", protoFieldType), func(messageType protoreflect.MessageType) {
 				valueField := messageType.Descriptor().Fields().ByName("value")
 

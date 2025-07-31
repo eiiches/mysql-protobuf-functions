@@ -36,11 +36,11 @@ func Double(rng *rand.Rand, allowNan bool, allowInf bool) float64 {
 }
 
 func Int32(rng *rand.Rand) int32 {
-	return int32(rng.Uint32())
+	return int32(rng.Uint32()) //nolint:gosec // Intentional overflow for random data generation
 }
 
 func Int64(rng *rand.Rand) int64 {
-	return int64(rng.Uint64())
+	return int64(rng.Uint64()) //nolint:gosec // Intentional overflow for random data generation
 }
 
 func Uint32(rng *rand.Rand) uint32 {
@@ -120,6 +120,8 @@ func SingleValueForField(rng *rand.Rand, fieldDescriptor protoreflect.FieldDescr
 	case protoreflect.MessageKind:
 		nestedMessage := Message(rng, fieldDescriptor.Message(), config)
 		return protoreflect.ValueOfMessage(nestedMessage)
+	case protoreflect.GroupKind:
+		panic("Groups are not supported")
 	default:
 		panic("Unsupported field kind: " + fieldDescriptor.Kind().String())
 	}
@@ -129,20 +131,21 @@ func Message(rng *rand.Rand, descriptor protoreflect.MessageDescriptor, config *
 	message := dynamicpb.NewMessage(descriptor)
 
 	for fieldDescriptor := range protoreflectutils.Iterate(descriptor.Fields()) {
-		if fieldDescriptor.IsMap() {
+		switch {
+		case fieldDescriptor.IsMap():
 			length := rng.Intn(config.GetMaxMapSize() + 1) // Randomly choose a map size between 0 and 3
 			for i := 0; i < length; i++ {
 				key := SingleValueForField(rng, fieldDescriptor.MapKey(), config)
 				value := SingleValueForField(rng, fieldDescriptor.MapValue(), config)
 				message.Mutable(fieldDescriptor).Map().Set(key.MapKey(), value)
 			}
-		} else if fieldDescriptor.IsList() {
+		case fieldDescriptor.IsList():
 			length := rng.Intn(config.GetMaxRepeatedSize() + 1) // Randomly choose a list length between 0 and 3
 			for i := 0; i < length; i++ {
 				value := SingleValueForField(rng, fieldDescriptor, config)
 				message.Mutable(fieldDescriptor).List().Append(value)
 			}
-		} else {
+		default:
 			if rng.Intn(2) == 1 { // Randomly decide whether to set the field
 				value := SingleValueForField(rng, fieldDescriptor, config)
 				message.Set(fieldDescriptor, value)

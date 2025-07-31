@@ -127,7 +127,7 @@ func equalMapWithTolerance(actual, expected protoreflect.Map, field protoreflect
 }
 
 func equalScalarWithTolerance(actual, expected protoreflect.Value, kind protoreflect.Kind, equalOrCloseFn func(a, b float64, floatSize int) bool) bool {
-	switch kind {
+	switch kind { //nolint:exhaustive // Only floating point types need tolerance, others use exact equality
 	case protoreflect.FloatKind:
 		actualFloat := float64(actual.Float())
 		expectedFloat := float64(expected.Float())

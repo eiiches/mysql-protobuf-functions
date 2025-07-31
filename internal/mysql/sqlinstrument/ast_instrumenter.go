@@ -70,8 +70,8 @@ func (i *ASTInstrumenter) instrumentStatementWithAST(stmt sqlsplitter.Statement)
 	// Parse the statement with sqlflowparser to get the AST
 	ast, err := sqlflowparser.Parse("", []byte(stmt.Text))
 	if err != nil {
-		// If parsing fails, return the statement unchanged
-		return stmt.Text, nil
+		// If parsing fails, report the error
+		return "", fmt.Errorf("failed to parse statement: %w", err)
 	}
 
 	switch node := ast.(type) {

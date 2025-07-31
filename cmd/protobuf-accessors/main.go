@@ -408,7 +408,6 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 	os.Stdout.WriteString("DELIMITER $$\n")
 
 	for _, input := range inputs {
-
 		getVarintFieldAsUint64 := &WireTypeAccessor{
 			SqlType:                       "BIGINT UNSIGNED",
 			SupportsPacked:                true,
@@ -492,12 +491,12 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 
 		// Generate setter functions only for wire_json input
 		if input.Kind == "wire_json" {
-			generateWireJsonSetters(input, accessors)
+			generateWireJsonSetters(accessors)
 		}
 
 		// Generate message setter functions only for message input
 		if input.Kind == "message" {
-			generateMessageSetters(input, accessors)
+			generateMessageSetters(accessors)
 		}
 	}
 
@@ -508,7 +507,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 	return nil
 }
 
-func generateWireJsonSetters(input *Input, accessors []*Accessor) {
+func generateWireJsonSetters(accessors []*Accessor) {
 	setterTemplateText := dedent.Pipe(`
 		|
 		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_set_{{.ProtoType}}_field $$
@@ -586,7 +585,7 @@ func generateWireJsonSetters(input *Input, accessors []*Accessor) {
 	}
 }
 
-func generateMessageSetters(input *Input, accessors []*Accessor) {
+func generateMessageSetters(accessors []*Accessor) {
 	messageSetterTemplateText := dedent.Pipe(`
 		|
 		|DROP FUNCTION IF EXISTS pb_{{.Input.Kind}}_set_{{.ProtoType}}_field $$

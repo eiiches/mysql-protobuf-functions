@@ -1,0 +1,82 @@
+run:
+  timeout: 5m
+  go: "1.24"
+
+linters-settings:
+  gofumpt:
+    extra-rules: true
+  
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment
+  
+  revive:
+    severity: warning
+    rules:
+      - name: exported
+        severity: warning
+        disabled: false
+        arguments:
+          - "checkPrivateReceivers"
+          - "sayRepetitiveInsteadOfStutters"
+  
+  staticcheck:
+    checks: ["all"]
+  
+  stylecheck:
+    checks: ["all", "-ST1003", "-ST1006"]
+    dot-import-whitelist:
+      - github.com/onsi/gomega
+
+linters:
+  enable:
+    - asciicheck
+    - bodyclose
+    - dogsled
+    - dupl
+    - errcheck
+    - errorlint
+    - exhaustive
+    - copyloopvar
+    - gochecknoinits
+    # - gocognit
+    - goconst
+    - gocritic
+    # - gocyclo
+    # - godot
+    # - gofumpt # use gofumpt directly
+    - goimports
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    # - prealloc
+    - predeclared
+    - revive
+    - staticcheck
+    - stylecheck
+    # - thelper
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+
+issues:
+  exclude-rules:
+    - path: "_test\\.go"
+      linters:
+        - gosec
+        - dupl
+    - path: "cmd/"
+      linters:
+        - gochecknoinits
+  
+  max-issues-per-linter: 0
+  max-same-issues: 0

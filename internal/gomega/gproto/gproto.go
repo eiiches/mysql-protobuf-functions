@@ -40,7 +40,7 @@ func (m *EqualProtoMatcher) Match(actual interface{}) (success bool, err error) 
 		if err := proto.Unmarshal(actualTyped, empty.Interface()); err != nil {
 			return false, fmt.Errorf("error unmarshalling bytes: %w", err)
 		}
-		actualMessage = empty.Interface().(proto.Message)
+		actualMessage = empty.Interface()
 	default:
 		return false, fmt.Errorf("expected a proto.Message or []byte, got %T", actual)
 	}
@@ -139,7 +139,7 @@ func formatByteSlice(data []byte, expectedMessage proto.Message) string {
 				Multiline: true,
 				Indent:    "  ",
 			}
-			if jsonData, err := marshaler.Marshal(actualMessage.Interface()); err == nil {
+			if jsonData, marshalErr := marshaler.Marshal(actualMessage.Interface()); marshalErr == nil {
 				result += fmt.Sprintf("\nParsed as proto:\n%s", string(jsonData))
 			}
 		} else {

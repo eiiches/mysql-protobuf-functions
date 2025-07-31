@@ -24,6 +24,7 @@ type ProtoTestSupport struct {
 }
 
 func NewProtoTestSupport(t *testing.T, sources map[string]string) *ProtoTestSupport {
+	t.Helper()
 	g := NewWithT(t)
 
 	compiler := protocompile.Compiler{

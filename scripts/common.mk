@@ -102,3 +102,8 @@ coverage-ci: generate-coverage-lcov post-coverage-comment
 .PHONY: format
 format:
 	go tool gofumpt -l -w .
+
+.PHONY: lint
+lint:
+	go tool gofumpt -d .
+	go tool golangci-lint run

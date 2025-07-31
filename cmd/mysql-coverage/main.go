@@ -130,7 +130,7 @@ func instrumentAction(ctx context.Context, command *cli.Command) error {
 		// Open input file
 		file, err := os.Open(inputFilename)
 		if err != nil {
-			return fmt.Errorf("failed to open %s: %v", inputFilename, err)
+			return fmt.Errorf("failed to open %s: %w", inputFilename, err)
 		}
 		defer file.Close()
 		input = file
@@ -149,7 +149,7 @@ func instrumentAction(ctx context.Context, command *cli.Command) error {
 		// Open output file
 		outFile, err := os.Create(outputFile)
 		if err != nil {
-			return fmt.Errorf("failed to create %s: %v", outputFile, err)
+			return fmt.Errorf("failed to create %s: %w", outputFile, err)
 		}
 		defer outFile.Close()
 		output = outFile
@@ -157,7 +157,7 @@ func instrumentAction(ctx context.Context, command *cli.Command) error {
 		// Process the file
 		baseFilename := filepath.Base(inputFilename)
 		if err := instrumentSQL(input, output, baseFilename); err != nil {
-			return fmt.Errorf("failed to instrument %s: %v", inputFilename, err)
+			return fmt.Errorf("failed to instrument %s: %w", inputFilename, err)
 		}
 
 		fmt.Printf("Instrumented %s -> %s\n", inputFilename, outputFile)
@@ -248,7 +248,7 @@ func generateLCOVReport(db *sql.DB, output io.Writer, instrumentedFiles []string
 	for _, instrumentedFile := range instrumentedFiles {
 		fileLines, err := parseInstrumentedLines(instrumentedFile)
 		if err != nil {
-			return fmt.Errorf("failed to parse instrumented file %s: %v", instrumentedFile, err)
+			return fmt.Errorf("failed to parse instrumented file %s: %w", instrumentedFile, err)
 		}
 		// Merge into the main map
 		for filename, lines := range fileLines {
@@ -281,7 +281,6 @@ func generateLCOVReport(db *sql.DB, output io.Writer, instrumentedFiles []string
 
 	// Create map of hit counts by line
 	hitCounts := make(map[string]map[int]int) // filename -> line_number -> hit_count
-	var allFilenames []string
 
 	for rows.Next() {
 		var data CoverageData
@@ -291,7 +290,6 @@ func generateLCOVReport(db *sql.DB, output io.Writer, instrumentedFiles []string
 
 		if hitCounts[data.Filename] == nil {
 			hitCounts[data.Filename] = make(map[int]int)
-			allFilenames = append(allFilenames, data.Filename)
 		}
 		hitCounts[data.Filename][data.LineNumber] = data.HitCount
 	}
@@ -435,13 +433,13 @@ func initAction(ctx context.Context, command *cli.Command) error {
 
 	// Test connection
 	if err := db.Ping(); err != nil {
-		return fmt.Errorf("failed to connect to database: %v", err)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	// Drop and recreate the __CoverageEvent table
 	dropTableSQL := `DROP TABLE IF EXISTS __CoverageEvent`
 	if _, err := db.Exec(dropTableSQL); err != nil {
-		return fmt.Errorf("failed to drop existing __CoverageEvent table: %v", err)
+		return fmt.Errorf("failed to drop existing __CoverageEvent table: %w", err)
 	}
 
 	createTableSQL := `
@@ -454,13 +452,13 @@ func initAction(ctx context.Context, command *cli.Command) error {
 		) ENGINE = ARCHIVE`
 
 	if _, err := db.Exec(createTableSQL); err != nil {
-		return fmt.Errorf("failed to create __CoverageEvent table: %v", err)
+		return fmt.Errorf("failed to create __CoverageEvent table: %w", err)
 	}
 
 	// Drop existing __record_coverage procedure if it exists
 	dropProcedureSQL := `DROP PROCEDURE IF EXISTS __record_coverage`
 	if _, err := db.Exec(dropProcedureSQL); err != nil {
-		return fmt.Errorf("failed to drop existing __record_coverage procedure: %v", err)
+		return fmt.Errorf("failed to drop existing __record_coverage procedure: %w", err)
 	}
 
 	// Create the __record_coverage procedure
@@ -472,7 +470,7 @@ func initAction(ctx context.Context, command *cli.Command) error {
 		END`
 
 	if _, err := db.Exec(createProcedureSQL); err != nil {
-		return fmt.Errorf("failed to create __record_coverage procedure: %v", err)
+		return fmt.Errorf("failed to create __record_coverage procedure: %w", err)
 	}
 
 	fmt.Println("Successfully initialized database with coverage tracking schema")
@@ -605,10 +603,17 @@ func parseLCOVFile(filePath string) (*CoverageSummary, error) {
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
-		if strings.HasPrefix(line, "TN:") {
+		// Extract prefix (everything before first colon)
+		prefix := line
+		if colonIndex := strings.Index(line, ":"); colonIndex >= 0 {
+			prefix = line[:colonIndex]
+		}
+
+		switch prefix {
+		case "TN":
 			// Test name - start of new record
 			continue
-		} else if strings.HasPrefix(line, "SF:") {
+		case "SF":
 			// Source file
 			if currentFile != nil {
 				summary.Files = append(summary.Files, *currentFile)
@@ -616,7 +621,7 @@ func parseLCOVFile(filePath string) (*CoverageSummary, error) {
 			currentFile = &LCOVFile{
 				SourceFile: strings.TrimPrefix(line, "SF:"),
 			}
-		} else if strings.HasPrefix(line, "FN:") {
+		case "FN":
 			// Function definition: FN:line_number,function_name
 			parts := strings.SplitN(strings.TrimPrefix(line, "FN:"), ",", 2)
 			if len(parts) == 2 {
@@ -626,7 +631,7 @@ func parseLCOVFile(filePath string) (*CoverageSummary, error) {
 					LineNumber: lineNum,
 				})
 			}
-		} else if strings.HasPrefix(line, "FNDA:") {
+		case "FNDA":
 			// Function hit data: FNDA:hit_count,function_name
 			parts := strings.SplitN(strings.TrimPrefix(line, "FNDA:"), ",", 2)
 			if len(parts) == 2 {
@@ -640,13 +645,13 @@ func parseLCOVFile(filePath string) (*CoverageSummary, error) {
 					}
 				}
 			}
-		} else if strings.HasPrefix(line, "FNF:") {
+		case "FNF":
 			// Functions found
 			currentFile.FunctionsFound, _ = strconv.Atoi(strings.TrimPrefix(line, "FNF:"))
-		} else if strings.HasPrefix(line, "FNH:") {
+		case "FNH":
 			// Functions hit
 			currentFile.FunctionsHit, _ = strconv.Atoi(strings.TrimPrefix(line, "FNH:"))
-		} else if strings.HasPrefix(line, "DA:") {
+		case "DA":
 			// Line hit data: DA:line_number,hit_count
 			parts := strings.SplitN(strings.TrimPrefix(line, "DA:"), ",", 2)
 			if len(parts) == 2 {
@@ -657,17 +662,19 @@ func parseLCOVFile(filePath string) (*CoverageSummary, error) {
 					HitCount:   hitCount,
 				})
 			}
-		} else if strings.HasPrefix(line, "LF:") {
+		case "LF":
 			// Lines found
 			currentFile.LinesFound, _ = strconv.Atoi(strings.TrimPrefix(line, "LF:"))
-		} else if strings.HasPrefix(line, "LH:") {
+		case "LH":
 			// Lines hit
 			currentFile.LinesHit, _ = strconv.Atoi(strings.TrimPrefix(line, "LH:"))
-		} else if line == "end_of_record" {
-			// End of current file record
-			if currentFile != nil {
-				summary.Files = append(summary.Files, *currentFile)
-				currentFile = nil
+		default:
+			if line == "end_of_record" {
+				// End of current file record
+				if currentFile != nil {
+					summary.Files = append(summary.Files, *currentFile)
+					currentFile = nil
+				}
 			}
 		}
 	}
@@ -755,25 +762,27 @@ func generateCoverageReport(summary *CoverageSummary, title string) string {
 }
 
 func getCoverageEmoji(percentage float64) string {
-	if percentage >= 90 {
+	switch {
+	case percentage >= 90:
 		return "🟢"
-	} else if percentage >= 70 {
+	case percentage >= 70:
 		return "🟡"
-	} else if percentage >= 50 {
+	case percentage >= 50:
 		return "🟠"
-	} else {
+	default:
 		return "🔴"
 	}
 }
 
 func getCoverageQualityMessage(percentage float64) string {
-	if percentage >= 90 {
+	switch {
+	case percentage >= 90:
 		return "Excellent Coverage"
-	} else if percentage >= 70 {
+	case percentage >= 70:
 		return "Good Coverage"
-	} else if percentage >= 50 {
+	case percentage >= 50:
 		return "Moderate Coverage"
-	} else {
+	default:
 		return "Low Coverage"
 	}
 }

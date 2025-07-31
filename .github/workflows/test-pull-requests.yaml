@@ -21,9 +21,9 @@ jobs:
     - name: Test
       run: |
         make start-mysql test
-    - name: Format Check
+    - name: Run lint
       run: |
-        go tool gofumpt -d .
+        make lint
     - name: Generate and Post Coverage Report
       run: |
         make coverage-ci
