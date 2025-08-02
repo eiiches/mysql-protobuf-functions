@@ -52,7 +52,7 @@ WHERE user_id = 123;
 | **Write Fields** | `pb_message_set_int32_field(data, 2, 25)` | Update specific fields safely |
 | **Repeated Fields** | `pb_message_add_repeated_string_field_element(data, 3, 'item')` | Manage lists/arrays |
 | **Bulk Operations** | `pb_message_add_all_repeated_int32_field_elements(data, 4, '[1,2,3]')` | Efficient batch updates |
-| **JSON Conversion** | `pb_message_to_json('schema', '.Type', data)` | Human-readable JSON with schema |
+| **JSON Conversion** | `pb_message_to_json(schema_json, '.Type', data)` | Human-readable JSON with schema |
 | **Wire Format** | `pb_message_to_wire_json(data)` | Performance optimization for multiple operations |
 
 ## When to Use This Library
@@ -71,17 +71,32 @@ WHERE user_id = 123;
 
 ## Installation
 
-```sql
--- Core protobuf functions (required)
-SOURCE protobuf.sql;
-SOURCE protobuf-accessors.sql;
+### Quick Start
 
--- JSON features (optional) 
-SOURCE protobuf-descriptor.sql;
-SOURCE protobuf-json.sql;
-```
+1. **Clone the repository** to get the SQL files:
+   ```bash
+   git clone https://github.com/eiiches/mysql-protobuf-functions.git
+   cd mysql-protobuf-functions
+   ```
+
+2. **Install core functions**:
+   ```bash
+   mysql -u your_username -p your_database < build/protobuf.sql
+   ```
+
+3. **Install optional components** (for JSON conversion):
+   ```bash
+   mysql -u your_username -p your_database < build/protobuf-descriptor.sql
+   mysql -u your_username -p your_database < build/protobuf-json.sql
+   ```
+
+### Important Notes
+
+- ⚠️ All functions and procedures use `_pb_` or `pb_` prefixes to avoid naming conflicts
+- 📝 Verify existing routines before installation to prevent overwrites
 
 **Requirements:** MySQL 8.0.17+ or Aurora MySQL 3.04.0+
+- JSON_TABLE() was added in 8.0.4 but requires 8.0.17 for [this critical bugfix](https://bugs.mysql.com/bug.php?id=92976)
 
 ## Function Naming Pattern
 
@@ -108,6 +123,52 @@ Examples:
 | `bytes` | LONGBLOB | `_bytes_field` |
 | `message` | LONGBLOB | `_message_field` |
 | *All protobuf types supported - see [Function Reference](function-reference.md#field-types-reference)* |
+
+## Getting Started Examples
+
+### Schema Loading Methods
+
+There are multiple ways to load protobuf schemas:
+
+**Method 1: Using pb_build_descriptor_set_json**
+```sql
+-- Generate your protobuf descriptor set first:
+-- $ protoc --descriptor_set_out=/dev/stdout --include_imports person.proto | xxd -p -c0
+
+-- Convert binary descriptor set to JSON format
+SET @schema_json = pb_build_descriptor_set_json(_binary X'0aff010a1f676f6f676c652f...');
+
+-- Save to variable or table for reuse
+CREATE TABLE schema_registry (schema_name VARCHAR(255) PRIMARY KEY, schema_json JSON);
+INSERT INTO schema_registry VALUES ('person_schema', @schema_json);
+```
+
+**Method 2: Using protoc-gen-descriptor_set_json**
+```bash
+# Generate SQL function containing schema JSON
+protoc --descriptor_set_json_out=. --descriptor_set_json_opt=name=person_schema person.proto
+
+# Load into MySQL
+mysql -u your_username -p your_database < person_schema.sql
+```
+
+### JSON Conversion Example
+
+```sql
+-- Convert protobuf message to human-readable JSON
+SELECT pb_message_to_json(@schema_json, '.Person', pb_data) AS person_json
+FROM example_table;
+
+-- Result:
+-- {
+--   "id": 1,
+--   "name": "John Doe", 
+--   "email": "john@example.com",
+--   "phones": [
+--     {"type": "PHONE_TYPE_WORK", "number": "+1-555-0123"}
+--   ]
+-- }
+```
 
 ## Documentation Quick Links
 

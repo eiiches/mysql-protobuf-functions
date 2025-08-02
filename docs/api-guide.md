@@ -309,19 +309,19 @@ SELECT pb_message_get_int32_field(@first_phone, 2, 0) AS phone_type;
 
 ### Schema Management
 
-#### Loading Protobuf Schemas
+#### Processing Protobuf Schemas
 ```sql
--- Load schema from binary FileDescriptorSet
-CALL pb_descriptor_set_load(
-    'my_schema',  -- Schema identifier
+-- Generate schema JSON from binary FileDescriptorSet
+SET @schema_json = pb_build_descriptor_set_json(
     @binary_descriptor_set  -- Binary data from protoc --descriptor_set_out
 );
 
--- List loaded schemas
-SELECT pb_descriptor_set_list() AS loaded_schemas;
-
--- Get schema information
-SELECT pb_descriptor_message_names('my_schema') AS message_types;
+-- Store schema JSON for reuse
+CREATE TABLE schema_registry (
+    schema_name VARCHAR(255) PRIMARY KEY, 
+    schema_json JSON
+);
+INSERT INTO schema_registry VALUES ('my_schema', @schema_json);
 ```
 
 #### Generating Schema Binary
@@ -337,8 +337,8 @@ xxd -p -c0 schema.binpb
 
 #### Basic Message to JSON
 ```sql
--- Convert message to JSON (requires loaded schema)
-SELECT pb_message_to_json('my_schema', '.Person', pb_data) AS json_output;
+-- Convert message to JSON (requires schema JSON)
+SELECT pb_message_to_json(@schema_json, '.Person', pb_data) AS json_output;
 
 -- Example output:
 -- {
@@ -682,14 +682,8 @@ END IF;
 
 #### JSON Conversion Errors
 ```sql
--- Verify schema is loaded
-SELECT pb_descriptor_set_list();
-
--- Check message type exists
-SELECT pb_descriptor_message_names('schema_id');
-
 -- Verify message type name (include leading dot)
-SELECT pb_message_to_json('schema_id', '.MessageTypeName', pb_data);
+SELECT pb_message_to_json(@schema_json, '.MessageTypeName', pb_data);
 ```
 
 #### Wire JSON Format Issues
@@ -709,7 +703,7 @@ SELECT JSON_PRETTY(pb_message_to_wire_json(pb_data));
 SELECT JSON_PRETTY(pb_message_to_wire_json(pb_data)) AS wire_format;
 
 -- Convert to readable JSON (if schema available)
-SELECT JSON_PRETTY(pb_message_to_json('schema_id', '.MessageType', pb_data)) AS readable_json;
+SELECT JSON_PRETTY(pb_message_to_json(@schema_json, '.MessageType', pb_data)) AS readable_json;
 ```
 
 #### Check Message Structure

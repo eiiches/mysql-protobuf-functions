@@ -79,7 +79,7 @@ func (i *ASTInstrumenter) instrumentStatementWithAST(stmt sqlsplitter.Statement)
 			}
 			stmtType = firstLine
 		}
-		
+
 		// If parsing fails, report the error with file context
 		return "", fmt.Errorf("failed to parse statement starting at file line %d (%s): %w", stmt.LineNo, stmtType, err)
 	}

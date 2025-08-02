@@ -580,9 +580,9 @@ func TestUnknownEscapeSequenceHandling(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{`SELECT '\x'`, "\\x"},           // \x should become just x, but we preserve the literal for SQL reconstruction
-		{`SELECT '\q'`, "\\q"},           // \q should become just q
-		{`SELECT '\y\z'`, "\\y\\z"},      // Multiple unknowns
+		{`SELECT '\x'`, "\\x"},              // \x should become just x, but we preserve the literal for SQL reconstruction
+		{`SELECT '\q'`, "\\q"},              // \q should become just q
+		{`SELECT '\y\z'`, "\\y\\z"},         // Multiple unknowns
 		{`SELECT '\xtest\y'`, "\\xtest\\y"}, // Mixed with other characters
 	}
 
@@ -593,7 +593,7 @@ func TestUnknownEscapeSequenceHandling(t *testing.T) {
 
 			stmt, ok := result.(*GenericStmt)
 			g.Expect(ok).To(BeTrue(), "Expected GenericStmt for: %s", tc.input)
-			
+
 			// The exact text comparison depends on how the parser reconstructs the SQL
 			// The important thing is that it parses successfully
 			g.Expect(stmt.Text).To(ContainSubstring("SELECT"), "Should contain SELECT")
