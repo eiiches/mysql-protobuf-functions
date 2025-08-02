@@ -29,14 +29,8 @@ func main() {
 			{
 				Name:      "instrument",
 				Usage:     "Instrument SQL files with coverage tracking calls",
-				ArgsUsage: "[file1.sql file2.sql ...]",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:  "output",
-						Usage: "Output directory (only used with multiple files)",
-					},
-				},
-				Action: instrumentAction,
+				ArgsUsage: "file1.sql [file2.sql ...]",
+				Action:    instrumentAction,
 			},
 			{
 				Name:  "init",
@@ -51,8 +45,9 @@ func main() {
 				Action: initAction,
 			},
 			{
-				Name:  "lcov",
-				Usage: "Generate LCOV format coverage report from MysqlCoverageEvents table",
+				Name:      "lcov",
+				Usage:     "Generate LCOV format coverage report from MysqlCoverageEvents table",
+				ArgsUsage: "[file1.sql file2.sql ...]",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "database",
@@ -62,10 +57,6 @@ func main() {
 					&cli.StringFlag{
 						Name:  "output",
 						Usage: "Output file (default: stdout)",
-					},
-					&cli.StringSliceFlag{
-						Name:  "instrumented-file",
-						Usage: "Path(s) to instrumented SQL file(s) (auto-detected if not specified)",
 					},
 				},
 				Action: lcovAction,
@@ -115,11 +106,10 @@ func main() {
 
 func instrumentAction(ctx context.Context, command *cli.Command) error {
 	args := command.Args().Slice()
-	outputDir := command.String("output")
 
-	// If no arguments, read from stdin
+	// Require at least one file argument
 	if len(args) == 0 {
-		return instrumentSQL(os.Stdin, os.Stdout, "stdin")
+		return fmt.Errorf("at least one SQL file must be specified")
 	}
 
 	// Process multiple files
@@ -135,16 +125,8 @@ func instrumentAction(ctx context.Context, command *cli.Command) error {
 		defer file.Close()
 		input = file
 
-		// Determine output file
-		var outputFile string
-		if outputDir != "" {
-			// Output to specified directory
-			baseFilename := filepath.Base(inputFilename)
-			outputFile = filepath.Join(outputDir, baseFilename+".instrumented")
-		} else {
-			// Default to {input}.instrumented naming convention
-			outputFile = inputFilename + ".instrumented"
-		}
+		// Default to {input}.instrumented naming convention
+		outputFile := inputFilename + ".instrumented"
 
 		// Open output file
 		outFile, err := os.Create(outputFile)
@@ -155,8 +137,7 @@ func instrumentAction(ctx context.Context, command *cli.Command) error {
 		output = outFile
 
 		// Process the file
-		baseFilename := filepath.Base(inputFilename)
-		if err := instrumentSQL(input, output, baseFilename); err != nil {
+		if err := instrumentSQL(input, output, inputFilename); err != nil {
 			return fmt.Errorf("failed to instrument %s: %w", inputFilename, err)
 		}
 
@@ -211,25 +192,38 @@ func lcovAction(ctx context.Context, command *cli.Command) error {
 	}
 	defer db.Close()
 
-	// We need the instrumented files to know which lines were instrumented
-	instrumentedFiles := command.StringSlice("instrumented-file")
-	if len(instrumentedFiles) == 0 {
-		// Auto-detect instrumented files using the new naming convention
-		pattern := "*.sql.instrumented"
-		matches, err := filepath.Glob(pattern)
-		if err == nil {
-			instrumentedFiles = append(instrumentedFiles, matches...)
-		}
-		// Also check for old naming convention for backward compatibility
-		oldFiles := []string{"instrumented-protobuf.sql", "instrumented-protobuf-accessors.sql", "instrumented-protobuf-descriptor.sql", "instrumented-protobuf-json.sql", "instrumented.sql"}
-		for _, file := range oldFiles {
-			if _, err := os.Stat(file); err == nil {
-				instrumentedFiles = append(instrumentedFiles, file)
-			}
+	// Get source files from positional arguments or auto-detect from database
+	sourceFiles := command.Args().Slice()
+	if len(sourceFiles) == 0 {
+		// Auto-detect source files from database coverage events
+		var err error
+		sourceFiles, err = getSourceFilesFromDatabase(db)
+		if err != nil {
+			return fmt.Errorf("failed to auto-detect source files from database: %w", err)
 		}
 	}
 
-	return generateLCOVReport(db, output, instrumentedFiles)
+	return generateLCOVReport(db, output, sourceFiles)
+}
+
+func getSourceFilesFromDatabase(db *sql.DB) ([]string, error) {
+	query := "SELECT DISTINCT filename FROM __CoverageEvent ORDER BY filename"
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sourceFiles []string
+	for rows.Next() {
+		var filename string
+		if err := rows.Scan(&filename); err != nil {
+			return nil, err
+		}
+		sourceFiles = append(sourceFiles, filename)
+	}
+
+	return sourceFiles, rows.Err()
 }
 
 type CoverageData struct {
@@ -239,16 +233,20 @@ type CoverageData struct {
 	HitCount   int
 }
 
-func generateLCOVReport(db *sql.DB, output io.Writer, instrumentedFiles []string) error {
+func generateLCOVReport(db *sql.DB, output io.Writer, sourceFiles []string) error {
 	writer := bufio.NewWriter(output)
 	defer writer.Flush()
 
 	// Parse all instrumented files to get all instrumented lines
 	instrumentedLines := make(map[string]map[int]string)
-	for _, instrumentedFile := range instrumentedFiles {
+	for _, sourceFile := range sourceFiles {
+		// Try to find corresponding instrumented file
+		instrumentedFile := sourceFile + ".instrumented"
 		fileLines, err := parseInstrumentedLines(instrumentedFile)
 		if err != nil {
-			return fmt.Errorf("failed to parse instrumented file %s: %w", instrumentedFile, err)
+			// If instrumented file not found, skip this source file
+			// This allows partial coverage reports when some files haven't been instrumented
+			continue
 		}
 		// Merge into the main map
 		for filename, lines := range fileLines {

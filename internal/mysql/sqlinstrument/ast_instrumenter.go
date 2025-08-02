@@ -2,7 +2,6 @@ package sqlinstrument
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/eiiches/mysql-protobuf-functions/internal/mysql/sqlflowparser"
@@ -18,7 +17,7 @@ type ASTInstrumenter struct {
 // NewASTInstrumenter creates a new AST-based instrumenter
 func NewASTInstrumenter(filename string) *ASTInstrumenter {
 	return &ASTInstrumenter{
-		filename: filepath.Base(filename),
+		filename: filename,
 		codegen:  NewCodeGenerator(),
 	}
 }
