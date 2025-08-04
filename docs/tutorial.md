@@ -88,7 +88,7 @@ $ protoc --descriptor_set_out=/dev/stdout --include_imports person.proto | xxd -
 
 Alternatively, if you use Buf, you can use `buf build -o ${name}.binpb` to generate a binary FileDescriptorSet.
 
-The `pb_build_descriptor_set_json` function converts the binary FileDescriptorSet to a versioned JSON array format. For details about the format structure, see the [descriptorsetjson documentation](internal/descriptorsetjson/README.md).
+The `pb_build_descriptor_set_json` function converts the binary FileDescriptorSet to a versioned JSON array format. For details about the format structure, see the [descriptorsetjson documentation](../internal/descriptorsetjson/README.md).
 
 Then load the schema using `pb_build_descriptor_set_json` and save the result:
 
@@ -121,7 +121,7 @@ mysql -u your_username -p your_database < test_schema.sql
 
 You can now use the generated function `test_schema()` directly as the first argument to `pb_message_to_json()` and other functions that require descriptor set JSON.
 
-For detailed information about the plugin, see [protoc-gen-descriptor_set_json documentation](cmd/protoc-gen-descriptor_set_json/README.md).
+For detailed information about the plugin, see [protoc-gen-descriptor_set_json documentation](../cmd/protoc-gen-descriptor_set_json/README.md).
 
 ### JSON Conversion
 
