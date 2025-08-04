@@ -2,7 +2,6 @@ package sqlinstrument
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/eiiches/mysql-protobuf-functions/internal/mysql/sqlflowparser"
@@ -18,7 +17,7 @@ type ASTInstrumenter struct {
 // NewASTInstrumenter creates a new AST-based instrumenter
 func NewASTInstrumenter(filename string) *ASTInstrumenter {
 	return &ASTInstrumenter{
-		filename: filepath.Base(filename),
+		filename: filename,
 		codegen:  NewCodeGenerator(),
 	}
 }
@@ -70,8 +69,19 @@ func (i *ASTInstrumenter) instrumentStatementWithAST(stmt sqlsplitter.Statement)
 	// Parse the statement with sqlflowparser to get the AST
 	ast, err := sqlflowparser.Parse("", []byte(stmt.Text))
 	if err != nil {
-		// If parsing fails, report the error
-		return "", fmt.Errorf("failed to parse statement: %w", err)
+		// Extract statement type from the beginning of the text for better error context
+		stmtType := "unknown"
+		textLines := strings.Split(stmt.Text, "\n")
+		if len(textLines) > 0 {
+			firstLine := strings.TrimSpace(textLines[0])
+			if len(firstLine) > 50 {
+				firstLine = firstLine[:50] + "..."
+			}
+			stmtType = firstLine
+		}
+
+		// If parsing fails, report the error with file context
+		return "", fmt.Errorf("failed to parse statement starting at file line %d (%s): %w", stmt.LineNo, stmtType, err)
 	}
 
 	switch node := ast.(type) {

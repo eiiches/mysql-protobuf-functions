@@ -277,9 +277,18 @@ SingleQuotedString <- "'" content:SingleQuoteContent* "'" {
 }
 
 SingleQuoteContent <- "''" { return []byte("''"), nil } / 
+                     "\\0" { return []byte("\\0"), nil } /
                      "\\'" { return []byte("\\'"), nil } / 
+                     "\\\"" { return []byte("\\\""), nil } /
+                     "\\b" { return []byte("\\b"), nil } /
                      "\\n" { return []byte("\\n"), nil } /
+                     "\\r" { return []byte("\\r"), nil } /
+                     "\\t" { return []byte("\\t"), nil } /
+                     "\\Z" { return []byte("\\Z"), nil } /
                      "\\\\" { return []byte("\\\\"), nil } /
+                     "\\%" { return []byte("\\%"), nil } /
+                     "\\_" { return []byte("\\_"), nil } /
+                     "\\" . { return []byte{c.text[1]}, nil } /
                      [^'\\] { return c.text, nil }
 
 // Double quoted string with escape handling
@@ -294,9 +303,18 @@ DoubleQuotedString <- '"' content:DoubleQuoteContent* '"' {
 }
 
 DoubleQuoteContent <- "\"\"" { return []byte("\"\""), nil } / 
+                     "\\0" { return []byte("\\0"), nil } /
+                     "\\'" { return []byte("\\'"), nil } / 
                      "\\\"" { return []byte("\\\""), nil } / 
+                     "\\b" { return []byte("\\b"), nil } /
                      "\\n" { return []byte("\\n"), nil } /
+                     "\\r" { return []byte("\\r"), nil } /
+                     "\\t" { return []byte("\\t"), nil } /
+                     "\\Z" { return []byte("\\Z"), nil } /
                      "\\\\" { return []byte("\\\\"), nil } /
+                     "\\%" { return []byte("\\%"), nil } /
+                     "\\_" { return []byte("\\_"), nil } /
+                     "\\" . { return []byte{c.text[1]}, nil } /
                      [^"\\] { return c.text, nil }
 
 BacktickString <- '`' content:BacktickContent* '`' {

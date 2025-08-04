@@ -13,6 +13,7 @@ import (
 
 	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
 	"github.com/eiiches/mysql-protobuf-functions/internal/gomega/gfloat"
+	"github.com/eiiches/mysql-protobuf-functions/internal/gomega/gjson"
 	"github.com/eiiches/mysql-protobuf-functions/internal/gomega/gmysql"
 	"github.com/eiiches/mysql-protobuf-functions/internal/gomega/gproto"
 	"github.com/eiiches/mysql-protobuf-functions/internal/moresql"
@@ -381,6 +382,12 @@ func (this *ExpressionTestContext) IsEqualToJson(expectedJson interface{}) {
 	this.RunFn(fmt.Sprintf("RunTestThatExpression(`%s`,%s).IsEqualToJson(%s)", this.Expression, formatArguments(this.Args...), formatArguments(expectedJson)), func(t *testing.T) {
 		jsonBytes := lo.Must(json.Marshal(expectedJson))
 		assertThatExpressionTo[string](t, MatchJSON(string(jsonBytes)), this.Expression, this.Args...)
+	})
+}
+
+func (this *ExpressionTestContext) IsEqualOrCloseToJsonString(expectedJson string, equalOrCloseFn func(a, b float64) bool) {
+	this.RunFn(fmt.Sprintf("RunTestThatExpression(`%s`,%s).IsEqualOrCloseToJson(%s)", this.Expression, formatArguments(this.Args...), formatArguments(expectedJson)), func(t *testing.T) {
+		assertThatExpressionTo[string](t, gjson.EqualJson(expectedJson).WithFloatEqualFn(equalOrCloseFn), this.Expression, this.Args...)
 	})
 }
 

@@ -147,8 +147,8 @@ WHERE user_id = 123;
 SELECT user_id, JSON_PRETTY(pb_message_to_wire_json(profile_data)) AS wire_format
 FROM users WHERE user_id = 123;
 
--- Full debugging: convert to JSON (requires schema loaded)
-SELECT user_id, JSON_PRETTY(pb_message_to_json('user_schema', '.UserProfile', profile_data)) AS profile_json
+-- Full debugging: convert to JSON (requires schema JSON)
+SELECT user_id, JSON_PRETTY(pb_message_to_json(@user_schema_json, '.UserProfile', profile_data)) AS profile_json
 FROM users WHERE user_id = 123;
 
 -- Check specific fields exist

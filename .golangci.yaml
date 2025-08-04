@@ -41,7 +41,7 @@ linters:
     - copyloopvar
     - gochecknoinits
     # - gocognit
-    - goconst
+    # - goconst
     - gocritic
     # - gocyclo
     # - godot

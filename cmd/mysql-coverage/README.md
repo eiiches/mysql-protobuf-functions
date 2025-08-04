@@ -79,12 +79,6 @@ The `instrument` subcommand takes SQL files with stored procedures/functions and
 
 # Instrument all SQL files using wildcards
 ./mysql-coverage instrument *.sql
-
-# Specify custom output directory
-./mysql-coverage instrument --output instrumented/ protobuf.sql other.sql
-
-# Or use stdin/stdout
-cat protobuf.sql | ./mysql-coverage instrument > instrumented-protobuf.sql
 ```
 
 **What it does:**
@@ -165,14 +159,14 @@ go test ./tests -database "user:password@tcp(localhost:3306)/database"
 
 ### 4. Generate Coverage Reports
 
-The `lcov` subcommand generates standard LCOV format coverage reports. It automatically detects instrumented files using the `*.sql.instrumented` pattern:
+The `lcov` subcommand generates standard LCOV format coverage reports. It automatically detects source files from the coverage database:
 
 ```bash
-# Generate LCOV report (auto-detects instrumented files)
+# Generate LCOV report (auto-detects source files from database)
 ./mysql-coverage lcov --database "user:password@tcp(localhost:3306)/database" --output coverage.lcov
 
-# Explicitly specify instrumented files
-./mysql-coverage lcov --database "user:password@tcp(localhost:3306)/database" --instrumented-file protobuf.sql.instrumented --instrumented-file other.sql.instrumented --output coverage.lcov
+# Explicitly specify source files
+./mysql-coverage lcov --database "user:password@tcp(localhost:3306)/database" protobuf.sql other.sql --output coverage.lcov
 
 # Generate HTML report using genhtml
 genhtml coverage.lcov --output-directory coverage-html --title "MySQL Coverage Report"
@@ -202,11 +196,8 @@ Initializes the database with coverage tracking schema.
 Instruments SQL files with coverage tracking calls using AST-based parsing.
 
 ```bash
-./mysql-coverage instrument [options] [file1.sql file2.sql ...]
+./mysql-coverage instrument file1.sql [file2.sql ...]
 ```
-
-**Options:**
-- `--output string`: Output directory (only used with multiple files)
 
 **Examples:**
 ```bash
@@ -218,12 +209,6 @@ Instruments SQL files with coverage tracking calls using AST-based parsing.
 
 # Using wildcards
 ./mysql-coverage instrument *.sql
-
-# Custom output directory
-./mysql-coverage instrument --output instrumented/ *.sql
-
-# Using pipes
-cat file.sql | ./mysql-coverage instrument > instrumented.sql
 ```
 
 ### lcov
@@ -231,21 +216,20 @@ cat file.sql | ./mysql-coverage instrument > instrumented.sql
 Generates LCOV format coverage report from the coverage database.
 
 ```bash
-./mysql-coverage lcov --database CONNECTION_STRING [options]
+./mysql-coverage lcov --database CONNECTION_STRING [file1.sql file2.sql ...]
 ```
 
 **Options:**
 - `--database string`: Database connection string (required)
 - `--output string`: Output file (default: stdout)
-- `--instrumented-file strings`: Path(s) to instrumented SQL file(s) (auto-detected if not specified)
 
 **Examples:**
 ```bash
-# Generate LCOV file (auto-detects *.sql.instrumented files)
+# Generate LCOV file (auto-detects source files from database)
 ./mysql-coverage lcov --database "root@tcp(127.0.0.1:3306)/test" --output coverage.lcov
 
-# Explicitly specify instrumented files
-./mysql-coverage lcov --database "root@tcp(127.0.0.1:3306)/test" --instrumented-file protobuf.sql.instrumented --output coverage.lcov
+# Explicitly specify source files
+./mysql-coverage lcov --database "root@tcp(127.0.0.1:3306)/test" protobuf.sql other.sql --output coverage.lcov
 
 # Direct to genhtml
 ./mysql-coverage lcov --database "root@tcp(127.0.0.1:3306)/test" | genhtml - --output-directory html-report

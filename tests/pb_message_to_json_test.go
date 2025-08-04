@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
+	"github.com/eiiches/mysql-protobuf-functions/internal/descriptorsetjson"
 	"github.com/eiiches/mysql-protobuf-functions/internal/testutils"
 	. "github.com/onsi/gomega"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -12,6 +13,8 @@ import (
 )
 
 func testMessageToJson(t *testing.T, fieldDefinition string, input string) {
+	g := NewWithT(t)
+
 	p := testutils.NewProtoTestSupport(t, map[string]string{
 		"main.proto": fmt.Sprintf(dedent.Pipe(`
 			|syntax = "proto3";
@@ -34,23 +37,20 @@ func testMessageToJson(t *testing.T, fieldDefinition string, input string) {
 		`), fieldDefinition),
 	})
 
-	descriptorSetName := "a"
 	typeName := protoreflect.FullName(".Test")
 
-	AssertThatCall(t, "pb_descriptor_set_load(?, ?)", descriptorSetName, p.GetSerializedFileDescriptorSet()).ShouldSucceed()
-	defer func() {
-		AssertThatCall(t, "pb_descriptor_set_delete(?)", descriptorSetName).ShouldSucceed()
-	}()
+	// Generate descriptor set JSON using descriptorsetjson package
+	descriptorSetJson, err := descriptorsetjson.ToJson(p.GetFileDescriptorSet())
+	g.Expect(err).NotTo(HaveOccurred())
 
 	dynamicMessage := p.JsonToDynamicMessage(typeName, input)
 	serializedBinary := p.JsonToProtobuf(typeName, input)
 
-	g := NewWithT(t)
 	expectedJson, err := (&protojson.MarshalOptions{EmitDefaultValues: true}).Marshal(dynamicMessage.Interface())
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(expectedJson).To(MatchJSON(input), "Test case is invalid: input should match the output of protojson.Marshal(input).")
 
-	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?)", descriptorSetName, typeName, serializedBinary).IsEqualToJsonString(string(expectedJson))
+	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?)", descriptorSetJson, typeName, serializedBinary).IsEqualToJsonString(string(expectedJson))
 }
 
 func TestMessageToJsonSingularFields(t *testing.T) {
@@ -110,7 +110,7 @@ func TestMessageToJsonSingularFields(t *testing.T) {
 
 	t.Run("bytes", func(t *testing.T) {
 		testMessageToJson(t, "bytes bytes_field = 1;", `{"bytesField": ""}`)
-		testMessageToJson(t, "bytes bytes_field = 1;", `{"bytesField": "dGVzdA=="}`) // Base64 for "testMessageToJson"
+		testMessageToJson(t, "bytes bytes_field = 1;", `{"bytesField": "dGVzdA=="}`) // Base64 for "test"
 	})
 
 	t.Run("float", func(t *testing.T) {
@@ -211,7 +211,7 @@ func TestMessageToJsonRepeatedFields(t *testing.T) {
 	t.Run("repeated bytes", func(t *testing.T) {
 		testMessageToJson(t, "repeated bytes repeated_bytes_field = 1;", `{"repeatedBytesField": []}`)
 		testMessageToJson(t, "repeated bytes repeated_bytes_field = 1;", `{"repeatedBytesField": [""]}`)
-		testMessageToJson(t, "repeated bytes repeated_bytes_field = 1;", `{"repeatedBytesField": ["dGVzdA==", ""]}`) // Base64 for "testMessageToJson"
+		testMessageToJson(t, "repeated bytes repeated_bytes_field = 1;", `{"repeatedBytesField": ["dGVzdA==", ""]}`) // Base64 for "test"
 	})
 
 	t.Run("repeated float", func(t *testing.T) {
@@ -319,7 +319,7 @@ func TestMessageToJsonOptionalFields(t *testing.T) {
 	t.Run("optional bytes", func(t *testing.T) {
 		testMessageToJson(t, "optional bytes optional_bytes_field = 1;", `{}`)
 		testMessageToJson(t, "optional bytes optional_bytes_field = 1;", `{"optionalBytesField": ""}`)
-		testMessageToJson(t, "optional bytes optional_bytes_field = 1;", `{"optionalBytesField": "dGVzdA=="}`) // Base64 for "testMessageToJson"
+		testMessageToJson(t, "optional bytes optional_bytes_field = 1;", `{"optionalBytesField": "dGVzdA=="}`) // Base64 for "test"
 	})
 
 	t.Run("optional float", func(t *testing.T) {
@@ -478,7 +478,7 @@ func TestMessageToJsonMapValue(t *testing.T) {
 
 	t.Run("map<*, bytes>", func(t *testing.T) {
 		testMessageToJson(t, "map<string, bytes> bytes_value_map_field = 1;", `{"bytesValueMapField": {}}`)
-		testMessageToJson(t, "map<string, bytes> bytes_value_map_field = 1;", `{"bytesValueMapField": {"a": "", "b": "dGVzdA=="}}`) // Base64 for "testMessageToJson"
+		testMessageToJson(t, "map<string, bytes> bytes_value_map_field = 1;", `{"bytesValueMapField": {"a": "", "b": "dGVzdA=="}}`) // Base64 for "test"
 	})
 
 	t.Run("map<*, float>", func(t *testing.T) {
@@ -501,12 +501,12 @@ func TestMessageToJsonMapValue(t *testing.T) {
 		testMessageToJson(t, "map<string, sint64> sint64_value_map_field = 1;", `{"sint64ValueMapField": {"a": "0", "b": "9223372036854775807", "c": "-9223372036854775808"}}`)
 	})
 
-	t.Run("map<*, enum>", func(t *testing.T) {
+	t.Run("map<*, EnumType>", func(t *testing.T) {
 		testMessageToJson(t, "map<string, EnumType> enum_value_map_field = 1;", `{"enumValueMapField": {}}`)
 		testMessageToJson(t, "map<string, EnumType> enum_value_map_field = 1;", `{"enumValueMapField": {"a": "ENUM_TYPE_UNSPECIFIED", "b": "ENUM_TYPE_ONE"}}`)
 	})
 
-	t.Run("map<*, message>", func(t *testing.T) {
+	t.Run("map<*, MessageType>", func(t *testing.T) {
 		testMessageToJson(t, "map<string, MessageType> message_value_map_field = 1;", `{"messageValueMapField": {}}`)
 		testMessageToJson(t, "map<string, MessageType> message_value_map_field = 1;", `{"messageValueMapField": {"a": {"value": 0}, "b": {"value": 12345}}}`)
 	})
@@ -520,7 +520,7 @@ func TestMessageToJsonOneof(t *testing.T) {
 	})
 }
 
-func TestMessageToJsonWkt(t *testing.T) {
+func TestMessageToJsonWellKnownTypes(t *testing.T) {
 	t.Run("Timestamp", func(t *testing.T) {
 		testMessageToJson(t, "google.protobuf.Timestamp timestamp_field = 1;", `{"timestampField": "1970-01-01T00:00:00Z"}`)
 		testMessageToJson(t, "google.protobuf.Timestamp timestamp_field = 1;", `{"timestampField": "1970-01-01T00:00:01Z"}`)
@@ -628,13 +628,12 @@ func TestMessageToJsonNullInput(t *testing.T) {
 		`,
 	})
 
-	descriptorSetName := "a"
 	typeName := ".Test"
 
-	AssertThatCall(t, "pb_descriptor_set_load(?, ?)", descriptorSetName, p.GetSerializedFileDescriptorSet()).ShouldSucceed()
-	defer func() {
-		AssertThatCall(t, "pb_descriptor_set_delete(?)", descriptorSetName).ShouldSucceed()
-	}()
+	// Generate descriptor set JSON using descriptorsetjson package
+	descriptorSetJson, err := descriptorsetjson.ToJson(p.GetFileDescriptorSet())
+	g := NewWithT(t)
+	g.Expect(err).NotTo(HaveOccurred())
 
-	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?)", descriptorSetName, typeName, nil).IsNull()
+	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?)", descriptorSetJson, typeName, nil).IsNull()
 }
