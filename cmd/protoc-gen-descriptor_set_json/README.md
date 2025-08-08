@@ -1,55 +1,76 @@
 # protoc-gen-descriptor_set_json
 
-This is a protoc plugin that generates SQL functions containing descriptor set JSON for any protobuf schema. It's the protoc plugin version of `@cmd/protobuf-descriptor-proto/`.
+A protoc plugin and standalone tool that generates MySQL stored functions containing [descriptor set JSON](../../internal/descriptorsetjson/README.md) for protobuf schemas. This enables runtime protobuf reflection and JSON conversion for custom schemas.
 
-## Overview
+## Quick Start
 
-The plugin generates a MySQL stored function that returns the complete descriptor set JSON (both FileDescriptorSet and type index) for the input protobuf files. This enables runtime protobuf reflection and parsing for any custom protobuf schema.
+1. **Install the plugin:**
+   ```bash
+   go install github.com/eiiches/mysql-protobuf-functions/cmd/protoc-gen-descriptor_set_json@latest
+   ```
 
-## Installation
+2. **Generate schema function from your .proto file:**
+   ```bash
+   protoc --descriptor_set_json_out=. --descriptor_set_json_opt=name=my_schema my_schema.proto
+   ```
+
+3. **Load into MySQL and use:**
+   ```bash
+   # Load the generated function
+   mysql -u your_username -p your_database < my_schema.sql
+   ```
+
+   ```sql
+   -- Parse protobuf messages using your schema
+   SELECT pb_message_to_json(
+       my_schema(),
+       '.MyMessage',
+       my_protobuf_blob
+   ) AS json_result;
+   ```
+
+## Usage Modes
+
+This tool can be used in two ways:
+
+### 1. As a Protoc Plugin (Recommended)
+
+Use with `protoc` to generate schema functions directly from .proto files:
 
 ```bash
-go install github.com/eiiches/mysql-protobuf-functions/cmd/protoc-gen-descriptor_set_json
+protoc --descriptor_set_json_out=. --descriptor_set_json_opt=name=my_schema my_schema.proto
 ```
 
-Or build locally:
-```bash
-go build -o protoc-gen-descriptor_set_json cmd/protoc-gen-descriptor_set_json/main.go
-```
+### 2. As a Standalone Tool
 
-## Usage
-
-### Basic Usage
+Use with pre-generated binary FileDescriptorSet files:
 
 ```bash
-protoc --descriptor_set_json_out=. --descriptor_set_json_opt=name=pb_get_my_schema your_schema.proto
+# First, generate binary descriptor set
+protoc --descriptor_set_out=schema.binpb --include_imports my_schema.proto
+
+# Then generate SQL function from binary descriptor set  
+protoc-gen-descriptor_set_json \
+  --descriptor_set_in=schema.binpb \
+  --name=my_schema \
+  --descriptor_set_json_out=./output
 ```
 
-This generates `pb_get_my_schema.sql` with a function named `pb_get_my_schema()`.
+## Plugin Options (Protoc Plugin Mode)
 
-**Note**: If the plugin is not in your PATH, use the `--plugin` option:
-```bash
-protoc --plugin=protoc-gen-descriptor_set_json=/path/to/protoc-gen-descriptor_set_json \
-       --descriptor_set_json_out=. \
-       --descriptor_set_json_opt=name=pb_get_my_schema \
-       your_schema.proto
-```
+| Option | Required | Default Value | Description |
+|--------|----------|---------------|-------------|
+| `name` | Yes | - | Name of the generated SQL function and file |
+| `include_source_info` | No | `false` | Include source code info in output (increases output size significantly) |
 
-### Multiple Files
+## Command Line Options (Standalone Mode)
 
-```bash
-protoc --descriptor_set_json_out=. --descriptor_set_json_opt=name=pb_get_complete_schema *.proto
-```
-
-This generates `pb_get_complete_schema.sql` containing all types from the input files.
-
-
-## Plugin Options
-
-| Option | Required | Description |
-|--------|----------|-------------|
-| `name` | Yes | Name of the generated SQL function and file |
-| `include_source_info` | No | Include source code info in output (default: false) |
+| Option | Required | Default Value | Description |
+|--------|----------|---------------|-------------|
+| `--descriptor_set_in` | Yes | - | Path to binary FileDescriptorSet file |
+| `--name` | Yes | - | Name of the generated SQL function and file |
+| `--include_source_info` | No | `false` | Include source code info in output (increases output size significantly) |
+| `--descriptor_set_json_out` | No | `.` | Output directory for generated SQL file |
 
 ## Generated Output
 
@@ -75,23 +96,7 @@ The returned JSON is a versioned 3-element array: `[version, fileDescriptorSet, 
 
 For complete details about the format structure, see the [descriptorsetjson documentation](../../internal/descriptorsetjson/README.md).
 
-## Integration with MySQL Protobuf Functions
-
-Use the generated function with existing MySQL protobuf functions:
-
-```sql
--- Load the generated function
-SOURCE your_function_name.sql;
-
--- Parse messages using the descriptor set
-SELECT pb_message_to_json(
-    your_function_name(), 
-    '.com.example.MyMessage', 
-    my_protobuf_blob
-) AS parsed_json;
-```
-
-## Examples
+## Example
 
 ### Person Schema
 
@@ -129,46 +134,41 @@ Generate the descriptor set function:
 ```bash
 # Generate function for person schema
 protoc --descriptor_set_json_out=. \
-       --descriptor_set_json_opt=name=pb_get_person_schema \
+       --descriptor_set_json_opt=name=person_schema \
        person.proto
 
-# Or with explicit plugin path:
-protoc --plugin=protoc-gen-descriptor_set_json=./protoc-gen-descriptor_set_json \
-       --descriptor_set_json_out=. \
-       --descriptor_set_json_opt=name=pb_get_person_schema \
-       person.proto
-
-# Include source code info (increases output size significantly):
-protoc --descriptor_set_json_out=. \
-       --descriptor_set_json_opt=name=pb_get_person_schema,include_source_info=true \
-       person.proto
-
-# Use in MySQL
-SOURCE pb_get_person_schema.sql;
-SELECT pb_message_to_json(
-    pb_get_person_schema(), 
-    '.Person', 
-    _binary X'0a0b4167656e7420536d69746810011a11736d697468406578616d706c652e636f6d22140a102b38312d30302d303030302d3030303010032a0c08f091f1c10610c0de9cf802'
-) AS person_json;
+# Or using standalone mode
+protoc --descriptor_set_out=person.binpb --include_imports person.proto
+protoc-gen-descriptor_set_json \
+  --descriptor_set_in=person.binpb \
+  --name=person_schema
 ```
 
-### Example Generated File
+### Generated File
 
-For the person.proto schema above, the plugin generates `pb_get_person_schema.sql`:
+For the person.proto schema above, the plugin generates `person_schema.sql`:
 
 ```sql
 -- Code generated by protoc-gen-descriptor_set_json. DO NOT EDIT.
 
 DELIMITER $$
 
-DROP FUNCTION IF EXISTS pb_get_person_schema $$
-CREATE FUNCTION pb_get_person_schema() RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS person_schema $$
+CREATE FUNCTION person_schema() RETURNS JSON DETERMINISTIC
 BEGIN
 	RETURN CAST('[1,{"1":[{"1":"google/protobuf/timestamp.proto","10":[],"11":[],"12":"proto3","2":"google.protobuf","3":[],"4":[{"1":"Timestamp","10":[],"2":[{"1":"seconds","10":"seconds","3":1,"4":1,"5":3},{"1":"nanos","10":"nanos","3":2,"4":1,"5":5}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"5":[],"6":[],"7":[],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/timestamppb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"TimestampProto","999":[]}},{"1":"person.proto","10":[],"11":[],"12":"proto3","3":["google/protobuf/timestamp.proto"],"4":[{"1":"Person","10":[],"2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"id","10":"id","3":2,"4":1,"5":5},{"1":"email","10":"email","3":3,"4":1,"5":9},{"1":"phones","10":"phones","3":4,"4":3,"5":11,"6":".Person.PhoneNumber"},{"1":"last_updated","10":"lastUpdated","3":5,"4":1,"5":11,"6":".google.protobuf.Timestamp"}],"3":[{"1":"PhoneNumber","10":[],"2":[{"1":"number","10":"number","3":1,"4":1,"5":9},{"1":"type","10":"type","3":2,"4":1,"5":14,"6":".Person.PhoneType"}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"4":[{"1":"PhoneType","2":[{"1":"PHONE_TYPE_UNSPECIFIED","2":0},{"1":"PHONE_TYPE_MOBILE","2":1},{"1":"PHONE_TYPE_HOME","2":2},{"1":"PHONE_TYPE_WORK","2":3}],"4":[],"5":[]}],"5":[],"6":[],"8":[],"9":[]}],"5":[],"6":[],"7":[]}]},{".Person":[11,"$[1].\\"1\\"[1]","$[1].\\"1\\"[1].\\"4\\"[0]"],".Person.PhoneNumber":[11,"$[1].\\"1\\"[1]","$[1].\\"1\\"[1].\\"4\\"[0].\\"3\\"[0]"],".Person.PhoneType":[14,"$[1].\\"1\\"[1]","$[1].\\"1\\"[1].\\"4\\"[0].\\"4\\"[0]"],".google.protobuf.Timestamp":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
 END $$
 ```
 
-The function contains:
-- **FileDescriptorSet**: Complete schema definitions for `person.proto` and its dependency `google/protobuf/timestamp.proto`
-- **Type Index**: Mappings for all types (`.Person`, `.Person.PhoneNumber`, `.Person.PhoneType`, `.google.protobuf.Timestamp`)
-- **Optimized Size**: Source code info stripped by default for smaller output
+## Troubleshooting
+
+### Plugin not found in PATH
+
+If you get an error like `protoc-gen-descriptor_set_json: program not found or is not executable`, the plugin may not be in your PATH. You can either add it to your PATH or specify the full path using the `--plugin` option:
+
+```bash
+protoc --plugin=protoc-gen-descriptor_set_json=/path/to/protoc-gen-descriptor_set_json \
+       --descriptor_set_json_out=. \
+       --descriptor_set_json_opt=name=my_schema \
+       my_schema.proto
+```
