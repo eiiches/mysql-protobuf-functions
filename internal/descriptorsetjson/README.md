@@ -14,7 +14,7 @@ The package outputs a 3-element JSON array: `[version, fileDescriptorSet, typeIn
 Format version number (currently `1`) for future extensibility.
 
 ### Element 1: FileDescriptorSet
-The `FileDescriptorSet` serialized using the `protonumberjson` format, which uses field numbers as JSON keys instead of field names.
+The `FileDescriptorSet` serialized using the [protonumberjson](../protonumberjson/README.md) format, which uses field numbers as JSON keys instead of field names.
 
 ### Element 2: Type Index
 A mapping of fully-qualified type names to their JSON path locations within the FileDescriptorSet:
@@ -54,7 +54,7 @@ package main
 import (
     "fmt"
     "log"
-    
+
     "github.com/eiiches/mysql-protobuf-functions/internal/descriptorsetjson"
     "github.com/eiiches/mysql-protobuf-functions/internal/protoreflectutils"
     "google.golang.org/protobuf/types/descriptorpb"
@@ -63,28 +63,28 @@ import (
 func main() {
     // Get a file descriptor (e.g., descriptor.proto)
     fileDescriptor := descriptorpb.File_google_protobuf_descriptor_proto
-    
+
     // Build a FileDescriptorSet with dependencies
     fileDescriptorSet := protoreflectutils.BuildFileDescriptorSetWithDependencies(fileDescriptor)
-    
+
     // Convert to JSON string
     jsonStr, err := descriptorsetjson.ToJson(fileDescriptorSet)
     if err != nil {
         log.Fatalf("Failed to convert to JSON: %v", err)
     }
-    
+
     fmt.Println(jsonStr)
-    
+
     // Or get as Go data structure
     jsonTree, err := descriptorsetjson.ToJsonTree(fileDescriptorSet)
     if err != nil {
         log.Fatalf("Failed to convert to JSON tree: %v", err)
     }
-    
+
     version := jsonTree[0]               // Format version
     fileDescriptorSetData := jsonTree[1] // FileDescriptorSet
     typeIndex := jsonTree[2]             // Type index map
-    
+
     fmt.Printf("Type index contains %d types\n", len(typeIndex.(map[string]descriptorsetjson.TypeIndex)))
 }
 ```
@@ -144,7 +144,7 @@ Represents a type reference with:
 
 ## Implementation Notes
 
-The package uses the `protonumberjson` format for the FileDescriptorSet serialization, which provides several advantages:
+The package uses the [protonumberjson](../protonumberjson/README.md) format for the FileDescriptorSet serialization, which provides several advantages:
 - **Schema Evolution Robustness**: Field numbers remain stable across protobuf schema changes
 - **Consistency**: Field numbers are immutable once assigned
 - **MySQL Compatibility**: Optimized for MySQL JSON path expressions

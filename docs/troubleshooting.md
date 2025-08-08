@@ -13,7 +13,7 @@
 
 **Workaround**: Increase the stored program cache size:
 ```sql
-SET GLOBAL stored_program_cache = 512;  -- Default is 256
+SET GLOBAL stored_program_cache = 1024;  -- Default is 256
 ```
 
 **Impact**:

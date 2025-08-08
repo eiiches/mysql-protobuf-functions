@@ -48,16 +48,5 @@ The installation components have the following dependency chain:
 After installation, verify the functions are available:
 
 ```sql
--- Check core functions
-SELECT pb_message_new() IS NOT NULL AS core_installed;
-
--- Check JSON functions (if installed)
-SELECT ROUTINE_NAME FROM INFORMATION_SCHEMA.ROUTINES 
-WHERE ROUTINE_SCHEMA = DATABASE() 
-AND ROUTINE_NAME LIKE 'pb_%json%';
-
--- Check descriptor functions (if installed)  
-SELECT ROUTINE_NAME FROM INFORMATION_SCHEMA.ROUTINES 
-WHERE ROUTINE_SCHEMA = DATABASE() 
-AND ROUTINE_NAME LIKE 'pb_%descriptor%';
+SELECT ROUTINE_SCHEMA, ROUTINE_NAME FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_NAME LIKE 'pb_%';
 ```

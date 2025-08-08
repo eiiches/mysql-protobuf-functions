@@ -9,6 +9,6 @@
 - [x] Protobuf to JSON Conversion
   - [ ] **[Editions](https://protobuf.dev/editions/overview/) Support**
 
-## Current Limitations
+## Limitations
 
 - [Groups](https://protobuf.dev/programming-guides/encoding/#groups) are not supported.

@@ -33,7 +33,7 @@ A comprehensive library of MySQL stored functions and procedures for working wit
    -- Result: "Hello World"
 
    -- Convert to JSON
-   -- This requires protobuf-json.sql and schema. See docs/tutorial.md for ways to load schema into MySQL.
+   -- This requires protobuf-json.sql and schema. See docs/tutorial-json.md for ways to load schema into MySQL.
    SELECT pb_message_to_json(greeting_schema(), '.Greeting', _binary X'0A0B48656C6C6F20576F726C64');
    -- Result: {
    --   "message": "Hello World",
@@ -45,7 +45,9 @@ A comprehensive library of MySQL stored functions and procedures for working wit
 > **Work in Progress:** The documentation was written with the help of AI and is currently under review.
 
 - **[Installation Guide](docs/installation.md)** - Detailed installation instructions and requirements
-- **[Tutorial](docs/tutorial.md)** - Complete tutorial with examples using a sample schema
+- **[Tutorial: Basics](docs/tutorial-basics.md)** - Getting started with low-level field access
+- **[Tutorial: Modification](docs/tutorial-modification.md)** - Creating and modifying protobuf messages
+- **[Tutorial: JSON Integration](docs/tutorial-json.md)** - Schema-aware JSON conversion
 - **[Advanced Usage](docs/advanced-usage.md)** - Indexing, triggers, and performance optimization
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 - **[API Reference](docs/function-reference.md)** - Complete function reference
