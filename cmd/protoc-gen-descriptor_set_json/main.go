@@ -184,6 +184,7 @@ END $$
 
 	// Create response
 	response := &pluginpb.CodeGeneratorResponse{
+		SupportedFeatures: proto.Uint64(uint64(pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)),
 		File: []*pluginpb.CodeGeneratorResponse_File{
 			{
 				Name:    proto.String(functionName + ".sql"),
