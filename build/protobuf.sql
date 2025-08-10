@@ -246,29 +246,36 @@ END $$
 DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_int32 $$
 CREATE FUNCTION _pb_util_reinterpret_uint64_as_int32(value BIGINT UNSIGNED) RETURNS INT DETERMINISTIC
 BEGIN
-	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
+	DECLARE truncated_value INT UNSIGNED;
 
-	IF value > 0xffffffff THEN
-		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_util_reinterpret_uint64_as_int32: value is larger than 0xffffffff';
-	END IF;
+	-- Step 1: Truncate to 32-bit by masking with 0xFFFFFFFF
+	SET truncated_value = CAST(value & 0xFFFFFFFF AS UNSIGNED);
 
-	RETURN IF(
-		value <= 0x7fffffff,
-		value,
-		CAST(value AS SIGNED) - 4294967296 -- 2^32
-	);
+	-- Step 2: Convert to signed 32-bit using existing function
+	RETURN _pb_util_reinterpret_uint32_as_int32(truncated_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_uint32 $$
 CREATE FUNCTION _pb_util_reinterpret_uint64_as_uint32(value BIGINT UNSIGNED) RETURNS INT UNSIGNED DETERMINISTIC
 BEGIN
-	RETURN value;
+	-- Truncate to 32-bit by masking with 0xFFFFFFFF
+	RETURN CAST(value & 0xFFFFFFFF AS UNSIGNED);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_util_zigzag_decode_uint64 $$
 CREATE FUNCTION _pb_util_zigzag_decode_uint64(value BIGINT UNSIGNED) RETURNS BIGINT UNSIGNED DETERMINISTIC
 BEGIN
 	RETURN (value >> 1) ^ - (value & 1);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_zigzag_decode_uint32 $$
+CREATE FUNCTION _pb_util_zigzag_decode_uint32(value INT UNSIGNED) RETURNS INT UNSIGNED DETERMINISTIC
+BEGIN
+    IF value & 1 = 0 THEN
+        RETURN value >> 1; -- Positive number
+    ELSE
+        RETURN (value >> 1) ^ 0xFFFFFFFF; -- Negative number
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_util_zigzag_encode_uint64 $$
@@ -314,6 +321,20 @@ DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_sint64 $$
 CREATE FUNCTION _pb_util_reinterpret_uint64_as_sint64(value BIGINT UNSIGNED) RETURNS BIGINT DETERMINISTIC
 BEGIN
 	RETURN _pb_util_reinterpret_uint64_as_int64(_pb_util_zigzag_decode_uint64(value));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_sint32 $$
+CREATE FUNCTION _pb_util_reinterpret_uint64_as_sint32(value BIGINT UNSIGNED) RETURNS INT DETERMINISTIC
+BEGIN
+	-- For sint32: first truncate to 32 bits, then apply zigzag decoding
+	-- This follows protobuf specification for sint64 values parsed as sint32
+	DECLARE truncated_value INT UNSIGNED;
+
+	-- Step 1: Truncate the varint to 32 bits
+	SET truncated_value = CAST(value & 0xFFFFFFFF AS UNSIGNED);
+
+	-- Step 2: Apply zigzag decoding and convert to signed 32-bit
+	RETURN _pb_util_reinterpret_uint32_as_int32(_pb_util_zigzag_decode_uint32(truncated_value));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint64_as_double $$
@@ -2772,7 +2793,7 @@ BEGIN
 	IF field_count = 0 THEN
 		RETURN default_value;
 	END IF;
-	RETURN _pb_util_reinterpret_uint64_as_int64(value);
+	RETURN _pb_util_reinterpret_uint64_as_int32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_has_int32_field $$
@@ -2790,7 +2811,7 @@ BEGIN
 	DECLARE value BIGINT UNSIGNED;
 	DECLARE field_count INT;
 	CALL _pb_message_get_varint_field_as_uint64(message, field_number, repeated_index, value, field_count);
-	RETURN _pb_util_reinterpret_uint64_as_int64(value);
+	RETURN _pb_util_reinterpret_uint64_as_int32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_repeated_int32_field_count $$
@@ -2850,7 +2871,7 @@ BEGIN
 	IF field_count = 0 THEN
 		RETURN default_value;
 	END IF;
-	RETURN value;
+	RETURN _pb_util_reinterpret_uint64_as_uint32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_has_uint32_field $$
@@ -2868,7 +2889,7 @@ BEGIN
 	DECLARE value BIGINT UNSIGNED;
 	DECLARE field_count INT;
 	CALL _pb_message_get_varint_field_as_uint64(message, field_number, repeated_index, value, field_count);
-	RETURN value;
+	RETURN _pb_util_reinterpret_uint64_as_uint32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_repeated_uint32_field_count $$
@@ -2928,7 +2949,7 @@ BEGIN
 	IF field_count = 0 THEN
 		RETURN default_value;
 	END IF;
-	RETURN _pb_util_reinterpret_uint64_as_sint64(value);
+	RETURN _pb_util_reinterpret_uint64_as_sint32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_has_sint32_field $$
@@ -2946,7 +2967,7 @@ BEGIN
 	DECLARE value BIGINT UNSIGNED;
 	DECLARE field_count INT;
 	CALL _pb_message_get_varint_field_as_uint64(message, field_number, repeated_index, value, field_count);
-	RETURN _pb_util_reinterpret_uint64_as_sint64(value);
+	RETURN _pb_util_reinterpret_uint64_as_sint32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_repeated_sint32_field_count $$
@@ -4353,7 +4374,7 @@ BEGIN
 	IF field_count = 0 THEN
 		RETURN default_value;
 	END IF;
-	RETURN _pb_util_reinterpret_uint64_as_int64(value);
+	RETURN _pb_util_reinterpret_uint64_as_int32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_has_int32_field $$
@@ -4371,7 +4392,7 @@ BEGIN
 	DECLARE value BIGINT UNSIGNED;
 	DECLARE field_count INT;
 	CALL _pb_wire_json_get_varint_field_as_uint64(wire_json, field_number, repeated_index, value, field_count);
-	RETURN _pb_util_reinterpret_uint64_as_int64(value);
+	RETURN _pb_util_reinterpret_uint64_as_int32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_get_repeated_int32_field_count $$
@@ -4431,7 +4452,7 @@ BEGIN
 	IF field_count = 0 THEN
 		RETURN default_value;
 	END IF;
-	RETURN value;
+	RETURN _pb_util_reinterpret_uint64_as_uint32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_has_uint32_field $$
@@ -4449,7 +4470,7 @@ BEGIN
 	DECLARE value BIGINT UNSIGNED;
 	DECLARE field_count INT;
 	CALL _pb_wire_json_get_varint_field_as_uint64(wire_json, field_number, repeated_index, value, field_count);
-	RETURN value;
+	RETURN _pb_util_reinterpret_uint64_as_uint32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_get_repeated_uint32_field_count $$
@@ -4509,7 +4530,7 @@ BEGIN
 	IF field_count = 0 THEN
 		RETURN default_value;
 	END IF;
-	RETURN _pb_util_reinterpret_uint64_as_sint64(value);
+	RETURN _pb_util_reinterpret_uint64_as_sint32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_has_sint32_field $$
@@ -4527,7 +4548,7 @@ BEGIN
 	DECLARE value BIGINT UNSIGNED;
 	DECLARE field_count INT;
 	CALL _pb_wire_json_get_varint_field_as_uint64(wire_json, field_number, repeated_index, value, field_count);
-	RETURN _pb_util_reinterpret_uint64_as_sint64(value);
+	RETURN _pb_util_reinterpret_uint64_as_sint32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_get_repeated_sint32_field_count $$
@@ -5950,12 +5971,12 @@ BEGIN
 		CASE wire_type
 		WHEN 0 THEN
 			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
-			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_int64_as_int32(_pb_util_reinterpret_uint64_as_int64(uint_value)));
+			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_int32(uint_value));
 		WHEN 2 THEN -- LEN
 			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
 			WHILE LENGTH(bytes_value) <> 0 DO
 				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
-				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_int64_as_int32(_pb_util_reinterpret_uint64_as_int64(uint_value)));
+				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_int32(uint_value));
 			END WHILE;
 		ELSE
 			SET message_text = CONCAT('_pb_wire_json_get_repeated_int32_field_as_json_array: unexpected wire_type (', wire_type, ')');
@@ -6001,12 +6022,12 @@ BEGIN
 		CASE current_wire_type
 		WHEN 0 THEN
 			CALL _pb_wire_read_varint_as_uint64(tail, uint_value, tail);
-			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_int64_as_int32(_pb_util_reinterpret_uint64_as_int64(uint_value)));
+			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_int32(uint_value));
 		WHEN 2 THEN
 			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
 			WHILE LENGTH(bytes_value) <> 0 DO
 				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
-				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_int64_as_int32(_pb_util_reinterpret_uint64_as_int64(uint_value)));
+				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_int32(uint_value));
 			END WHILE;
 		ELSE
 			SET message_text = CONCAT('_pb_message_get_repeated_int32_field_as_json_array: unexpected wire_type (', current_wire_type, ')');
@@ -6048,12 +6069,12 @@ BEGIN
 		CASE wire_type
 		WHEN 0 THEN
 			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
-			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_uint64_as_uint32(uint_value));
+			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_uint32(uint_value));
 		WHEN 2 THEN -- LEN
 			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
 			WHILE LENGTH(bytes_value) <> 0 DO
 				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
-				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_uint64_as_uint32(uint_value));
+				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_uint32(uint_value));
 			END WHILE;
 		ELSE
 			SET message_text = CONCAT('_pb_wire_json_get_repeated_uint32_field_as_json_array: unexpected wire_type (', wire_type, ')');
@@ -6099,12 +6120,12 @@ BEGIN
 		CASE current_wire_type
 		WHEN 0 THEN
 			CALL _pb_wire_read_varint_as_uint64(tail, uint_value, tail);
-			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_uint64_as_uint32(uint_value));
+			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_uint32(uint_value));
 		WHEN 2 THEN
 			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
 			WHILE LENGTH(bytes_value) <> 0 DO
 				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
-				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_uint64_as_uint32(uint_value));
+				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_uint32(uint_value));
 			END WHILE;
 		ELSE
 			SET message_text = CONCAT('_pb_message_get_repeated_uint32_field_as_json_array: unexpected wire_type (', current_wire_type, ')');
@@ -6538,12 +6559,12 @@ BEGIN
 		CASE wire_type
 		WHEN 0 THEN
 			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
-			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_int64_as_int32(_pb_util_reinterpret_uint64_as_sint64(uint_value)));
+			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_sint32(uint_value));
 		WHEN 2 THEN -- LEN
 			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
 			WHILE LENGTH(bytes_value) <> 0 DO
 				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
-				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_int64_as_int32(_pb_util_reinterpret_uint64_as_sint64(uint_value)));
+				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_sint32(uint_value));
 			END WHILE;
 		ELSE
 			SET message_text = CONCAT('_pb_wire_json_get_repeated_sint32_field_as_json_array: unexpected wire_type (', wire_type, ')');
@@ -6589,12 +6610,12 @@ BEGIN
 		CASE current_wire_type
 		WHEN 0 THEN
 			CALL _pb_wire_read_varint_as_uint64(tail, uint_value, tail);
-			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_int64_as_int32(_pb_util_reinterpret_uint64_as_sint64(uint_value)));
+			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_sint32(uint_value));
 		WHEN 2 THEN
 			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
 			WHILE LENGTH(bytes_value) <> 0 DO
 				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
-				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_cast_int64_as_int32(_pb_util_reinterpret_uint64_as_sint64(uint_value)));
+				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_sint32(uint_value));
 			END WHILE;
 		ELSE
 			SET message_text = CONCAT('_pb_message_get_repeated_sint32_field_as_json_array: unexpected wire_type (', current_wire_type, ')');
