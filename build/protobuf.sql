@@ -781,6 +781,11 @@ BEGIN
 		SET field_number = _pb_wire_get_field_number_from_tag(tag);
 		SET wire_type = _pb_wire_get_wire_type_from_tag(tag);
 
+		-- Validate field number is non-zero (protobuf spec requirement)
+		IF field_number = 0 THEN
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '_pb_message_to_wire_json: Invalid protobuf field number 0 is not allowed';
+		END IF;
+
 		CASE wire_type
 		WHEN 0 THEN -- VARINT
 			CALL _pb_wire_read_varint_as_uint64(tail, uint_value, tail);
@@ -1111,6 +1116,12 @@ DROP PROCEDURE IF EXISTS _pb_wire_write_tag $$
 CREATE PROCEDURE _pb_wire_write_tag(IN field_number INT, IN wire_type INT, OUT encoded LONGBLOB)
 BEGIN
 	DECLARE tag BIGINT UNSIGNED DEFAULT (field_number << 3) | wire_type;
+
+	-- Validate field number is non-zero (protobuf spec requirement)
+	IF field_number = 0 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '_pb_wire_write_tag: Invalid protobuf field number 0 is not allowed';
+	END IF;
+
 	CALL _pb_wire_write_varint(tag, encoded);
 END $$
 
