@@ -16,6 +16,7 @@ type WireTypeAccessor struct {
 	SqlType                       string
 	SupportsPacked                bool
 	GetFunction                   string
+	GetElementFunction            string
 	SetFunction                   string
 	AddRepeatedElementFunction    string
 	SetRepeatedElementFunction    string
@@ -391,7 +392,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 		|BEGIN
 		|	DECLARE value {{.Procedure.SqlType}};
 		|	DECLARE field_count INT;
-		|	CALL {{.Procedure.GetFunction}}({{.Input.Name}}, field_number, repeated_index, value, field_count);
+		|	CALL {{.Procedure.GetElementFunction}}({{.Input.Name}}, field_number, repeated_index, value, field_count);
 		|	RETURN {{.ReturnExpr}};
 		|END $$
 		|
@@ -400,7 +401,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 		|BEGIN
 		|	DECLARE value {{.Procedure.SqlType}};
 		|	DECLARE field_count INT;
-		|	CALL {{.Procedure.GetFunction}}({{.Input.Name}}, field_number, -1, value, field_count);
+		|	CALL {{.Procedure.GetElementFunction}}({{.Input.Name}}, field_number, -1, value, field_count);
 		|	RETURN field_count;
 		|END $$
 	`)
@@ -412,6 +413,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			SqlType:                       "BIGINT UNSIGNED",
 			SupportsPacked:                true,
 			GetFunction:                   fmt.Sprintf("_pb_%s_get_varint_field_as_uint64", input.Kind),
+			GetElementFunction:            fmt.Sprintf("_pb_%s_get_varint_field_as_uint64", input.Kind),
 			SetFunction:                   "_pb_wire_json_set_varint_field",
 			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_varint_field_element",
 			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_varint_field_element",
@@ -423,6 +425,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			SqlType:                       "BIGINT UNSIGNED",
 			SupportsPacked:                true,
 			GetFunction:                   fmt.Sprintf("_pb_%s_get_i64_field_as_uint64", input.Kind),
+			GetElementFunction:            fmt.Sprintf("_pb_%s_get_i64_field_as_uint64", input.Kind),
 			SetFunction:                   "_pb_wire_json_set_i64_field",
 			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_i64_field_element",
 			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_i64_field_element",
@@ -434,6 +437,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			SqlType:                       "INT UNSIGNED",
 			SupportsPacked:                true,
 			GetFunction:                   fmt.Sprintf("_pb_%s_get_i32_field_as_uint32", input.Kind),
+			GetElementFunction:            fmt.Sprintf("_pb_%s_get_i32_field_as_uint32", input.Kind),
 			SetFunction:                   "_pb_wire_json_set_i32_field",
 			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_i32_field_element",
 			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_i32_field_element",
@@ -445,6 +449,19 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			SqlType:                       "LONGBLOB",
 			SupportsPacked:                false,
 			GetFunction:                   fmt.Sprintf("_pb_%s_get_len_type_field", input.Kind),
+			GetElementFunction:            fmt.Sprintf("_pb_%s_get_len_type_field", input.Kind),
+			SetFunction:                   "_pb_wire_json_set_len_field",
+			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_len_field_element",
+			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_len_field_element",
+			RemoveRepeatedElementFunction: "_pb_wire_json_remove_repeated_len_field_element",
+			InsertRepeatedElementFunction: "_pb_wire_json_insert_repeated_len_field_element",
+		}
+
+		getLengthDelimitedConcatField := &WireTypeAccessor{ // for message field
+			SqlType:                       "LONGBLOB",
+			SupportsPacked:                false,
+			GetFunction:                   fmt.Sprintf("_pb_%s_get_len_type_field_concatenated", input.Kind),
+			GetElementFunction:            fmt.Sprintf("_pb_%s_get_len_type_field", input.Kind),
 			SetFunction:                   "_pb_wire_json_set_len_field",
 			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_len_field_element",
 			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_len_field_element",
@@ -476,7 +493,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			// LEN
 			{Input: input, ProtoType: "bytes", SqlType: "LONGBLOB", ReturnExpr: "value", Procedure: getLengthDelimitedField, ConvertExpr: "value", SupportsPacked: false},
 			{Input: input, ProtoType: "string", SqlType: "LONGTEXT", ReturnExpr: "CONVERT(value USING utf8mb4)", Procedure: getLengthDelimitedField, ConvertExpr: "CONVERT(value USING binary)", SupportsPacked: false},
-			{Input: input, ProtoType: "message", SqlType: "LONGBLOB", ReturnExpr: "value", Procedure: getLengthDelimitedField, ConvertExpr: "value", SupportsPacked: false},
+			{Input: input, ProtoType: "message", SqlType: "LONGBLOB", ReturnExpr: "value", Procedure: getLengthDelimitedConcatField, ConvertExpr: "value", SupportsPacked: false},
 		}
 
 		tmpl, err := template.New("t").Parse(templateText)

@@ -1061,6 +1061,87 @@ BEGIN
 	END IF;
 END $$
 
+DROP PROCEDURE IF EXISTS _pb_wire_json_get_len_type_field_concatenated $$
+CREATE PROCEDURE _pb_wire_json_get_len_type_field_concatenated(IN wire_json JSON, IN field_number INT, IN repeated_index INT, OUT concatenated_value LONGBLOB, OUT field_count INT)
+BEGIN
+	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
+
+	DECLARE message_text TEXT;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE wire_type INT;
+	DECLARE wire_elements JSON;
+	DECLARE wire_element JSON;
+	DECLARE wire_element_index INT;
+	DECLARE wire_element_count INT;
+
+	SET field_count = 0;
+	SET concatenated_value = _binary X'';
+
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_element_index = 0;
+	SET wire_element_count = JSON_LENGTH(wire_elements);
+
+	l1: WHILE wire_element_index < wire_element_count DO
+		SET wire_element = JSON_EXTRACT(wire_elements, CONCAT('$[', wire_element_index, ']'));
+		SET wire_type = JSON_EXTRACT(wire_element, '$.t');
+
+		CASE wire_type
+		WHEN 2 THEN -- LEN
+			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
+			SET concatenated_value = CONCAT(concatenated_value, bytes_value);
+			SET field_count = field_count + 1;
+		ELSE
+			SET message_text = CONCAT('_pb_wire_json_get_len_type_field_concatenated: unexpected wire_type (', wire_type, ')');
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
+		END CASE;
+
+		SET wire_element_index = wire_element_index + 1;
+	END WHILE;
+END $$
+
+DROP PROCEDURE IF EXISTS _pb_message_get_len_type_field_concatenated $$
+CREATE PROCEDURE _pb_message_get_len_type_field_concatenated(IN buf LONGBLOB, IN field_number INT, IN repeated_index INT, OUT concatenated_value LONGBLOB, OUT field_count INT)
+BEGIN
+	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
+
+	DECLARE tag BIGINT;
+	DECLARE tail LONGBLOB;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE bytes_value LONGBLOB;
+	DECLARE message_text TEXT;
+
+	SET tail = buf;
+	SET field_count = 0;
+	SET concatenated_value = _binary X'';
+
+	WHILE LENGTH(tail) <> 0 DO
+		CALL _pb_wire_read_varint_as_uint64(tail, tag, tail);
+
+		IF _pb_wire_get_field_number_from_tag(tag) = field_number AND _pb_wire_get_wire_type_from_tag(tag) <> 2 /* LEN */ THEN
+			SET message_text = CONCAT('_pb_message_get_len_type_field_concatenated: message field cannot be parsed from ', _pb_wire_type_name(_pb_wire_get_wire_type_from_tag(tag)), ' wire type.');
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		CASE _pb_wire_get_wire_type_from_tag(tag)
+		WHEN 0 THEN -- VARINT
+			CALL _pb_wire_read_varint_as_uint64(tail, uint_value, tail);
+		WHEN 1 THEN -- I64
+			CALL _pb_wire_skip_i64(tail, tail);
+		WHEN 2 THEN -- LEN
+			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
+			IF _pb_wire_get_field_number_from_tag(tag) = field_number THEN
+				SET concatenated_value = CONCAT(concatenated_value, bytes_value);
+				SET field_count = field_count + 1;
+			END IF;
+		WHEN 5 THEN -- I32
+			CALL _pb_wire_skip_i32(tail, tail);
+		ELSE
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = '_pb_message_get_len_type_field_concatenated: unsupported wire_type';
+		END CASE;
+	END WHILE;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_util_cast_uint64_as_uint32 $$
 CREATE FUNCTION _pb_util_cast_uint64_as_uint32(value BIGINT UNSIGNED) RETURNS INT UNSIGNED DETERMINISTIC
 BEGIN
@@ -3311,7 +3392,7 @@ CREATE FUNCTION pb_message_get_message_field(message LONGBLOB, field_number INT,
 BEGIN
 	DECLARE value LONGBLOB;
 	DECLARE field_count INT;
-	CALL _pb_message_get_len_type_field(message, field_number, NULL, value, field_count);
+	CALL _pb_message_get_len_type_field_concatenated(message, field_number, NULL, value, field_count);
 	IF field_count = 0 THEN
 		RETURN default_value;
 	END IF;
@@ -3323,7 +3404,7 @@ CREATE FUNCTION pb_message_has_message_field(message LONGBLOB, field_number INT)
 BEGIN
 	DECLARE value LONGBLOB;
 	DECLARE field_count INT;
-	CALL _pb_message_get_len_type_field(message, field_number, NULL, value, field_count);
+	CALL _pb_message_get_len_type_field_concatenated(message, field_number, NULL, value, field_count);
 	RETURN field_count > 0;
 END $$
 
@@ -4892,7 +4973,7 @@ CREATE FUNCTION pb_wire_json_get_message_field(wire_json JSON, field_number INT,
 BEGIN
 	DECLARE value LONGBLOB;
 	DECLARE field_count INT;
-	CALL _pb_wire_json_get_len_type_field(wire_json, field_number, NULL, value, field_count);
+	CALL _pb_wire_json_get_len_type_field_concatenated(wire_json, field_number, NULL, value, field_count);
 	IF field_count = 0 THEN
 		RETURN default_value;
 	END IF;
@@ -4904,7 +4985,7 @@ CREATE FUNCTION pb_wire_json_has_message_field(wire_json JSON, field_number INT)
 BEGIN
 	DECLARE value LONGBLOB;
 	DECLARE field_count INT;
-	CALL _pb_wire_json_get_len_type_field(wire_json, field_number, NULL, value, field_count);
+	CALL _pb_wire_json_get_len_type_field_concatenated(wire_json, field_number, NULL, value, field_count);
 	RETURN field_count > 0;
 END $$
 
