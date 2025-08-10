@@ -1,0 +1,3 @@
+[submodule "conformance/protobuf"]
+	path = conformance/protobuf
+	url = https://github.com/protocolbuffers/protobuf.git
