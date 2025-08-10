@@ -32,6 +32,8 @@ build/protobuf-json.sql: src/protobuf-json.sql scripts/common.mk
 	cat src/protobuf-json.sql >> $@.tmp
 	echo >> $@.tmp
 	cat src/protobuf-json-v2.sql >> $@.tmp
+	echo >> $@.tmp
+	cat src/json-to-protobuf.sql >> $@.tmp
 	mv $@.tmp $@
 
 .PHONY: build/protobuf-descriptor.sql
