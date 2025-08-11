@@ -112,9 +112,9 @@ proc: BEGIN
 		SET enum_index = enum_index + 1;
 	END WHILE;
 
-	-- If not found, return null
+	-- If not found, return the numeric value (Proto3 behavior for unknown enum values)
 	IF result IS NULL THEN
-		SET result = NULL;
+		SET result = CAST(enum_value_number AS JSON);
 	END IF;
 END $$
 
