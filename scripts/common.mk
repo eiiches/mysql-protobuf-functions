@@ -53,7 +53,7 @@ build/protobuf-descriptor.sql: src/protobuf-descriptor.sql cmd/protobuf-descript
 	mv $@.tmp $@
 
 .PHONY: reload
-reload: build ensure-test-database
+reload: build ensure-test-database purge
 	$(MYSQL_COMMAND) < build/protobuf.sql
 	$(MYSQL_COMMAND) < build/protobuf-descriptor.sql
 	$(MYSQL_COMMAND) < build/protobuf-json.sql
