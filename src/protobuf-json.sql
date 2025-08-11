@@ -8,10 +8,12 @@ BEGIN
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_wire_json_get_primitive_field_as_json $$
-CREATE PROCEDURE _pb_wire_json_get_primitive_field_as_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN has_field_presence BOOLEAN, IN as_number_json BOOLEAN, OUT field_json_value JSON)
+CREATE PROCEDURE _pb_wire_json_get_primitive_field_as_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN has_field_presence BOOLEAN, IN emit_64bit_integers_as_numbers BOOLEAN, OUT field_json_value JSON)
 BEGIN
 	DECLARE message_text TEXT;
 	DECLARE boolean_value BOOLEAN;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE int_value BIGINT;
 
 	CASE field_type
 	WHEN 1 THEN -- double
@@ -28,30 +30,32 @@ BEGIN
 		END IF;
 	WHEN 3 THEN -- int64
 		IF is_repeated THEN
-			IF as_number_json THEN
+			IF emit_64bit_integers_as_numbers THEN
 				SET field_json_value = pb_wire_json_get_repeated_int64_field_as_json_array(wire_json, field_number);
 			ELSE
 				SET field_json_value = pb_wire_json_get_repeated_int64_field_as_json_string_array(wire_json, field_number);
 			END IF;
 		ELSE
-			IF as_number_json THEN
-				SET field_json_value = CAST(pb_wire_json_get_int64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			SET int_value = pb_wire_json_get_int64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(int_value AS JSON);
 			ELSE
-				SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_int64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+				SET field_json_value = JSON_QUOTE(CAST(int_value AS CHAR));
 			END IF;
 		END IF;
 	WHEN 4 THEN -- uint64
 		IF is_repeated THEN
-			IF as_number_json THEN
+			IF emit_64bit_integers_as_numbers THEN
 				SET field_json_value = pb_wire_json_get_repeated_uint64_field_as_json_array(wire_json, field_number);
 			ELSE
 				SET field_json_value = pb_wire_json_get_repeated_uint64_field_as_json_string_array(wire_json, field_number);
 			END IF;
 		ELSE
-			IF as_number_json THEN
-				SET field_json_value = CAST(pb_wire_json_get_uint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			SET uint_value = pb_wire_json_get_uint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(uint_value AS JSON);
 			ELSE
-				SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_uint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+				SET field_json_value = JSON_QUOTE(CAST(uint_value AS CHAR));
 			END IF;
 		END IF;
 	WHEN 5 THEN -- int32
@@ -62,16 +66,17 @@ BEGIN
 		END IF;
 	WHEN 6 THEN -- fixed64
 		IF is_repeated THEN
-			IF as_number_json THEN
+			IF emit_64bit_integers_as_numbers THEN
 				SET field_json_value = pb_wire_json_get_repeated_fixed64_field_as_json_array(wire_json, field_number);
 			ELSE
 				SET field_json_value = pb_wire_json_get_repeated_fixed64_field_as_json_string_array(wire_json, field_number);
 			END IF;
 		ELSE
-			IF as_number_json THEN
-				SET field_json_value = CAST(pb_wire_json_get_fixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			SET uint_value = pb_wire_json_get_fixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(uint_value AS JSON);
 			ELSE
-				SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_fixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+				SET field_json_value = JSON_QUOTE(CAST(uint_value AS CHAR));
 			END IF;
 		END IF;
 	WHEN 7 THEN -- fixed32
@@ -118,16 +123,17 @@ BEGIN
 		END IF;
 	WHEN 16 THEN -- sfixed64
 		IF is_repeated THEN
-			IF as_number_json THEN
+			IF emit_64bit_integers_as_numbers THEN
 				SET field_json_value = pb_wire_json_get_repeated_sfixed64_field_as_json_array(wire_json, field_number);
 			ELSE
 				SET field_json_value = pb_wire_json_get_repeated_sfixed64_field_as_json_string_array(wire_json, field_number);
 			END IF;
 		ELSE
-			IF as_number_json THEN
-				SET field_json_value = CAST(pb_wire_json_get_sfixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			SET int_value = pb_wire_json_get_sfixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(int_value AS JSON);
 			ELSE
-				SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_sfixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+				SET field_json_value = JSON_QUOTE(CAST(int_value AS CHAR));
 			END IF;
 		END IF;
 	WHEN 17 THEN -- sint32
@@ -138,16 +144,17 @@ BEGIN
 		END IF;
 	WHEN 18 THEN -- sint64
 		IF is_repeated THEN
-			IF as_number_json THEN
+			IF emit_64bit_integers_as_numbers THEN
 				SET field_json_value = pb_wire_json_get_repeated_sint64_field_as_json_array(wire_json, field_number);
 			ELSE
 				SET field_json_value = pb_wire_json_get_repeated_sint64_field_as_json_string_array(wire_json, field_number);
 			END IF;
 		ELSE
-			IF as_number_json THEN
-				SET field_json_value = CAST(pb_wire_json_get_sint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			SET int_value = pb_wire_json_get_sint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(int_value AS JSON);
 			ELSE
-				SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_sint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+				SET field_json_value = JSON_QUOTE(CAST(int_value AS CHAR));
 			END IF;
 		END IF;
 	ELSE

@@ -85,6 +85,7 @@ The package produces JSON where:
 - **Map fields** are serialized as JSON objects with string keys
 - **Enum fields** are serialized as numbers for robustness against enum value renames
 - **All message types** follow the same consistent field number format
+- **Default values** are omitted from the JSON output to reduce payload size
 
 ### Example Transformations
 
@@ -120,6 +121,15 @@ All message types, including Google's well-known types, are treated consistently
 - **Predictable Format**: Developers can expect the same serialization approach for all protobuf messages
 - **Simplified Logic**: No special cases or exceptions to remember
 - **Schema Evolution Benefits**: Well-known types also benefit from field number stability
+
+### Default Value Handling
+Fields with default values are omitted from the JSON output based on field presence semantics:
+- **Proto2**: Fields that are not explicitly set are omitted; explicitly set fields are included even if they equal the default value
+- **Proto3**: Fields with zero values (0, false, empty string, etc.) are omitted unless they have explicit presence (optional fields, message fields, or oneof fields)
+- **Repeated fields**: Empty arrays are omitted
+- **Map fields**: Empty maps are omitted
+- **Message fields**: Unset message fields are omitted
+- **Payload optimization**: Omitting unset fields reduces JSON size and network overhead
 
 ## API Reference
 

@@ -43,7 +43,11 @@ func marshalMessage(msg protoreflect.Message) (interface{}, error) {
 	fields := msg.Descriptor().Fields()
 
 	for field := range protoreflectutils.Iterate(fields) {
-		if field.HasPresence() && !msg.Has(field) {
+		if !msg.Has(field) {
+			// Proto2: any field that is not explicitly set
+			// Proto3: fields that are field presence tracked and not set
+			// Proto3: fields that are explicitly set to their default values
+			// Proto2,Proto3: repeated fields and map fields that are empty
 			continue
 		}
 

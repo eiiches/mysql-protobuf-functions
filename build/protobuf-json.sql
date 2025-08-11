@@ -10,10 +10,12 @@ BEGIN
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_wire_json_get_primitive_field_as_json $$
-CREATE PROCEDURE _pb_wire_json_get_primitive_field_as_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN has_field_presence BOOLEAN, IN as_number_json BOOLEAN, OUT field_json_value JSON)
+CREATE PROCEDURE _pb_wire_json_get_primitive_field_as_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN has_field_presence BOOLEAN, IN emit_64bit_integers_as_numbers BOOLEAN, OUT field_json_value JSON)
 BEGIN
 	DECLARE message_text TEXT;
 	DECLARE boolean_value BOOLEAN;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE int_value BIGINT;
 
 	CASE field_type
 	WHEN 1 THEN -- double
@@ -30,30 +32,32 @@ BEGIN
 		END IF;
 	WHEN 3 THEN -- int64
 		IF is_repeated THEN
-			IF as_number_json THEN
+			IF emit_64bit_integers_as_numbers THEN
 				SET field_json_value = pb_wire_json_get_repeated_int64_field_as_json_array(wire_json, field_number);
 			ELSE
 				SET field_json_value = pb_wire_json_get_repeated_int64_field_as_json_string_array(wire_json, field_number);
 			END IF;
 		ELSE
-			IF as_number_json THEN
-				SET field_json_value = CAST(pb_wire_json_get_int64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			SET int_value = pb_wire_json_get_int64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(int_value AS JSON);
 			ELSE
-				SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_int64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+				SET field_json_value = JSON_QUOTE(CAST(int_value AS CHAR));
 			END IF;
 		END IF;
 	WHEN 4 THEN -- uint64
 		IF is_repeated THEN
-			IF as_number_json THEN
+			IF emit_64bit_integers_as_numbers THEN
 				SET field_json_value = pb_wire_json_get_repeated_uint64_field_as_json_array(wire_json, field_number);
 			ELSE
 				SET field_json_value = pb_wire_json_get_repeated_uint64_field_as_json_string_array(wire_json, field_number);
 			END IF;
 		ELSE
-			IF as_number_json THEN
-				SET field_json_value = CAST(pb_wire_json_get_uint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			SET uint_value = pb_wire_json_get_uint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(uint_value AS JSON);
 			ELSE
-				SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_uint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+				SET field_json_value = JSON_QUOTE(CAST(uint_value AS CHAR));
 			END IF;
 		END IF;
 	WHEN 5 THEN -- int32
@@ -64,16 +68,17 @@ BEGIN
 		END IF;
 	WHEN 6 THEN -- fixed64
 		IF is_repeated THEN
-			IF as_number_json THEN
+			IF emit_64bit_integers_as_numbers THEN
 				SET field_json_value = pb_wire_json_get_repeated_fixed64_field_as_json_array(wire_json, field_number);
 			ELSE
 				SET field_json_value = pb_wire_json_get_repeated_fixed64_field_as_json_string_array(wire_json, field_number);
 			END IF;
 		ELSE
-			IF as_number_json THEN
-				SET field_json_value = CAST(pb_wire_json_get_fixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			SET uint_value = pb_wire_json_get_fixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(uint_value AS JSON);
 			ELSE
-				SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_fixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+				SET field_json_value = JSON_QUOTE(CAST(uint_value AS CHAR));
 			END IF;
 		END IF;
 	WHEN 7 THEN -- fixed32
@@ -120,16 +125,17 @@ BEGIN
 		END IF;
 	WHEN 16 THEN -- sfixed64
 		IF is_repeated THEN
-			IF as_number_json THEN
+			IF emit_64bit_integers_as_numbers THEN
 				SET field_json_value = pb_wire_json_get_repeated_sfixed64_field_as_json_array(wire_json, field_number);
 			ELSE
 				SET field_json_value = pb_wire_json_get_repeated_sfixed64_field_as_json_string_array(wire_json, field_number);
 			END IF;
 		ELSE
-			IF as_number_json THEN
-				SET field_json_value = CAST(pb_wire_json_get_sfixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			SET int_value = pb_wire_json_get_sfixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(int_value AS JSON);
 			ELSE
-				SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_sfixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+				SET field_json_value = JSON_QUOTE(CAST(int_value AS CHAR));
 			END IF;
 		END IF;
 	WHEN 17 THEN -- sint32
@@ -140,16 +146,17 @@ BEGIN
 		END IF;
 	WHEN 18 THEN -- sint64
 		IF is_repeated THEN
-			IF as_number_json THEN
+			IF emit_64bit_integers_as_numbers THEN
 				SET field_json_value = pb_wire_json_get_repeated_sint64_field_as_json_array(wire_json, field_number);
 			ELSE
 				SET field_json_value = pb_wire_json_get_repeated_sint64_field_as_json_string_array(wire_json, field_number);
 			END IF;
 		ELSE
-			IF as_number_json THEN
-				SET field_json_value = CAST(pb_wire_json_get_sint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			SET int_value = pb_wire_json_get_sint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(int_value AS JSON);
 			ELSE
-				SET field_json_value = JSON_QUOTE(CAST(pb_wire_json_get_sint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS CHAR));
+				SET field_json_value = JSON_QUOTE(CAST(int_value AS CHAR));
 			END IF;
 		END IF;
 	ELSE
@@ -331,7 +338,7 @@ END $$
 
 -- Main procedure for converting protobuf message to JSON using descriptor set
 DROP PROCEDURE IF EXISTS _pb_wire_json_to_json_proc $$
-CREATE PROCEDURE _pb_wire_json_to_json_proc(IN descriptor_set_json JSON, IN full_type_name TEXT, IN wire_json JSON, IN as_number_json BOOLEAN, OUT result JSON)
+CREATE PROCEDURE _pb_wire_json_to_json_proc(IN descriptor_set_json JSON, IN full_type_name TEXT, IN wire_json JSON, IN as_number_json BOOLEAN, IN emit_default_values BOOLEAN, OUT result JSON)
 proc: BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
@@ -366,6 +373,7 @@ proc: BEGIN
 	DECLARE element JSON;
 	DECLARE element_count INT;
 	DECLARE element_index INT;
+	DECLARE field_enum_value INT;
 
 	-- Map handling
 	DECLARE is_map BOOLEAN;
@@ -485,7 +493,7 @@ proc: BEGIN
 						CALL _pb_wire_json_get_primitive_field_as_json(element, 1, map_key_type, FALSE, FALSE, as_number_json, map_key);
 
 						IF map_value_type = 11 THEN -- message
-							CALL _pb_message_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_message_field(element, 2, NULL), as_number_json, map_value);
+							CALL _pb_message_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_message_field(element, 2, NULL), as_number_json, emit_default_values, map_value);
 						ELSEIF map_value_type = 14 THEN -- enum
 							IF as_number_json THEN
 								SET map_value = CAST(pb_wire_json_get_enum_field(element, 2, NULL) AS JSON);
@@ -505,6 +513,10 @@ proc: BEGIN
 						SET element_index = element_index + 1;
 					END WHILE;
 
+					IF NOT emit_default_values AND element_count = 0 THEN
+						SET field_json_value = NULL;
+					END IF;
+
 				ELSEIF is_repeated THEN
 					-- Handle repeated message fields
 					SET element_count = pb_wire_json_get_repeated_message_field_count(wire_json, field_number);
@@ -513,14 +525,18 @@ proc: BEGIN
 
 					WHILE element_index < element_count DO
 						SET bytes_value = pb_wire_json_get_repeated_message_field_element(wire_json, field_number, element_index);
-						CALL _pb_message_to_json(descriptor_set_json, field_type_name, bytes_value, as_number_json, nested_json_value);
+						CALL _pb_message_to_json(descriptor_set_json, field_type_name, bytes_value, as_number_json, emit_default_values, nested_json_value);
 						SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', nested_json_value);
 						SET element_index = element_index + 1;
 					END WHILE;
+
+					IF NOT emit_default_values AND element_count = 0 THEN
+						SET field_json_value = NULL;
+					END IF;
 				ELSE
 					-- Handle singular message fields
 					SET bytes_value = pb_wire_json_get_message_field(wire_json, field_number, NULL);
-					CALL _pb_message_to_json(descriptor_set_json, field_type_name, bytes_value, as_number_json, field_json_value);
+					CALL _pb_message_to_json(descriptor_set_json, field_type_name, bytes_value, as_number_json, emit_default_values, field_json_value);
 				END IF;
 
 			WHEN 14 THEN -- TYPE_ENUM
@@ -540,17 +556,48 @@ proc: BEGIN
 						END IF;
 						SET element_index = element_index + 1;
 					END WHILE;
+
+					IF NOT emit_default_values AND element_count = 0 THEN
+						SET field_json_value = NULL;
+					END IF;
 				ELSE
-					IF as_number_json THEN
-						SET field_json_value = CAST(pb_wire_json_get_enum_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
-					ELSE
-						CALL _pb_enum_to_json(descriptor_set_json, field_type_name, pb_wire_json_get_enum_field(wire_json, field_number, IF(has_field_presence, NULL, 0)), field_json_value);
+					-- Handle singular enum fields
+					SET field_enum_value = pb_wire_json_get_enum_field(wire_json, field_number, NULL);
+					IF syntax = 'proto3' AND NOT has_field_presence AND field_enum_value = 0 THEN
+						SET field_enum_value = NULL;
+					END IF;
+
+					SET field_json_value = NULL;
+					IF as_number_json THEN -- ProtoNumberJSON: always omit default values
+						IF field_enum_value IS NOT NULL THEN
+							SET field_json_value = CAST(field_enum_value AS JSON);
+						END IF;
+					ELSE -- ProtoJSON:
+						IF field_enum_value IS NOT NULL OR (emit_default_values AND NOT has_field_presence) THEN
+							IF field_enum_value IS NULL THEN
+								SET field_enum_value = 0;
+							END IF;
+							CALL _pb_enum_to_json(descriptor_set_json, field_type_name, field_enum_value, field_json_value);
+						END IF;
 					END IF;
 				END IF;
-
 			ELSE
 				-- Handle primitive types using existing function
 				CALL _pb_wire_json_get_primitive_field_as_json(wire_json, field_number, field_type, is_repeated, has_field_presence, as_number_json, field_json_value);
+				IF is_repeated THEN
+					IF NOT emit_default_values AND JSON_LENGTH(field_json_value) = 0 THEN
+						SET field_json_value = NULL;
+					END IF;
+				ELSE
+					IF NOT has_field_presence THEN
+						IF syntax = 'proto3' AND _pb_is_proto3_default_value(field_type, field_json_value) THEN
+							SET field_json_value = NULL;
+						END IF;
+						IF emit_default_values AND field_json_value IS NULL THEN
+							SET field_json_value = _pb_get_proto3_default_value(field_type, as_number_json);
+						END IF;
+					END IF;
+				END IF;
 			END CASE;
 
 			-- Add field to result if it has a value
@@ -599,7 +646,7 @@ END $$
 
 -- Wrapper procedure that converts LONGBLOB to wire_json and delegates
 DROP PROCEDURE IF EXISTS _pb_message_to_json $$
-CREATE PROCEDURE _pb_message_to_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN message LONGBLOB, IN as_number_json BOOLEAN, OUT result JSON)
+CREATE PROCEDURE _pb_message_to_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN message LONGBLOB, IN as_number_json BOOLEAN, IN emit_default_values BOOLEAN, OUT result JSON)
 BEGIN
 	DECLARE message_text TEXT;
 
@@ -612,12 +659,12 @@ BEGIN
 	IF message IS NULL THEN
 		SET result = NULL;
 	ELSE
-		CALL _pb_wire_json_to_json_proc(descriptor_set_json, full_type_name, pb_message_to_wire_json(message), as_number_json, result);
+		CALL _pb_wire_json_to_json_proc(descriptor_set_json, full_type_name, pb_message_to_wire_json(message), as_number_json, emit_default_values, result);
 	END IF;
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_wire_json_to_json $$
-CREATE PROCEDURE _pb_wire_json_to_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN wire_json JSON, IN as_number_json BOOLEAN, OUT result JSON)
+CREATE PROCEDURE _pb_wire_json_to_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN wire_json JSON, IN as_number_json BOOLEAN, IN emit_default_values BOOLEAN, OUT result JSON)
 BEGIN
 	DECLARE message_text TEXT;
 
@@ -630,7 +677,7 @@ BEGIN
 	IF wire_json IS NULL THEN
 		SET result = NULL;
 	ELSE
-		CALL _pb_wire_json_to_json_proc(descriptor_set_json, full_type_name, wire_json, as_number_json, result);
+		CALL _pb_wire_json_to_json_proc(descriptor_set_json, full_type_name, wire_json, as_number_json, emit_default_values, result);
 	END IF;
 END $$
 
@@ -639,7 +686,7 @@ DROP FUNCTION IF EXISTS pb_message_to_json $$
 CREATE FUNCTION pb_message_to_json(descriptor_set_json JSON, type_name TEXT, message LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE result JSON;
-	CALL _pb_message_to_json(descriptor_set_json, type_name, message, FALSE, result);
+	CALL _pb_message_to_json(descriptor_set_json, type_name, message, FALSE, TRUE, result);
 	RETURN result;
 END $$
 
@@ -648,7 +695,7 @@ DROP FUNCTION IF EXISTS _pb_message_to_number_json $$
 CREATE FUNCTION _pb_message_to_number_json(descriptor_set_json JSON, type_name TEXT, message LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE result JSON;
-	CALL _pb_message_to_json(descriptor_set_json, type_name, message, TRUE, result);
+	CALL _pb_message_to_json(descriptor_set_json, type_name, message, TRUE, FALSE, result);
 	RETURN result;
 END $$
 
@@ -657,7 +704,7 @@ DROP FUNCTION IF EXISTS pb_wire_json_to_json $$
 CREATE FUNCTION pb_wire_json_to_json(descriptor_set_json JSON, type_name TEXT, wire_json JSON) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE result JSON;
-	CALL _pb_wire_json_to_json(descriptor_set_json, type_name, wire_json, FALSE, result);
+	CALL _pb_wire_json_to_json(descriptor_set_json, type_name, wire_json, FALSE, TRUE, result);
 	RETURN result;
 END $$
 
@@ -666,7 +713,7 @@ DROP FUNCTION IF EXISTS _pb_wire_json_to_number_json $$
 CREATE FUNCTION _pb_wire_json_to_number_json(descriptor_set_json JSON, type_name TEXT, wire_json JSON) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE result JSON;
-	CALL _pb_wire_json_to_json(descriptor_set_json, type_name, wire_json, TRUE, result);
+	CALL _pb_wire_json_to_json(descriptor_set_json, type_name, wire_json, TRUE, FALSE, result);
 	RETURN result;
 END $$
 
@@ -795,6 +842,71 @@ BEGIN
 	ELSE
 		-- For unknown types, raise error
 		SET message_text = CONCAT('_pb_is_proto3_default_value: unsupported field_type ', field_type);
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END CASE;
+END $$
+
+-- Helper function to get proto3 default value for a field type
+DROP FUNCTION IF EXISTS _pb_get_proto3_default_value $$
+CREATE FUNCTION _pb_get_proto3_default_value(field_type INT, emit_64bit_integers_as_numbers BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE message_text TEXT;
+	CASE field_type
+	WHEN 1 THEN -- TYPE_DOUBLE
+		RETURN CAST(0.0 AS JSON);
+	WHEN 2 THEN -- TYPE_FLOAT
+		RETURN CAST(0.0 AS JSON);
+	WHEN 3 THEN -- TYPE_INT64
+		IF emit_64bit_integers_as_numbers THEN
+			RETURN CAST(0 AS JSON);
+		ELSE
+			RETURN JSON_QUOTE('0');
+		END IF;
+	WHEN 4 THEN -- TYPE_UINT64
+		IF emit_64bit_integers_as_numbers THEN
+			RETURN CAST(0 AS JSON);
+		ELSE
+			RETURN JSON_QUOTE('0');
+		END IF;
+	WHEN 5 THEN -- TYPE_INT32
+		RETURN CAST(0 AS JSON);
+	WHEN 6 THEN -- TYPE_FIXED64
+		IF emit_64bit_integers_as_numbers THEN
+			RETURN CAST(0 AS JSON);
+		ELSE
+			RETURN JSON_QUOTE('0');
+		END IF;
+	WHEN 7 THEN -- TYPE_FIXED32
+		RETURN CAST(0 AS JSON);
+	WHEN 8 THEN -- TYPE_BOOL
+		RETURN CAST(false AS JSON);
+	WHEN 9 THEN -- TYPE_STRING
+		RETURN JSON_QUOTE('');
+	WHEN 12 THEN -- TYPE_BYTES
+		RETURN JSON_QUOTE('');
+	WHEN 13 THEN -- TYPE_UINT32
+		RETURN CAST(0 AS JSON);
+	WHEN 15 THEN -- TYPE_SFIXED32
+		RETURN CAST(0 AS JSON);
+	WHEN 16 THEN -- TYPE_SFIXED64
+		IF emit_64bit_integers_as_numbers THEN
+			RETURN CAST(0 AS JSON);
+		ELSE
+			RETURN JSON_QUOTE('0');
+		END IF;
+	WHEN 17 THEN -- TYPE_SINT32
+		RETURN CAST(0 AS JSON);
+	WHEN 18 THEN -- TYPE_SINT64
+		IF emit_64bit_integers_as_numbers THEN
+			RETURN CAST(0 AS JSON);
+		ELSE
+			RETURN JSON_QUOTE('0');
+		END IF;
+	WHEN 14 THEN -- TYPE_ENUM
+		RETURN CAST(0 AS JSON);
+	ELSE
+		-- For unknown types, raise error
+		SET message_text = CONCAT('_pb_get_proto3_default_value: unsupported field_type ', field_type);
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END CASE;
 END $$
@@ -2347,47 +2459,47 @@ DELIMITER $$
 DROP FUNCTION IF EXISTS _pb_google_descriptor_proto $$
 CREATE FUNCTION _pb_google_descriptor_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/descriptor.proto","10":[],"11":[],"2":"google.protobuf","3":[],"4":[{"1":"FileDescriptorSet","10":[],"2":[{"1":"file","10":"file","3":1,"4":3,"5":11,"6":".google.protobuf.FileDescriptorProto"}],"3":[],"4":[],"5":[{"1":536000000,"2":536000001}],"6":[],"8":[],"9":[]},{"1":"FileDescriptorProto","10":[],"2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"package","10":"package","3":2,"4":1,"5":9},{"1":"dependency","10":"dependency","3":3,"4":3,"5":9},{"1":"public_dependency","10":"publicDependency","3":10,"4":3,"5":5},{"1":"weak_dependency","10":"weakDependency","3":11,"4":3,"5":5},{"1":"message_type","10":"messageType","3":4,"4":3,"5":11,"6":".google.protobuf.DescriptorProto"},{"1":"enum_type","10":"enumType","3":5,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto"},{"1":"service","10":"service","3":6,"4":3,"5":11,"6":".google.protobuf.ServiceDescriptorProto"},{"1":"extension","10":"extension","3":7,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"options","10":"options","3":8,"4":1,"5":11,"6":".google.protobuf.FileOptions"},{"1":"source_code_info","10":"sourceCodeInfo","3":9,"4":1,"5":11,"6":".google.protobuf.SourceCodeInfo"},{"1":"syntax","10":"syntax","3":12,"4":1,"5":9},{"1":"edition","10":"edition","3":14,"4":1,"5":14,"6":".google.protobuf.Edition"}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"DescriptorProto","10":[],"2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"field","10":"field","3":2,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"extension","10":"extension","3":6,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"nested_type","10":"nestedType","3":3,"4":3,"5":11,"6":".google.protobuf.DescriptorProto"},{"1":"enum_type","10":"enumType","3":4,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto"},{"1":"extension_range","10":"extensionRange","3":5,"4":3,"5":11,"6":".google.protobuf.DescriptorProto.ExtensionRange"},{"1":"oneof_decl","10":"oneofDecl","3":8,"4":3,"5":11,"6":".google.protobuf.OneofDescriptorProto"},{"1":"options","10":"options","3":7,"4":1,"5":11,"6":".google.protobuf.MessageOptions"},{"1":"reserved_range","10":"reservedRange","3":9,"4":3,"5":11,"6":".google.protobuf.DescriptorProto.ReservedRange"},{"1":"reserved_name","10":"reservedName","3":10,"4":3,"5":9}],"3":[{"1":"ExtensionRange","10":[],"2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.ExtensionRangeOptions"}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"ReservedRange","10":[],"2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"ExtensionRangeOptions","10":[],"2":[{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"},{"1":"declaration","10":"declaration","3":2,"4":3,"5":11,"6":".google.protobuf.ExtensionRangeOptions.Declaration","8":{"17":2,"19":[],"20":[],"999":[]}},{"1":"features","10":"features","3":50,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"verification","10":"verification","3":3,"4":1,"5":14,"6":".google.protobuf.ExtensionRangeOptions.VerificationState","7":"UNVERIFIED","8":{"17":2,"19":[],"20":[],"999":[]}}],"3":[{"1":"Declaration","10":[],"2":[{"1":"number","10":"number","3":1,"4":1,"5":5},{"1":"full_name","10":"fullName","3":2,"4":1,"5":9},{"1":"type","10":"type","3":3,"4":1,"5":9},{"1":"reserved","10":"reserved","3":5,"4":1,"5":8},{"1":"repeated","10":"repeated","3":6,"4":1,"5":8}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[{"1":4,"2":5}]}],"4":[{"1":"VerificationState","2":[{"1":"DECLARATION","2":0},{"1":"UNVERIFIED","2":1}],"4":[],"5":[]}],"5":[{"1":1000,"2":536870912}],"6":[],"8":[],"9":[]},{"1":"FieldDescriptorProto","10":[],"2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"number","10":"number","3":3,"4":1,"5":5},{"1":"label","10":"label","3":4,"4":1,"5":14,"6":".google.protobuf.FieldDescriptorProto.Label"},{"1":"type","10":"type","3":5,"4":1,"5":14,"6":".google.protobuf.FieldDescriptorProto.Type"},{"1":"type_name","10":"typeName","3":6,"4":1,"5":9},{"1":"extendee","10":"extendee","3":2,"4":1,"5":9},{"1":"default_value","10":"defaultValue","3":7,"4":1,"5":9},{"1":"oneof_index","10":"oneofIndex","3":9,"4":1,"5":5},{"1":"json_name","10":"jsonName","3":10,"4":1,"5":9},{"1":"options","10":"options","3":8,"4":1,"5":11,"6":".google.protobuf.FieldOptions"},{"1":"proto3_optional","10":"proto3Optional","3":17,"4":1,"5":8}],"3":[],"4":[{"1":"Type","2":[{"1":"TYPE_DOUBLE","2":1},{"1":"TYPE_FLOAT","2":2},{"1":"TYPE_INT64","2":3},{"1":"TYPE_UINT64","2":4},{"1":"TYPE_INT32","2":5},{"1":"TYPE_FIXED64","2":6},{"1":"TYPE_FIXED32","2":7},{"1":"TYPE_BOOL","2":8},{"1":"TYPE_STRING","2":9},{"1":"TYPE_GROUP","2":10},{"1":"TYPE_MESSAGE","2":11},{"1":"TYPE_BYTES","2":12},{"1":"TYPE_UINT32","2":13},{"1":"TYPE_ENUM","2":14},{"1":"TYPE_SFIXED32","2":15},{"1":"TYPE_SFIXED64","2":16},{"1":"TYPE_SINT32","2":17},{"1":"TYPE_SINT64","2":18}],"4":[],"5":[]},{"1":"Label","2":[{"1":"LABEL_OPTIONAL","2":1},{"1":"LABEL_REPEATED","2":3},{"1":"LABEL_REQUIRED","2":2}],"4":[],"5":[]}],"5":[],"6":[],"8":[],"9":[]},{"1":"OneofDescriptorProto","10":[],"2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"options","10":"options","3":2,"4":1,"5":11,"6":".google.protobuf.OneofOptions"}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"EnumDescriptorProto","10":[],"2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":3,"5":11,"6":".google.protobuf.EnumValueDescriptorProto"},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.EnumOptions"},{"1":"reserved_range","10":"reservedRange","3":4,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto.EnumReservedRange"},{"1":"reserved_name","10":"reservedName","3":5,"4":3,"5":9}],"3":[{"1":"EnumReservedRange","10":[],"2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"EnumValueDescriptorProto","10":[],"2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"number","10":"number","3":2,"4":1,"5":5},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.EnumValueOptions"}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"ServiceDescriptorProto","10":[],"2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"method","10":"method","3":2,"4":3,"5":11,"6":".google.protobuf.MethodDescriptorProto"},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.ServiceOptions"}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"MethodDescriptorProto","10":[],"2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"input_type","10":"inputType","3":2,"4":1,"5":9},{"1":"output_type","10":"outputType","3":3,"4":1,"5":9},{"1":"options","10":"options","3":4,"4":1,"5":11,"6":".google.protobuf.MethodOptions"},{"1":"client_streaming","10":"clientStreaming","3":5,"4":1,"5":8,"7":"false"},{"1":"server_streaming","10":"serverStreaming","3":6,"4":1,"5":8,"7":"false"}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"FileOptions","10":["php_generic_services"],"2":[{"1":"java_package","10":"javaPackage","3":1,"4":1,"5":9},{"1":"java_outer_classname","10":"javaOuterClassname","3":8,"4":1,"5":9},{"1":"java_multiple_files","10":"javaMultipleFiles","3":10,"4":1,"5":8,"7":"false"},{"1":"java_generate_equals_and_hash","10":"javaGenerateEqualsAndHash","3":20,"4":1,"5":8,"8":{"19":[],"20":[],"3":true,"999":[]}},{"1":"java_string_check_utf8","10":"javaStringCheckUtf8","3":27,"4":1,"5":8,"7":"false"},{"1":"optimize_for","10":"optimizeFor","3":9,"4":1,"5":14,"6":".google.protobuf.FileOptions.OptimizeMode","7":"SPEED"},{"1":"go_package","10":"goPackage","3":11,"4":1,"5":9},{"1":"cc_generic_services","10":"ccGenericServices","3":16,"4":1,"5":8,"7":"false"},{"1":"java_generic_services","10":"javaGenericServices","3":17,"4":1,"5":8,"7":"false"},{"1":"py_generic_services","10":"pyGenericServices","3":18,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":23,"4":1,"5":8,"7":"false"},{"1":"cc_enable_arenas","10":"ccEnableArenas","3":31,"4":1,"5":8,"7":"true"},{"1":"objc_class_prefix","10":"objcClassPrefix","3":36,"4":1,"5":9},{"1":"csharp_namespace","10":"csharpNamespace","3":37,"4":1,"5":9},{"1":"swift_prefix","10":"swiftPrefix","3":39,"4":1,"5":9},{"1":"php_class_prefix","10":"phpClassPrefix","3":40,"4":1,"5":9},{"1":"php_namespace","10":"phpNamespace","3":41,"4":1,"5":9},{"1":"php_metadata_namespace","10":"phpMetadataNamespace","3":44,"4":1,"5":9},{"1":"ruby_package","10":"rubyPackage","3":45,"4":1,"5":9},{"1":"features","10":"features","3":50,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"3":[],"4":[{"1":"OptimizeMode","2":[{"1":"SPEED","2":1},{"1":"CODE_SIZE","2":2},{"1":"LITE_RUNTIME","2":3}],"4":[],"5":[]}],"5":[{"1":1000,"2":536870912}],"6":[],"8":[],"9":[{"1":42,"2":43},{"1":38,"2":39}]},{"1":"MessageOptions","10":[],"2":[{"1":"message_set_wire_format","10":"messageSetWireFormat","3":1,"4":1,"5":8,"7":"false"},{"1":"no_standard_descriptor_accessor","10":"noStandardDescriptorAccessor","3":2,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"map_entry","10":"mapEntry","3":7,"4":1,"5":8},{"1":"deprecated_legacy_json_field_conflicts","10":"deprecatedLegacyJsonFieldConflicts","3":11,"4":1,"5":8,"8":{"19":[],"20":[],"3":true,"999":[]}},{"1":"features","10":"features","3":12,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"3":[],"4":[],"5":[{"1":1000,"2":536870912}],"6":[],"8":[],"9":[{"1":4,"2":5},{"1":5,"2":6},{"1":6,"2":7},{"1":8,"2":9},{"1":9,"2":10}]},{"1":"FieldOptions","10":[],"2":[{"1":"ctype","10":"ctype","3":1,"4":1,"5":14,"6":".google.protobuf.FieldOptions.CType","7":"STRING"},{"1":"packed","10":"packed","3":2,"4":1,"5":8},{"1":"jstype","10":"jstype","3":6,"4":1,"5":14,"6":".google.protobuf.FieldOptions.JSType","7":"JS_NORMAL"},{"1":"lazy","10":"lazy","3":5,"4":1,"5":8,"7":"false"},{"1":"unverified_lazy","10":"unverifiedLazy","3":15,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"weak","10":"weak","3":10,"4":1,"5":8,"7":"false"},{"1":"debug_redact","10":"debugRedact","3":16,"4":1,"5":8,"7":"false"},{"1":"retention","10":"retention","3":17,"4":1,"5":14,"6":".google.protobuf.FieldOptions.OptionRetention"},{"1":"targets","10":"targets","3":19,"4":3,"5":14,"6":".google.protobuf.FieldOptions.OptionTargetType"},{"1":"edition_defaults","10":"editionDefaults","3":20,"4":3,"5":11,"6":".google.protobuf.FieldOptions.EditionDefault"},{"1":"features","10":"features","3":21,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"feature_support","10":"featureSupport","3":22,"4":1,"5":11,"6":".google.protobuf.FieldOptions.FeatureSupport"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"3":[{"1":"EditionDefault","10":[],"2":[{"1":"edition","10":"edition","3":3,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"value","10":"value","3":2,"4":1,"5":9}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"FeatureSupport","10":[],"2":[{"1":"edition_introduced","10":"editionIntroduced","3":1,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"edition_deprecated","10":"editionDeprecated","3":2,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"deprecation_warning","10":"deprecationWarning","3":3,"4":1,"5":9},{"1":"edition_removed","10":"editionRemoved","3":4,"4":1,"5":14,"6":".google.protobuf.Edition"}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"4":[{"1":"CType","2":[{"1":"STRING","2":0},{"1":"CORD","2":1},{"1":"STRING_PIECE","2":2}],"4":[],"5":[]},{"1":"JSType","2":[{"1":"JS_NORMAL","2":0},{"1":"JS_STRING","2":1},{"1":"JS_NUMBER","2":2}],"4":[],"5":[]},{"1":"OptionRetention","2":[{"1":"RETENTION_UNKNOWN","2":0},{"1":"RETENTION_RUNTIME","2":1},{"1":"RETENTION_SOURCE","2":2}],"4":[],"5":[]},{"1":"OptionTargetType","2":[{"1":"TARGET_TYPE_UNKNOWN","2":0},{"1":"TARGET_TYPE_FILE","2":1},{"1":"TARGET_TYPE_EXTENSION_RANGE","2":2},{"1":"TARGET_TYPE_MESSAGE","2":3},{"1":"TARGET_TYPE_FIELD","2":4},{"1":"TARGET_TYPE_ONEOF","2":5},{"1":"TARGET_TYPE_ENUM","2":6},{"1":"TARGET_TYPE_ENUM_ENTRY","2":7},{"1":"TARGET_TYPE_SERVICE","2":8},{"1":"TARGET_TYPE_METHOD","2":9}],"4":[],"5":[]}],"5":[{"1":1000,"2":536870912}],"6":[],"8":[],"9":[{"1":4,"2":5},{"1":18,"2":19}]},{"1":"OneofOptions","10":[],"2":[{"1":"features","10":"features","3":1,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"3":[],"4":[],"5":[{"1":1000,"2":536870912}],"6":[],"8":[],"9":[]},{"1":"EnumOptions","10":[],"2":[{"1":"allow_alias","10":"allowAlias","3":2,"4":1,"5":8},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"deprecated_legacy_json_field_conflicts","10":"deprecatedLegacyJsonFieldConflicts","3":6,"4":1,"5":8,"8":{"19":[],"20":[],"3":true,"999":[]}},{"1":"features","10":"features","3":7,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"3":[],"4":[],"5":[{"1":1000,"2":536870912}],"6":[],"8":[],"9":[{"1":5,"2":6}]},{"1":"EnumValueOptions","10":[],"2":[{"1":"deprecated","10":"deprecated","3":1,"4":1,"5":8,"7":"false"},{"1":"features","10":"features","3":2,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"debug_redact","10":"debugRedact","3":3,"4":1,"5":8,"7":"false"},{"1":"feature_support","10":"featureSupport","3":4,"4":1,"5":11,"6":".google.protobuf.FieldOptions.FeatureSupport"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"3":[],"4":[],"5":[{"1":1000,"2":536870912}],"6":[],"8":[],"9":[]},{"1":"ServiceOptions","10":[],"2":[{"1":"features","10":"features","3":34,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"deprecated","10":"deprecated","3":33,"4":1,"5":8,"7":"false"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"3":[],"4":[],"5":[{"1":1000,"2":536870912}],"6":[],"8":[],"9":[]},{"1":"MethodOptions","10":[],"2":[{"1":"deprecated","10":"deprecated","3":33,"4":1,"5":8,"7":"false"},{"1":"idempotency_level","10":"idempotencyLevel","3":34,"4":1,"5":14,"6":".google.protobuf.MethodOptions.IdempotencyLevel","7":"IDEMPOTENCY_UNKNOWN"},{"1":"features","10":"features","3":35,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"3":[],"4":[{"1":"IdempotencyLevel","2":[{"1":"IDEMPOTENCY_UNKNOWN","2":0},{"1":"NO_SIDE_EFFECTS","2":1},{"1":"IDEMPOTENT","2":2}],"4":[],"5":[]}],"5":[{"1":1000,"2":536870912}],"6":[],"8":[],"9":[]},{"1":"UninterpretedOption","10":[],"2":[{"1":"name","10":"name","3":2,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption.NamePart"},{"1":"identifier_value","10":"identifierValue","3":3,"4":1,"5":9},{"1":"positive_int_value","10":"positiveIntValue","3":4,"4":1,"5":4},{"1":"negative_int_value","10":"negativeIntValue","3":5,"4":1,"5":3},{"1":"double_value","10":"doubleValue","3":6,"4":1,"5":1},{"1":"string_value","10":"stringValue","3":7,"4":1,"5":12},{"1":"aggregate_value","10":"aggregateValue","3":8,"4":1,"5":9}],"3":[{"1":"NamePart","10":[],"2":[{"1":"name_part","10":"namePart","3":1,"4":2,"5":9},{"1":"is_extension","10":"isExtension","3":2,"4":2,"5":8}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"FeatureSet","10":[],"2":[{"1":"field_presence","10":"fieldPresence","3":1,"4":1,"5":14,"6":".google.protobuf.FeatureSet.FieldPresence","8":{"17":1,"19":[4,1],"20":[{"2":"EXPLICIT","3":900},{"2":"IMPLICIT","3":999},{"2":"EXPLICIT","3":1000}],"22":{"1":1000},"999":[]}},{"1":"enum_type","10":"enumType","3":2,"4":1,"5":14,"6":".google.protobuf.FeatureSet.EnumType","8":{"17":1,"19":[6,1],"20":[{"2":"CLOSED","3":900},{"2":"OPEN","3":999}],"22":{"1":1000},"999":[]}},{"1":"repeated_field_encoding","10":"repeatedFieldEncoding","3":3,"4":1,"5":14,"6":".google.protobuf.FeatureSet.RepeatedFieldEncoding","8":{"17":1,"19":[4,1],"20":[{"2":"EXPANDED","3":900},{"2":"PACKED","3":999}],"22":{"1":1000},"999":[]}},{"1":"utf8_validation","10":"utf8Validation","3":4,"4":1,"5":14,"6":".google.protobuf.FeatureSet.Utf8Validation","8":{"17":1,"19":[4,1],"20":[{"2":"NONE","3":900},{"2":"VERIFY","3":999}],"22":{"1":1000},"999":[]}},{"1":"message_encoding","10":"messageEncoding","3":5,"4":1,"5":14,"6":".google.protobuf.FeatureSet.MessageEncoding","8":{"17":1,"19":[4,1],"20":[{"2":"LENGTH_PREFIXED","3":900}],"22":{"1":1000},"999":[]}},{"1":"json_format","10":"jsonFormat","3":6,"4":1,"5":14,"6":".google.protobuf.FeatureSet.JsonFormat","8":{"17":1,"19":[3,6,1],"20":[{"2":"LEGACY_BEST_EFFORT","3":900},{"2":"ALLOW","3":999}],"22":{"1":1000},"999":[]}},{"1":"enforce_naming_style","10":"enforceNamingStyle","3":7,"4":1,"5":14,"6":".google.protobuf.FeatureSet.EnforceNamingStyle","8":{"17":2,"19":[1,2,3,4,5,6,7,8,9],"20":[{"2":"STYLE_LEGACY","3":900},{"2":"STYLE2024","3":1001}],"22":{"1":1001},"999":[]}}],"3":[],"4":[{"1":"FieldPresence","2":[{"1":"FIELD_PRESENCE_UNKNOWN","2":0},{"1":"EXPLICIT","2":1},{"1":"IMPLICIT","2":2},{"1":"LEGACY_REQUIRED","2":3}],"4":[],"5":[]},{"1":"EnumType","2":[{"1":"ENUM_TYPE_UNKNOWN","2":0},{"1":"OPEN","2":1},{"1":"CLOSED","2":2}],"4":[],"5":[]},{"1":"RepeatedFieldEncoding","2":[{"1":"REPEATED_FIELD_ENCODING_UNKNOWN","2":0},{"1":"PACKED","2":1},{"1":"EXPANDED","2":2}],"4":[],"5":[]},{"1":"Utf8Validation","2":[{"1":"UTF8_VALIDATION_UNKNOWN","2":0},{"1":"VERIFY","2":2},{"1":"NONE","2":3}],"4":[{"1":1,"2":1}],"5":[]},{"1":"MessageEncoding","2":[{"1":"MESSAGE_ENCODING_UNKNOWN","2":0},{"1":"LENGTH_PREFIXED","2":1},{"1":"DELIMITED","2":2}],"4":[],"5":[]},{"1":"JsonFormat","2":[{"1":"JSON_FORMAT_UNKNOWN","2":0},{"1":"ALLOW","2":1},{"1":"LEGACY_BEST_EFFORT","2":2}],"4":[],"5":[]},{"1":"EnforceNamingStyle","2":[{"1":"ENFORCE_NAMING_STYLE_UNKNOWN","2":0},{"1":"STYLE2024","2":1},{"1":"STYLE_LEGACY","2":2}],"4":[],"5":[]}],"5":[{"1":1000,"2":9995},{"1":9995,"2":10000},{"1":10000,"2":10001}],"6":[],"8":[],"9":[{"1":999,"2":1000}]},{"1":"FeatureSetDefaults","10":[],"2":[{"1":"defaults","10":"defaults","3":1,"4":3,"5":11,"6":".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault"},{"1":"minimum_edition","10":"minimumEdition","3":4,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"maximum_edition","10":"maximumEdition","3":5,"4":1,"5":14,"6":".google.protobuf.Edition"}],"3":[{"1":"FeatureSetEditionDefault","10":["features"],"2":[{"1":"edition","10":"edition","3":3,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"overridable_features","10":"overridableFeatures","3":4,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"fixed_features","10":"fixedFeatures","3":5,"4":1,"5":11,"6":".google.protobuf.FeatureSet"}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[{"1":1,"2":2},{"1":2,"2":3}]}],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"SourceCodeInfo","10":[],"2":[{"1":"location","10":"location","3":1,"4":3,"5":11,"6":".google.protobuf.SourceCodeInfo.Location"}],"3":[{"1":"Location","10":[],"2":[{"1":"path","10":"path","3":1,"4":3,"5":5,"8":{"19":[],"2":true,"20":[],"999":[]}},{"1":"span","10":"span","3":2,"4":3,"5":5,"8":{"19":[],"2":true,"20":[],"999":[]}},{"1":"leading_comments","10":"leadingComments","3":3,"4":1,"5":9},{"1":"trailing_comments","10":"trailingComments","3":4,"4":1,"5":9},{"1":"leading_detached_comments","10":"leadingDetachedComments","3":6,"4":3,"5":9}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"4":[],"5":[{"1":536000000,"2":536000001}],"6":[],"8":[],"9":[]},{"1":"GeneratedCodeInfo","10":[],"2":[{"1":"annotation","10":"annotation","3":1,"4":3,"5":11,"6":".google.protobuf.GeneratedCodeInfo.Annotation"}],"3":[{"1":"Annotation","10":[],"2":[{"1":"path","10":"path","3":1,"4":3,"5":5,"8":{"19":[],"2":true,"20":[],"999":[]}},{"1":"source_file","10":"sourceFile","3":2,"4":1,"5":9},{"1":"begin","10":"begin","3":3,"4":1,"5":5},{"1":"end","10":"end","3":4,"4":1,"5":5},{"1":"semantic","10":"semantic","3":5,"4":1,"5":14,"6":".google.protobuf.GeneratedCodeInfo.Annotation.Semantic"}],"3":[],"4":[{"1":"Semantic","2":[{"1":"NONE","2":0},{"1":"SET","2":1},{"1":"ALIAS","2":2}],"4":[],"5":[]}],"5":[],"6":[],"8":[],"9":[]}],"4":[],"5":[],"6":[],"8":[],"9":[]}],"5":[{"1":"Edition","2":[{"1":"EDITION_UNKNOWN","2":0},{"1":"EDITION_LEGACY","2":900},{"1":"EDITION_PROTO2","2":998},{"1":"EDITION_PROTO3","2":999},{"1":"EDITION_2023","2":1000},{"1":"EDITION_2024","2":1001},{"1":"EDITION_1_TEST_ONLY","2":1},{"1":"EDITION_2_TEST_ONLY","2":2},{"1":"EDITION_99997_TEST_ONLY","2":99997},{"1":"EDITION_99998_TEST_ONLY","2":99998},{"1":"EDITION_99999_TEST_ONLY","2":99999},{"1":"EDITION_MAX","2":2147483647}],"4":[],"5":[]}],"6":[],"7":[],"8":{"1":"com.google.protobuf","11":"google.golang.org/protobuf/types/descriptorpb","31":true,"36":"GPB","37":"Google.Protobuf.Reflection","8":"DescriptorProtos","9":1,"999":[]}}]},{".google.protobuf.DescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2]"],".google.protobuf.DescriptorProto.ExtensionRange":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2].\\"3\\"[0]"],".google.protobuf.DescriptorProto.ReservedRange":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2].\\"3\\"[1]"],".google.protobuf.Edition":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"5\\"[0]"],".google.protobuf.EnumDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[6]"],".google.protobuf.EnumDescriptorProto.EnumReservedRange":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[6].\\"3\\"[0]"],".google.protobuf.EnumOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[14]"],".google.protobuf.EnumValueDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[7]"],".google.protobuf.EnumValueOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[15]"],".google.protobuf.ExtensionRangeOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[3]"],".google.protobuf.ExtensionRangeOptions.Declaration":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[3].\\"3\\"[0]"],".google.protobuf.ExtensionRangeOptions.VerificationState":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[3].\\"4\\"[0]"],".google.protobuf.FeatureSet":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19]"],".google.protobuf.FeatureSet.EnforceNamingStyle":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[6]"],".google.protobuf.FeatureSet.EnumType":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[1]"],".google.protobuf.FeatureSet.FieldPresence":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[0]"],".google.protobuf.FeatureSet.JsonFormat":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[5]"],".google.protobuf.FeatureSet.MessageEncoding":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[4]"],".google.protobuf.FeatureSet.RepeatedFieldEncoding":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[2]"],".google.protobuf.FeatureSet.Utf8Validation":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[3]"],".google.protobuf.FeatureSetDefaults":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[20]"],".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[20].\\"3\\"[0]"],".google.protobuf.FieldDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[4]"],".google.protobuf.FieldDescriptorProto.Label":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[4].\\"4\\"[1]"],".google.protobuf.FieldDescriptorProto.Type":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[4].\\"4\\"[0]"],".google.protobuf.FieldOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12]"],".google.protobuf.FieldOptions.CType":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"4\\"[0]"],".google.protobuf.FieldOptions.EditionDefault":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"3\\"[0]"],".google.protobuf.FieldOptions.FeatureSupport":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"3\\"[1]"],".google.protobuf.FieldOptions.JSType":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"4\\"[1]"],".google.protobuf.FieldOptions.OptionRetention":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"4\\"[2]"],".google.protobuf.FieldOptions.OptionTargetType":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"4\\"[3]"],".google.protobuf.FileDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[1]"],".google.protobuf.FileDescriptorSet":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"],".google.protobuf.FileOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[10]"],".google.protobuf.FileOptions.OptimizeMode":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[10].\\"4\\"[0]"],".google.protobuf.GeneratedCodeInfo":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[22]"],".google.protobuf.GeneratedCodeInfo.Annotation":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[22].\\"3\\"[0]"],".google.protobuf.GeneratedCodeInfo.Annotation.Semantic":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[22].\\"3\\"[0].\\"4\\"[0]"],".google.protobuf.MessageOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[11]"],".google.protobuf.MethodDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[9]"],".google.protobuf.MethodOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[17]"],".google.protobuf.MethodOptions.IdempotencyLevel":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[17].\\"4\\"[0]"],".google.protobuf.OneofDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[5]"],".google.protobuf.OneofOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[13]"],".google.protobuf.ServiceDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[8]"],".google.protobuf.ServiceOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[16]"],".google.protobuf.SourceCodeInfo":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[21]"],".google.protobuf.SourceCodeInfo.Location":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[21].\\"3\\"[0]"],".google.protobuf.UninterpretedOption":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[18]"],".google.protobuf.UninterpretedOption.NamePart":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[18].\\"3\\"[0]"]}]' AS JSON);
+	RETURN CAST('[1,{"1":[{"1":"google/protobuf/descriptor.proto","2":"google.protobuf","4":[{"1":"FileDescriptorSet","2":[{"1":"file","10":"file","3":1,"4":3,"5":11,"6":".google.protobuf.FileDescriptorProto"}],"5":[{"1":536000000,"2":536000001}]},{"1":"FileDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"package","10":"package","3":2,"4":1,"5":9},{"1":"dependency","10":"dependency","3":3,"4":3,"5":9},{"1":"public_dependency","10":"publicDependency","3":10,"4":3,"5":5},{"1":"weak_dependency","10":"weakDependency","3":11,"4":3,"5":5},{"1":"message_type","10":"messageType","3":4,"4":3,"5":11,"6":".google.protobuf.DescriptorProto"},{"1":"enum_type","10":"enumType","3":5,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto"},{"1":"service","10":"service","3":6,"4":3,"5":11,"6":".google.protobuf.ServiceDescriptorProto"},{"1":"extension","10":"extension","3":7,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"options","10":"options","3":8,"4":1,"5":11,"6":".google.protobuf.FileOptions"},{"1":"source_code_info","10":"sourceCodeInfo","3":9,"4":1,"5":11,"6":".google.protobuf.SourceCodeInfo"},{"1":"syntax","10":"syntax","3":12,"4":1,"5":9},{"1":"edition","10":"edition","3":14,"4":1,"5":14,"6":".google.protobuf.Edition"}]},{"1":"DescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"field","10":"field","3":2,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"extension","10":"extension","3":6,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"nested_type","10":"nestedType","3":3,"4":3,"5":11,"6":".google.protobuf.DescriptorProto"},{"1":"enum_type","10":"enumType","3":4,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto"},{"1":"extension_range","10":"extensionRange","3":5,"4":3,"5":11,"6":".google.protobuf.DescriptorProto.ExtensionRange"},{"1":"oneof_decl","10":"oneofDecl","3":8,"4":3,"5":11,"6":".google.protobuf.OneofDescriptorProto"},{"1":"options","10":"options","3":7,"4":1,"5":11,"6":".google.protobuf.MessageOptions"},{"1":"reserved_range","10":"reservedRange","3":9,"4":3,"5":11,"6":".google.protobuf.DescriptorProto.ReservedRange"},{"1":"reserved_name","10":"reservedName","3":10,"4":3,"5":9}],"3":[{"1":"ExtensionRange","2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.ExtensionRangeOptions"}]},{"1":"ReservedRange","2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5}]}]},{"1":"ExtensionRangeOptions","2":[{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"},{"1":"declaration","10":"declaration","3":2,"4":3,"5":11,"6":".google.protobuf.ExtensionRangeOptions.Declaration","8":{"17":2}},{"1":"features","10":"features","3":50,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"verification","10":"verification","3":3,"4":1,"5":14,"6":".google.protobuf.ExtensionRangeOptions.VerificationState","7":"UNVERIFIED","8":{"17":2}}],"3":[{"1":"Declaration","2":[{"1":"number","10":"number","3":1,"4":1,"5":5},{"1":"full_name","10":"fullName","3":2,"4":1,"5":9},{"1":"type","10":"type","3":3,"4":1,"5":9},{"1":"reserved","10":"reserved","3":5,"4":1,"5":8},{"1":"repeated","10":"repeated","3":6,"4":1,"5":8}],"9":[{"1":4,"2":5}]}],"4":[{"1":"VerificationState","2":[{"1":"DECLARATION","2":0},{"1":"UNVERIFIED","2":1}]}],"5":[{"1":1000,"2":536870912}]},{"1":"FieldDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"number","10":"number","3":3,"4":1,"5":5},{"1":"label","10":"label","3":4,"4":1,"5":14,"6":".google.protobuf.FieldDescriptorProto.Label"},{"1":"type","10":"type","3":5,"4":1,"5":14,"6":".google.protobuf.FieldDescriptorProto.Type"},{"1":"type_name","10":"typeName","3":6,"4":1,"5":9},{"1":"extendee","10":"extendee","3":2,"4":1,"5":9},{"1":"default_value","10":"defaultValue","3":7,"4":1,"5":9},{"1":"oneof_index","10":"oneofIndex","3":9,"4":1,"5":5},{"1":"json_name","10":"jsonName","3":10,"4":1,"5":9},{"1":"options","10":"options","3":8,"4":1,"5":11,"6":".google.protobuf.FieldOptions"},{"1":"proto3_optional","10":"proto3Optional","3":17,"4":1,"5":8}],"4":[{"1":"Type","2":[{"1":"TYPE_DOUBLE","2":1},{"1":"TYPE_FLOAT","2":2},{"1":"TYPE_INT64","2":3},{"1":"TYPE_UINT64","2":4},{"1":"TYPE_INT32","2":5},{"1":"TYPE_FIXED64","2":6},{"1":"TYPE_FIXED32","2":7},{"1":"TYPE_BOOL","2":8},{"1":"TYPE_STRING","2":9},{"1":"TYPE_GROUP","2":10},{"1":"TYPE_MESSAGE","2":11},{"1":"TYPE_BYTES","2":12},{"1":"TYPE_UINT32","2":13},{"1":"TYPE_ENUM","2":14},{"1":"TYPE_SFIXED32","2":15},{"1":"TYPE_SFIXED64","2":16},{"1":"TYPE_SINT32","2":17},{"1":"TYPE_SINT64","2":18}]},{"1":"Label","2":[{"1":"LABEL_OPTIONAL","2":1},{"1":"LABEL_REPEATED","2":3},{"1":"LABEL_REQUIRED","2":2}]}]},{"1":"OneofDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"options","10":"options","3":2,"4":1,"5":11,"6":".google.protobuf.OneofOptions"}]},{"1":"EnumDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":3,"5":11,"6":".google.protobuf.EnumValueDescriptorProto"},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.EnumOptions"},{"1":"reserved_range","10":"reservedRange","3":4,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto.EnumReservedRange"},{"1":"reserved_name","10":"reservedName","3":5,"4":3,"5":9}],"3":[{"1":"EnumReservedRange","2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5}]}]},{"1":"EnumValueDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"number","10":"number","3":2,"4":1,"5":5},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.EnumValueOptions"}]},{"1":"ServiceDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"method","10":"method","3":2,"4":3,"5":11,"6":".google.protobuf.MethodDescriptorProto"},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.ServiceOptions"}]},{"1":"MethodDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"input_type","10":"inputType","3":2,"4":1,"5":9},{"1":"output_type","10":"outputType","3":3,"4":1,"5":9},{"1":"options","10":"options","3":4,"4":1,"5":11,"6":".google.protobuf.MethodOptions"},{"1":"client_streaming","10":"clientStreaming","3":5,"4":1,"5":8,"7":"false"},{"1":"server_streaming","10":"serverStreaming","3":6,"4":1,"5":8,"7":"false"}]},{"1":"FileOptions","10":["php_generic_services"],"2":[{"1":"java_package","10":"javaPackage","3":1,"4":1,"5":9},{"1":"java_outer_classname","10":"javaOuterClassname","3":8,"4":1,"5":9},{"1":"java_multiple_files","10":"javaMultipleFiles","3":10,"4":1,"5":8,"7":"false"},{"1":"java_generate_equals_and_hash","10":"javaGenerateEqualsAndHash","3":20,"4":1,"5":8,"8":{"3":true}},{"1":"java_string_check_utf8","10":"javaStringCheckUtf8","3":27,"4":1,"5":8,"7":"false"},{"1":"optimize_for","10":"optimizeFor","3":9,"4":1,"5":14,"6":".google.protobuf.FileOptions.OptimizeMode","7":"SPEED"},{"1":"go_package","10":"goPackage","3":11,"4":1,"5":9},{"1":"cc_generic_services","10":"ccGenericServices","3":16,"4":1,"5":8,"7":"false"},{"1":"java_generic_services","10":"javaGenericServices","3":17,"4":1,"5":8,"7":"false"},{"1":"py_generic_services","10":"pyGenericServices","3":18,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":23,"4":1,"5":8,"7":"false"},{"1":"cc_enable_arenas","10":"ccEnableArenas","3":31,"4":1,"5":8,"7":"true"},{"1":"objc_class_prefix","10":"objcClassPrefix","3":36,"4":1,"5":9},{"1":"csharp_namespace","10":"csharpNamespace","3":37,"4":1,"5":9},{"1":"swift_prefix","10":"swiftPrefix","3":39,"4":1,"5":9},{"1":"php_class_prefix","10":"phpClassPrefix","3":40,"4":1,"5":9},{"1":"php_namespace","10":"phpNamespace","3":41,"4":1,"5":9},{"1":"php_metadata_namespace","10":"phpMetadataNamespace","3":44,"4":1,"5":9},{"1":"ruby_package","10":"rubyPackage","3":45,"4":1,"5":9},{"1":"features","10":"features","3":50,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"4":[{"1":"OptimizeMode","2":[{"1":"SPEED","2":1},{"1":"CODE_SIZE","2":2},{"1":"LITE_RUNTIME","2":3}]}],"5":[{"1":1000,"2":536870912}],"9":[{"1":42,"2":43},{"1":38,"2":39}]},{"1":"MessageOptions","2":[{"1":"message_set_wire_format","10":"messageSetWireFormat","3":1,"4":1,"5":8,"7":"false"},{"1":"no_standard_descriptor_accessor","10":"noStandardDescriptorAccessor","3":2,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"map_entry","10":"mapEntry","3":7,"4":1,"5":8},{"1":"deprecated_legacy_json_field_conflicts","10":"deprecatedLegacyJsonFieldConflicts","3":11,"4":1,"5":8,"8":{"3":true}},{"1":"features","10":"features","3":12,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}],"9":[{"1":4,"2":5},{"1":5,"2":6},{"1":6,"2":7},{"1":8,"2":9},{"1":9,"2":10}]},{"1":"FieldOptions","2":[{"1":"ctype","10":"ctype","3":1,"4":1,"5":14,"6":".google.protobuf.FieldOptions.CType","7":"STRING"},{"1":"packed","10":"packed","3":2,"4":1,"5":8},{"1":"jstype","10":"jstype","3":6,"4":1,"5":14,"6":".google.protobuf.FieldOptions.JSType","7":"JS_NORMAL"},{"1":"lazy","10":"lazy","3":5,"4":1,"5":8,"7":"false"},{"1":"unverified_lazy","10":"unverifiedLazy","3":15,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"weak","10":"weak","3":10,"4":1,"5":8,"7":"false"},{"1":"debug_redact","10":"debugRedact","3":16,"4":1,"5":8,"7":"false"},{"1":"retention","10":"retention","3":17,"4":1,"5":14,"6":".google.protobuf.FieldOptions.OptionRetention"},{"1":"targets","10":"targets","3":19,"4":3,"5":14,"6":".google.protobuf.FieldOptions.OptionTargetType"},{"1":"edition_defaults","10":"editionDefaults","3":20,"4":3,"5":11,"6":".google.protobuf.FieldOptions.EditionDefault"},{"1":"features","10":"features","3":21,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"feature_support","10":"featureSupport","3":22,"4":1,"5":11,"6":".google.protobuf.FieldOptions.FeatureSupport"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"3":[{"1":"EditionDefault","2":[{"1":"edition","10":"edition","3":3,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"value","10":"value","3":2,"4":1,"5":9}]},{"1":"FeatureSupport","2":[{"1":"edition_introduced","10":"editionIntroduced","3":1,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"edition_deprecated","10":"editionDeprecated","3":2,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"deprecation_warning","10":"deprecationWarning","3":3,"4":1,"5":9},{"1":"edition_removed","10":"editionRemoved","3":4,"4":1,"5":14,"6":".google.protobuf.Edition"}]}],"4":[{"1":"CType","2":[{"1":"STRING","2":0},{"1":"CORD","2":1},{"1":"STRING_PIECE","2":2}]},{"1":"JSType","2":[{"1":"JS_NORMAL","2":0},{"1":"JS_STRING","2":1},{"1":"JS_NUMBER","2":2}]},{"1":"OptionRetention","2":[{"1":"RETENTION_UNKNOWN","2":0},{"1":"RETENTION_RUNTIME","2":1},{"1":"RETENTION_SOURCE","2":2}]},{"1":"OptionTargetType","2":[{"1":"TARGET_TYPE_UNKNOWN","2":0},{"1":"TARGET_TYPE_FILE","2":1},{"1":"TARGET_TYPE_EXTENSION_RANGE","2":2},{"1":"TARGET_TYPE_MESSAGE","2":3},{"1":"TARGET_TYPE_FIELD","2":4},{"1":"TARGET_TYPE_ONEOF","2":5},{"1":"TARGET_TYPE_ENUM","2":6},{"1":"TARGET_TYPE_ENUM_ENTRY","2":7},{"1":"TARGET_TYPE_SERVICE","2":8},{"1":"TARGET_TYPE_METHOD","2":9}]}],"5":[{"1":1000,"2":536870912}],"9":[{"1":4,"2":5},{"1":18,"2":19}]},{"1":"OneofOptions","2":[{"1":"features","10":"features","3":1,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}]},{"1":"EnumOptions","2":[{"1":"allow_alias","10":"allowAlias","3":2,"4":1,"5":8},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"deprecated_legacy_json_field_conflicts","10":"deprecatedLegacyJsonFieldConflicts","3":6,"4":1,"5":8,"8":{"3":true}},{"1":"features","10":"features","3":7,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}],"9":[{"1":5,"2":6}]},{"1":"EnumValueOptions","2":[{"1":"deprecated","10":"deprecated","3":1,"4":1,"5":8,"7":"false"},{"1":"features","10":"features","3":2,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"debug_redact","10":"debugRedact","3":3,"4":1,"5":8,"7":"false"},{"1":"feature_support","10":"featureSupport","3":4,"4":1,"5":11,"6":".google.protobuf.FieldOptions.FeatureSupport"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}]},{"1":"ServiceOptions","2":[{"1":"features","10":"features","3":34,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"deprecated","10":"deprecated","3":33,"4":1,"5":8,"7":"false"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}]},{"1":"MethodOptions","2":[{"1":"deprecated","10":"deprecated","3":33,"4":1,"5":8,"7":"false"},{"1":"idempotency_level","10":"idempotencyLevel","3":34,"4":1,"5":14,"6":".google.protobuf.MethodOptions.IdempotencyLevel","7":"IDEMPOTENCY_UNKNOWN"},{"1":"features","10":"features","3":35,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"4":[{"1":"IdempotencyLevel","2":[{"1":"IDEMPOTENCY_UNKNOWN","2":0},{"1":"NO_SIDE_EFFECTS","2":1},{"1":"IDEMPOTENT","2":2}]}],"5":[{"1":1000,"2":536870912}]},{"1":"UninterpretedOption","2":[{"1":"name","10":"name","3":2,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption.NamePart"},{"1":"identifier_value","10":"identifierValue","3":3,"4":1,"5":9},{"1":"positive_int_value","10":"positiveIntValue","3":4,"4":1,"5":4},{"1":"negative_int_value","10":"negativeIntValue","3":5,"4":1,"5":3},{"1":"double_value","10":"doubleValue","3":6,"4":1,"5":1},{"1":"string_value","10":"stringValue","3":7,"4":1,"5":12},{"1":"aggregate_value","10":"aggregateValue","3":8,"4":1,"5":9}],"3":[{"1":"NamePart","2":[{"1":"name_part","10":"namePart","3":1,"4":2,"5":9},{"1":"is_extension","10":"isExtension","3":2,"4":2,"5":8}]}]},{"1":"FeatureSet","2":[{"1":"field_presence","10":"fieldPresence","3":1,"4":1,"5":14,"6":".google.protobuf.FeatureSet.FieldPresence","8":{"17":1,"19":[4,1],"20":[{"2":"EXPLICIT","3":900},{"2":"IMPLICIT","3":999},{"2":"EXPLICIT","3":1000}],"22":{"1":1000}}},{"1":"enum_type","10":"enumType","3":2,"4":1,"5":14,"6":".google.protobuf.FeatureSet.EnumType","8":{"17":1,"19":[6,1],"20":[{"2":"CLOSED","3":900},{"2":"OPEN","3":999}],"22":{"1":1000}}},{"1":"repeated_field_encoding","10":"repeatedFieldEncoding","3":3,"4":1,"5":14,"6":".google.protobuf.FeatureSet.RepeatedFieldEncoding","8":{"17":1,"19":[4,1],"20":[{"2":"EXPANDED","3":900},{"2":"PACKED","3":999}],"22":{"1":1000}}},{"1":"utf8_validation","10":"utf8Validation","3":4,"4":1,"5":14,"6":".google.protobuf.FeatureSet.Utf8Validation","8":{"17":1,"19":[4,1],"20":[{"2":"NONE","3":900},{"2":"VERIFY","3":999}],"22":{"1":1000}}},{"1":"message_encoding","10":"messageEncoding","3":5,"4":1,"5":14,"6":".google.protobuf.FeatureSet.MessageEncoding","8":{"17":1,"19":[4,1],"20":[{"2":"LENGTH_PREFIXED","3":900}],"22":{"1":1000}}},{"1":"json_format","10":"jsonFormat","3":6,"4":1,"5":14,"6":".google.protobuf.FeatureSet.JsonFormat","8":{"17":1,"19":[3,6,1],"20":[{"2":"LEGACY_BEST_EFFORT","3":900},{"2":"ALLOW","3":999}],"22":{"1":1000}}},{"1":"enforce_naming_style","10":"enforceNamingStyle","3":7,"4":1,"5":14,"6":".google.protobuf.FeatureSet.EnforceNamingStyle","8":{"17":2,"19":[1,2,3,4,5,6,7,8,9],"20":[{"2":"STYLE_LEGACY","3":900},{"2":"STYLE2024","3":1001}],"22":{"1":1001}}}],"4":[{"1":"FieldPresence","2":[{"1":"FIELD_PRESENCE_UNKNOWN","2":0},{"1":"EXPLICIT","2":1},{"1":"IMPLICIT","2":2},{"1":"LEGACY_REQUIRED","2":3}]},{"1":"EnumType","2":[{"1":"ENUM_TYPE_UNKNOWN","2":0},{"1":"OPEN","2":1},{"1":"CLOSED","2":2}]},{"1":"RepeatedFieldEncoding","2":[{"1":"REPEATED_FIELD_ENCODING_UNKNOWN","2":0},{"1":"PACKED","2":1},{"1":"EXPANDED","2":2}]},{"1":"Utf8Validation","2":[{"1":"UTF8_VALIDATION_UNKNOWN","2":0},{"1":"VERIFY","2":2},{"1":"NONE","2":3}],"4":[{"1":1,"2":1}]},{"1":"MessageEncoding","2":[{"1":"MESSAGE_ENCODING_UNKNOWN","2":0},{"1":"LENGTH_PREFIXED","2":1},{"1":"DELIMITED","2":2}]},{"1":"JsonFormat","2":[{"1":"JSON_FORMAT_UNKNOWN","2":0},{"1":"ALLOW","2":1},{"1":"LEGACY_BEST_EFFORT","2":2}]},{"1":"EnforceNamingStyle","2":[{"1":"ENFORCE_NAMING_STYLE_UNKNOWN","2":0},{"1":"STYLE2024","2":1},{"1":"STYLE_LEGACY","2":2}]}],"5":[{"1":1000,"2":9995},{"1":9995,"2":10000},{"1":10000,"2":10001}],"9":[{"1":999,"2":1000}]},{"1":"FeatureSetDefaults","2":[{"1":"defaults","10":"defaults","3":1,"4":3,"5":11,"6":".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault"},{"1":"minimum_edition","10":"minimumEdition","3":4,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"maximum_edition","10":"maximumEdition","3":5,"4":1,"5":14,"6":".google.protobuf.Edition"}],"3":[{"1":"FeatureSetEditionDefault","10":["features"],"2":[{"1":"edition","10":"edition","3":3,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"overridable_features","10":"overridableFeatures","3":4,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"fixed_features","10":"fixedFeatures","3":5,"4":1,"5":11,"6":".google.protobuf.FeatureSet"}],"9":[{"1":1,"2":2},{"1":2,"2":3}]}]},{"1":"SourceCodeInfo","2":[{"1":"location","10":"location","3":1,"4":3,"5":11,"6":".google.protobuf.SourceCodeInfo.Location"}],"3":[{"1":"Location","2":[{"1":"path","10":"path","3":1,"4":3,"5":5,"8":{"2":true}},{"1":"span","10":"span","3":2,"4":3,"5":5,"8":{"2":true}},{"1":"leading_comments","10":"leadingComments","3":3,"4":1,"5":9},{"1":"trailing_comments","10":"trailingComments","3":4,"4":1,"5":9},{"1":"leading_detached_comments","10":"leadingDetachedComments","3":6,"4":3,"5":9}]}],"5":[{"1":536000000,"2":536000001}]},{"1":"GeneratedCodeInfo","2":[{"1":"annotation","10":"annotation","3":1,"4":3,"5":11,"6":".google.protobuf.GeneratedCodeInfo.Annotation"}],"3":[{"1":"Annotation","2":[{"1":"path","10":"path","3":1,"4":3,"5":5,"8":{"2":true}},{"1":"source_file","10":"sourceFile","3":2,"4":1,"5":9},{"1":"begin","10":"begin","3":3,"4":1,"5":5},{"1":"end","10":"end","3":4,"4":1,"5":5},{"1":"semantic","10":"semantic","3":5,"4":1,"5":14,"6":".google.protobuf.GeneratedCodeInfo.Annotation.Semantic"}],"4":[{"1":"Semantic","2":[{"1":"NONE","2":0},{"1":"SET","2":1},{"1":"ALIAS","2":2}]}]}]}],"5":[{"1":"Edition","2":[{"1":"EDITION_UNKNOWN","2":0},{"1":"EDITION_LEGACY","2":900},{"1":"EDITION_PROTO2","2":998},{"1":"EDITION_PROTO3","2":999},{"1":"EDITION_2023","2":1000},{"1":"EDITION_2024","2":1001},{"1":"EDITION_1_TEST_ONLY","2":1},{"1":"EDITION_2_TEST_ONLY","2":2},{"1":"EDITION_99997_TEST_ONLY","2":99997},{"1":"EDITION_99998_TEST_ONLY","2":99998},{"1":"EDITION_99999_TEST_ONLY","2":99999},{"1":"EDITION_MAX","2":2147483647}]}],"8":{"1":"com.google.protobuf","11":"google.golang.org/protobuf/types/descriptorpb","31":true,"36":"GPB","37":"Google.Protobuf.Reflection","8":"DescriptorProtos","9":1}}]},{".google.protobuf.DescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2]"],".google.protobuf.DescriptorProto.ExtensionRange":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2].\\"3\\"[0]"],".google.protobuf.DescriptorProto.ReservedRange":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2].\\"3\\"[1]"],".google.protobuf.Edition":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"5\\"[0]"],".google.protobuf.EnumDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[6]"],".google.protobuf.EnumDescriptorProto.EnumReservedRange":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[6].\\"3\\"[0]"],".google.protobuf.EnumOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[14]"],".google.protobuf.EnumValueDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[7]"],".google.protobuf.EnumValueOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[15]"],".google.protobuf.ExtensionRangeOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[3]"],".google.protobuf.ExtensionRangeOptions.Declaration":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[3].\\"3\\"[0]"],".google.protobuf.ExtensionRangeOptions.VerificationState":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[3].\\"4\\"[0]"],".google.protobuf.FeatureSet":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19]"],".google.protobuf.FeatureSet.EnforceNamingStyle":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[6]"],".google.protobuf.FeatureSet.EnumType":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[1]"],".google.protobuf.FeatureSet.FieldPresence":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[0]"],".google.protobuf.FeatureSet.JsonFormat":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[5]"],".google.protobuf.FeatureSet.MessageEncoding":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[4]"],".google.protobuf.FeatureSet.RepeatedFieldEncoding":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[2]"],".google.protobuf.FeatureSet.Utf8Validation":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[3]"],".google.protobuf.FeatureSetDefaults":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[20]"],".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[20].\\"3\\"[0]"],".google.protobuf.FieldDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[4]"],".google.protobuf.FieldDescriptorProto.Label":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[4].\\"4\\"[1]"],".google.protobuf.FieldDescriptorProto.Type":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[4].\\"4\\"[0]"],".google.protobuf.FieldOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12]"],".google.protobuf.FieldOptions.CType":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"4\\"[0]"],".google.protobuf.FieldOptions.EditionDefault":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"3\\"[0]"],".google.protobuf.FieldOptions.FeatureSupport":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"3\\"[1]"],".google.protobuf.FieldOptions.JSType":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"4\\"[1]"],".google.protobuf.FieldOptions.OptionRetention":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"4\\"[2]"],".google.protobuf.FieldOptions.OptionTargetType":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"4\\"[3]"],".google.protobuf.FileDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[1]"],".google.protobuf.FileDescriptorSet":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"],".google.protobuf.FileOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[10]"],".google.protobuf.FileOptions.OptimizeMode":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[10].\\"4\\"[0]"],".google.protobuf.GeneratedCodeInfo":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[22]"],".google.protobuf.GeneratedCodeInfo.Annotation":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[22].\\"3\\"[0]"],".google.protobuf.GeneratedCodeInfo.Annotation.Semantic":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[22].\\"3\\"[0].\\"4\\"[0]"],".google.protobuf.MessageOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[11]"],".google.protobuf.MethodDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[9]"],".google.protobuf.MethodOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[17]"],".google.protobuf.MethodOptions.IdempotencyLevel":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[17].\\"4\\"[0]"],".google.protobuf.OneofDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[5]"],".google.protobuf.OneofOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[13]"],".google.protobuf.ServiceDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[8]"],".google.protobuf.ServiceOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[16]"],".google.protobuf.SourceCodeInfo":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[21]"],".google.protobuf.SourceCodeInfo.Location":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[21].\\"3\\"[0]"],".google.protobuf.UninterpretedOption":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[18]"],".google.protobuf.UninterpretedOption.NamePart":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[18].\\"3\\"[0]"]}]' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_google_struct_proto $$
 CREATE FUNCTION _pb_google_struct_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/struct.proto","10":[],"11":[],"12":"proto3","2":"google.protobuf","3":[],"4":[{"1":"Struct","10":[],"2":[{"1":"fields","10":"fields","3":1,"4":3,"5":11,"6":".google.protobuf.Struct.FieldsEntry"}],"3":[{"1":"FieldsEntry","10":[],"2":[{"1":"key","10":"key","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":1,"5":11,"6":".google.protobuf.Value"}],"3":[],"4":[],"5":[],"6":[],"7":{"7":true,"999":[]},"8":[],"9":[]}],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"Value","10":[],"2":[{"1":"null_value","10":"nullValue","3":1,"4":1,"5":14,"6":".google.protobuf.NullValue","9":0},{"1":"number_value","10":"numberValue","3":2,"4":1,"5":1,"9":0},{"1":"string_value","10":"stringValue","3":3,"4":1,"5":9,"9":0},{"1":"bool_value","10":"boolValue","3":4,"4":1,"5":8,"9":0},{"1":"struct_value","10":"structValue","3":5,"4":1,"5":11,"6":".google.protobuf.Struct","9":0},{"1":"list_value","10":"listValue","3":6,"4":1,"5":11,"6":".google.protobuf.ListValue","9":0}],"3":[],"4":[],"5":[],"6":[],"8":[{"1":"kind"}],"9":[]},{"1":"ListValue","10":[],"2":[{"1":"values","10":"values","3":1,"4":3,"5":11,"6":".google.protobuf.Value"}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"5":[{"1":"NullValue","2":[{"1":"NULL_VALUE","2":0}],"4":[],"5":[]}],"6":[],"7":[],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/structpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"StructProto","999":[]}}]},{".google.protobuf.ListValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2]"],".google.protobuf.NullValue":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"5\\"[0]"],".google.protobuf.Struct":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"],".google.protobuf.Struct.FieldsEntry":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0].\\"3\\"[0]"],".google.protobuf.Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[1]"]}]' AS JSON);
+	RETURN CAST('[1,{"1":[{"1":"google/protobuf/struct.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Struct","2":[{"1":"fields","10":"fields","3":1,"4":3,"5":11,"6":".google.protobuf.Struct.FieldsEntry"}],"3":[{"1":"FieldsEntry","2":[{"1":"key","10":"key","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":1,"5":11,"6":".google.protobuf.Value"}],"7":{"7":true}}]},{"1":"Value","2":[{"1":"null_value","10":"nullValue","3":1,"4":1,"5":14,"6":".google.protobuf.NullValue","9":0},{"1":"number_value","10":"numberValue","3":2,"4":1,"5":1,"9":0},{"1":"string_value","10":"stringValue","3":3,"4":1,"5":9,"9":0},{"1":"bool_value","10":"boolValue","3":4,"4":1,"5":8,"9":0},{"1":"struct_value","10":"structValue","3":5,"4":1,"5":11,"6":".google.protobuf.Struct","9":0},{"1":"list_value","10":"listValue","3":6,"4":1,"5":11,"6":".google.protobuf.ListValue","9":0}],"8":[{"1":"kind"}]},{"1":"ListValue","2":[{"1":"values","10":"values","3":1,"4":3,"5":11,"6":".google.protobuf.Value"}]}],"5":[{"1":"NullValue","2":[{"1":"NULL_VALUE","2":0}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/structpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"StructProto"}}]},{".google.protobuf.ListValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2]"],".google.protobuf.NullValue":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"5\\"[0]"],".google.protobuf.Struct":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"],".google.protobuf.Struct.FieldsEntry":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0].\\"3\\"[0]"],".google.protobuf.Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[1]"]}]' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_google_field_mask_proto $$
 CREATE FUNCTION _pb_google_field_mask_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/field_mask.proto","10":[],"11":[],"12":"proto3","2":"google.protobuf","3":[],"4":[{"1":"FieldMask","10":[],"2":[{"1":"paths","10":"paths","3":1,"4":3,"5":9}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"5":[],"6":[],"7":[],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/fieldmaskpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"FieldMaskProto","999":[]}}]},{".google.protobuf.FieldMask":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
+	RETURN CAST('[1,{"1":[{"1":"google/protobuf/field_mask.proto","12":"proto3","2":"google.protobuf","4":[{"1":"FieldMask","2":[{"1":"paths","10":"paths","3":1,"4":3,"5":9}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/fieldmaskpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"FieldMaskProto"}}]},{".google.protobuf.FieldMask":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_google_wrappers_proto $$
 CREATE FUNCTION _pb_google_wrappers_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/wrappers.proto","10":[],"11":[],"12":"proto3","2":"google.protobuf","3":[],"4":[{"1":"DoubleValue","10":[],"2":[{"1":"value","10":"value","3":1,"4":1,"5":1}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"FloatValue","10":[],"2":[{"1":"value","10":"value","3":1,"4":1,"5":2}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"Int64Value","10":[],"2":[{"1":"value","10":"value","3":1,"4":1,"5":3}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"UInt64Value","10":[],"2":[{"1":"value","10":"value","3":1,"4":1,"5":4}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"Int32Value","10":[],"2":[{"1":"value","10":"value","3":1,"4":1,"5":5}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"UInt32Value","10":[],"2":[{"1":"value","10":"value","3":1,"4":1,"5":13}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"BoolValue","10":[],"2":[{"1":"value","10":"value","3":1,"4":1,"5":8}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"StringValue","10":[],"2":[{"1":"value","10":"value","3":1,"4":1,"5":9}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]},{"1":"BytesValue","10":[],"2":[{"1":"value","10":"value","3":1,"4":1,"5":12}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"5":[],"6":[],"7":[],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/wrapperspb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"WrappersProto","999":[]}}]},{".google.protobuf.BoolValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[6]"],".google.protobuf.BytesValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[8]"],".google.protobuf.DoubleValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"],".google.protobuf.FloatValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[1]"],".google.protobuf.Int32Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[4]"],".google.protobuf.Int64Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2]"],".google.protobuf.StringValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[7]"],".google.protobuf.UInt32Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[5]"],".google.protobuf.UInt64Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[3]"]}]' AS JSON);
+	RETURN CAST('[1,{"1":[{"1":"google/protobuf/wrappers.proto","12":"proto3","2":"google.protobuf","4":[{"1":"DoubleValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":1}]},{"1":"FloatValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":2}]},{"1":"Int64Value","2":[{"1":"value","10":"value","3":1,"4":1,"5":3}]},{"1":"UInt64Value","2":[{"1":"value","10":"value","3":1,"4":1,"5":4}]},{"1":"Int32Value","2":[{"1":"value","10":"value","3":1,"4":1,"5":5}]},{"1":"UInt32Value","2":[{"1":"value","10":"value","3":1,"4":1,"5":13}]},{"1":"BoolValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":8}]},{"1":"StringValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":9}]},{"1":"BytesValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":12}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/wrapperspb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"WrappersProto"}}]},{".google.protobuf.BoolValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[6]"],".google.protobuf.BytesValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[8]"],".google.protobuf.DoubleValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"],".google.protobuf.FloatValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[1]"],".google.protobuf.Int32Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[4]"],".google.protobuf.Int64Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2]"],".google.protobuf.StringValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[7]"],".google.protobuf.UInt32Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[5]"],".google.protobuf.UInt64Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[3]"]}]' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_google_timestamp_proto $$
 CREATE FUNCTION _pb_google_timestamp_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/timestamp.proto","10":[],"11":[],"12":"proto3","2":"google.protobuf","3":[],"4":[{"1":"Timestamp","10":[],"2":[{"1":"seconds","10":"seconds","3":1,"4":1,"5":3},{"1":"nanos","10":"nanos","3":2,"4":1,"5":5}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"5":[],"6":[],"7":[],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/timestamppb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"TimestampProto","999":[]}}]},{".google.protobuf.Timestamp":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
+	RETURN CAST('[1,{"1":[{"1":"google/protobuf/timestamp.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Timestamp","2":[{"1":"seconds","10":"seconds","3":1,"4":1,"5":3},{"1":"nanos","10":"nanos","3":2,"4":1,"5":5}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/timestamppb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"TimestampProto"}}]},{".google.protobuf.Timestamp":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_google_duration_proto $$
 CREATE FUNCTION _pb_google_duration_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/duration.proto","10":[],"11":[],"12":"proto3","2":"google.protobuf","3":[],"4":[{"1":"Duration","10":[],"2":[{"1":"seconds","10":"seconds","3":1,"4":1,"5":3},{"1":"nanos","10":"nanos","3":2,"4":1,"5":5}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"5":[],"6":[],"7":[],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/durationpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"DurationProto","999":[]}}]},{".google.protobuf.Duration":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
+	RETURN CAST('[1,{"1":[{"1":"google/protobuf/duration.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Duration","2":[{"1":"seconds","10":"seconds","3":1,"4":1,"5":3},{"1":"nanos","10":"nanos","3":2,"4":1,"5":5}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/durationpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"DurationProto"}}]},{".google.protobuf.Duration":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_google_any_proto $$
 CREATE FUNCTION _pb_google_any_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/any.proto","10":[],"11":[],"12":"proto3","2":"google.protobuf","3":[],"4":[{"1":"Any","10":[],"2":[{"1":"type_url","10":"typeUrl","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":1,"5":12}],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"5":[],"6":[],"7":[],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/anypb","36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"AnyProto","999":[]}}]},{".google.protobuf.Any":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
+	RETURN CAST('[1,{"1":[{"1":"google/protobuf/any.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Any","2":[{"1":"type_url","10":"typeUrl","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":1,"5":12}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/anypb","36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"AnyProto"}}]},{".google.protobuf.Any":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_google_empty_proto $$
 CREATE FUNCTION _pb_google_empty_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/empty.proto","10":[],"11":[],"12":"proto3","2":"google.protobuf","3":[],"4":[{"1":"Empty","10":[],"2":[],"3":[],"4":[],"5":[],"6":[],"8":[],"9":[]}],"5":[],"6":[],"7":[],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/emptypb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"EmptyProto","999":[]}}]},{".google.protobuf.Empty":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
+	RETURN CAST('[1,{"1":[{"1":"google/protobuf/empty.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Empty"}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/emptypb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"EmptyProto"}}]},{".google.protobuf.Empty":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
 END $$
