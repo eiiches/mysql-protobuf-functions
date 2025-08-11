@@ -1275,8 +1275,20 @@ BEGIN
 	WHEN 'DECIMAL' THEN
 		-- number_value (field 2)
 		SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+	WHEN 'DOUBLE' THEN
+		-- number_value (field 2)
+		SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
 	WHEN 'STRING' THEN
 		-- string_value (field 3)
+		SET result = pb_wire_json_set_string_field(result, 3, JSON_UNQUOTE(json_value));
+	WHEN 'DATETIME' THEN
+		-- string_value (field 3) - convert datetime to string
+		SET result = pb_wire_json_set_string_field(result, 3, JSON_UNQUOTE(json_value));
+	WHEN 'DATE' THEN
+		-- string_value (field 3) - convert date to string
+		SET result = pb_wire_json_set_string_field(result, 3, JSON_UNQUOTE(json_value));
+	WHEN 'TIME' THEN
+		-- string_value (field 3) - convert time to string
 		SET result = pb_wire_json_set_string_field(result, 3, JSON_UNQUOTE(json_value));
 	WHEN 'OBJECT' THEN
 		-- struct_value (field 5) - convert to Struct
@@ -1290,6 +1302,12 @@ BEGIN
 		IF list_wire_json IS NOT NULL THEN
 			SET result = pb_wire_json_set_message_field(result, 6, pb_wire_json_to_message(list_wire_json));
 		END IF;
+	WHEN 'BLOB' THEN
+		-- string_value (field 3) - treat binary as string
+		SET result = pb_wire_json_set_string_field(result, 3, JSON_UNQUOTE(json_value));
+	WHEN 'OPAQUE' THEN
+		-- string_value (field 3) - treat opaque as string
+		SET result = pb_wire_json_set_string_field(result, 3, JSON_UNQUOTE(json_value));
 	END CASE;
 END $$
 
