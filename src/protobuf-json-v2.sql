@@ -199,9 +199,9 @@ proc: BEGIN
 
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
-	-- Handle well-known types first
-	IF full_type_name LIKE '.google.protobuf.%' THEN
-		SET result = _pb_wire_json_decode_wkt_as_json(wire_json, full_type_name, as_number_json);
+	-- Handle well-known types first (only for regular JSON, not number JSON)
+	IF full_type_name LIKE '.google.protobuf.%' AND as_number_json = FALSE THEN
+		SET result = _pb_wire_json_decode_wkt_as_json(wire_json, full_type_name);
 		IF result IS NOT NULL THEN
 			LEAVE proc;
 		END IF;

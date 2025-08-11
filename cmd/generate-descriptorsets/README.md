@@ -1,10 +1,10 @@
-# protobuf-descriptor-proto
+# generate-descriptorsets
 
 This tool generates SQL functions that embed the `descriptor.proto` schema into MySQL for protobuf reflection and type validation.
 
 ## Overview
 
-The tool creates a MySQL stored function `_pb_get_descriptor_proto_set()` that returns the protobuf descriptor schema as JSON.
+The tool creates multiple MySQL stored functions that return various protobuf descriptor schemas as JSON, with the main function being `_pb_google_descriptor_proto()` for the core descriptor.proto schema.
 
 ## Descriptor Set JSON Format
 
@@ -15,7 +15,7 @@ For complete details about the format structure, see the [descriptorsetjson docu
 ## Usage
 
 ```bash
-go run cmd/protobuf-descriptor-proto/main.go > descriptor-proto.sql
+go run cmd/generate-descriptorsets/main.go > descriptor-proto.sql
 ```
 
 The generated SQL can be executed in MySQL to provide runtime protobuf schema information for descriptor parsing and validation.
@@ -24,10 +24,10 @@ The generated SQL can be executed in MySQL to provide runtime protobuf schema in
 
 ```sql
 -- Get the descriptor set JSON
-SELECT _pb_get_descriptor_proto_set();
+SELECT _pb_google_descriptor_proto();
 
 -- Use with pb_message_to_json
-SELECT pb_message_to_json(_pb_get_descriptor_proto_set(), '.google.protobuf.FileDescriptorProto', some_message);
+SELECT pb_message_to_json(_pb_google_descriptor_proto(), '.google.protobuf.FileDescriptorProto', some_message);
 ```
 
 ## Comparison with protoc-gen-descriptor_set_json
@@ -48,7 +48,7 @@ This tool generates the same output as running:
 
 ```bash
 protoc --descriptor_set_json_out=. \
-       --descriptor_set_json_opt=name=_pb_get_descriptor_proto_set \
+       --descriptor_set_json_opt=name=_pb_google_descriptor_proto \
        --include_imports \
        google/protobuf/descriptor.proto
 ```

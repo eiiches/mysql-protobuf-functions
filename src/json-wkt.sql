@@ -1,7 +1,7 @@
 DELIMITER $$
 
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_as_json $$
-CREATE FUNCTION _pb_wire_json_decode_wkt_as_json(wire_json JSON, full_type_name TEXT, as_number_json BOOLEAN) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION _pb_wire_json_decode_wkt_as_json(wire_json JSON, full_type_name TEXT) RETURNS JSON DETERMINISTIC
 BEGIN
 	CASE full_type_name
 	WHEN '.google.protobuf.Timestamp' THEN
@@ -21,17 +21,9 @@ BEGIN
 	WHEN '.google.protobuf.FloatValue' THEN
 		RETURN CAST(pb_wire_json_get_float_field(wire_json, 1, 0.0) AS JSON);
 	WHEN '.google.protobuf.Int64Value' THEN
-		IF as_number_json THEN
-			RETURN CAST(pb_wire_json_get_int64_field(wire_json, 1, 0) AS JSON);
-		ELSE
-			RETURN JSON_QUOTE(CAST(pb_wire_json_get_int64_field(wire_json, 1, 0) AS CHAR));
-		END IF;
+		RETURN JSON_QUOTE(CAST(pb_wire_json_get_int64_field(wire_json, 1, 0) AS CHAR));
 	WHEN '.google.protobuf.UInt64Value' THEN
-		IF as_number_json THEN
-			RETURN CAST(pb_wire_json_get_uint64_field(wire_json, 1, 0) AS JSON);
-		ELSE
-			RETURN JSON_QUOTE(CAST(pb_wire_json_get_uint64_field(wire_json, 1, 0) AS CHAR));
-		END IF;
+		RETURN JSON_QUOTE(CAST(pb_wire_json_get_uint64_field(wire_json, 1, 0) AS CHAR));
 	WHEN '.google.protobuf.Int32Value' THEN
 		RETURN CAST(pb_wire_json_get_int32_field(wire_json, 1, 0) AS JSON);
 	WHEN '.google.protobuf.UInt32Value' THEN

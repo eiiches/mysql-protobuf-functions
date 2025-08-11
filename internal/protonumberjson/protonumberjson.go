@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/eiiches/mysql-protobuf-functions/internal/protoreflectutils"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -35,35 +34,9 @@ func Marshal(m proto.Message) ([]byte, error) {
 	return json.Marshal(result)
 }
 
-var wellKnownTypes = map[string]func(protoreflect.Message) (interface{}, error){
-	"google.protobuf.Timestamp":   marshalWellKnownType,
-	"google.protobuf.Duration":    marshalWellKnownType,
-	"google.protobuf.Struct":      marshalWellKnownType,
-	"google.protobuf.ListValue":   marshalWellKnownType,
-	"google.protobuf.Value":       marshalWellKnownType,
-	"google.protobuf.Empty":       marshalWellKnownType,
-	"google.protobuf.FieldMask":   marshalWellKnownType,
-	"google.protobuf.DoubleValue": marshalWellKnownType,
-	"google.protobuf.FloatValue":  marshalWellKnownType,
-	"google.protobuf.Int64Value":  marshal64BitWrapper,
-	"google.protobuf.UInt64Value": marshal64BitWrapper,
-	"google.protobuf.Int32Value":  marshalWellKnownType,
-	"google.protobuf.UInt32Value": marshalWellKnownType,
-	"google.protobuf.BoolValue":   marshalWellKnownType,
-	"google.protobuf.StringValue": marshalWellKnownType,
-	"google.protobuf.BytesValue":  marshalWellKnownType,
-}
-
 func marshalMessage(msg protoreflect.Message) (interface{}, error) {
 	if msg == nil {
 		return nil, nil
-	}
-
-	fullName := string(msg.Descriptor().FullName())
-
-	// Handle well-known types
-	if handler, isWellKnown := wellKnownTypes[fullName]; isWellKnown {
-		return handler(msg)
 	}
 
 	result := make(map[string]interface{})
@@ -196,46 +169,4 @@ func marshalSingularField(value protoreflect.Value, field protoreflect.FieldDesc
 	default:
 		return nil, fmt.Errorf("unsupported kind: %v", field.Kind())
 	}
-}
-
-// marshalWellKnownType marshals most well-known types using protojson for correct ProtoJSON format
-func marshalWellKnownType(msg protoreflect.Message) (interface{}, error) {
-	// Use protojson to get correct ProtoJSON format
-	jsonBytes, err := protojson.Marshal(msg.Interface())
-	if err != nil {
-		return nil, err
-	}
-
-	var result interface{}
-	err = json.Unmarshal(jsonBytes, &result)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
-// marshal64BitWrapper handles Int64Value and UInt64Value to return numbers instead of strings
-func marshal64BitWrapper(msg protoreflect.Message) (interface{}, error) {
-	fullName := string(msg.Descriptor().FullName())
-
-	// Get the value field (field number 1)
-	valueField := msg.Descriptor().Fields().ByNumber(1)
-	if valueField == nil {
-		return nil, fmt.Errorf("wrapper type missing value field")
-	}
-
-	if !msg.Has(valueField) {
-		// Return the zero value as a number
-		if fullName == "google.protobuf.Int64Value" {
-			return int64(0), nil
-		}
-		return uint64(0), nil
-	}
-
-	value := msg.Get(valueField)
-	if fullName == "google.protobuf.Int64Value" {
-		return value.Int(), nil
-	}
-	return value.Uint(), nil
 }

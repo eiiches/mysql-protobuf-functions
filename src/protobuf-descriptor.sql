@@ -186,7 +186,7 @@ BEGIN
 
 	-- Convert FileDescriptorSet LONGBLOB to protonumberjson format
 	SET file_descriptor_set_number_json = _pb_message_to_number_json(
-		_pb_get_descriptor_proto_set(),
+		_pb_google_descriptor_proto(),
 		'.google.protobuf.FileDescriptorSet',
 		file_descriptor_set_blob
 	);
