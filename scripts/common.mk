@@ -136,6 +136,7 @@ coverage-ci: generate-coverage-lcov post-coverage-comment
 .PHONY: format
 format:
 	go tool gofumpt -l -w .
+	find src/ -name "*.sql" -type f -exec sed -i 's/[[:blank:]]*$$//' {} +
 
 .PHONY: lint
 lint:
