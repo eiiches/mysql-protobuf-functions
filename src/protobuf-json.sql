@@ -168,7 +168,7 @@ BEGIN
 	DECLARE element_index INT;
 	DECLARE wire_type INT;
 	DECLARE field_number INT;
-	DECLARE uint_value BIGINT;
+	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE datetime_part TEXT;
 
 	SET seconds = 0;
@@ -196,13 +196,18 @@ BEGIN
 		SET element_index = element_index + 1;
 	END WHILE;
 
-	SET seconds = seconds + FLOOR(nanos / 1000000000);
+	SET seconds = seconds + (nanos DIV 1000000000);
+	SET nanos = nanos % 1000000000;
 
-	IF seconds = 0 THEN
-		SET datetime_part = '1970-01-01 00:00:00';
-	ELSE
-		SET datetime_part = CONVERT_TZ(FROM_UNIXTIME(seconds), @@session.time_zone, '+00:00');
+	-- Validate timestamp range: [0001-01-01T00:00:00Z, 9999-12-31T23:59:59.999999999Z]
+	-- This corresponds to seconds range: [-62135596800, 253402300799]
+	-- Allow for 1 second tolerance in case of nanosecond normalization
+	IF seconds < -62135596800 OR seconds > 253402300800 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Timestamp out of range';
 	END IF;
+
+	-- Convert seconds since Unix epoch to datetime string using TIMESTAMPADD
+	SET datetime_part = TIMESTAMPADD(SECOND, seconds, '1970-01-01 00:00:00');
 
 	RETURN JSON_QUOTE(CONCAT(REPLACE(datetime_part, " ", "T"), _pb_util_format_fractional_seconds(nanos), "Z"));
 END $$
@@ -219,7 +224,7 @@ BEGIN
 	DECLARE element_index INT;
 	DECLARE wire_type INT;
 	DECLARE field_number INT;
-	DECLARE uint_value BIGINT;
+	DECLARE uint_value BIGINT UNSIGNED;
 
 	SET seconds = 0;
 	SET nanos = 0;
@@ -246,9 +251,20 @@ BEGIN
 		SET element_index = element_index + 1;
 	END WHILE;
 
-	SET seconds = seconds + FLOOR(nanos / 1000000000);
+	SET seconds = seconds + (nanos DIV 1000000000);
+	SET nanos = nanos % 1000000000;
 
-	RETURN JSON_QUOTE(CONCAT(CAST(seconds AS CHAR), _pb_util_format_fractional_seconds(nanos), 's'));
+	-- Validate duration range: [-315576000000, +315576000000] seconds
+	IF seconds < -315576000000 OR seconds > 315576000000 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Duration out of range';
+	END IF;
+
+	-- Handle case where seconds=0 but nanos<0 (e.g., -0.5s)
+	IF seconds = 0 AND nanos < 0 THEN
+		RETURN JSON_QUOTE(CONCAT('-0', _pb_util_format_fractional_seconds(nanos), 's'));
+	ELSE
+		RETURN JSON_QUOTE(CONCAT(CAST(seconds AS CHAR), _pb_util_format_fractional_seconds(nanos), 's'));
+	END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_struct_as_json $$
@@ -301,7 +317,7 @@ BEGIN
 	DECLARE wire_type INT;
 	DECLARE field_number INT;
 	DECLARE result JSON;
-	DECLARE uint_value BIGINT;
+	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE bytes_value LONGBLOB;
 
 	SET result = JSON_OBJECT();
@@ -387,15 +403,22 @@ END $$
 DROP FUNCTION IF EXISTS _pb_util_format_fractional_seconds $$
 CREATE FUNCTION _pb_util_format_fractional_seconds(nanos INT) RETURNS TEXT DETERMINISTIC
 BEGIN
+	DECLARE abs_nanos INT;
+
 	SET nanos = nanos % 1000000000;
 	IF nanos = 0 THEN
 		RETURN '';
-	ELSEIF nanos % 1000000 = 0 THEN
-		RETURN CONCAT('.', CAST(FLOOR(nanos / 1000000) AS CHAR)); -- 3 digits
-	ELSEIF nanos % 1000 = 0 THEN
-		RETURN CONCAT('.', CAST(FLOOR(nanos / 1000) AS CHAR)); -- 6 digits
+	END IF;
+
+	-- Handle negative nanoseconds
+	SET abs_nanos = ABS(nanos);
+
+	IF abs_nanos % 1000000 = 0 THEN
+		RETURN CONCAT('.', LPAD(CAST(abs_nanos DIV 1000000 AS CHAR), 3, '0')); -- 3 digits
+	ELSEIF abs_nanos % 1000 = 0 THEN
+		RETURN CONCAT('.', LPAD(CAST(abs_nanos DIV 1000 AS CHAR), 6, '0')); -- 6 digits
 	ELSE
-		RETURN CONCAT('.', CAST(nanos AS CHAR)); -- 9 digits
+		RETURN CONCAT('.', LPAD(CAST(abs_nanos AS CHAR), 9, '0')); -- 9 digits
 	END IF;
 END $$
 

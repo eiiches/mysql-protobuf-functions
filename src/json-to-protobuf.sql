@@ -79,24 +79,62 @@ BEGIN
 	DECLARE nanos INT;
 	DECLARE dot_pos INT;
 	DECLARE nanos_str TEXT;
+	DECLARE target_datetime DATETIME;
+	DECLARE timezone_offset TEXT;
+
+	-- Validate RFC 3339 format - must end with uppercase 'Z'
+	IF timestamp_str IS NULL OR timestamp_str = '' THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid timestamp format - empty timestamp';
+	END IF;
+
+	-- Validate RFC 3339 format (supports uppercase Z suffix or timezone offsets)
+	IF timestamp_str NOT REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$' COLLATE utf8mb4_bin THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid timestamp format - must follow RFC 3339 format';
+	END IF;
 
 	SET result = JSON_OBJECT();
-	-- Extract seconds part - treat input as UTC
-	-- Parse datetime and convert from UTC to session timezone for UNIX_TIMESTAMP
-	SET seconds = UNIX_TIMESTAMP(CONVERT_TZ(STR_TO_DATE(LEFT(timestamp_str, 19), '%Y-%m-%dT%H:%i:%s'), '+00:00', @@session.time_zone));
+	-- Convert timestamp string to seconds since Unix epoch, handling timezone offsets
+	-- Extract timezone from the input string and convert to UTC
+	IF timestamp_str LIKE '%Z' THEN
+		-- UTC timezone, parse directly
+		SET target_datetime = STR_TO_DATE(LEFT(timestamp_str, 19), '%Y-%m-%dT%H:%i:%s');
+	ELSEIF timestamp_str REGEXP '[+-][0-9]{2}:[0-9]{2}$' THEN
+		-- Handle timezone offset (+08:00, -08:00)
+		SET timezone_offset = RIGHT(timestamp_str, 6);
+		SET target_datetime = STR_TO_DATE(LEFT(timestamp_str, 19), '%Y-%m-%dT%H:%i:%s');
+		-- Convert from local timezone to UTC using CONVERT_TZ
+		SET target_datetime = CONVERT_TZ(target_datetime, timezone_offset, '+00:00');
+		IF target_datetime IS NULL THEN
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid timezone offset in timestamp';
+		END IF;
+	ELSE
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid timestamp format - must end with Z or timezone offset';
+	END IF;
+	SET seconds = TIMESTAMPDIFF(SECOND, '1970-01-01 00:00:00', target_datetime);
 
 	-- Extract nanoseconds if present
 	SET nanos = 0;
 	SET dot_pos = LOCATE('.', timestamp_str);
 	IF dot_pos > 0 THEN
 		SET nanos_str = SUBSTRING(timestamp_str, dot_pos + 1);
-		SET nanos_str = LEFT(nanos_str, LOCATE('Z', nanos_str) - 1);
+		-- Remove timezone suffix (Z or +/-HH:MM)
+		IF nanos_str LIKE '%Z' THEN
+			SET nanos_str = LEFT(nanos_str, LENGTH(nanos_str) - 1);
+		ELSEIF nanos_str REGEXP '[+-][0-9]{2}:[0-9]{2}$' THEN
+			SET nanos_str = LEFT(nanos_str, LENGTH(nanos_str) - 6);
+		END IF;
 		-- Pad or truncate to 9 digits for nanoseconds
 		WHILE LENGTH(nanos_str) < 9 DO
 			SET nanos_str = CONCAT(nanos_str, '0');
 		END WHILE;
 		SET nanos_str = LEFT(nanos_str, 9);
 		SET nanos = CAST(nanos_str AS UNSIGNED);
+	END IF;
+
+	-- Validate timestamp range: [0001-01-01T00:00:00Z, 9999-12-31T23:59:59.999999999Z]
+	-- This corresponds to seconds range: [-62135596800, 253402300799]
+	IF seconds < -62135596800 OR seconds > 253402300799 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Timestamp out of range';
 	END IF;
 
 	-- For proto3 semantics, omit default values (seconds=0 and nanos=0)
@@ -126,44 +164,66 @@ BEGIN
 	DECLARE dot_pos INT;
 	DECLARE s_pos INT;
 	DECLARE nanos_str TEXT;
+	DECLARE is_negative BOOLEAN DEFAULT FALSE;
+	DECLARE duration_without_s TEXT;
 
 	SET result = JSON_OBJECT();
 
+	-- Validate duration format - must end with 's'
+	IF duration_str IS NULL OR duration_str = '' THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid duration format - empty duration';
+	END IF;
+
 	-- Find 's' suffix
 	SET s_pos = LOCATE('s', duration_str);
-	IF s_pos > 0 THEN
-		SET duration_str = LEFT(duration_str, s_pos - 1);
-		SET dot_pos = LOCATE('.', duration_str);
+	IF s_pos = 0 OR s_pos <> LENGTH(duration_str) THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid duration format - must end with s';
+	END IF;
 
-		IF dot_pos > 0 THEN
-			-- Has fractional seconds
-			SET seconds = CAST(LEFT(duration_str, dot_pos - 1) AS SIGNED);
-			SET nanos_str = SUBSTRING(duration_str, dot_pos + 1);
-			-- Pad to 9 digits for nanoseconds
-			WHILE LENGTH(nanos_str) < 9 DO
-				SET nanos_str = CONCAT(nanos_str, '0');
-			END WHILE;
-			SET nanos_str = LEFT(nanos_str, 9);
-			SET nanos = CAST(nanos_str AS UNSIGNED);
-		ELSE
-			-- Whole seconds only
-			SET seconds = CAST(duration_str AS SIGNED);
-			SET nanos = 0;
-		END IF;
+	-- Remove 's' suffix and check for negative sign
+	SET duration_without_s = LEFT(duration_str, s_pos - 1);
+	SET is_negative = LEFT(TRIM(duration_without_s), 1) = '-';
 
-		-- For proto3 semantics, omit default values (seconds=0 and nanos=0)
-		IF seconds = 0 AND nanos = 0 THEN
-			RETURN result; -- Return empty wire_json
-		END IF;
+	SET dot_pos = LOCATE('.', duration_without_s);
 
-		-- Add non-default values
-		IF seconds <> 0 THEN
-			SET result = pb_wire_json_set_int64_field(result, 1, seconds);
-		END IF;
+	IF dot_pos > 0 THEN
+		-- Has fractional seconds
+		SET seconds = CAST(LEFT(duration_without_s, dot_pos - 1) AS SIGNED);
+		SET nanos_str = SUBSTRING(duration_without_s, dot_pos + 1);
+		-- Pad to 9 digits for nanoseconds
+		WHILE LENGTH(nanos_str) < 9 DO
+			SET nanos_str = CONCAT(nanos_str, '0');
+		END WHILE;
+		SET nanos_str = LEFT(nanos_str, 9);
+		SET nanos = CAST(nanos_str AS SIGNED);
 
-		IF nanos <> 0 THEN
-			SET result = pb_wire_json_set_int32_field(result, 2, nanos);
+		-- Handle negative durations: if seconds is negative or zero but original had minus, nanos should be negative
+		IF seconds < 0 OR (seconds = 0 AND is_negative) THEN
+			SET nanos = -nanos;
 		END IF;
+	ELSE
+		-- Whole seconds only
+		SET seconds = CAST(duration_without_s AS SIGNED);
+		SET nanos = 0;
+	END IF;
+
+	-- Validate duration range: [-315576000000, +315576000000] seconds
+	IF seconds < -315576000000 OR seconds > 315576000000 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Duration out of range';
+	END IF;
+
+	-- For proto3 semantics, omit default values (seconds=0 and nanos=0)
+	IF seconds = 0 AND nanos = 0 THEN
+		RETURN result; -- Return empty wire_json
+	END IF;
+
+	-- Add non-default values
+	IF seconds <> 0 THEN
+		SET result = pb_wire_json_set_int64_field(result, 1, seconds);
+	END IF;
+
+	IF nanos <> 0 THEN
+		SET result = pb_wire_json_set_int32_field(result, 2, nanos);
 	END IF;
 
 	RETURN result;
@@ -274,13 +334,19 @@ BEGIN
 	CASE full_type_name
 	WHEN '.google.protobuf.Timestamp' THEN
 		-- Parse RFC 3339 timestamp string like "1996-12-19T16:39:57.000340012Z"
-		IF JSON_TYPE(json_value) = 'STRING' THEN
+		IF JSON_TYPE(json_value) = 'NULL' THEN
+			-- Null timestamp should not produce any field in protobuf
+			RETURN NULL;
+		ELSEIF JSON_TYPE(json_value) = 'STRING' THEN
 			RETURN _pb_json_encode_wkt_timestamp_as_wire_json(JSON_UNQUOTE(json_value));
 		END IF;
 
 	WHEN '.google.protobuf.Duration' THEN
 		-- Parse duration string like "1.000340012s" or "3600s"
-		IF JSON_TYPE(json_value) = 'STRING' THEN
+		IF JSON_TYPE(json_value) = 'NULL' THEN
+			-- Null duration should not produce any field in protobuf
+			RETURN NULL;
+		ELSEIF JSON_TYPE(json_value) = 'STRING' THEN
 			RETURN _pb_json_encode_wkt_duration_as_wire_json(JSON_UNQUOTE(json_value));
 		END IF;
 
