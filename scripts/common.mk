@@ -29,6 +29,8 @@ PROTOBUF_JSON_SOURCES := \
 	src/protobuf-json.sql \
 	src/protobuf-json-v2.sql \
 	src/json-to-protobuf.sql \
+	src/json-to-number-json.sql \
+	src/number-json-to-json.sql \
 	src/json-wkt-timestamp.sql \
 	src/json-wkt-duration.sql \
 	src/json-wkt-struct.sql \
