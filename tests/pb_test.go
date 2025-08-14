@@ -164,6 +164,18 @@ func formatArguments(args ...any) string {
 	return strings.Join(formatted, ",")
 }
 
+func makeSqlString(s string) string {
+	// Escape single quotes, backslashes, and other special characters for MySQL
+	escaped := strings.ReplaceAll(s, "\\", "\\\\")       // Escape backslash first
+	escaped = strings.ReplaceAll(escaped, "'", "\\'")    // Escape single quotes
+	escaped = strings.ReplaceAll(escaped, "\n", "\\n")   // Escape newlines
+	escaped = strings.ReplaceAll(escaped, "\r", "\\r")   // Escape carriage returns
+	escaped = strings.ReplaceAll(escaped, "\t", "\\t")   // Escape tabs
+	escaped = strings.ReplaceAll(escaped, "\x00", "\\0") // Escape null bytes
+	escaped = strings.ReplaceAll(escaped, "\x1a", "\\Z") // Escape ctrl-Z
+	return "'" + escaped + "'"
+}
+
 func expandPlaceholders(expression string, args ...any) string {
 	result := expression
 	argIndex := 0
@@ -184,7 +196,7 @@ func expandPlaceholders(expression string, args ...any) string {
 		case []byte:
 			replacement = fmt.Sprintf("_binary X'%s'", strings.ToUpper(hex.EncodeToString(v)))
 		case string:
-			replacement = fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "''"))
+			replacement = makeSqlString(v)
 		case nil:
 			replacement = "NULL"
 		case bool:
@@ -199,8 +211,10 @@ func expandPlaceholders(expression string, args ...any) string {
 			replacement = fmt.Sprintf("%d", v)
 		case float32, float64:
 			replacement = fmt.Sprintf("%g", v)
+		case protoreflect.FullName:
+			replacement = makeSqlString(string(v))
 		default:
-			replacement = fmt.Sprintf("%v", v)
+			replacement = makeSqlString(fmt.Sprintf("%v", v))
 		}
 
 		// Replace the first occurrence of ?
