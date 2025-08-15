@@ -30,7 +30,7 @@ SELECT _pb_google_descriptor_proto();
 SELECT pb_message_to_json(_pb_google_descriptor_proto(), '.google.protobuf.FileDescriptorProto', some_message);
 ```
 
-## Comparison with protoc-gen-descriptor_set_json
+## Comparison with protoc-gen-mysql
 
 This tool serves a specific purpose in the MySQL protobuf ecosystem:
 
@@ -40,15 +40,15 @@ This tool serves a specific purpose in the MySQL protobuf ecosystem:
 - **Core Dependency**: Required for parsing `FileDescriptorSet` messages that contain user-defined schemas
 - **No protoc Dependency**: Can be used in environments where protoc is not available, as it generates the descriptor set programmatically
 
-For custom schemas, use the `@cmd/protoc-gen-descriptor_set_json/` plugin instead, which leverages this tool's output to process arbitrary protobuf files.
+For custom schemas, use the `@cmd/protoc-gen-mysql/` plugin instead, which leverages this tool's output to process arbitrary protobuf files.
 
 ## Equivalent protoc Command
 
 This tool generates the same output as running:
 
 ```bash
-protoc --descriptor_set_json_out=. \
-       --descriptor_set_json_opt=name=_pb_google_descriptor_proto \
+protoc --mysql_out=. \
+       --mysql_opt=name=_pb_google_descriptor_proto \
        --include_imports \
        google/protobuf/descriptor.proto
 ```

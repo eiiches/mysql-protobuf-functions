@@ -319,11 +319,11 @@ BEGIN
 		ELSE
 			-- Field is missing from number JSON - emit default value if requested for non-optional fields
 			IF emit_default_values THEN
-				-- Determine if field has presence-sensing 
+				-- Determine if field has presence-sensing
 				-- In proto3: message fields always have presence, optional fields have presence, oneof fields have presence
 				-- Only non-optional primitive fields lack presence
 				SET has_presence = proto3_optional OR (JSON_EXTRACT(field_descriptor, '$.\"9\"') IS NOT NULL) OR (field_type = 11); -- oneof_index or message type
-				
+
 				-- Only emit defaults for non-presence-sensing fields
 				IF NOT has_presence THEN
 					IF is_repeated THEN

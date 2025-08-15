@@ -4,11 +4,11 @@ test: purge reload ensure-test-database
 	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" -fuzz-iterations 20 $${GO_TEST_FLAGS:-}
 
 .PHONY: build
-build: build/protobuf.sql build/protobuf-json.sql protoc-gen-descriptor_set_json mysql-coverage
+build: build/protobuf.sql build/protobuf-json.sql protoc-gen-mysql mysql-coverage
 
-.PHONY: protoc-gen-descriptor_set_json
-protoc-gen-descriptor_set_json:
-	go build ./cmd/protoc-gen-descriptor_set_json/
+.PHONY: protoc-gen-mysql
+protoc-gen-mysql:
+	go build ./cmd/protoc-gen-mysql/
 
 .PHONY: mysql-coverage
 mysql-coverage:

@@ -12,14 +12,14 @@ This tutorial demonstrates JSON conversion features that require protobuf schema
 
 ## Loading Protobuf Schema
 
-Before using schema-aware functions, you need to load your protobuf schema definition into MySQL. For this tutorial, we'll use the `protoc-gen-descriptor_set_json` plugin approach.
+Before using schema-aware functions, you need to load your protobuf schema definition into MySQL. For this tutorial, we'll use the `protoc-gen-mysql` plugin approach.
 
 ### Install the Plugin
 
 First, install the protoc plugin:
 
 ```bash
-go install github.com/eiiches/mysql-protobuf-functions/cmd/protoc-gen-descriptor_set_json@latest
+go install github.com/eiiches/mysql-protobuf-functions/cmd/protoc-gen-mysql@latest
 ```
 
 ### Generate Schema Function
@@ -58,7 +58,7 @@ message Person {
 Generate the schema function:
 
 ```console
-$ protoc --descriptor_set_json_out=. --descriptor_set_json_opt=name=person_schema person.proto
+$ protoc --mysql_out=. --mysql_opt=name=person_schema person.proto
 ```
 
 This generates `person_schema.sql` containing a stored function. Load it into MySQL:
@@ -69,7 +69,7 @@ mysql -u your_username -p your_database < person_schema.sql
 
 You can now use the generated function `person_schema()` directly as the first argument to `pb_message_to_json()`.
 
-For other schema loading methods including `pb_build_descriptor_set_json()` and Go integration, see [Schema Loading Guide](schema-loading.md). For detailed information about the plugin, see [protoc-gen-descriptor_set_json documentation](../cmd/protoc-gen-descriptor_set_json/README.md).
+For other schema loading methods including `pb_build_descriptor_set_json()` and Go integration, see [Schema Loading Guide](schema-loading.md). For detailed information about the plugin, see [protoc-gen-mysql documentation](../cmd/protoc-gen-mysql/README.md).
 
 ## Converting Messages to JSON
 

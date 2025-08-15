@@ -63,10 +63,10 @@ $(CONFORMANCE_DESCRIPTOR_SET):
 # Generate schema SQL function from descriptor set
 $(CONFORMANCE_SCHEMA_SQL): $(CONFORMANCE_DESCRIPTOR_SET)
 	@echo "Generating conformance test message schema SQL..."
-	go run github.com/eiiches/mysql-protobuf-functions/cmd/protoc-gen-descriptor_set_json@latest \
+	go run github.com/eiiches/mysql-protobuf-functions/cmd/protoc-gen-mysql@latest \
 		--descriptor_set_in=$(CONFORMANCE_DESCRIPTOR_SET) \
 		--name=conformance_test_messages_schema \
-		--descriptor_set_json_out=.
+		--mysql_out=.
 
 # Run conformance tests
 .PHONY: test

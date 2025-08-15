@@ -19,3 +19,24 @@ func SnakeToUpperCamel(s string) string {
 	}
 	return builder.String()
 }
+
+func LowerCamelToSnake(s string) string {
+	if s == "" {
+		return ""
+	}
+
+	builder := strings.Builder{}
+	for i, ch := range s {
+		if 'A' <= ch && ch <= 'Z' {
+			// Add underscore before uppercase letters (except the first character)
+			if i > 0 {
+				builder.WriteRune('_')
+			}
+			// Convert to lowercase
+			builder.WriteRune(ch - 'A' + 'a')
+		} else {
+			builder.WriteRune(ch)
+		}
+	}
+	return builder.String()
+}

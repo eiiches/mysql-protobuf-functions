@@ -145,7 +145,7 @@ The implementation correctly distinguishes between:
 The conformance tests use dynamically generated schema functions:
 
 1. **Descriptor generation**: `protoc` generates binary descriptor sets from test `.proto` files
-2. **Schema conversion**: `protoc-gen-descriptor_set_json` converts descriptors to JSON format
+2. **Schema conversion**: `protoc-gen-mysql` converts descriptors to JSON format
 3. **SQL generation**: Creates `conformance_test_messages_schema()` MySQL function
 4. **Schema loading**: Function loaded into MySQL for use by conformance tests
 

@@ -5,15 +5,15 @@ This guide explains the different methods for loading and persisting protobuf sc
 
 ## Table of Contents
 
-- [Method 1: Using protoc-gen-descriptor_set_json (Recommended)](#method-1-using-protoc-gen-descriptor_set_json-recommended)
+- [Method 1: Using protoc-gen-mysql (Recommended)](#method-1-using-protoc-gen-mysql-recommended)
 - [Method 2: Using pb_build_descriptor_set_json](#method-2-using-pb_build_descriptor_set_json)
 - [Method 3: Using Go descriptorsetjson Package](#method-3-using-go-descriptorsetjson-package)
 
-## Method 1: Using protoc-gen-descriptor_set_json (Recommended)
+## Method 1: Using protoc-gen-mysql (Recommended)
 
 This method generates a MySQL stored function that returns the schema JSON directly.
 
-For complete documentation including troubleshooting, examples, and advanced options, see the [protoc-gen-descriptor_set_json README](../cmd/protoc-gen-descriptor_set_json/README.md).
+For complete documentation including troubleshooting, examples, and advanced options, see the [protoc-gen-mysql README](../cmd/protoc-gen-mysql/README.md).
 
 ### When To Use
 
@@ -25,15 +25,15 @@ For complete documentation including troubleshooting, examples, and advanced opt
 ### Step 1: Install the Plugin
 
 ```bash
-go install github.com/eiiches/mysql-protobuf-functions/cmd/protoc-gen-descriptor_set_json@latest
+go install github.com/eiiches/mysql-protobuf-functions/cmd/protoc-gen-mysql@latest
 ```
 
 ### Step 2: Generate Schema Function
 
 **Using protoc directly:**
 ```bash
-protoc --descriptor_set_json_out=. \
-       --descriptor_set_json_opt=name=person_schema \
+protoc --mysql_out=. \
+       --mysql_opt=name=person_schema \
        person.proto
 ```
 
@@ -42,9 +42,9 @@ protoc --descriptor_set_json_out=. \
 # buf.gen.yaml
 version: v2
 plugins:
-- local: protoc-gen-descriptor_set_json
+- local: protoc-gen-mysql
   # You can also use `go run` without installing the plugin.
-  # local: ['go', 'run', 'github.com/eiiches/mysql-protobuf-functions/cmd/protoc-gen-descriptor_set_json@latest']
+  # local: ['go', 'run', 'github.com/eiiches/mysql-protobuf-functions/cmd/protoc-gen-mysql@latest']
   out: .
   opt:
   - name=person_schema
@@ -65,10 +65,10 @@ protoc --descriptor_set_out=person.binpb --include_imports person.proto
 buf build -o person.binpb --as-file-descriptor-set
 
 # Then generate SQL function from binary descriptor set
-protoc-gen-descriptor_set_json \
+protoc-gen-mysql \
   --descriptor_set_in=person.binpb \
   --name=person_schema \
-  --descriptor_set_json_out=./output
+  --mysql_out=./output
 ```
 
 All approaches create `person_schema.sql` containing a stored function.

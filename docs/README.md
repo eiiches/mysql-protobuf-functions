@@ -145,10 +145,10 @@ CREATE TABLE schema_registry (schema_name VARCHAR(255) PRIMARY KEY, schema_json 
 INSERT INTO schema_registry VALUES ('person_schema', @schema_json);
 ```
 
-**Method 2: Using protoc-gen-descriptor_set_json**
+**Method 2: Using protoc-gen-mysql**
 ```bash
 # Generate SQL function containing schema JSON
-protoc --descriptor_set_json_out=. --descriptor_set_json_opt=name=person_schema person.proto
+protoc --mysql_out=. --mysql_opt=name=person_schema person.proto
 
 # Load into MySQL
 mysql -u your_username -p your_database < person_schema.sql
