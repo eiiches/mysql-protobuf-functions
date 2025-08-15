@@ -113,24 +113,134 @@ func generateMessageMethodsWithPath(content *strings.Builder, messageType *descr
 			continue
 		}
 		fieldName := *field.Name
+		fieldType := field.GetType()
+		isRepeated := field.GetLabel() == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
+
+		// Determine MySQL types for setter parameter and getter return
+		setterType, getterType := getMySQLTypesForField(fieldType, isRepeated)
 
 		// Generate setter
 		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_set_%s $$\n", funcPrefix, fieldName))
-		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_set_%s(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC\n", funcPrefix, fieldName))
+		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_set_%s(proto_data JSON, field_value %s) RETURNS JSON DETERMINISTIC\n", funcPrefix, fieldName, setterType))
 		content.WriteString("BEGIN\n")
-		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.%d', field_value);\n", field.GetNumber()))
+		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.GetNumber()))
 		content.WriteString("END $$\n\n")
 
 		// Generate getter
 		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_get_%s $$\n", funcPrefix, fieldName))
-		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_get_%s(proto_data JSON) RETURNS JSON DETERMINISTIC\n", funcPrefix, fieldName))
+		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_get_%s(proto_data JSON) RETURNS %s DETERMINISTIC\n", funcPrefix, fieldName, getterType))
 		content.WriteString("BEGIN\n")
-		content.WriteString(fmt.Sprintf("    RETURN JSON_EXTRACT(proto_data, '$.%d');\n", field.GetNumber()))
+		if isRepeated || fieldType == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
+			// For repeated fields and messages, return JSON directly
+			content.WriteString(fmt.Sprintf("    RETURN JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.GetNumber()))
+		} else {
+			// For scalar fields, unquote the JSON value with default value fallback
+			defaultValue := getFieldDefaultValue(field)
+			content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$.\"%.d\"')), %s);\n", field.GetNumber(), defaultValue))
+		}
 		content.WriteString("END $$\n\n")
 	}
 
 	// Generate methods for nested message types
 	for _, nestedType := range messageType.NestedType {
 		generateMessageMethodsWithPath(content, nestedType, typePrefixFunc, packageName, fullTypeName, schemaFunctionName)
+	}
+}
+
+// getMySQLTypesForField returns the appropriate MySQL types for setter parameter and getter return value
+func getMySQLTypesForField(fieldType descriptorpb.FieldDescriptorProto_Type, isRepeated bool) (setterType, getterType string) {
+	// For repeated fields and maps, always use JSON
+	if isRepeated {
+		return "JSON", "JSON"
+	}
+
+	// For scalar fields, map protobuf types to MySQL types
+	switch fieldType {
+	case descriptorpb.FieldDescriptorProto_TYPE_DOUBLE:
+		return "DOUBLE", "DOUBLE"
+	case descriptorpb.FieldDescriptorProto_TYPE_FLOAT:
+		return "FLOAT", "FLOAT"
+	case descriptorpb.FieldDescriptorProto_TYPE_INT64:
+		return "BIGINT", "BIGINT"
+	case descriptorpb.FieldDescriptorProto_TYPE_UINT64:
+		return "BIGINT UNSIGNED", "BIGINT UNSIGNED"
+	case descriptorpb.FieldDescriptorProto_TYPE_INT32:
+		return "INT", "INT"
+	case descriptorpb.FieldDescriptorProto_TYPE_FIXED64:
+		return "BIGINT UNSIGNED", "BIGINT UNSIGNED"
+	case descriptorpb.FieldDescriptorProto_TYPE_FIXED32:
+		return "INT UNSIGNED", "INT UNSIGNED"
+	case descriptorpb.FieldDescriptorProto_TYPE_BOOL:
+		return "BOOLEAN", "BOOLEAN"
+	case descriptorpb.FieldDescriptorProto_TYPE_STRING:
+		return "LONGTEXT", "LONGTEXT"
+	case descriptorpb.FieldDescriptorProto_TYPE_BYTES:
+		return "LONGBLOB", "LONGBLOB"
+	case descriptorpb.FieldDescriptorProto_TYPE_UINT32:
+		return "INT UNSIGNED", "INT UNSIGNED"
+	case descriptorpb.FieldDescriptorProto_TYPE_ENUM:
+		return "INT", "INT"
+	case descriptorpb.FieldDescriptorProto_TYPE_SFIXED32:
+		return "INT", "INT"
+	case descriptorpb.FieldDescriptorProto_TYPE_SFIXED64:
+		return "BIGINT", "BIGINT"
+	case descriptorpb.FieldDescriptorProto_TYPE_SINT32:
+		return "INT", "INT"
+	case descriptorpb.FieldDescriptorProto_TYPE_SINT64:
+		return "BIGINT", "BIGINT"
+	case descriptorpb.FieldDescriptorProto_TYPE_MESSAGE:
+		// Messages are represented as JSON (ProtoNumberJSON format)
+		return "JSON", "JSON"
+	default:
+		// Fallback to JSON for unknown types
+		return "JSON", "JSON"
+	}
+}
+
+// getFieldDefaultValue returns the appropriate default value for a field based on proto version and custom defaults
+func getFieldDefaultValue(field *descriptorpb.FieldDescriptorProto) string {
+	fieldType := field.GetType()
+
+	// Check if field has a custom default value (proto2)
+	if field.DefaultValue != nil {
+		defaultVal := *field.DefaultValue
+		switch fieldType {
+		case descriptorpb.FieldDescriptorProto_TYPE_STRING:
+			// String defaults need to be quoted
+			return fmt.Sprintf("'%s'", strings.ReplaceAll(defaultVal, "'", "''"))
+		case descriptorpb.FieldDescriptorProto_TYPE_BYTES:
+			// Bytes defaults need to be hex-encoded
+			return fmt.Sprintf("X'%s'", defaultVal)
+		case descriptorpb.FieldDescriptorProto_TYPE_BOOL:
+			// Boolean defaults
+			if defaultVal == "true" {
+				return "1"
+			}
+			return "0"
+		default:
+			// Numeric defaults can be used directly
+			return defaultVal
+		}
+	}
+
+	// Use proto3 zero values or proto2 implicit defaults
+	switch fieldType {
+	case descriptorpb.FieldDescriptorProto_TYPE_DOUBLE, descriptorpb.FieldDescriptorProto_TYPE_FLOAT:
+		return "0.0"
+	case descriptorpb.FieldDescriptorProto_TYPE_INT64, descriptorpb.FieldDescriptorProto_TYPE_UINT64,
+		descriptorpb.FieldDescriptorProto_TYPE_INT32, descriptorpb.FieldDescriptorProto_TYPE_UINT32,
+		descriptorpb.FieldDescriptorProto_TYPE_FIXED64, descriptorpb.FieldDescriptorProto_TYPE_FIXED32,
+		descriptorpb.FieldDescriptorProto_TYPE_SFIXED32, descriptorpb.FieldDescriptorProto_TYPE_SFIXED64,
+		descriptorpb.FieldDescriptorProto_TYPE_SINT32, descriptorpb.FieldDescriptorProto_TYPE_SINT64,
+		descriptorpb.FieldDescriptorProto_TYPE_ENUM:
+		return "0"
+	case descriptorpb.FieldDescriptorProto_TYPE_BOOL:
+		return "0"
+	case descriptorpb.FieldDescriptorProto_TYPE_STRING:
+		return "''"
+	case descriptorpb.FieldDescriptorProto_TYPE_BYTES:
+		return "X''"
+	default:
+		return "NULL"
 	}
 }

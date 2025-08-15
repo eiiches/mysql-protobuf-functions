@@ -739,10 +739,10 @@ func TestJsonToMessageNumberJsonFormat(t *testing.T) {
 	expectedJson := `{"int32Field": 42, "stringField": "test"}`
 
 	// Test number JSON to message conversion
-	RunTestThatExpression(t, "pb_message_to_json(?, ?, _pb_number_json_to_message_func(?, ?, ?))", descriptorSetJson, typeName, descriptorSetJson, typeName, numberJson).IsEqualToJsonString(expectedJson)
+	RunTestThatExpression(t, "pb_message_to_json(?, ?, _pb_number_json_to_message(?, ?, ?))", descriptorSetJson, typeName, descriptorSetJson, typeName, numberJson).IsEqualToJsonString(expectedJson)
 
 	// Test number JSON to wire_json conversion
-	RunTestThatExpression(t, "pb_wire_json_to_json(?, ?, _pb_number_json_to_wire_json_func(?, ?, ?))", descriptorSetJson, typeName, descriptorSetJson, typeName, numberJson).IsEqualToJsonString(expectedJson)
+	RunTestThatExpression(t, "pb_wire_json_to_json(?, ?, _pb_number_json_to_wire_json(?, ?, ?))", descriptorSetJson, typeName, descriptorSetJson, typeName, numberJson).IsEqualToJsonString(expectedJson)
 }
 
 func TestJsonToMessageEdgeCases(t *testing.T) {
