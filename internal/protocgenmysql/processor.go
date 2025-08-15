@@ -57,7 +57,7 @@ END $$
 
 	// Generate method fragments if requested
 	if config.GenerateMethods {
-		methodFragments := GenerateMethodFragments(fileDescriptorSet.File, config.FileNameFunc, config.TypePrefixFunc)
+		methodFragments := GenerateMethodFragments(fileDescriptorSet.File, config.FileNameFunc, config.TypePrefixFunc, config.FunctionName)
 		for filename, fragments := range methodFragments {
 			if filename == "" {
 				filename = config.FunctionName

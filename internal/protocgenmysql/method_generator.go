@@ -14,7 +14,7 @@ type FileNameFunc func(protoPath string) string
 type TypePrefixFunc func(packageName string, typeName string) string
 
 // GenerateMethodFragments returns individual content fragments for each proto file
-func GenerateMethodFragments(protoFiles []*descriptorpb.FileDescriptorProto, fileNameFunc FileNameFunc, typePrefixFunc TypePrefixFunc) map[string][]string {
+func GenerateMethodFragments(protoFiles []*descriptorpb.FileDescriptorProto, fileNameFunc FileNameFunc, typePrefixFunc TypePrefixFunc, schemaFunctionName string) map[string][]string {
 	fileFragments := make(map[string][]string)
 
 	// Generate fragments for each proto file
@@ -23,7 +23,7 @@ func GenerateMethodFragments(protoFiles []*descriptorpb.FileDescriptorProto, fil
 			continue
 		}
 		filename := fileNameFunc(*file.Name)
-		content := generateMethodsForFileContent(file, typePrefixFunc)
+		content := generateMethodsForFileContent(file, typePrefixFunc, schemaFunctionName)
 		if content != "" {
 			fileFragments[filename] = append(fileFragments[filename], content)
 		}
@@ -32,7 +32,7 @@ func GenerateMethodFragments(protoFiles []*descriptorpb.FileDescriptorProto, fil
 	return fileFragments
 }
 
-func generateMethodsForFileContent(file *descriptorpb.FileDescriptorProto, typePrefixFunc TypePrefixFunc) string {
+func generateMethodsForFileContent(file *descriptorpb.FileDescriptorProto, typePrefixFunc TypePrefixFunc, schemaFunctionName string) string {
 	var content strings.Builder
 
 	packageName := ""
@@ -42,17 +42,17 @@ func generateMethodsForFileContent(file *descriptorpb.FileDescriptorProto, typeP
 
 	// Generate methods for each message type
 	for _, messageType := range file.MessageType {
-		generateMessageMethods(&content, messageType, typePrefixFunc, packageName)
+		generateMessageMethods(&content, messageType, typePrefixFunc, packageName, schemaFunctionName)
 	}
 
 	return content.String()
 }
 
-func generateMessageMethods(content *strings.Builder, messageType *descriptorpb.DescriptorProto, typePrefixFunc TypePrefixFunc, packageName string) {
-	generateMessageMethodsWithPath(content, messageType, typePrefixFunc, packageName, "")
+func generateMessageMethods(content *strings.Builder, messageType *descriptorpb.DescriptorProto, typePrefixFunc TypePrefixFunc, packageName string, schemaFunctionName string) {
+	generateMessageMethodsWithPath(content, messageType, typePrefixFunc, packageName, "", schemaFunctionName)
 }
 
-func generateMessageMethodsWithPath(content *strings.Builder, messageType *descriptorpb.DescriptorProto, typePrefixFunc TypePrefixFunc, packageName string, parentPath string) {
+func generateMessageMethodsWithPath(content *strings.Builder, messageType *descriptorpb.DescriptorProto, typePrefixFunc TypePrefixFunc, packageName string, parentPath string, schemaFunctionName string) {
 	if messageType.Name == nil {
 		return
 	}
@@ -76,7 +76,6 @@ func generateMessageMethodsWithPath(content *strings.Builder, messageType *descr
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_new $$\n", funcPrefix))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_new() RETURNS JSON DETERMINISTIC\n", funcPrefix))
 	content.WriteString("BEGIN\n")
-	content.WriteString("    -- not implemented\n")
 	content.WriteString("    RETURN JSON_OBJECT();\n")
 	content.WriteString("END $$\n\n")
 
@@ -84,32 +83,28 @@ func generateMessageMethodsWithPath(content *strings.Builder, messageType *descr
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_from_json $$\n", funcPrefix))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_from_json(json_data JSON) RETURNS JSON DETERMINISTIC\n", funcPrefix))
 	content.WriteString("BEGIN\n")
-	content.WriteString("    -- not implemented\n")
-	content.WriteString("    RETURN json_data;\n")
+	content.WriteString(fmt.Sprintf("    RETURN _pb_json_to_number_json(%s(), '.%s', json_data);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
 
 	// Generate from_message
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_from_message $$\n", funcPrefix))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC\n", funcPrefix))
 	content.WriteString("BEGIN\n")
-	content.WriteString("    -- not implemented\n")
-	content.WriteString("    RETURN JSON_OBJECT();\n")
+	content.WriteString(fmt.Sprintf("    RETURN _pb_message_to_number_json(%s(), '.%s', message_data);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
 
 	// Generate to_json
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_to_json $$\n", funcPrefix))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC\n", funcPrefix))
 	content.WriteString("BEGIN\n")
-	content.WriteString("    -- not implemented\n")
-	content.WriteString("    RETURN proto_data;\n")
+	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_json(%s(), '.%s', proto_data, TRUE);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
 
 	// Generate to_message
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_to_message $$\n", funcPrefix))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC\n", funcPrefix))
 	content.WriteString("BEGIN\n")
-	content.WriteString("    -- not implemented\n")
-	content.WriteString("    RETURN NULL;\n")
+	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_message(%s(), '.%s', proto_data);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
 
 	// Generate setter and getter methods for each field
@@ -123,21 +118,19 @@ func generateMessageMethodsWithPath(content *strings.Builder, messageType *descr
 		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_set_%s $$\n", funcPrefix, fieldName))
 		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_set_%s(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC\n", funcPrefix, fieldName))
 		content.WriteString("BEGIN\n")
-		content.WriteString("    -- not implemented\n")
-		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.%s', field_value);\n", fieldName))
+		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.%d', field_value);\n", field.GetNumber()))
 		content.WriteString("END $$\n\n")
 
 		// Generate getter
 		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_get_%s $$\n", funcPrefix, fieldName))
 		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_get_%s(proto_data JSON) RETURNS JSON DETERMINISTIC\n", funcPrefix, fieldName))
 		content.WriteString("BEGIN\n")
-		content.WriteString("    -- not implemented\n")
-		content.WriteString(fmt.Sprintf("    RETURN JSON_EXTRACT(proto_data, '$.%s');\n", fieldName))
+		content.WriteString(fmt.Sprintf("    RETURN JSON_EXTRACT(proto_data, '$.%d');\n", field.GetNumber()))
 		content.WriteString("END $$\n\n")
 	}
 
 	// Generate methods for nested message types
 	for _, nestedType := range messageType.NestedType {
-		generateMessageMethodsWithPath(content, nestedType, typePrefixFunc, packageName, fullTypeName)
+		generateMessageMethodsWithPath(content, nestedType, typePrefixFunc, packageName, fullTypeName, schemaFunctionName)
 	}
 }

@@ -3257,281 +3257,241 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_struct_new $$
 CREATE FUNCTION _pb_wkt_struct_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_from_json $$
 CREATE FUNCTION _pb_wkt_struct_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.Struct', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_from_message $$
 CREATE FUNCTION _pb_wkt_struct_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.Struct', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_to_json $$
 CREATE FUNCTION _pb_wkt_struct_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_struct_proto(), '.google.protobuf.Struct', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_to_message $$
 CREATE FUNCTION _pb_wkt_struct_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Struct', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_set_fields $$
 CREATE FUNCTION _pb_wkt_struct_set_fields(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.fields', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_get_fields $$
 CREATE FUNCTION _pb_wkt_struct_get_fields(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.fields');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_fields_entry_new $$
 CREATE FUNCTION _pb_wkt_struct_fields_entry_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_fields_entry_from_json $$
 CREATE FUNCTION _pb_wkt_struct_fields_entry_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.Struct.FieldsEntry', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_fields_entry_from_message $$
 CREATE FUNCTION _pb_wkt_struct_fields_entry_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.Struct.FieldsEntry', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_fields_entry_to_json $$
 CREATE FUNCTION _pb_wkt_struct_fields_entry_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_struct_proto(), '.google.protobuf.Struct.FieldsEntry', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_fields_entry_to_message $$
 CREATE FUNCTION _pb_wkt_struct_fields_entry_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Struct.FieldsEntry', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_fields_entry_set_key $$
 CREATE FUNCTION _pb_wkt_struct_fields_entry_set_key(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.key', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_fields_entry_get_key $$
 CREATE FUNCTION _pb_wkt_struct_fields_entry_get_key(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.key');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_fields_entry_set_value $$
 CREATE FUNCTION _pb_wkt_struct_fields_entry_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.value', field_value);
+    RETURN JSON_SET(proto_data, '$.2', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_fields_entry_get_value $$
 CREATE FUNCTION _pb_wkt_struct_fields_entry_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.value');
+    RETURN JSON_EXTRACT(proto_data, '$.2');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_new $$
 CREATE FUNCTION _pb_wkt_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_from_json $$
 CREATE FUNCTION _pb_wkt_value_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.Value', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_from_message $$
 CREATE FUNCTION _pb_wkt_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.Value', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_to_json $$
 CREATE FUNCTION _pb_wkt_value_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_struct_proto(), '.google.protobuf.Value', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_to_message $$
 CREATE FUNCTION _pb_wkt_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Value', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_set_null_value $$
 CREATE FUNCTION _pb_wkt_value_set_null_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.null_value', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_get_null_value $$
 CREATE FUNCTION _pb_wkt_value_get_null_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.null_value');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_set_number_value $$
 CREATE FUNCTION _pb_wkt_value_set_number_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.number_value', field_value);
+    RETURN JSON_SET(proto_data, '$.2', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_get_number_value $$
 CREATE FUNCTION _pb_wkt_value_get_number_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.number_value');
+    RETURN JSON_EXTRACT(proto_data, '$.2');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_set_string_value $$
 CREATE FUNCTION _pb_wkt_value_set_string_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.string_value', field_value);
+    RETURN JSON_SET(proto_data, '$.3', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_get_string_value $$
 CREATE FUNCTION _pb_wkt_value_get_string_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.string_value');
+    RETURN JSON_EXTRACT(proto_data, '$.3');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_set_bool_value $$
 CREATE FUNCTION _pb_wkt_value_set_bool_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.bool_value', field_value);
+    RETURN JSON_SET(proto_data, '$.4', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_get_bool_value $$
 CREATE FUNCTION _pb_wkt_value_get_bool_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.bool_value');
+    RETURN JSON_EXTRACT(proto_data, '$.4');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_set_struct_value $$
 CREATE FUNCTION _pb_wkt_value_set_struct_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.struct_value', field_value);
+    RETURN JSON_SET(proto_data, '$.5', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_get_struct_value $$
 CREATE FUNCTION _pb_wkt_value_get_struct_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.struct_value');
+    RETURN JSON_EXTRACT(proto_data, '$.5');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_set_list_value $$
 CREATE FUNCTION _pb_wkt_value_set_list_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.list_value', field_value);
+    RETURN JSON_SET(proto_data, '$.6', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_get_list_value $$
 CREATE FUNCTION _pb_wkt_value_get_list_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.list_value');
+    RETURN JSON_EXTRACT(proto_data, '$.6');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_list_value_new $$
 CREATE FUNCTION _pb_wkt_list_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_list_value_from_json $$
 CREATE FUNCTION _pb_wkt_list_value_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.ListValue', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_list_value_from_message $$
 CREATE FUNCTION _pb_wkt_list_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.ListValue', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_list_value_to_json $$
 CREATE FUNCTION _pb_wkt_list_value_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_struct_proto(), '.google.protobuf.ListValue', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_list_value_to_message $$
 CREATE FUNCTION _pb_wkt_list_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.ListValue', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_list_value_set_values $$
 CREATE FUNCTION _pb_wkt_list_value_set_values(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.values', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_list_value_get_values $$
 CREATE FUNCTION _pb_wkt_list_value_get_values(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.values');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_field_mask_proto $$
@@ -3543,50 +3503,43 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_field_mask_new $$
 CREATE FUNCTION _pb_wkt_field_mask_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_field_mask_from_json $$
 CREATE FUNCTION _pb_wkt_field_mask_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_field_mask_proto(), '.google.protobuf.FieldMask', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_field_mask_from_message $$
 CREATE FUNCTION _pb_wkt_field_mask_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_field_mask_proto(), '.google.protobuf.FieldMask', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_field_mask_to_json $$
 CREATE FUNCTION _pb_wkt_field_mask_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_field_mask_proto(), '.google.protobuf.FieldMask', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_field_mask_to_message $$
 CREATE FUNCTION _pb_wkt_field_mask_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_field_mask_proto(), '.google.protobuf.FieldMask', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_field_mask_set_paths $$
 CREATE FUNCTION _pb_wkt_field_mask_set_paths(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.paths', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_field_mask_get_paths $$
 CREATE FUNCTION _pb_wkt_field_mask_get_paths(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.paths');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_wrappers_proto $$
@@ -3598,442 +3551,379 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_double_value_new $$
 CREATE FUNCTION _pb_wkt_double_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_double_value_from_json $$
 CREATE FUNCTION _pb_wkt_double_value_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.DoubleValue', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_double_value_from_message $$
 CREATE FUNCTION _pb_wkt_double_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.DoubleValue', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_double_value_to_json $$
 CREATE FUNCTION _pb_wkt_double_value_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_wrappers_proto(), '.google.protobuf.DoubleValue', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_double_value_to_message $$
 CREATE FUNCTION _pb_wkt_double_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.DoubleValue', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_double_value_set_value $$
 CREATE FUNCTION _pb_wkt_double_value_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.value', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_double_value_get_value $$
 CREATE FUNCTION _pb_wkt_double_value_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.value');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_float_value_new $$
 CREATE FUNCTION _pb_wkt_float_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_float_value_from_json $$
 CREATE FUNCTION _pb_wkt_float_value_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.FloatValue', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_float_value_from_message $$
 CREATE FUNCTION _pb_wkt_float_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.FloatValue', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_float_value_to_json $$
 CREATE FUNCTION _pb_wkt_float_value_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_wrappers_proto(), '.google.protobuf.FloatValue', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_float_value_to_message $$
 CREATE FUNCTION _pb_wkt_float_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.FloatValue', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_float_value_set_value $$
 CREATE FUNCTION _pb_wkt_float_value_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.value', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_float_value_get_value $$
 CREATE FUNCTION _pb_wkt_float_value_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.value');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int64_value_new $$
 CREATE FUNCTION _pb_wkt_int64_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int64_value_from_json $$
 CREATE FUNCTION _pb_wkt_int64_value_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.Int64Value', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int64_value_from_message $$
 CREATE FUNCTION _pb_wkt_int64_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.Int64Value', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int64_value_to_json $$
 CREATE FUNCTION _pb_wkt_int64_value_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_wrappers_proto(), '.google.protobuf.Int64Value', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int64_value_to_message $$
 CREATE FUNCTION _pb_wkt_int64_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.Int64Value', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int64_value_set_value $$
 CREATE FUNCTION _pb_wkt_int64_value_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.value', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int64_value_get_value $$
 CREATE FUNCTION _pb_wkt_int64_value_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.value');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_new $$
 CREATE FUNCTION _pb_wkt_u_int64_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_from_json $$
 CREATE FUNCTION _pb_wkt_u_int64_value_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_from_message $$
 CREATE FUNCTION _pb_wkt_u_int64_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_to_json $$
 CREATE FUNCTION _pb_wkt_u_int64_value_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_to_message $$
 CREATE FUNCTION _pb_wkt_u_int64_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_set_value $$
 CREATE FUNCTION _pb_wkt_u_int64_value_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.value', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_get_value $$
 CREATE FUNCTION _pb_wkt_u_int64_value_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.value');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int32_value_new $$
 CREATE FUNCTION _pb_wkt_int32_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int32_value_from_json $$
 CREATE FUNCTION _pb_wkt_int32_value_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.Int32Value', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int32_value_from_message $$
 CREATE FUNCTION _pb_wkt_int32_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.Int32Value', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int32_value_to_json $$
 CREATE FUNCTION _pb_wkt_int32_value_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_wrappers_proto(), '.google.protobuf.Int32Value', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int32_value_to_message $$
 CREATE FUNCTION _pb_wkt_int32_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.Int32Value', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int32_value_set_value $$
 CREATE FUNCTION _pb_wkt_int32_value_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.value', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int32_value_get_value $$
 CREATE FUNCTION _pb_wkt_int32_value_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.value');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_new $$
 CREATE FUNCTION _pb_wkt_u_int32_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_from_json $$
 CREATE FUNCTION _pb_wkt_u_int32_value_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_from_message $$
 CREATE FUNCTION _pb_wkt_u_int32_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_to_json $$
 CREATE FUNCTION _pb_wkt_u_int32_value_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_to_message $$
 CREATE FUNCTION _pb_wkt_u_int32_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_set_value $$
 CREATE FUNCTION _pb_wkt_u_int32_value_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.value', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_get_value $$
 CREATE FUNCTION _pb_wkt_u_int32_value_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.value');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bool_value_new $$
 CREATE FUNCTION _pb_wkt_bool_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bool_value_from_json $$
 CREATE FUNCTION _pb_wkt_bool_value_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.BoolValue', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bool_value_from_message $$
 CREATE FUNCTION _pb_wkt_bool_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.BoolValue', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bool_value_to_json $$
 CREATE FUNCTION _pb_wkt_bool_value_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_wrappers_proto(), '.google.protobuf.BoolValue', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bool_value_to_message $$
 CREATE FUNCTION _pb_wkt_bool_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.BoolValue', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bool_value_set_value $$
 CREATE FUNCTION _pb_wkt_bool_value_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.value', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bool_value_get_value $$
 CREATE FUNCTION _pb_wkt_bool_value_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.value');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_string_value_new $$
 CREATE FUNCTION _pb_wkt_string_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_string_value_from_json $$
 CREATE FUNCTION _pb_wkt_string_value_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.StringValue', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_string_value_from_message $$
 CREATE FUNCTION _pb_wkt_string_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.StringValue', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_string_value_to_json $$
 CREATE FUNCTION _pb_wkt_string_value_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_wrappers_proto(), '.google.protobuf.StringValue', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_string_value_to_message $$
 CREATE FUNCTION _pb_wkt_string_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.StringValue', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_string_value_set_value $$
 CREATE FUNCTION _pb_wkt_string_value_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.value', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_string_value_get_value $$
 CREATE FUNCTION _pb_wkt_string_value_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.value');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bytes_value_new $$
 CREATE FUNCTION _pb_wkt_bytes_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bytes_value_from_json $$
 CREATE FUNCTION _pb_wkt_bytes_value_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.BytesValue', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bytes_value_from_message $$
 CREATE FUNCTION _pb_wkt_bytes_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.BytesValue', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bytes_value_to_json $$
 CREATE FUNCTION _pb_wkt_bytes_value_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_wrappers_proto(), '.google.protobuf.BytesValue', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bytes_value_to_message $$
 CREATE FUNCTION _pb_wkt_bytes_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.BytesValue', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bytes_value_set_value $$
 CREATE FUNCTION _pb_wkt_bytes_value_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.value', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_bytes_value_get_value $$
 CREATE FUNCTION _pb_wkt_bytes_value_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.value');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_proto $$
@@ -4045,64 +3935,55 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_new $$
 CREATE FUNCTION _pb_wkt_timestamp_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_from_json $$
 CREATE FUNCTION _pb_wkt_timestamp_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_timestamp_proto(), '.google.protobuf.Timestamp', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_from_message $$
 CREATE FUNCTION _pb_wkt_timestamp_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_timestamp_proto(), '.google.protobuf.Timestamp', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_to_json $$
 CREATE FUNCTION _pb_wkt_timestamp_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_timestamp_proto(), '.google.protobuf.Timestamp', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_to_message $$
 CREATE FUNCTION _pb_wkt_timestamp_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_timestamp_proto(), '.google.protobuf.Timestamp', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_set_seconds $$
 CREATE FUNCTION _pb_wkt_timestamp_set_seconds(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.seconds', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_get_seconds $$
 CREATE FUNCTION _pb_wkt_timestamp_get_seconds(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.seconds');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_set_nanos $$
 CREATE FUNCTION _pb_wkt_timestamp_set_nanos(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.nanos', field_value);
+    RETURN JSON_SET(proto_data, '$.2', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_get_nanos $$
 CREATE FUNCTION _pb_wkt_timestamp_get_nanos(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.nanos');
+    RETURN JSON_EXTRACT(proto_data, '$.2');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_duration_proto $$
@@ -4114,64 +3995,55 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_duration_new $$
 CREATE FUNCTION _pb_wkt_duration_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_duration_from_json $$
 CREATE FUNCTION _pb_wkt_duration_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_duration_proto(), '.google.protobuf.Duration', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_duration_from_message $$
 CREATE FUNCTION _pb_wkt_duration_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_duration_proto(), '.google.protobuf.Duration', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_duration_to_json $$
 CREATE FUNCTION _pb_wkt_duration_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_duration_proto(), '.google.protobuf.Duration', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_duration_to_message $$
 CREATE FUNCTION _pb_wkt_duration_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_duration_proto(), '.google.protobuf.Duration', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_duration_set_seconds $$
 CREATE FUNCTION _pb_wkt_duration_set_seconds(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.seconds', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_duration_get_seconds $$
 CREATE FUNCTION _pb_wkt_duration_get_seconds(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.seconds');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_duration_set_nanos $$
 CREATE FUNCTION _pb_wkt_duration_set_nanos(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.nanos', field_value);
+    RETURN JSON_SET(proto_data, '$.2', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_duration_get_nanos $$
 CREATE FUNCTION _pb_wkt_duration_get_nanos(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.nanos');
+    RETURN JSON_EXTRACT(proto_data, '$.2');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_any_proto $$
@@ -4183,64 +4055,55 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_any_new $$
 CREATE FUNCTION _pb_wkt_any_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_any_from_json $$
 CREATE FUNCTION _pb_wkt_any_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_any_proto(), '.google.protobuf.Any', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_any_from_message $$
 CREATE FUNCTION _pb_wkt_any_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_any_proto(), '.google.protobuf.Any', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_any_to_json $$
 CREATE FUNCTION _pb_wkt_any_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_any_proto(), '.google.protobuf.Any', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_any_to_message $$
 CREATE FUNCTION _pb_wkt_any_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_any_proto(), '.google.protobuf.Any', proto_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_any_set_type_url $$
 CREATE FUNCTION _pb_wkt_any_set_type_url(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.type_url', field_value);
+    RETURN JSON_SET(proto_data, '$.1', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_any_get_type_url $$
 CREATE FUNCTION _pb_wkt_any_get_type_url(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.type_url');
+    RETURN JSON_EXTRACT(proto_data, '$.1');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_any_set_value $$
 CREATE FUNCTION _pb_wkt_any_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_SET(proto_data, '$.value', field_value);
+    RETURN JSON_SET(proto_data, '$.2', field_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_any_get_value $$
 CREATE FUNCTION _pb_wkt_any_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_EXTRACT(proto_data, '$.value');
+    RETURN JSON_EXTRACT(proto_data, '$.2');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_empty_proto $$
@@ -4252,35 +4115,30 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_empty_new $$
 CREATE FUNCTION _pb_wkt_empty_new() RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
     RETURN JSON_OBJECT();
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_empty_from_json $$
 CREATE FUNCTION _pb_wkt_empty_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN json_data;
+    RETURN _pb_json_to_number_json(_pb_wkt_empty_proto(), '.google.protobuf.Empty', json_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_empty_from_message $$
 CREATE FUNCTION _pb_wkt_empty_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN JSON_OBJECT();
+    RETURN _pb_message_to_number_json(_pb_wkt_empty_proto(), '.google.protobuf.Empty', message_data);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_empty_to_json $$
 CREATE FUNCTION _pb_wkt_empty_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN proto_data;
+    RETURN _pb_number_json_to_json(_pb_wkt_empty_proto(), '.google.protobuf.Empty', proto_data, TRUE);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_empty_to_message $$
 CREATE FUNCTION _pb_wkt_empty_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    -- not implemented
-    RETURN NULL;
+    RETURN _pb_number_json_to_message(_pb_wkt_empty_proto(), '.google.protobuf.Empty', proto_data);
 END $$
 
