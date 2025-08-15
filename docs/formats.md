@@ -302,8 +302,8 @@ This matrix shows which formats can be converted to others and the functions use
 |-----------|----------------|-----------|-----------|-----------------|
 | **Binary/Message** | Identity | `pb_message_to_wire_json()` | `pb_message_to_json()`* | `_pb_message_to_number_json()`* |
 | **WireJSON** | `pb_wire_json_to_message()` | Identity | `pb_wire_json_to_json()`* | `_pb_wire_json_to_number_json()`* |
-| **ProtoJSON** | `pb_json_to_message()`* | `pb_json_to_wire_json()`* | Identity | Convert via Binary |
-| **ProtoNumberJSON** | `_pb_number_json_to_message()`* | `_pb_number_json_to_wire_json()`* | Convert via Binary | Identity |
+| **ProtoJSON** | `pb_json_to_message()`* | `pb_json_to_wire_json()`* | Identity | `_pb_json_to_number_json()`* |
+| **ProtoNumberJSON** | `_pb_number_json_to_message()`* | `_pb_number_json_to_wire_json()`* | `_pb_number_json_to_json()`* | Identity |
 
 *\* Requires schema (FileDescriptorSet)*
 
