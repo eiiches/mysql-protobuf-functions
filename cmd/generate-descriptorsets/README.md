@@ -4,7 +4,7 @@ This tool generates SQL functions that embed the `descriptor.proto` schema into 
 
 ## Overview
 
-The tool creates multiple MySQL stored functions that return various protobuf descriptor schemas as JSON, with the main function being `_pb_google_descriptor_proto()` for the core descriptor.proto schema.
+The tool creates multiple MySQL stored functions that return various protobuf descriptor schemas as JSON, with the main function being `_pb_descriptor_proto()` for the core descriptor.proto schema.
 
 ## Descriptor Set JSON Format
 
@@ -24,10 +24,10 @@ The generated SQL can be executed in MySQL to provide runtime protobuf schema in
 
 ```sql
 -- Get the descriptor set JSON
-SELECT _pb_google_descriptor_proto();
+SELECT _pb_descriptor_proto();
 
 -- Use with pb_message_to_json
-SELECT pb_message_to_json(_pb_google_descriptor_proto(), '.google.protobuf.FileDescriptorProto', some_message);
+SELECT pb_message_to_json(_pb_descriptor_proto(), '.google.protobuf.FileDescriptorProto', some_message);
 ```
 
 ## Comparison with protoc-gen-mysql
@@ -48,7 +48,7 @@ This tool generates the same output as running:
 
 ```bash
 protoc --mysql_out=. \
-       --mysql_opt=name=_pb_google_descriptor_proto \
+       --mysql_opt=name=_pb_descriptor_proto \
        --include_imports \
        google/protobuf/descriptor.proto
 ```

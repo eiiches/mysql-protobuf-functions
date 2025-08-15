@@ -150,19 +150,19 @@ BEGIN
 	-- For Google well-known types, use built-in descriptor functions
 	CASE
 	WHEN full_type_name IN ('.google.protobuf.Struct', '.google.protobuf.Value', '.google.protobuf.ListValue', '.google.protobuf.NullValue') THEN
-		RETURN _pb_google_struct_proto();
+		RETURN _pb_wkt_struct_proto();
 	WHEN full_type_name = '.google.protobuf.FieldMask' THEN
-		RETURN _pb_google_field_mask_proto();
+		RETURN _pb_wkt_field_mask_proto();
 	WHEN full_type_name IN ('.google.protobuf.DoubleValue', '.google.protobuf.FloatValue', '.google.protobuf.Int64Value', '.google.protobuf.UInt64Value', '.google.protobuf.Int32Value', '.google.protobuf.UInt32Value', '.google.protobuf.BoolValue', '.google.protobuf.StringValue', '.google.protobuf.BytesValue') THEN
-		RETURN _pb_google_wrappers_proto();
+		RETURN _pb_wkt_wrappers_proto();
 	WHEN full_type_name = '.google.protobuf.Empty' THEN
-		RETURN _pb_google_empty_proto();
+		RETURN _pb_wkt_empty_proto();
 	WHEN full_type_name = '.google.protobuf.Any' THEN
-		RETURN _pb_google_any_proto();
+		RETURN _pb_wkt_any_proto();
 	WHEN full_type_name = '.google.protobuf.Timestamp' THEN
-		RETURN _pb_google_timestamp_proto();
+		RETURN _pb_wkt_timestamp_proto();
 	WHEN full_type_name = '.google.protobuf.Duration' THEN
-		RETURN _pb_google_duration_proto();
+		RETURN _pb_wkt_duration_proto();
 	ELSE
 		-- Return NULL for types that don't match or should use regular WKT handling
 		RETURN NULL;
