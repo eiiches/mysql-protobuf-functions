@@ -334,6 +334,10 @@ SELECT pb_json_to_message(@schema, '.MessageType', @proto_json);
 
 -- ProtoJSON → WireJSON
 SELECT pb_json_to_wire_json(@schema, '.MessageType', @proto_json);
+
+-- ProtoJSON ↔ ProtoNumberJSON (bidirectional)
+SELECT _pb_json_to_number_json(@schema, '.MessageType', @proto_json);
+SELECT _pb_number_json_to_json(@schema, '.MessageType', @proto_number_json, true);
 ```
 
 ## Performance Guidelines
