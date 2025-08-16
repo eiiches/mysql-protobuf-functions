@@ -1069,6 +1069,8 @@ proc: BEGIN
 	DECLARE map_entry_wire_json JSON;
 	DECLARE map_value_json JSON;
 	DECLARE map_value_wire_json JSON;
+	-- Well-known type handling
+	DECLARE wkt_descriptor_set JSON;
 
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
@@ -1088,6 +1090,15 @@ proc: BEGIN
 
 	-- Get message descriptor
 	SET message_descriptor = _pb_get_message_descriptor(descriptor_set_json, full_type_name);
+
+	IF message_descriptor IS NULL AND full_type_name LIKE '.google.protobuf.%' THEN
+		-- Try to get well-known type descriptor set
+		SET wkt_descriptor_set = _pb_get_wkt_descriptor_set(full_type_name);
+		IF wkt_descriptor_set IS NOT NULL THEN
+			SET descriptor_set_json = wkt_descriptor_set;
+			SET message_descriptor = _pb_get_message_descriptor(descriptor_set_json, full_type_name);
+		END IF;
+	END IF;
 
 	IF message_descriptor IS NULL THEN
 		SET message_text = CONCAT('_pb_json_to_wire_json: message type `', full_type_name, '` not found in descriptor set');
@@ -2879,6 +2890,10 @@ BEGIN
 		RETURN JSON_OBJECT();
 
 	WHEN '.google.protobuf.Struct' THEN
+		-- For number JSON format, use regular descriptor-based processing
+		IF from_number_json THEN
+			RETURN NULL;
+		END IF;
 		-- Convert JSON object to Struct with repeated fields map
 		CALL _pb_json_encode_wkt_struct_as_wire_json(json_value, from_number_json, result);
 		IF result IS NOT NULL THEN
@@ -2886,6 +2901,10 @@ BEGIN
 		END IF;
 
 	WHEN '.google.protobuf.Value' THEN
+		-- For number JSON format, use regular descriptor-based processing
+		IF from_number_json THEN
+			RETURN NULL;
+		END IF;
 		-- Handle different JSON value types
 		CALL _pb_json_encode_wkt_value_as_wire_json(json_value, from_number_json, result);
 		IF result IS NOT NULL THEN
@@ -2893,6 +2912,10 @@ BEGIN
 		END IF;
 
 	WHEN '.google.protobuf.ListValue' THEN
+		-- For number JSON format, use regular descriptor-based processing
+		IF from_number_json THEN
+			RETURN NULL;
+		END IF;
 		-- Convert JSON array to ListValue with repeated Value fields
 		CALL _pb_json_encode_wkt_listvalue_as_wire_json(json_value, from_number_json, result);
 		IF result IS NOT NULL THEN

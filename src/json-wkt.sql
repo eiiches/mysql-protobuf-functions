@@ -79,6 +79,10 @@ BEGIN
 		RETURN JSON_OBJECT();
 
 	WHEN '.google.protobuf.Struct' THEN
+		-- For number JSON format, use regular descriptor-based processing
+		IF from_number_json THEN
+			RETURN NULL;
+		END IF;
 		-- Convert JSON object to Struct with repeated fields map
 		CALL _pb_json_encode_wkt_struct_as_wire_json(json_value, from_number_json, result);
 		IF result IS NOT NULL THEN
@@ -86,6 +90,10 @@ BEGIN
 		END IF;
 
 	WHEN '.google.protobuf.Value' THEN
+		-- For number JSON format, use regular descriptor-based processing
+		IF from_number_json THEN
+			RETURN NULL;
+		END IF;
 		-- Handle different JSON value types
 		CALL _pb_json_encode_wkt_value_as_wire_json(json_value, from_number_json, result);
 		IF result IS NOT NULL THEN
@@ -93,6 +101,10 @@ BEGIN
 		END IF;
 
 	WHEN '.google.protobuf.ListValue' THEN
+		-- For number JSON format, use regular descriptor-based processing
+		IF from_number_json THEN
+			RETURN NULL;
+		END IF;
 		-- Convert JSON array to ListValue with repeated Value fields
 		CALL _pb_json_encode_wkt_listvalue_as_wire_json(json_value, from_number_json, result);
 		IF result IS NOT NULL THEN
