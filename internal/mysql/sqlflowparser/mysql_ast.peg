@@ -210,7 +210,7 @@ ElseClause <- ELSE _ stmts:StatementList _ {
 }
 
 // WHILE statement
-WhileStmt <- WHILE _ condition:ConsumeUntilDO _ DO _ body:StatementList _ END _ WHILE {
+WhileStmt <- WHILE _ condition:ConsumeUntilDO _ DO _ body:StatementList _ END _ WHILE _ endLabel:IdentifierName? {
     return &WhileStmt{
         BaseStatement: makeBaseStatement(c),
         Condition:     condition.(string),
@@ -219,7 +219,7 @@ WhileStmt <- WHILE _ condition:ConsumeUntilDO _ DO _ body:StatementList _ END _ 
 }
 
 // LOOP statement
-LoopStmt <- LOOP _ body:StatementList _ END _ LOOP {
+LoopStmt <- LOOP _ body:StatementList _ END _ LOOP _ endLabel:IdentifierName? {
     return &LoopStmt{
         BaseStatement: makeBaseStatement(c),
         Body:          toStatementList(body),
@@ -227,7 +227,7 @@ LoopStmt <- LOOP _ body:StatementList _ END _ LOOP {
 }
 
 // REPEAT statement
-RepeatStmt <- REPEAT _ body:StatementList _ UNTIL _ condition:ConsumeUntilEND _ END _ REPEAT {
+RepeatStmt <- REPEAT _ body:StatementList _ UNTIL _ condition:ConsumeUntilEND _ END _ REPEAT _ endLabel:IdentifierName? {
     return &RepeatStmt{
         BaseStatement: makeBaseStatement(c),
         Body:          toStatementList(body),

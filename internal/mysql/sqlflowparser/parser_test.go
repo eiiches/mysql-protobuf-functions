@@ -635,3 +635,113 @@ END`
 	g.Expect(ok).To(BeTrue())
 	g.Expect(beginStmt.Body).To(HaveLen(5)) // 2 DECLARE + 2 SET + 1 SELECT = 5 statements
 }
+
+func TestCreateProcedureMultilineParameters(t *testing.T) {
+	g := NewWithT(t)
+
+	// This is the exact format that's failing in build/protobuf-json.sql
+	input := `CREATE PROCEDURE _pb_convert_json_enum_to_number(
+	IN descriptor_set_json JSON,
+	IN full_enum_type_name TEXT,
+	IN enum_string_value TEXT,
+	OUT enum_numeric_value INT
+)
+BEGIN
+	DECLARE test_var INT;
+	SET test_var = 1;
+END`
+
+	result, err := Parse("", []byte(input))
+	g.Expect(err).ToNot(HaveOccurred())
+
+	stmt, ok := result.(*CreateProcedureStmt)
+	g.Expect(ok).To(BeTrue())
+	g.Expect(stmt.Name).To(Equal("_pb_convert_json_enum_to_number"))
+	g.Expect(stmt.Parameters).To(HaveLen(4))
+
+	// Check IN parameters
+	g.Expect(stmt.Parameters[0].Name).To(Equal("descriptor_set_json"))
+	g.Expect(stmt.Parameters[0].Type).To(Equal("JSON"))
+	g.Expect(stmt.Parameters[0].Mode).To(Equal("IN"))
+
+	g.Expect(stmt.Parameters[1].Name).To(Equal("full_enum_type_name"))
+	g.Expect(stmt.Parameters[1].Type).To(Equal("TEXT"))
+	g.Expect(stmt.Parameters[1].Mode).To(Equal("IN"))
+
+	g.Expect(stmt.Parameters[2].Name).To(Equal("enum_string_value"))
+	g.Expect(stmt.Parameters[2].Type).To(Equal("TEXT"))
+	g.Expect(stmt.Parameters[2].Mode).To(Equal("IN"))
+
+	// Check OUT parameter
+	g.Expect(stmt.Parameters[3].Name).To(Equal("enum_numeric_value"))
+	g.Expect(stmt.Parameters[3].Type).To(Equal("INT"))
+	g.Expect(stmt.Parameters[3].Mode).To(Equal("OUT"))
+
+	// Body should contain one BEGIN statement
+	g.Expect(stmt.Body).To(HaveLen(1))
+	beginStmt, ok := stmt.Body[0].(*BeginStmt)
+	g.Expect(ok).To(BeTrue())
+	g.Expect(beginStmt.Body).To(HaveLen(2)) // DECLARE + SET
+}
+
+func TestCreateProcedureMultilineParametersWithComplexBody(t *testing.T) {
+	g := NewWithT(t)
+
+	// This is a more complete version of what's failing, including the actual complex body
+	input := `CREATE PROCEDURE _pb_convert_json_enum_to_number(
+	IN descriptor_set_json JSON,
+	IN full_enum_type_name TEXT,
+	IN enum_string_value TEXT,
+	OUT enum_numeric_value INT
+)
+BEGIN
+	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
+	DECLARE message_text TEXT;
+	DECLARE enum_descriptor JSON;
+	DECLARE values_array JSON;
+	DECLARE value_count INT;
+	DECLARE value_index INT;
+	DECLARE value_descriptor JSON;
+	DECLARE value_name TEXT;
+
+	SET enum_descriptor = JSON_EXTRACT(descriptor_set_json, CONCAT('$.file[*].enumType[?(@.name=="', SUBSTRING(full_enum_type_name, 2), '")]'));
+	
+	IF enum_descriptor IS NULL THEN
+		SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum type not found: ', full_enum_type_name);
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	SET values_array = JSON_EXTRACT(enum_descriptor, '$[0].value');
+	SET value_count = JSON_LENGTH(values_array);
+	SET value_index = 0;
+
+	search_loop: WHILE value_index < value_count DO
+		SET value_descriptor = JSON_EXTRACT(values_array, CONCAT('$[', value_index, ']'));
+		SET value_name = JSON_UNQUOTE(JSON_EXTRACT(value_descriptor, '$.name'));
+		
+		IF value_name = enum_string_value THEN
+			SET enum_numeric_value = JSON_EXTRACT(value_descriptor, '$.number');
+			LEAVE search_loop;
+		END IF;
+		
+		SET value_index = value_index + 1;
+	END WHILE search_loop;
+
+	IF value_index >= value_count THEN
+		SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum value not found: ', enum_string_value, ' in enum ', full_enum_type_name);
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+END`
+
+	result, err := Parse("", []byte(input))
+	if err != nil {
+		t.Logf("Parse error: %v", err)
+		t.Logf("Input was: %s", input)
+	}
+	g.Expect(err).ToNot(HaveOccurred())
+
+	stmt, ok := result.(*CreateProcedureStmt)
+	g.Expect(ok).To(BeTrue())
+	g.Expect(stmt.Name).To(Equal("_pb_convert_json_enum_to_number"))
+	g.Expect(stmt.Parameters).To(HaveLen(4))
+}
