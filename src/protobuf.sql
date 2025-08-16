@@ -269,11 +269,11 @@ END $$
 DROP FUNCTION IF EXISTS _pb_util_zigzag_decode_uint32 $$
 CREATE FUNCTION _pb_util_zigzag_decode_uint32(value INT UNSIGNED) RETURNS INT UNSIGNED DETERMINISTIC
 BEGIN
-    IF value & 1 = 0 THEN
-        RETURN value >> 1; -- Positive number
-    ELSE
-        RETURN (value >> 1) ^ 0xFFFFFFFF; -- Negative number
-    END IF;
+	IF value & 1 = 0 THEN
+		RETURN value >> 1; -- Positive number
+	ELSE
+		RETURN (value >> 1) ^ 0xFFFFFFFF; -- Negative number
+	END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_util_zigzag_encode_uint64 $$
@@ -362,25 +362,25 @@ END $$
 DROP FUNCTION IF EXISTS _pb_util_reinterpret_uint32_as_float $$
 CREATE FUNCTION _pb_util_reinterpret_uint32_as_float(bits INT UNSIGNED) RETURNS FLOAT DETERMINISTIC
 BEGIN
-    DECLARE sign INT;
-    DECLARE exponent INT;
-    DECLARE fraction DOUBLE;
+	DECLARE sign INT;
+	DECLARE exponent INT;
+	DECLARE fraction DOUBLE;
 
-    SET sign = IF(bits >> 31 = 0, 1, -1); -- sign: +1 or -1
-    SET exponent = (bits >> 23) & 0xFF; -- exponent (8 bits)
-    SET fraction = bits & 0x7FFFFF; -- fraction (23 bits)
+	SET sign = IF(bits >> 31 = 0, 1, -1); -- sign: +1 or -1
+	SET exponent = (bits >> 23) & 0xFF; -- exponent (8 bits)
+	SET fraction = bits & 0x7FFFFF; -- fraction (23 bits)
 
-    IF exponent = 255 THEN -- special case
-        IF fraction = 0 THEN
-            RETURN sign * NULL; -- +Inf or -Inf
-        ELSE
-            RETURN NULL; -- NaN
-        END IF;
-    ELSEIF exponent = 0 THEN -- subnormal number
-        RETURN sign * POW(2, -126) * (fraction / POW(2, 23));
-    ELSE -- normal number
-        RETURN sign * POW(2, exponent - 127) * (1 + (fraction / POW(2, 23)));
-    END IF;
+	IF exponent = 255 THEN -- special case
+		IF fraction = 0 THEN
+			RETURN sign * NULL; -- +Inf or -Inf
+		ELSE
+			RETURN NULL; -- NaN
+		END IF;
+	ELSEIF exponent = 0 THEN -- subnormal number
+		RETURN sign * POW(2, -126) * (fraction / POW(2, 23));
+	ELSE -- normal number
+		RETURN sign * POW(2, exponent - 127) * (1 + (fraction / POW(2, 23)));
+	END IF;
 END $$
 
 -- Missing reverse conversion functions needed for setters
@@ -404,57 +404,57 @@ END $$
 DROP FUNCTION IF EXISTS _pb_util_reinterpret_float_as_uint32 $$
 CREATE FUNCTION _pb_util_reinterpret_float_as_uint32(value FLOAT) RETURNS INT UNSIGNED DETERMINISTIC
 BEGIN
-    DECLARE bits BIGINT UNSIGNED;
-    DECLARE sign_bit BIGINT UNSIGNED;
-    DECLARE exponent BIGINT;
-    DECLARE fraction BIGINT UNSIGNED;
+	DECLARE bits BIGINT UNSIGNED;
+	DECLARE sign_bit BIGINT UNSIGNED;
+	DECLARE exponent BIGINT;
+	DECLARE fraction BIGINT UNSIGNED;
 
-    IF value IS NULL THEN
-        RETURN 0x7FC00000; -- NaN
-    ELSEIF value != value THEN -- NaN check
-        RETURN 0x7FC00000;
-    END IF;
+	IF value IS NULL THEN
+		RETURN 0x7FC00000; -- NaN
+	ELSEIF value != value THEN -- NaN check
+		RETURN 0x7FC00000;
+	END IF;
 
-    -- Handle zero values (including negative zero)
-    IF value = 0 THEN
-        -- Use string conversion to detect negative zero
-        -- Negative zero shows as "-0" in string representation
-        SET sign_bit = IF(CAST(value AS CHAR) LIKE '-%', 1, 0);
-        -- Return signed zero: +0.0 = 0x00000000, -0.0 = 0x80000000
-        RETURN sign_bit << 31;
-    END IF;
+	-- Handle zero values (including negative zero)
+	IF value = 0 THEN
+		-- Use string conversion to detect negative zero
+		-- Negative zero shows as "-0" in string representation
+		SET sign_bit = IF(CAST(value AS CHAR) LIKE '-%', 1, 0);
+		-- Return signed zero: +0.0 = 0x00000000, -0.0 = 0x80000000
+		RETURN sign_bit << 31;
+	END IF;
 
-    -- Capture sign for non-zero values
-    SET sign_bit = IF(value < 0, 1, 0);
-    SET value = ABS(value);
+	-- Capture sign for non-zero values
+	SET sign_bit = IF(value < 0, 1, 0);
+	SET value = ABS(value);
 
-    -- Check for infinity
-    IF value >= 3.4028235e+38 THEN
-        RETURN (sign_bit << 31) | 0x7F800000;
-    END IF;
+	-- Check for infinity
+	IF value >= 3.4028235e+38 THEN
+		RETURN (sign_bit << 31) | 0x7F800000;
+	END IF;
 
-    IF value < 1.1754944e-38 THEN -- subnormal threshold
-        SET exponent = 0;
-        SET fraction = ROUND(value / 1.4012985e-45); -- 2^-149
-        IF fraction > 0x7FFFFF THEN
-            SET fraction = 0x7FFFFF;
-        END IF;
-    ELSE -- normal number
-        SET exponent = FLOOR(LOG(2, value)) + 127;
-        IF exponent < 0 THEN
-            SET exponent = 0;
-            SET fraction = 0;
-        ELSEIF exponent >= 255 THEN
-            RETURN (sign_bit << 31) | 0x7F800000; -- infinity
-        ELSE
-            SET fraction = ROUND((value / POW(2, exponent - 127) - 1) * POW(2, 23));
-            IF fraction > 0x7FFFFF THEN
-                SET fraction = 0x7FFFFF;
-            END IF;
-        END IF;
-    END IF;
+	IF value < 1.1754944e-38 THEN -- subnormal threshold
+		SET exponent = 0;
+		SET fraction = ROUND(value / 1.4012985e-45); -- 2^-149
+		IF fraction > 0x7FFFFF THEN
+			SET fraction = 0x7FFFFF;
+		END IF;
+	ELSE -- normal number
+		SET exponent = FLOOR(LOG(2, value)) + 127;
+		IF exponent < 0 THEN
+			SET exponent = 0;
+			SET fraction = 0;
+		ELSEIF exponent >= 255 THEN
+			RETURN (sign_bit << 31) | 0x7F800000; -- infinity
+		ELSE
+			SET fraction = ROUND((value / POW(2, exponent - 127) - 1) * POW(2, 23));
+			IF fraction > 0x7FFFFF THEN
+				SET fraction = 0x7FFFFF;
+			END IF;
+		END IF;
+	END IF;
 
-    RETURN (sign_bit << 31) | (CAST(exponent AS UNSIGNED) << 23) | (fraction & 0x7FFFFF);
+	RETURN (sign_bit << 31) | (CAST(exponent AS UNSIGNED) << 23) | (fraction & 0x7FFFFF);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_util_reinterpret_sint64_as_uint64 $$
@@ -466,57 +466,63 @@ END $$
 DROP FUNCTION IF EXISTS _pb_util_reinterpret_double_as_uint64 $$
 CREATE FUNCTION _pb_util_reinterpret_double_as_uint64(value DOUBLE) RETURNS BIGINT UNSIGNED DETERMINISTIC
 BEGIN
-    DECLARE bits BIGINT UNSIGNED;
-    DECLARE sign_bit BIGINT UNSIGNED;
-    DECLARE exponent BIGINT;
-    DECLARE fraction BIGINT UNSIGNED;
+	DECLARE bits BIGINT UNSIGNED;
+	DECLARE sign_bit BIGINT UNSIGNED;
+	DECLARE exponent BIGINT;
+	DECLARE fraction BIGINT UNSIGNED;
 
-    IF value IS NULL THEN
-        RETURN 0x7FF8000000000000; -- NaN
-    ELSEIF value != value THEN -- NaN check
-        RETURN 0x7FF8000000000000;
-    END IF;
+	IF value IS NULL THEN
+		RETURN 0x7FF8000000000000; -- NaN
+	ELSEIF value != value THEN -- NaN check
+		RETURN 0x7FF8000000000000;
+	END IF;
 
-    -- Handle zero values (including negative zero)
-    IF value = 0 THEN
-        -- Use string conversion to detect negative zero
-        -- Negative zero shows as "-0" in string representation
-        SET sign_bit = IF(CAST(value AS CHAR) LIKE '-%', 1, 0);
-        -- Return signed zero: +0.0 = 0x0000000000000000, -0.0 = 0x8000000000000000
-        RETURN sign_bit << 63;
-    END IF;
+	-- Handle zero values (including negative zero)
+	IF value = 0 THEN
+		-- Use string conversion to detect negative zero
+		-- Negative zero shows as "-0" in string representation
+		SET sign_bit = IF(CAST(value AS CHAR) LIKE '-%', 1, 0);
+		-- Return signed zero: +0.0 = 0x0000000000000000, -0.0 = 0x8000000000000000
+		RETURN sign_bit << 63;
+	END IF;
 
-    -- Capture sign for non-zero values
-    SET sign_bit = IF(value < 0, 1, 0);
-    SET value = ABS(value);
+	-- Capture sign for non-zero values
+	SET sign_bit = IF(value < 0, 1, 0);
+	SET value = ABS(value);
 
-    -- Check for infinity
-    IF value >= 1.7976931348623157e+308 THEN
-        RETURN (sign_bit << 63) | 0x7FF0000000000000;
-    END IF;
+	-- Check for infinity. This never happens because MySQL doesn't support Inf or -Inf.
+	-- From this condition, we know the unbiased exponent is less than 1024 (and not equal to or greater than 1024).
+	IF value > 1.7976931348623157e+308 THEN
+		RETURN (sign_bit << 63) | 0x7FF0000000000000;
+	END IF;
 
-    IF value < 2.2250738585072014e-308 THEN -- subnormal threshold
-        SET exponent = 0;
-        SET fraction = ROUND(value / 4.9406564584124654e-324); -- 2^-1074
-        IF fraction > 0xFFFFFFFFFFFFF THEN
-            SET fraction = 0xFFFFFFFFFFFFF;
-        END IF;
-    ELSE -- normal number
-        SET exponent = FLOOR(LOG(2, value)) + 1023;
-        IF exponent < 0 THEN
-            SET exponent = 0;
-            SET fraction = 0;
-        ELSEIF exponent >= 2047 THEN
-            RETURN (sign_bit << 63) | 0x7FF0000000000000; -- infinity
-        ELSE
-            SET fraction = ROUND((value / POW(2, exponent - 1023) - 1) * POW(2, 52));
-            IF fraction > 0xFFFFFFFFFFFFF THEN
-                SET fraction = 0xFFFFFFFFFFFFF;
-            END IF;
-        END IF;
-    END IF;
+	IF value < 2.2250738585072014e-308 THEN -- subnormal threshold
+		SET exponent = 0;
+		SET fraction = ROUND(value / 4.9406564584124654e-324); -- 2^-1074
+		IF fraction > 0xFFFFFFFFFFFFF THEN
+			SET fraction = 0xFFFFFFFFFFFFF;
+		END IF;
+	ELSE -- normal number
+		SET exponent = FLOOR(LOG(2, value)) + 1023;
+		-- Unfortunately, LOG(2, value) is not always correct. E.g. LOG(2, 1.7976931348623157e+308) returns 1024 (even though it should be 1023.9999999999999998...).
+		-- We already know the unbiased exponent is less than 1024.
+		IF exponent >= 2047 OR POW(2, exponent - 1023) > value THEN
+			SET exponent = exponent - 1;
+		END IF;
+		IF exponent < 0 THEN
+			SET exponent = 0;
+			SET fraction = 0;
+		ELSEIF exponent >= 2047 THEN
+			RETURN (sign_bit << 63) | 0x7FF0000000000000; -- infinity
+		ELSE
+			SET fraction = ROUND((value / POW(2, exponent - 1023) - 1) * POW(2, 52));
+			IF fraction > 0xFFFFFFFFFFFFF THEN
+				SET fraction = 0xFFFFFFFFFFFFF;
+			END IF;
+		END IF;
+	END IF;
 
-    RETURN (sign_bit << 63) | (CAST(exponent AS UNSIGNED) << 52) | (fraction & 0xFFFFFFFFFFFFF);
+	RETURN (sign_bit << 63) | (CAST(exponent AS UNSIGNED) << 52) | (fraction & 0xFFFFFFFFFFFFF);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wire_get_field_number_from_tag $$
