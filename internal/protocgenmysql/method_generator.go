@@ -4,70 +4,60 @@ import (
 	"fmt"
 	"strings"
 
-	"google.golang.org/protobuf/types/descriptorpb"
+	"github.com/eiiches/mysql-protobuf-functions/internal/protoreflectutils"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 // FileNameFunc defines how to transform a proto file path to a SQL file path
 type FileNameFunc func(protoPath string) string
 
 // TypePrefixFunc defines how to transform a proto package and type name to a SQL function prefix
-type TypePrefixFunc func(packageName string, typeName string) string
+type TypePrefixFunc func(packageName protoreflect.FullName, typeName protoreflect.FullName) string
 
 // GenerateMethodFragments returns individual content fragments for each proto file
-func GenerateMethodFragments(protoFiles []*descriptorpb.FileDescriptorProto, fileNameFunc FileNameFunc, typePrefixFunc TypePrefixFunc, schemaFunctionName string) map[string][]string {
+func GenerateMethodFragments(files *protoregistry.Files, fileNameFunc FileNameFunc, typePrefixFunc TypePrefixFunc, schemaFunctionName string) map[string][]string {
 	fileFragments := make(map[string][]string)
 
 	// Generate fragments for each proto file
-	for _, file := range protoFiles {
-		if file.Name == nil {
-			continue
+	files.RangeFiles(func(fileDesc protoreflect.FileDescriptor) bool {
+		filename := fileNameFunc(fileDesc.Path())
+		if filename == "" {
+			return true // continue iteration
 		}
-		filename := fileNameFunc(*file.Name)
-		content := generateMethodsForFileContent(file, typePrefixFunc, schemaFunctionName)
+
+		content := generateMethodsForFile(fileDesc, typePrefixFunc, schemaFunctionName)
 		if content != "" {
 			fileFragments[filename] = append(fileFragments[filename], content)
 		}
-	}
+		return true // continue iteration
+	})
 
 	return fileFragments
 }
 
-func generateMethodsForFileContent(file *descriptorpb.FileDescriptorProto, typePrefixFunc TypePrefixFunc, schemaFunctionName string) string {
+func generateMethodsForFile(fileDesc protoreflect.FileDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string) string {
 	var content strings.Builder
 
-	packageName := ""
-	if file.Package != nil {
-		packageName = *file.Package
+	// Generate methods for each message type
+	messages := fileDesc.Messages()
+	for messageDesc := range protoreflectutils.Iterate(messages) {
+		generateMessageMethods(&content, messageDesc, typePrefixFunc, schemaFunctionName)
 	}
 
-	// Generate methods for each message type
-	for _, messageType := range file.MessageType {
-		generateMessageMethods(&content, messageType, typePrefixFunc, packageName, schemaFunctionName)
+	// Generate methods for each enum type
+	enums := fileDesc.Enums()
+	for enumDesc := range protoreflectutils.Iterate(enums) {
+		generateEnumMethods(&content, enumDesc, typePrefixFunc, schemaFunctionName)
 	}
 
 	return content.String()
 }
 
-func generateMessageMethods(content *strings.Builder, messageType *descriptorpb.DescriptorProto, typePrefixFunc TypePrefixFunc, packageName string, schemaFunctionName string) {
-	generateMessageMethodsWithPath(content, messageType, typePrefixFunc, packageName, "", schemaFunctionName)
-}
-
-func generateMessageMethodsWithPath(content *strings.Builder, messageType *descriptorpb.DescriptorProto, typePrefixFunc TypePrefixFunc, packageName string, parentPath string, schemaFunctionName string) {
-	if messageType.Name == nil {
-		return
-	}
-
-	typeName := *messageType.Name
-
-	// Build fully qualified type name
-	var fullTypeName string
-	if parentPath != "" {
-		fullTypeName = parentPath + "." + typeName
-	} else if packageName != "" {
-		fullTypeName = packageName + "." + typeName
-	} else {
-		fullTypeName = typeName
-	}
+func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string) {
+	// Use FullName from descriptor - no manual string construction needed
+	fullTypeName := messageDesc.FullName()
+	packageName := messageDesc.ParentFile().Package()
 
 	// Get prefix for this specific type
 	funcPrefix := typePrefixFunc(packageName, fullTypeName)
@@ -108,87 +98,136 @@ func generateMessageMethodsWithPath(content *strings.Builder, messageType *descr
 	content.WriteString("END $$\n\n")
 
 	// Generate setter and getter methods for each field
-	for _, field := range messageType.Field {
-		if field.Name == nil {
-			continue
-		}
-		fieldName := *field.Name
-		fieldType := field.GetType()
-		isRepeated := field.GetLabel() == descriptorpb.FieldDescriptorProto_LABEL_REPEATED
+	fields := messageDesc.Fields()
+	for field := range protoreflectutils.Iterate(fields) {
+		fieldName := string(field.Name())
+		fieldType := field.Kind()
+		isRepeated := field.Cardinality() == protoreflect.Repeated
 
 		// Determine MySQL types for setter parameter and getter return
-		setterType, getterType := getMySQLTypesForField(fieldType, isRepeated)
+		setterType, getterType := getMySQLTypesForFieldFromReflection(fieldType, isRepeated)
 
 		// Generate setter
 		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_set_%s $$\n", funcPrefix, fieldName))
 		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_set_%s(proto_data JSON, field_value %s) RETURNS JSON DETERMINISTIC\n", funcPrefix, fieldName, setterType))
 		content.WriteString("BEGIN\n")
-		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.GetNumber()))
+		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
 		content.WriteString("END $$\n\n")
 
 		// Generate getter
 		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_get_%s $$\n", funcPrefix, fieldName))
 		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_get_%s(proto_data JSON) RETURNS %s DETERMINISTIC\n", funcPrefix, fieldName, getterType))
 		content.WriteString("BEGIN\n")
-		if isRepeated || fieldType == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
+		if isRepeated || fieldType == protoreflect.MessageKind {
 			// For repeated fields and messages, return JSON directly
-			content.WriteString(fmt.Sprintf("    RETURN JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.GetNumber()))
+			content.WriteString(fmt.Sprintf("    RETURN JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
 		} else {
 			// For scalar fields, unquote the JSON value with default value fallback
-			defaultValue := getFieldDefaultValue(field)
-			content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$.\"%.d\"')), %s);\n", field.GetNumber(), defaultValue))
+			defaultValue := getFieldDefaultValueFromReflection(field)
+			content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$.\"%.d\"')), %s);\n", field.Number(), defaultValue))
 		}
 		content.WriteString("END $$\n\n")
 	}
 
 	// Generate methods for nested message types
-	for _, nestedType := range messageType.NestedType {
-		generateMessageMethodsWithPath(content, nestedType, typePrefixFunc, packageName, fullTypeName, schemaFunctionName)
+	nestedMessages := messageDesc.Messages()
+	for nestedMessageDesc := range protoreflectutils.Iterate(nestedMessages) {
+		generateMessageMethods(content, nestedMessageDesc, typePrefixFunc, schemaFunctionName)
+	}
+
+	// Generate methods for nested enum types
+	nestedEnums := messageDesc.Enums()
+	for nestedEnumDesc := range protoreflectutils.Iterate(nestedEnums) {
+		generateEnumMethods(content, nestedEnumDesc, typePrefixFunc, schemaFunctionName)
 	}
 }
 
-// getMySQLTypesForField returns the appropriate MySQL types for setter parameter and getter return value
-func getMySQLTypesForField(fieldType descriptorpb.FieldDescriptorProto_Type, isRepeated bool) (setterType, getterType string) {
+func generateEnumMethods(content *strings.Builder, enumDesc protoreflect.EnumDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string) {
+	// Use FullName from descriptor
+	fullTypeName := enumDesc.FullName()
+	packageName := enumDesc.ParentFile().Package()
+
+	// Get prefix for this specific type
+	funcPrefix := typePrefixFunc(packageName, fullTypeName)
+
+	// Generate from_string method
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_from_string $$\n", funcPrefix))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC\n", funcPrefix))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    CASE enum_name\n")
+
+	// Generate CASE statements for each enum value
+	enumValues := enumDesc.Values()
+	for enumValue := range protoreflectutils.Iterate(enumValues) {
+		valueName := string(enumValue.Name())
+		valueNumber := int(enumValue.Number())
+		content.WriteString(fmt.Sprintf("        WHEN '%s' THEN RETURN %d;\n", valueName, valueNumber))
+	}
+
+	content.WriteString("        ELSE RETURN NULL;\n")
+	content.WriteString("    END CASE;\n")
+	content.WriteString("END $$\n\n")
+
+	// Generate to_string method
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_to_string $$\n", funcPrefix))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC\n", funcPrefix))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    CASE enum_value\n")
+
+	// Generate CASE statements for each enum value
+	for enumValue := range protoreflectutils.Iterate(enumValues) {
+		valueName := string(enumValue.Name())
+		valueNumber := int(enumValue.Number())
+		content.WriteString(fmt.Sprintf("        WHEN %d THEN RETURN '%s';\n", valueNumber, valueName))
+	}
+
+	content.WriteString("        ELSE RETURN NULL;\n")
+	content.WriteString("    END CASE;\n")
+	content.WriteString("END $$\n\n")
+}
+
+// getMySQLTypesForFieldFromReflection returns the appropriate MySQL types for setter parameter and getter return value using protoreflect
+func getMySQLTypesForFieldFromReflection(fieldKind protoreflect.Kind, isRepeated bool) (setterType, getterType string) {
 	// For repeated fields and maps, always use JSON
 	if isRepeated {
 		return "JSON", "JSON"
 	}
 
 	// For scalar fields, map protobuf types to MySQL types
-	switch fieldType {
-	case descriptorpb.FieldDescriptorProto_TYPE_DOUBLE:
+	switch fieldKind {
+	case protoreflect.DoubleKind:
 		return "DOUBLE", "DOUBLE"
-	case descriptorpb.FieldDescriptorProto_TYPE_FLOAT:
+	case protoreflect.FloatKind:
 		return "FLOAT", "FLOAT"
-	case descriptorpb.FieldDescriptorProto_TYPE_INT64:
+	case protoreflect.Int64Kind:
 		return "BIGINT", "BIGINT"
-	case descriptorpb.FieldDescriptorProto_TYPE_UINT64:
+	case protoreflect.Uint64Kind:
 		return "BIGINT UNSIGNED", "BIGINT UNSIGNED"
-	case descriptorpb.FieldDescriptorProto_TYPE_INT32:
+	case protoreflect.Int32Kind:
 		return "INT", "INT"
-	case descriptorpb.FieldDescriptorProto_TYPE_FIXED64:
+	case protoreflect.Fixed64Kind:
 		return "BIGINT UNSIGNED", "BIGINT UNSIGNED"
-	case descriptorpb.FieldDescriptorProto_TYPE_FIXED32:
+	case protoreflect.Fixed32Kind:
 		return "INT UNSIGNED", "INT UNSIGNED"
-	case descriptorpb.FieldDescriptorProto_TYPE_BOOL:
+	case protoreflect.BoolKind:
 		return "BOOLEAN", "BOOLEAN"
-	case descriptorpb.FieldDescriptorProto_TYPE_STRING:
+	case protoreflect.StringKind:
 		return "LONGTEXT", "LONGTEXT"
-	case descriptorpb.FieldDescriptorProto_TYPE_BYTES:
+	case protoreflect.BytesKind:
 		return "LONGBLOB", "LONGBLOB"
-	case descriptorpb.FieldDescriptorProto_TYPE_UINT32:
+	case protoreflect.Uint32Kind:
 		return "INT UNSIGNED", "INT UNSIGNED"
-	case descriptorpb.FieldDescriptorProto_TYPE_ENUM:
+	case protoreflect.EnumKind:
 		return "INT", "INT"
-	case descriptorpb.FieldDescriptorProto_TYPE_SFIXED32:
+	case protoreflect.Sfixed32Kind:
 		return "INT", "INT"
-	case descriptorpb.FieldDescriptorProto_TYPE_SFIXED64:
+	case protoreflect.Sfixed64Kind:
 		return "BIGINT", "BIGINT"
-	case descriptorpb.FieldDescriptorProto_TYPE_SINT32:
+	case protoreflect.Sint32Kind:
 		return "INT", "INT"
-	case descriptorpb.FieldDescriptorProto_TYPE_SINT64:
+	case protoreflect.Sint64Kind:
 		return "BIGINT", "BIGINT"
-	case descriptorpb.FieldDescriptorProto_TYPE_MESSAGE:
+	case protoreflect.MessageKind:
 		// Messages are represented as JSON (ProtoNumberJSON format)
 		return "JSON", "JSON"
 	default:
@@ -197,48 +236,62 @@ func getMySQLTypesForField(fieldType descriptorpb.FieldDescriptorProto_Type, isR
 	}
 }
 
-// getFieldDefaultValue returns the appropriate default value for a field based on proto version and custom defaults
-func getFieldDefaultValue(field *descriptorpb.FieldDescriptorProto) string {
-	fieldType := field.GetType()
+// getFieldDefaultValueFromReflection returns the appropriate default value for a field based on proto version and custom defaults using protoreflect
+func getFieldDefaultValueFromReflection(field protoreflect.FieldDescriptor) string {
+	fieldKind := field.Kind()
 
 	// Check if field has a custom default value (proto2)
-	if field.DefaultValue != nil {
-		defaultVal := *field.DefaultValue
-		switch fieldType {
-		case descriptorpb.FieldDescriptorProto_TYPE_STRING:
+	if field.HasDefault() {
+		defaultVal := field.Default()
+		switch fieldKind {
+		case protoreflect.StringKind:
 			// String defaults need to be quoted
-			return fmt.Sprintf("'%s'", strings.ReplaceAll(defaultVal, "'", "''"))
-		case descriptorpb.FieldDescriptorProto_TYPE_BYTES:
+			return fmt.Sprintf("'%s'", strings.ReplaceAll(defaultVal.String(), "'", "''"))
+		case protoreflect.BytesKind:
 			// Bytes defaults need to be hex-encoded
-			return fmt.Sprintf("X'%s'", defaultVal)
-		case descriptorpb.FieldDescriptorProto_TYPE_BOOL:
+			return fmt.Sprintf("X'%X'", defaultVal.Bytes())
+		case protoreflect.BoolKind:
 			// Boolean defaults
-			if defaultVal == "true" {
+			if defaultVal.Bool() {
 				return "1"
 			}
 			return "0"
+		case protoreflect.EnumKind:
+			// Enum defaults
+			return fmt.Sprintf("%d", defaultVal.Enum())
 		default:
 			// Numeric defaults can be used directly
-			return defaultVal
+			switch fieldKind {
+			case protoreflect.DoubleKind, protoreflect.FloatKind:
+				return fmt.Sprintf("%g", defaultVal.Float())
+			case protoreflect.Int64Kind, protoreflect.Sfixed64Kind, protoreflect.Sint64Kind,
+				protoreflect.Int32Kind, protoreflect.Sfixed32Kind, protoreflect.Sint32Kind:
+				return fmt.Sprintf("%d", defaultVal.Int())
+			case protoreflect.Uint64Kind, protoreflect.Fixed64Kind,
+				protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
+				return fmt.Sprintf("%d", defaultVal.Uint())
+			default:
+				return "NULL"
+			}
 		}
 	}
 
 	// Use proto3 zero values or proto2 implicit defaults
-	switch fieldType {
-	case descriptorpb.FieldDescriptorProto_TYPE_DOUBLE, descriptorpb.FieldDescriptorProto_TYPE_FLOAT:
+	switch fieldKind {
+	case protoreflect.DoubleKind, protoreflect.FloatKind:
 		return "0.0"
-	case descriptorpb.FieldDescriptorProto_TYPE_INT64, descriptorpb.FieldDescriptorProto_TYPE_UINT64,
-		descriptorpb.FieldDescriptorProto_TYPE_INT32, descriptorpb.FieldDescriptorProto_TYPE_UINT32,
-		descriptorpb.FieldDescriptorProto_TYPE_FIXED64, descriptorpb.FieldDescriptorProto_TYPE_FIXED32,
-		descriptorpb.FieldDescriptorProto_TYPE_SFIXED32, descriptorpb.FieldDescriptorProto_TYPE_SFIXED64,
-		descriptorpb.FieldDescriptorProto_TYPE_SINT32, descriptorpb.FieldDescriptorProto_TYPE_SINT64,
-		descriptorpb.FieldDescriptorProto_TYPE_ENUM:
+	case protoreflect.Int64Kind, protoreflect.Uint64Kind,
+		protoreflect.Int32Kind, protoreflect.Uint32Kind,
+		protoreflect.Fixed64Kind, protoreflect.Fixed32Kind,
+		protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind,
+		protoreflect.Sint32Kind, protoreflect.Sint64Kind,
+		protoreflect.EnumKind:
 		return "0"
-	case descriptorpb.FieldDescriptorProto_TYPE_BOOL:
+	case protoreflect.BoolKind:
 		return "0"
-	case descriptorpb.FieldDescriptorProto_TYPE_STRING:
+	case protoreflect.StringKind:
 		return "''"
-	case descriptorpb.FieldDescriptorProto_TYPE_BYTES:
+	case protoreflect.BytesKind:
 		return "X''"
 	default:
 		return "NULL"
