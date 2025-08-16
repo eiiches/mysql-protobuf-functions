@@ -518,6 +518,18 @@ func TestMessageToJsonOneof(t *testing.T) {
 		testMessageToJson(t, "oneof kind { int32 int32_field = 1; string string_field = 2; }", `{"int32Field": 42}`)
 		testMessageToJson(t, "oneof kind { int32 int32_field = 1; string string_field = 2; }", `{"stringField": "test"}`)
 	})
+
+	t.Run("oneof with message", func(t *testing.T) {
+		testMessageToJson(t, "oneof kind { int32 int32_field = 1; MessageType message_field = 2; }", `{}`)
+		testMessageToJson(t, "oneof kind { int32 int32_field = 1; MessageType message_field = 2; }", `{"int32Field": 42}`)
+		testMessageToJson(t, "oneof kind { int32 int32_field = 1; MessageType message_field = 2; }", `{"messageField": {"value": 123}}`)
+	})
+
+	t.Run("oneof with enum", func(t *testing.T) {
+		testMessageToJson(t, "oneof kind { int32 int32_field = 1; EnumType enum_field = 2; }", `{}`)
+		testMessageToJson(t, "oneof kind { int32 int32_field = 1; EnumType enum_field = 2; }", `{"int32Field": 42}`)
+		testMessageToJson(t, "oneof kind { int32 int32_field = 1; EnumType enum_field = 2; }", `{"enumField": "ENUM_TYPE_ONE"}`)
+	})
 }
 
 func TestMessageToJsonWellKnownTypes(t *testing.T) {

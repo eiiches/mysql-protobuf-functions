@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/eiiches/mysql-protobuf-functions/internal/gomega/gjson"
-
 	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
 	"github.com/eiiches/mysql-protobuf-functions/internal/descriptorsetjson"
+	"github.com/eiiches/mysql-protobuf-functions/internal/gomega/gjson"
 	"github.com/eiiches/mysql-protobuf-functions/internal/protonumberjson"
 	"github.com/eiiches/mysql-protobuf-functions/internal/testutils"
 	. "github.com/onsi/gomega"
@@ -539,6 +538,7 @@ func TestMessageToNumberJsonOneof(t *testing.T) {
 func TestMessageToNumberJsonWellKnownTypes(t *testing.T) {
 	t.Run("Timestamp", func(t *testing.T) {
 		testMessageToNumberJson(t, "google.protobuf.Timestamp timestamp_field = 1;", `{"timestampField": "1970-01-01T00:00:00Z"}`, `{"1": {}}`)
+		testMessageToNumberJson(t, "google.protobuf.Timestamp timestamp_field = 1;", `{"timestampField": "1970-01-01T00:00:01Z"}`, `{"1": {"1": 1}}`)
 		testMessageToNumberJson(t, "google.protobuf.Timestamp timestamp_field = 1;", `{"timestampField": "2023-10-01T12:34:56.789Z"}`, `{"1": {"1": 1696163696, "2": 789000000}}`)
 	})
 
