@@ -35,6 +35,11 @@ https://github.com/protocolbuffers/protobuf/tree/main/conformance`,
 				Name:  "test",
 				Usage: "Test name (for logging/identification)",
 			},
+			&cli.BoolFlag{
+				Name:  "use-legacy-conversion",
+				Usage: "Use legacy direct Protobuf↔JSON conversion instead of ProtoNumberJSON intermediate format",
+				Value: false,
+			},
 		},
 		Action: runConformanceTest,
 	}
@@ -48,9 +53,18 @@ func runConformanceTest(ctx context.Context, command *cli.Command) error {
 	database := command.String("database")
 	debug := command.Bool("debug")
 	testName := command.String("test")
+	useLegacyConversion := command.Bool("use-legacy-conversion")
 
 	if debug && testName != "" {
 		log.Printf("Running test: %s", testName)
+	}
+
+	if debug {
+		if useLegacyConversion {
+			log.Printf("Using legacy direct Protobuf↔JSON conversion")
+		} else {
+			log.Printf("Using ProtoNumberJSON intermediate format (default)")
+		}
 	}
 
 	// Open database connection
@@ -67,8 +81,9 @@ func runConformanceTest(ctx context.Context, command *cli.Command) error {
 
 	// Create conformance test handler
 	handler := &ConformanceHandler{
-		db:    db,
-		debug: debug,
+		db:                  db,
+		debug:               debug,
+		useLegacyConversion: useLegacyConversion,
 	}
 
 	// Run the conformance test protocol

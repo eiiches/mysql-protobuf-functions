@@ -15,8 +15,9 @@ import (
 
 // ConformanceHandler implements the protobuf conformance test protocol
 type ConformanceHandler struct {
-	db    *sql.DB
-	debug bool
+	db                  *sql.DB
+	debug               bool
+	useLegacyConversion bool
 }
 
 // RunProtocol implements the conformance testing protocol:
@@ -151,6 +152,14 @@ func (h *ConformanceHandler) HandleConformanceRequest(request *ConformanceReques
 
 // HandleJsonInput processes JSON input and generates appropriate output
 func (h *ConformanceHandler) HandleJsonInput(request *ConformanceRequest, jsonInput string) *ConformanceResponse {
+	if h.useLegacyConversion {
+		return h.HandleJsonInputLegacy(request, jsonInput)
+	}
+	return h.HandleJsonInputWithProtoNumberJSON(request, jsonInput)
+}
+
+// HandleJsonInputLegacy processes JSON input using legacy direct conversion (original implementation)
+func (h *ConformanceHandler) HandleJsonInputLegacy(request *ConformanceRequest, jsonInput string) *ConformanceResponse {
 	if h.debug {
 		log.Printf("Processing JSON input: %s", jsonInput)
 	}
@@ -198,12 +207,12 @@ func (h *ConformanceHandler) HandleJsonInput(request *ConformanceRequest, jsonIn
 	// Now handle the binary data normally - but we need a different approach since
 	// HandleBinaryProtobuf converts to JSON first. For JSON input, we should handle
 	// output formats directly.
-	return h.HandleConvertedMessage(request, binaryData, messageType)
+	return h.HandleConvertedMessageLegacy(request, binaryData, messageType)
 }
 
-// HandleConvertedMessage processes a binary protobuf message and generates appropriate output
-// This is used by both HandleBinaryProtobuf (after wire JSON round-trip) and HandleJsonInput
-func (h *ConformanceHandler) HandleConvertedMessage(request *ConformanceRequest, binaryData []byte, messageType string) *ConformanceResponse {
+// HandleConvertedMessageLegacy processes a binary protobuf message and generates appropriate output
+// This is used by the legacy conversion methods
+func (h *ConformanceHandler) HandleConvertedMessageLegacy(request *ConformanceRequest, binaryData []byte, messageType string) *ConformanceResponse {
 	// Generate output based on requested format
 	switch request.RequestedOutputFormat {
 	case WireFormat_PROTOBUF:
@@ -261,6 +270,14 @@ func (h *ConformanceHandler) HandleConvertedMessage(request *ConformanceRequest,
 
 // HandleBinaryProtobuf processes binary protobuf input and generates appropriate output
 func (h *ConformanceHandler) HandleBinaryProtobuf(request *ConformanceRequest, binaryData []byte) *ConformanceResponse {
+	if h.useLegacyConversion {
+		return h.HandleBinaryProtobufLegacy(request, binaryData)
+	}
+	return h.HandleBinaryProtobufWithProtoNumberJSON(request, binaryData)
+}
+
+// HandleBinaryProtobufLegacy processes binary protobuf input using legacy direct conversion (original implementation)
+func (h *ConformanceHandler) HandleBinaryProtobufLegacy(request *ConformanceRequest, binaryData []byte) *ConformanceResponse {
 	if h.debug {
 		log.Printf("Processing binary protobuf data: %d bytes", len(binaryData))
 	}
@@ -329,6 +346,172 @@ func (h *ConformanceHandler) HandleBinaryProtobuf(request *ConformanceRequest, b
 
 	case WireFormat_JSON:
 		// Return the JSON output directly (already converted above)
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_JsonPayload{
+				JsonPayload: jsonOutput,
+			},
+		}
+
+	case WireFormat_TEXT_FORMAT:
+		// Text format not supported
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_Skipped{
+				Skipped: "TEXT_FORMAT output not supported",
+			},
+		}
+
+	default:
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_RuntimeError{
+				RuntimeError: "Unknown output format requested",
+			},
+		}
+	}
+}
+
+// HandleBinaryProtobufWithProtoNumberJSON processes binary protobuf input using ProtoNumberJSON as intermediate format
+func (h *ConformanceHandler) HandleBinaryProtobufWithProtoNumberJSON(request *ConformanceRequest, binaryData []byte) *ConformanceResponse {
+	if h.debug {
+		log.Printf("Processing binary protobuf data with ProtoNumberJSON: %d bytes", len(binaryData))
+	}
+
+	// Get message type
+	messageType := request.MessageType
+	if messageType == "" {
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_RuntimeError{
+				RuntimeError: "Message type not specified for binary conversion",
+			},
+		}
+	}
+
+	// Ensure message type starts with a dot for fully qualified name
+	if !strings.HasPrefix(messageType, ".") {
+		messageType = "." + messageType
+	}
+
+	// Convert binary protobuf to ProtoNumberJSON using MySQL function
+	var protoNumberJSON string
+	query := "SELECT _pb_message_to_number_json(conformance_test_messages_schema(), ?, ?)"
+	err := h.db.QueryRow(query, messageType, binaryData).Scan(&protoNumberJSON)
+	if err != nil {
+		// Check if this is a GROUP field error (unsupported feature)
+		if isGroupFieldError(err) {
+			return &ConformanceResponse{
+				Result: &ConformanceResponse_Skipped{
+					Skipped: "GROUP fields are not supported (deprecated Proto2 feature)",
+				},
+			}
+		}
+		// This is the binary input parsing phase - all errors here should be parse errors
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_ParseError{
+				ParseError: fmt.Sprintf("Failed to parse binary protobuf: %v", err),
+			},
+		}
+	}
+
+	if h.debug {
+		log.Printf("Converted binary to ProtoNumberJSON: %s", protoNumberJSON)
+	}
+
+	// Generate output from ProtoNumberJSON
+	return h.generateOutputFromProtoNumberJSON(request, protoNumberJSON, messageType)
+}
+
+// HandleJsonInputWithProtoNumberJSON processes JSON input using ProtoNumberJSON as intermediate format
+func (h *ConformanceHandler) HandleJsonInputWithProtoNumberJSON(request *ConformanceRequest, jsonInput string) *ConformanceResponse {
+	if h.debug {
+		log.Printf("Processing JSON input with ProtoNumberJSON: %s", jsonInput)
+	}
+
+	// Get message type
+	messageType := request.MessageType
+	if messageType == "" {
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_RuntimeError{
+				RuntimeError: "Message type not specified for JSON conversion",
+			},
+		}
+	}
+
+	// Ensure message type starts with a dot for fully qualified name
+	if !strings.HasPrefix(messageType, ".") {
+		messageType = "." + messageType
+	}
+
+	// Convert JSON to ProtoNumberJSON using MySQL function
+	var protoNumberJSON string
+	query := "SELECT _pb_json_to_number_json(conformance_test_messages_schema(), ?, ?)"
+	err := h.db.QueryRow(query, messageType, jsonInput).Scan(&protoNumberJSON)
+	if err != nil {
+		// Check if this is a GROUP field error (unsupported feature)
+		if isGroupFieldError(err) {
+			return &ConformanceResponse{
+				Result: &ConformanceResponse_Skipped{
+					Skipped: "GROUP fields are not supported (deprecated Proto2 feature)",
+				},
+			}
+		}
+		// This is the JSON input parsing phase - all errors here should be parse errors
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_ParseError{
+				ParseError: fmt.Sprintf("Failed to parse JSON input: %v", err),
+			},
+		}
+	}
+
+	if h.debug {
+		log.Printf("Converted JSON to ProtoNumberJSON: %s", protoNumberJSON)
+	}
+
+	// Generate output from ProtoNumberJSON
+	return h.generateOutputFromProtoNumberJSON(request, protoNumberJSON, messageType)
+}
+
+// generateOutputFromProtoNumberJSON converts ProtoNumberJSON to the requested output format
+func (h *ConformanceHandler) generateOutputFromProtoNumberJSON(request *ConformanceRequest, protoNumberJSON string, messageType string) *ConformanceResponse {
+	switch request.RequestedOutputFormat {
+	case WireFormat_PROTOBUF:
+		// Convert ProtoNumberJSON to binary protobuf
+		var binaryData []byte
+		query := "SELECT _pb_number_json_to_message(conformance_test_messages_schema(), ?, ?)"
+		err := h.db.QueryRow(query, messageType, protoNumberJSON).Scan(&binaryData)
+		if err != nil {
+			return &ConformanceResponse{
+				Result: &ConformanceResponse_SerializeError{
+					SerializeError: fmt.Sprintf("Failed to convert ProtoNumberJSON to binary: %v", err),
+				},
+			}
+		}
+
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_ProtobufPayload{
+				ProtobufPayload: binaryData,
+			},
+		}
+
+	case WireFormat_JSON:
+		// Convert ProtoNumberJSON to ProtoJSON
+		var jsonOutput string
+		query := "SELECT _pb_number_json_to_json(conformance_test_messages_schema(), ?, ?, true)"
+		err := h.db.QueryRow(query, messageType, protoNumberJSON).Scan(&jsonOutput)
+		if err != nil {
+			// Check if this is a GROUP field error (unsupported feature)
+			if isGroupFieldError(err) {
+				return &ConformanceResponse{
+					Result: &ConformanceResponse_Skipped{
+						Skipped: "GROUP fields are not supported (deprecated Proto2 feature)",
+					},
+				}
+			}
+			return &ConformanceResponse{
+				Result: &ConformanceResponse_SerializeError{
+					SerializeError: fmt.Sprintf("Failed to convert ProtoNumberJSON to JSON: %v", err),
+				},
+			}
+		}
+
 		return &ConformanceResponse{
 			Result: &ConformanceResponse_JsonPayload{
 				JsonPayload: jsonOutput,
