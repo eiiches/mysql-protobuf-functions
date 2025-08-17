@@ -1,5 +1,60 @@
 DELIMITER $$
 
+-- Helper function to parse JSON value as BIGINT with validation
+DROP FUNCTION IF EXISTS _pb_json_parse_signed_int $$
+CREATE FUNCTION _pb_json_parse_signed_int(json_value JSON) RETURNS BIGINT DETERMINISTIC
+BEGIN
+	DECLARE str_value TEXT;
+	DECLARE message_text TEXT;
+
+	IF JSON_TYPE(json_value) = 'STRING' THEN
+		SET str_value = JSON_UNQUOTE(json_value);
+		-- Validate that the string is a valid number (including exponential notation)
+		IF str_value REGEXP '^-?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$' AND str_value != '' THEN
+			-- For exponential notation, convert through DOUBLE first
+			IF str_value REGEXP '[eE]' OR str_value REGEXP '\\.' THEN
+				RETURN CAST(CAST(str_value AS DOUBLE) AS SIGNED);
+			ELSE
+				RETURN CAST(str_value AS SIGNED);
+			END IF;
+		ELSE
+			-- Invalid number format, signal error
+			SET message_text = CONCAT('Invalid number format for signed integer: ', str_value);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+	ELSE
+		RETURN CAST(json_value AS SIGNED);
+	END IF;
+END $$
+
+-- Helper function to parse JSON value as BIGINT UNSIGNED with validation
+DROP FUNCTION IF EXISTS _pb_json_parse_unsigned_int $$
+CREATE FUNCTION _pb_json_parse_unsigned_int(json_value JSON) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+	DECLARE str_value TEXT;
+	DECLARE message_text TEXT;
+
+	IF JSON_TYPE(json_value) = 'STRING' THEN
+		SET str_value = JSON_UNQUOTE(json_value);
+		-- Validate that the string is a valid positive number (including exponential notation)
+		IF str_value REGEXP '^[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$' AND str_value != '' THEN
+			-- For exponential notation, convert through DOUBLE first
+			IF str_value REGEXP '[eE]' OR str_value REGEXP '\\.' THEN
+				RETURN CAST(CAST(str_value AS DOUBLE) AS UNSIGNED);
+			ELSE
+				RETURN CAST(str_value AS UNSIGNED);
+			END IF;
+		ELSE
+			-- Invalid number format, signal error
+			SET message_text = CONCAT('Invalid number format for unsigned integer: ', str_value);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+	ELSE
+		RETURN CAST(json_value AS UNSIGNED);
+	END IF;
+END $$
+
+
 -- Helper procedure to check if a type is a well-known type
 DROP PROCEDURE IF EXISTS _pb_is_well_known_type $$
 CREATE PROCEDURE _pb_is_well_known_type(IN full_type_name TEXT, OUT is_wkt BOOLEAN)
@@ -416,6 +471,7 @@ BEGIN
 	DECLARE source_field_name TEXT;
 	DECLARE converted_value JSON;
 	DECLARE numeric_value DECIMAL(20,0);
+	DECLARE str_value TEXT;
 	DECLARE enum_string_value TEXT;
 	DECLARE enum_numeric_value INT;
 	-- Array processing
@@ -538,31 +594,31 @@ BEGIN
 							IF map_value_json IS NULL THEN
 								SET converted_value = CAST(0 AS JSON);
 							ELSE
-								SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+								SET converted_value = CAST(JSON_UNQUOTE(map_value_json) AS JSON);
 							END IF;
 						WHEN 4 THEN -- uint64 (convert string to number)
 							IF map_value_json IS NULL THEN
 								SET converted_value = CAST(0 AS JSON);
 							ELSE
-								SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+								SET converted_value = CAST(JSON_UNQUOTE(map_value_json) AS JSON);
 							END IF;
 						WHEN 6 THEN -- fixed64 (convert string to number)
 							IF map_value_json IS NULL THEN
 								SET converted_value = CAST(0 AS JSON);
 							ELSE
-								SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+								SET converted_value = CAST(JSON_UNQUOTE(map_value_json) AS JSON);
 							END IF;
 						WHEN 16 THEN -- sfixed64 (convert string to number)
 							IF map_value_json IS NULL THEN
 								SET converted_value = CAST(0 AS JSON);
 							ELSE
-								SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+								SET converted_value = CAST(JSON_UNQUOTE(map_value_json) AS JSON);
 							END IF;
 						WHEN 18 THEN -- sint64 (convert string to number)
 							IF map_value_json IS NULL THEN
 								SET converted_value = CAST(0 AS JSON);
 							ELSE
-								SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+								SET converted_value = CAST(JSON_UNQUOTE(map_value_json) AS JSON);
 							END IF;
 						ELSE
 							-- Other primitive types: handle null values with appropriate defaults
@@ -684,40 +740,52 @@ BEGIN
 						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), nested_json);
 					END IF;
 				WHEN 3 THEN -- int64 (convert string to number)
-					SET numeric_value = CAST(JSON_UNQUOTE(field_json_value) AS DECIMAL(20,0));
+					SET numeric_value = _pb_json_parse_signed_int(field_json_value);
 					-- In proto3, skip zero values unless proto3_optional is true
-					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0 AND JSON_UNQUOTE(field_json_value) = '0') THEN
+					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
 						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
 					END IF;
 				WHEN 4 THEN -- uint64 (convert string to number)
-					SET numeric_value = CAST(JSON_UNQUOTE(field_json_value) AS DECIMAL(20,0));
+					SET numeric_value = _pb_json_parse_unsigned_int(field_json_value);
 					-- In proto3, skip zero values unless proto3_optional is true
-					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0 AND JSON_UNQUOTE(field_json_value) = '0') THEN
+					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
 						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
 					END IF;
 				WHEN 6 THEN -- fixed64 (convert string to number)
-					SET numeric_value = CAST(JSON_UNQUOTE(field_json_value) AS DECIMAL(20,0));
+					SET numeric_value = _pb_json_parse_unsigned_int(field_json_value);
 					-- In proto3, skip zero values unless proto3_optional is true
-					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0 AND JSON_UNQUOTE(field_json_value) = '0') THEN
+					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
 						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
 					END IF;
 				WHEN 16 THEN -- sfixed64 (convert string to number)
-					SET numeric_value = CAST(JSON_UNQUOTE(field_json_value) AS DECIMAL(20,0));
+					SET numeric_value = _pb_json_parse_signed_int(field_json_value);
 					-- In proto3, skip zero values unless proto3_optional is true
-					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0 AND JSON_UNQUOTE(field_json_value) = '0') THEN
+					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
 						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
 					END IF;
 				WHEN 18 THEN -- sint64 (convert string to number)
-					SET numeric_value = CAST(JSON_UNQUOTE(field_json_value) AS DECIMAL(20,0));
+					SET numeric_value = _pb_json_parse_signed_int(field_json_value);
 					-- In proto3, skip zero values unless proto3_optional is true
-					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0 AND JSON_UNQUOTE(field_json_value) = '0') THEN
+					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
+					END IF;
+				WHEN 5 THEN -- int32 (handle string numbers including exponential notation)
+					SET numeric_value = _pb_json_parse_signed_int(field_json_value);
+					-- In proto3, skip zero values unless proto3_optional is true
+					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
+					END IF;
+				WHEN 13 THEN -- uint32 (handle string numbers including exponential notation)
+					SET numeric_value = _pb_json_parse_unsigned_int(field_json_value);
+					-- In proto3, skip zero values unless proto3_optional is true
+					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
 						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
 					END IF;
 				ELSE
-					-- Other primitive types: int32, uint32, fixed32, sfixed32, sint32, float, double, bool, string, bytes
+					-- Other primitive types: fixed32, sfixed32, sint32, float, double, bool, string, bytes
 					-- In proto3, skip zero/default values unless proto3_optional is true
 					IF syntax != 'proto3' OR proto3_optional OR NOT (
-						(field_type IN (5, 7, 13, 15, 17) AND field_json_value = 0) OR  -- int32, fixed32, uint32, sfixed32, sint32 = 0
+						(field_type IN (7, 15, 17) AND field_json_value = 0) OR  -- fixed32, sfixed32, sint32 = 0
 						(field_type IN (1, 2) AND field_json_value = 0.0) OR            -- double, float = 0.0
 						(field_type = 8 AND field_json_value = false) OR                -- bool = false
 						(field_type = 9 AND JSON_UNQUOTE(field_json_value) = '') OR     -- string = ""
