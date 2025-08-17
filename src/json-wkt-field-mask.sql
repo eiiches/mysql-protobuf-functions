@@ -70,3 +70,45 @@ BEGIN
 
 	RETURN result;
 END $$
+
+-- Convert FieldMask JSON to number JSON format
+DROP FUNCTION IF EXISTS _pb_wkt_field_mask_json_to_number_json $$
+CREATE FUNCTION _pb_wkt_field_mask_json_to_number_json(proto_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE field_mask_str TEXT;
+	DECLARE paths_array JSON;
+	DECLARE comma_pos INT;
+	DECLARE current_path TEXT;
+	DECLARE remaining_str TEXT;
+
+	-- Convert comma-separated string to paths array
+	-- "path1,path2" -> {"1": ["path1", "path2"]}
+
+	SET field_mask_str = JSON_UNQUOTE(proto_json_value);
+	IF field_mask_str = '' THEN
+		RETURN JSON_OBJECT();
+	END IF;
+
+	-- Split comma-separated string into array
+	SET paths_array = JSON_ARRAY();
+	-- Simple implementation: split by comma and add each path
+	-- Note: This is a simplified implementation
+	SET remaining_str = field_mask_str;
+
+	split_loop: WHILE LENGTH(remaining_str) > 0 DO
+		SET comma_pos = LOCATE(',', remaining_str);
+		IF comma_pos > 0 THEN
+			SET current_path = TRIM(LEFT(remaining_str, comma_pos - 1));
+			SET remaining_str = TRIM(SUBSTRING(remaining_str, comma_pos + 1));
+		ELSE
+			SET current_path = TRIM(remaining_str);
+			SET remaining_str = '';
+		END IF;
+
+		IF LENGTH(current_path) > 0 THEN
+			SET paths_array = JSON_ARRAY_APPEND(paths_array, '$', current_path);
+		END IF;
+	END WHILE split_loop;
+
+	RETURN JSON_OBJECT('1', paths_array);
+END $$

@@ -1605,40 +1605,25 @@ BEGIN
 	-- Variables for Any handling
 	DECLARE type_url TEXT;
 	DECLARE remaining_object JSON;
-	-- Variables for FieldMask handling
-	DECLARE field_mask_str TEXT;
-	DECLARE paths_array JSON;
-	DECLARE comma_pos INT;
-	DECLARE current_path TEXT;
-	DECLARE remaining_str TEXT;
 	-- Variables for wrapper types
 	DECLARE int64_val BIGINT;
 	DECLARE uint64_val BIGINT UNSIGNED;
 	DECLARE int32_val INT;
 	DECLARE uint32_val INT UNSIGNED;
-	-- Variables for Struct forward conversion
-	DECLARE struct_keys JSON;
-	DECLARE struct_key_count INT;
-	DECLARE struct_key_index INT;
-	DECLARE struct_key_name TEXT;
-	DECLARE struct_value_json JSON;
-	DECLARE struct_converted_value JSON;
-	DECLARE struct_result JSON;
-	-- Variables for ListValue forward conversion
-	DECLARE list_length INT;
-	DECLARE list_index INT;
-	DECLARE list_element_json JSON;
-	DECLARE list_converted_value JSON;
-	DECLARE list_result JSON;
 
 	CASE full_type_name
 	WHEN '.google.protobuf.Timestamp' THEN
-		-- Convert ISO 8601 timestamp to {seconds, nanos}
 		SET number_json_value = _pb_wkt_timestamp_json_to_number_json(proto_json_value);
-
 	WHEN '.google.protobuf.Duration' THEN
-		-- Convert duration string like "3.5s" to {seconds, nanos}
 		SET number_json_value = _pb_wkt_duration_json_to_number_json(proto_json_value);
+	WHEN '.google.protobuf.FieldMask' THEN
+		SET number_json_value = _pb_wkt_field_mask_json_to_number_json(proto_json_value);
+	WHEN '.google.protobuf.Value' THEN
+		SET number_json_value = _pb_wkt_value_json_to_number_json(proto_json_value);
+	WHEN '.google.protobuf.Struct' THEN
+		SET number_json_value = _pb_wkt_struct_json_to_number_json(proto_json_value);
+	WHEN '.google.protobuf.ListValue' THEN
+		SET number_json_value = _pb_wkt_list_value_json_to_number_json(proto_json_value);
 
 	WHEN '.google.protobuf.StringValue' THEN
 		-- Unwrapped string becomes {"1": "value"} - but omit if empty string
@@ -1728,48 +1713,6 @@ BEGIN
 	WHEN '.google.protobuf.Empty' THEN
 		-- Empty object stays empty
 		SET number_json_value = JSON_OBJECT();
-
-	WHEN '.google.protobuf.FieldMask' THEN
-		-- Convert comma-separated string to paths array
-		-- "path1,path2" -> {"1": ["path1", "path2"]}
-		SET field_mask_str = JSON_UNQUOTE(proto_json_value);
-		IF field_mask_str = '' THEN
-			SET paths_array = JSON_ARRAY();
-		ELSE
-			-- Split comma-separated string into array
-			SET paths_array = JSON_ARRAY();
-			-- Simple implementation: split by comma and add each path
-			-- Note: This is a simplified implementation
-			SET remaining_str = field_mask_str;
-
-			split_loop: WHILE LENGTH(remaining_str) > 0 DO
-				SET comma_pos = LOCATE(',', remaining_str);
-				IF comma_pos > 0 THEN
-					SET current_path = TRIM(LEFT(remaining_str, comma_pos - 1));
-					SET remaining_str = TRIM(SUBSTRING(remaining_str, comma_pos + 1));
-				ELSE
-					SET current_path = TRIM(remaining_str);
-					SET remaining_str = '';
-				END IF;
-
-				IF LENGTH(current_path) > 0 THEN
-					SET paths_array = JSON_ARRAY_APPEND(paths_array, '$', current_path);
-				END IF;
-			END WHILE split_loop;
-		END IF;
-		SET number_json_value = JSON_OBJECT('1', paths_array);
-
-	WHEN '.google.protobuf.Value' THEN
-		-- Convert using dedicated function
-		SET number_json_value = _pb_wkt_value_json_to_number_json(proto_json_value);
-
-	WHEN '.google.protobuf.Struct' THEN
-		-- Convert using dedicated function
-		SET number_json_value = _pb_wkt_struct_json_to_number_json(proto_json_value);
-
-	WHEN '.google.protobuf.ListValue' THEN
-		-- Convert using dedicated function
-		SET number_json_value = _pb_wkt_list_value_json_to_number_json(proto_json_value);
 
 	WHEN '.google.protobuf.Any' THEN
 		-- {"@type": "url", "field": "value"} -> {"1": "url", "2": "base64data"}
@@ -3833,6 +3776,48 @@ BEGIN
 	END WHILE;
 
 	RETURN result;
+END $$
+
+-- Convert FieldMask JSON to number JSON format
+DROP FUNCTION IF EXISTS _pb_wkt_field_mask_json_to_number_json $$
+CREATE FUNCTION _pb_wkt_field_mask_json_to_number_json(proto_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE field_mask_str TEXT;
+	DECLARE paths_array JSON;
+	DECLARE comma_pos INT;
+	DECLARE current_path TEXT;
+	DECLARE remaining_str TEXT;
+
+	-- Convert comma-separated string to paths array
+	-- "path1,path2" -> {"1": ["path1", "path2"]}
+
+	SET field_mask_str = JSON_UNQUOTE(proto_json_value);
+	IF field_mask_str = '' THEN
+		RETURN JSON_OBJECT();
+	END IF;
+
+	-- Split comma-separated string into array
+	SET paths_array = JSON_ARRAY();
+	-- Simple implementation: split by comma and add each path
+	-- Note: This is a simplified implementation
+	SET remaining_str = field_mask_str;
+
+	split_loop: WHILE LENGTH(remaining_str) > 0 DO
+		SET comma_pos = LOCATE(',', remaining_str);
+		IF comma_pos > 0 THEN
+			SET current_path = TRIM(LEFT(remaining_str, comma_pos - 1));
+			SET remaining_str = TRIM(SUBSTRING(remaining_str, comma_pos + 1));
+		ELSE
+			SET current_path = TRIM(remaining_str);
+			SET remaining_str = '';
+		END IF;
+
+		IF LENGTH(current_path) > 0 THEN
+			SET paths_array = JSON_ARRAY_APPEND(paths_array, '$', current_path);
+		END IF;
+	END WHILE split_loop;
+
+	RETURN JSON_OBJECT('1', paths_array);
 END $$
 
 DELIMITER $$
