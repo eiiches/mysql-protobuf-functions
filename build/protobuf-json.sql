@@ -1844,7 +1844,10 @@ BEGIN
 	DECLARE field_json_value JSON;
 	DECLARE source_field_name TEXT;
 	DECLARE converted_value JSON;
-	DECLARE numeric_value DECIMAL(20,0);
+	DECLARE int64_value BIGINT;
+	DECLARE uint64_value BIGINT UNSIGNED;
+	DECLARE int32_value INT;
+	DECLARE uint32_value INT UNSIGNED;
 	DECLARE str_value TEXT;
 	DECLARE enum_string_value TEXT;
 	DECLARE enum_numeric_value INT;
@@ -2114,52 +2117,69 @@ BEGIN
 						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), nested_json);
 					END IF;
 				WHEN 3 THEN -- int64 (convert string to number)
-					SET numeric_value = _pb_json_parse_signed_int(field_json_value);
+					SET int64_value = _pb_json_parse_signed_int(field_json_value);
 					-- In proto3, skip zero values unless proto3_optional is true
-					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
+					IF syntax != 'proto3' OR proto3_optional OR NOT (int64_value = 0) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int64_value);
 					END IF;
 				WHEN 4 THEN -- uint64 (convert string to number)
-					SET numeric_value = _pb_json_parse_unsigned_int(field_json_value);
+					SET uint64_value = _pb_json_parse_unsigned_int(field_json_value);
 					-- In proto3, skip zero values unless proto3_optional is true
-					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
+					IF syntax != 'proto3' OR proto3_optional OR NOT (uint64_value = 0) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), uint64_value);
 					END IF;
 				WHEN 6 THEN -- fixed64 (convert string to number)
-					SET numeric_value = _pb_json_parse_unsigned_int(field_json_value);
+					SET uint64_value = _pb_json_parse_unsigned_int(field_json_value);
 					-- In proto3, skip zero values unless proto3_optional is true
-					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
+					IF syntax != 'proto3' OR proto3_optional OR NOT (uint64_value = 0) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), uint64_value);
 					END IF;
 				WHEN 16 THEN -- sfixed64 (convert string to number)
-					SET numeric_value = _pb_json_parse_signed_int(field_json_value);
+					SET int64_value = _pb_json_parse_signed_int(field_json_value);
 					-- In proto3, skip zero values unless proto3_optional is true
-					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
+					IF syntax != 'proto3' OR proto3_optional OR NOT (int64_value = 0) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int64_value);
 					END IF;
 				WHEN 18 THEN -- sint64 (convert string to number)
-					SET numeric_value = _pb_json_parse_signed_int(field_json_value);
+					SET int64_value = _pb_json_parse_signed_int(field_json_value);
 					-- In proto3, skip zero values unless proto3_optional is true
-					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
+					IF syntax != 'proto3' OR proto3_optional OR NOT (int64_value = 0) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int64_value);
 					END IF;
 				WHEN 5 THEN -- int32 (handle string numbers including exponential notation)
-					SET numeric_value = _pb_json_parse_signed_int(field_json_value);
+					SET int32_value = _pb_json_parse_signed_int(field_json_value);
 					-- In proto3, skip zero values unless proto3_optional is true
-					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
+					IF syntax != 'proto3' OR proto3_optional OR NOT (int32_value = 0) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int32_value);
 					END IF;
 				WHEN 13 THEN -- uint32 (handle string numbers including exponential notation)
-					SET numeric_value = _pb_json_parse_unsigned_int(field_json_value);
+					SET uint32_value = _pb_json_parse_unsigned_int(field_json_value);
 					-- In proto3, skip zero values unless proto3_optional is true
-					IF syntax != 'proto3' OR proto3_optional OR NOT (numeric_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), numeric_value);
+					IF syntax != 'proto3' OR proto3_optional OR NOT (uint32_value = 0) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), uint32_value);
+					END IF;
+				WHEN 7 THEN -- fixed32 (handle with range validation)
+					SET uint32_value = _pb_json_parse_unsigned_int(field_json_value);
+					-- In proto3, skip zero values unless proto3_optional is true
+					IF syntax != 'proto3' OR proto3_optional OR NOT (uint32_value = 0) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), uint32_value);
+					END IF;
+				WHEN 15 THEN -- sfixed32 (handle with range validation)
+					SET int32_value = _pb_json_parse_signed_int(field_json_value);
+					-- In proto3, skip zero values unless proto3_optional is true
+					IF syntax != 'proto3' OR proto3_optional OR NOT (int32_value = 0) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int32_value);
+					END IF;
+				WHEN 17 THEN -- sint32 (handle with range validation)
+					SET int32_value = _pb_json_parse_signed_int(field_json_value);
+					-- In proto3, skip zero values unless proto3_optional is true
+					IF syntax != 'proto3' OR proto3_optional OR NOT (int32_value = 0) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int32_value);
 					END IF;
 				ELSE
-					-- Other primitive types: fixed32, sfixed32, sint32, float, double, bool, string, bytes
+					-- Other primitive types: float, double, bool, string, bytes
 					-- In proto3, skip zero/default values unless proto3_optional is true
 					IF syntax != 'proto3' OR proto3_optional OR NOT (
-						(field_type IN (7, 15, 17) AND field_json_value = 0) OR  -- fixed32, sfixed32, sint32 = 0
 						(field_type IN (1, 2) AND field_json_value = 0.0) OR            -- double, float = 0.0
 						(field_type = 8 AND field_json_value = false) OR                -- bool = false
 						(field_type = 9 AND JSON_UNQUOTE(field_json_value) = '') OR     -- string = ""
