@@ -126,7 +126,7 @@ func generateRepeatedNumbersAsJson() {
 		{
 			ProtoType:           "enum",
 			SqlType:             "INT",
-			Expr:                "_pb_util_reinterpret_uint64_as_int64(uint_value)",
+			Expr:                "_pb_util_reinterpret_uint64_as_int32(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
 			Suffix:              "_as_json_array",
@@ -477,7 +477,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			{Input: input, ProtoType: "uint64", SqlType: "BIGINT UNSIGNED", ReturnExpr: "value", Procedure: getVarintFieldAsUint64, ConvertExpr: "value", SupportsPacked: true},
 			{Input: input, ProtoType: "sint32", SqlType: "INT", ReturnExpr: "_pb_util_reinterpret_uint64_as_sint32(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "_pb_util_reinterpret_sint64_as_uint64(value)", SupportsPacked: true},
 			{Input: input, ProtoType: "sint64", SqlType: "BIGINT", ReturnExpr: "_pb_util_reinterpret_uint64_as_sint64(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "_pb_util_reinterpret_sint64_as_uint64(value)", SupportsPacked: true},
-			{Input: input, ProtoType: "enum", SqlType: "INT", ReturnExpr: "_pb_util_reinterpret_uint64_as_int64(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "_pb_util_reinterpret_int64_as_uint64(value)", SupportsPacked: true},
+			{Input: input, ProtoType: "enum", SqlType: "INT", ReturnExpr: "_pb_util_reinterpret_uint64_as_int32(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "_pb_util_reinterpret_int32_as_uint32(value)", SupportsPacked: true},
 			{Input: input, ProtoType: "bool", SqlType: "BOOLEAN", ReturnExpr: "value <> 0", Procedure: getVarintFieldAsUint64, ConvertExpr: "IF(value, 1, 0)", SupportsPacked: true},
 
 			// I32
@@ -692,7 +692,7 @@ func generateBulkAddFunctions() {
 		{ProtoType: "uint64", SqlType: "BIGINT UNSIGNED", ConvertExpr: "current_value", JsonExtractExpr: "CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS UNSIGNED)", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
 		{ProtoType: "sint32", SqlType: "INT", ConvertExpr: "_pb_util_reinterpret_sint64_as_uint64(current_value)", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
 		{ProtoType: "sint64", SqlType: "BIGINT", ConvertExpr: "_pb_util_reinterpret_sint64_as_uint64(current_value)", JsonExtractExpr: "CAST(JSON_UNQUOTE(JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))) AS SIGNED)", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
-		{ProtoType: "enum", SqlType: "INT", ConvertExpr: "_pb_util_reinterpret_int64_as_uint64(current_value)", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
+		{ProtoType: "enum", SqlType: "INT", ConvertExpr: "_pb_util_reinterpret_int32_as_uint32(current_value)", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
 		{ProtoType: "bool", SqlType: "BOOLEAN", ConvertExpr: "IF(current_value, 1, 0)", JsonExtractExpr: "JSON_EXTRACT(value_array, CONCAT('$[', i, ']'))", WireType: 0, WriteFunction: "_pb_wire_write_varint", SupportsPacked: true},
 
 		// I32 types

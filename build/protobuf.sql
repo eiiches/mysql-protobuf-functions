@@ -3033,7 +3033,7 @@ BEGIN
 	IF field_count = 0 THEN
 		RETURN default_value;
 	END IF;
-	RETURN _pb_util_reinterpret_uint64_as_int64(value);
+	RETURN _pb_util_reinterpret_uint64_as_int32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_has_enum_field $$
@@ -3051,7 +3051,7 @@ BEGIN
 	DECLARE value BIGINT UNSIGNED;
 	DECLARE field_count INT;
 	CALL _pb_message_get_varint_field_as_uint64(message, field_number, repeated_index, value, field_count);
-	RETURN _pb_util_reinterpret_uint64_as_int64(value);
+	RETURN _pb_util_reinterpret_uint64_as_int32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_get_repeated_enum_field_count $$
@@ -4614,7 +4614,7 @@ BEGIN
 	IF field_count = 0 THEN
 		RETURN default_value;
 	END IF;
-	RETURN _pb_util_reinterpret_uint64_as_int64(value);
+	RETURN _pb_util_reinterpret_uint64_as_int32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_has_enum_field $$
@@ -4632,7 +4632,7 @@ BEGIN
 	DECLARE value BIGINT UNSIGNED;
 	DECLARE field_count INT;
 	CALL _pb_wire_json_get_varint_field_as_uint64(wire_json, field_number, repeated_index, value, field_count);
-	RETURN _pb_util_reinterpret_uint64_as_int64(value);
+	RETURN _pb_util_reinterpret_uint64_as_int32(value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_get_repeated_enum_field_count $$
@@ -5361,13 +5361,13 @@ END $$
 DROP FUNCTION IF EXISTS pb_wire_json_set_enum_field $$
 CREATE FUNCTION pb_wire_json_set_enum_field(wire_json JSON, field_number INT, value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN _pb_wire_json_set_varint_field(wire_json, field_number, _pb_util_reinterpret_int64_as_uint64(value));
+	RETURN _pb_wire_json_set_varint_field(wire_json, field_number, _pb_util_reinterpret_int32_as_uint32(value));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_enum_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_enum_field_element(wire_json JSON, field_number INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
+	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_int32_as_uint32(value), use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_enum_field_elements $$
@@ -5379,13 +5379,13 @@ END $$
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_enum_field_element $$
 CREATE FUNCTION pb_wire_json_insert_repeated_enum_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN _pb_wire_json_insert_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
+	RETURN _pb_wire_json_insert_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int32_as_uint32(value), use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_enum_field_element $$
 CREATE FUNCTION pb_wire_json_set_repeated_enum_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN _pb_wire_json_set_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int64_as_uint64(value));
+	RETURN _pb_wire_json_set_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int32_as_uint32(value));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_remove_repeated_enum_field_element $$
@@ -6859,12 +6859,12 @@ BEGIN
 		CASE wire_type
 		WHEN 0 THEN
 			SET uint_value = CAST(JSON_EXTRACT(wire_element, '$.v') AS UNSIGNED);
-			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_int64(uint_value));
+			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_int32(uint_value));
 		WHEN 2 THEN -- LEN
 			SET bytes_value = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(wire_element, '$.v')));
 			WHILE LENGTH(bytes_value) <> 0 DO
 				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
-				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_int64(uint_value));
+				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_int32(uint_value));
 			END WHILE;
 		ELSE
 			SET message_text = CONCAT('_pb_wire_json_get_repeated_enum_field_as_json_array: unexpected wire_type (', wire_type, ')');
@@ -6910,12 +6910,12 @@ BEGIN
 		CASE current_wire_type
 		WHEN 0 THEN
 			CALL _pb_wire_read_varint_as_uint64(tail, uint_value, tail);
-			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_int64(uint_value));
+			SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_int32(uint_value));
 		WHEN 2 THEN
 			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
 			WHILE LENGTH(bytes_value) <> 0 DO
 				CALL _pb_wire_read_varint_as_uint64(bytes_value, uint_value, bytes_value);
-				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_int64(uint_value));
+				SET result = JSON_ARRAY_APPEND(result, '$', _pb_util_reinterpret_uint64_as_int32(uint_value));
 			END WHILE;
 		ELSE
 			SET message_text = CONCAT('_pb_message_get_repeated_enum_field_as_json_array: unexpected wire_type (', current_wire_type, ')');
@@ -8486,7 +8486,7 @@ BEGIN
 		-- Build packed data
 		WHILE i < array_length DO
 			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
-			CALL _pb_wire_write_varint(_pb_util_reinterpret_int64_as_uint64(current_value), temp_encoded);
+			CALL _pb_wire_write_varint(_pb_util_reinterpret_int32_as_uint32(current_value), temp_encoded);
 			SET packed_data = CONCAT(packed_data, temp_encoded);
 			SET i = i + 1;
 		END WHILE;
@@ -8520,7 +8520,7 @@ BEGIN
 		-- Add unpacked elements
 		WHILE i < array_length DO
 			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
-			SET result = _pb_wire_json_add_repeated_varint_field_element(result, field_number, _pb_util_reinterpret_int64_as_uint64(current_value), FALSE);
+			SET result = _pb_wire_json_add_repeated_varint_field_element(result, field_number, _pb_util_reinterpret_int32_as_uint32(current_value), FALSE);
 			SET i = i + 1;
 		END WHILE;
 		RETURN result;
