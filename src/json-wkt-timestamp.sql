@@ -189,18 +189,21 @@ BEGIN
 	RETURN result;
 END $$
 
--- Helper procedure to convert Timestamp from ProtoJSON to ProtoNumberJSON
-DROP PROCEDURE IF EXISTS _pb_wkt_timestamp_json_to_number_json $$
-CREATE PROCEDURE _pb_wkt_timestamp_json_to_number_json(
-	IN proto_json_value JSON,
-	OUT number_json_value JSON
-)
+-- Helper function to convert Timestamp from ProtoJSON to ProtoNumberJSON
+DROP FUNCTION IF EXISTS _pb_wkt_timestamp_json_to_number_json $$
+CREATE FUNCTION _pb_wkt_timestamp_json_to_number_json(proto_json_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE timestamp_str TEXT;
 	DECLARE seconds_part BIGINT;
 	DECLARE nanos_part INT;
 	DECLARE dot_pos INT;
 	DECLARE nanos_str TEXT;
+	DECLARE number_json_value JSON;
+
+	-- Handle JSON null input
+	IF proto_json_value IS NULL OR JSON_TYPE(proto_json_value) = 'NULL' THEN
+		RETURN NULL;
+	END IF;
 
 	-- Convert ISO 8601 timestamp to {seconds, nanos}
 	SET timestamp_str = JSON_UNQUOTE(proto_json_value);
@@ -216,22 +219,24 @@ BEGIN
 	IF nanos_part != 0 THEN
 		SET number_json_value = JSON_SET(number_json_value, '$."2"', nanos_part);
 	END IF;
+
+	RETURN number_json_value;
 END $$
 
--- Helper procedure to convert Timestamp from ProtoNumberJSON to ProtoJSON
-DROP PROCEDURE IF EXISTS _pb_wkt_timestamp_number_json_to_json $$
-CREATE PROCEDURE _pb_wkt_timestamp_number_json_to_json(
-	IN number_json_value JSON,
-	OUT proto_json_value JSON
-)
+-- Helper function to convert Timestamp from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_timestamp_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_timestamp_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE seconds_part BIGINT;
 	DECLARE nanos_part INT;
-	DECLARE timestamp_str TEXT;
+
+	IF number_json_value IS NULL THEN
+		RETURN NULL;
+	END IF;
 
 	-- Convert {seconds, nanos} to ISO 8601 timestamp
 	SET seconds_part = COALESCE(JSON_EXTRACT(number_json_value, '$."1"'), 0);
 	SET nanos_part = COALESCE(JSON_EXTRACT(number_json_value, '$."2"'), 0);
 
-	SET proto_json_value = JSON_QUOTE(_pb_wkt_timestamp_format_rfc3339(seconds_part, nanos_part));
+	RETURN JSON_QUOTE(_pb_wkt_timestamp_format_rfc3339(seconds_part, nanos_part));
 END $$

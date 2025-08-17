@@ -93,11 +93,11 @@ BEGIN
 	CASE full_type_name
 	WHEN '.google.protobuf.Timestamp' THEN
 		-- Convert {seconds, nanos} to ISO 8601 timestamp
-		CALL _pb_wkt_timestamp_number_json_to_json(number_json_value, proto_json_value);
+		SET proto_json_value = _pb_wkt_timestamp_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.Duration' THEN
 		-- Convert {seconds, nanos} to duration string like "3.5s"
-		CALL _pb_wkt_duration_number_json_to_json(number_json_value, proto_json_value);
+		SET proto_json_value = _pb_wkt_duration_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.StringValue' THEN
 		-- {"1": "value"} becomes unwrapped "value", {} becomes ""

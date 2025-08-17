@@ -167,11 +167,11 @@ BEGIN
 	CASE full_type_name
 	WHEN '.google.protobuf.Timestamp' THEN
 		-- Convert ISO 8601 timestamp to {seconds, nanos}
-		CALL _pb_wkt_timestamp_json_to_number_json(proto_json_value, number_json_value);
+		SET number_json_value = _pb_wkt_timestamp_json_to_number_json(proto_json_value);
 
 	WHEN '.google.protobuf.Duration' THEN
 		-- Convert duration string like "3.5s" to {seconds, nanos}
-		CALL _pb_wkt_duration_json_to_number_json(proto_json_value, number_json_value);
+		SET number_json_value = _pb_wkt_duration_json_to_number_json(proto_json_value);
 
 	WHEN '.google.protobuf.StringValue' THEN
 		-- Unwrapped string becomes {"1": "value"} - but omit if empty string
