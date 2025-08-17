@@ -263,7 +263,7 @@ BEGIN
 	END CASE;
 END $$
 
--- Helper procedure to convert enum string name to numeric value
+-- Helper procedure to convert enum string name or numeric value to numeric value
 DROP PROCEDURE IF EXISTS _pb_convert_json_enum_to_number $$
 CREATE PROCEDURE _pb_convert_json_enum_to_number(
 	IN descriptor_set_json JSON,
@@ -281,6 +281,8 @@ BEGIN
 	DECLARE value_descriptor JSON;
 	DECLARE value_name TEXT;
 	DECLARE value_number INT;
+	DECLARE input_as_number INT;
+	DECLARE is_numeric BOOLEAN DEFAULT FALSE;
 
 	-- Get enum descriptor
 	SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_enum_type_name);
@@ -290,18 +292,25 @@ BEGIN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
 
+	-- Check if the input is a numeric value (protobuf JSON allows both string names and numeric values)
+	SET is_numeric = (enum_string_value REGEXP '^-?[0-9]+$');
+	IF is_numeric THEN
+		SET input_as_number = CAST(enum_string_value AS SIGNED);
+	END IF;
+
 	-- Get the values array (field 2 in EnumDescriptor)
 	SET values_array = JSON_EXTRACT(enum_descriptor, '$."2"');
 	SET value_count = JSON_LENGTH(values_array);
 	SET value_index = 0;
 
-	-- Search for the string value
+	-- Search for either the string name or numeric value
 	search_loop: WHILE value_index < value_count DO
 		SET value_descriptor = JSON_EXTRACT(values_array, CONCAT('$[', value_index, ']'));
 		SET value_name = JSON_UNQUOTE(JSON_EXTRACT(value_descriptor, '$."1"')); -- name field
+		SET value_number = JSON_EXTRACT(value_descriptor, '$."2"'); -- number field
 
-		IF value_name = enum_string_value THEN
-			SET value_number = JSON_EXTRACT(value_descriptor, '$."2"'); -- number field
+		-- Check for match by name or by numeric value
+		IF value_name = enum_string_value OR (is_numeric AND value_number = input_as_number) THEN
 			SET enum_numeric_value = value_number;
 			LEAVE search_loop;
 		END IF;
