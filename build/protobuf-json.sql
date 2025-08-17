@@ -2707,6 +2707,29 @@ BEGIN
 	SET seconds = seconds + extra_seconds;
 END $$
 
+-- Helper function to format timestamp from seconds and nanos to RFC 3339 string
+DROP FUNCTION IF EXISTS _pb_wkt_timestamp_format_rfc3339 $$
+CREATE FUNCTION _pb_wkt_timestamp_format_rfc3339(seconds BIGINT, nanos INT) RETURNS TEXT DETERMINISTIC
+BEGIN
+	DECLARE datetime_part TEXT;
+
+	-- Normalize seconds and nanos using helper procedure
+	CALL _pb_wkt_timestamp_normalize_fields(seconds, nanos);
+
+	-- Validate timestamp range: [0001-01-01T00:00:00Z, 9999-12-31T23:59:59.999999999Z]
+	-- This corresponds to seconds range: [-62135596800, 253402300799]
+	-- Allow for 1 second tolerance in case of nanosecond normalization
+	IF seconds < -62135596800 OR seconds > 253402300800 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Timestamp out of range';
+	END IF;
+
+	-- Convert seconds since Unix epoch to datetime string using TIMESTAMPADD
+	SET datetime_part = TIMESTAMPADD(SECOND, seconds, '1970-01-01 00:00:00');
+
+	-- Format as RFC 3339: replace space with T, add fractional seconds, add Z
+	RETURN CONCAT(REPLACE(datetime_part, " ", "T"), _pb_json_wkt_time_common_format_fractional_seconds(nanos), "Z");
+END $$
+
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_timestamp_as_json $$
 CREATE FUNCTION _pb_wire_json_decode_wkt_timestamp_as_json(wire_json JSON) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -2747,20 +2770,7 @@ BEGIN
 		SET element_index = element_index + 1;
 	END WHILE;
 
-	-- Normalize seconds and nanos using helper procedure
-	CALL _pb_wkt_timestamp_normalize_fields(seconds, nanos);
-
-	-- Validate timestamp range: [0001-01-01T00:00:00Z, 9999-12-31T23:59:59.999999999Z]
-	-- This corresponds to seconds range: [-62135596800, 253402300799]
-	-- Allow for 1 second tolerance in case of nanosecond normalization
-	IF seconds < -62135596800 OR seconds > 253402300800 THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Timestamp out of range';
-	END IF;
-
-	-- Convert seconds since Unix epoch to datetime string using TIMESTAMPADD
-	SET datetime_part = TIMESTAMPADD(SECOND, seconds, '1970-01-01 00:00:00');
-
-	RETURN JSON_QUOTE(CONCAT(REPLACE(datetime_part, " ", "T"), _pb_json_wkt_time_common_format_fractional_seconds(nanos), "Z"));
+	RETURN JSON_QUOTE(_pb_wkt_timestamp_format_rfc3339(seconds, nanos));
 END $$
 
 -- Helper function to convert Timestamp string to wire_json
@@ -2905,24 +2915,10 @@ BEGIN
 	DECLARE timestamp_str TEXT;
 
 	-- Convert {seconds, nanos} to ISO 8601 timestamp
-	-- Handle empty object (zero timestamp)
-	IF JSON_LENGTH(number_json_value) = 0 THEN
-		SET proto_json_value = JSON_QUOTE('1970-01-01T00:00:00Z');
-	ELSE
-		SET seconds_part = COALESCE(JSON_EXTRACT(number_json_value, '$."1"'), 0);
-		SET nanos_part = COALESCE(JSON_EXTRACT(number_json_value, '$."2"'), 0);
+	SET seconds_part = COALESCE(JSON_EXTRACT(number_json_value, '$."1"'), 0);
+	SET nanos_part = COALESCE(JSON_EXTRACT(number_json_value, '$."2"'), 0);
 
-		-- Normalize seconds and nanos using helper procedure
-		CALL _pb_wkt_timestamp_normalize_fields(seconds_part, nanos_part);
-
-		-- Convert seconds since Unix epoch to datetime string using TIMESTAMPADD
-		SET timestamp_str = TIMESTAMPADD(SECOND, seconds_part, '1970-01-01 00:00:00');
-		-- Format as ISO8601 with T separator
-		SET timestamp_str = REPLACE(timestamp_str, ' ', 'T');
-		-- Add fractional seconds using common function
-		SET timestamp_str = CONCAT(timestamp_str, _pb_json_wkt_time_common_format_fractional_seconds(nanos_part), 'Z');
-		SET proto_json_value = JSON_QUOTE(timestamp_str);
-	END IF;
+	SET proto_json_value = JSON_QUOTE(_pb_wkt_timestamp_format_rfc3339(seconds_part, nanos_part));
 END $$
 
 DELIMITER $$
@@ -2937,23 +2933,23 @@ CREATE PROCEDURE _pb_wkt_duration_normalize_fields(INOUT seconds BIGINT, INOUT n
 BEGIN
 	DECLARE extra_seconds BIGINT;
 	DECLARE abs_nanos INT;
-	
+
 	-- Handle nanos overflow/underflow (outside [-999999999, 999999999])
 	IF ABS(nanos) > 999999999 THEN
 		-- Calculate how many whole seconds are represented by nanos
 		SET extra_seconds = nanos DIV 1000000000;
 		SET nanos = nanos % 1000000000;
-		
+
 		-- Handle negative modulo result (MySQL modulo can return negative values)
 		IF nanos < 0 THEN
 			SET extra_seconds = extra_seconds - 1;
 			SET nanos = nanos + 1000000000;
 		END IF;
-		
+
 		-- Add the extra seconds to the original seconds
 		SET seconds = seconds + extra_seconds;
 	END IF;
-	
+
 	-- Apply Duration-specific sign rules:
 	-- For durations >= 1 second: nanos must have same sign as seconds
 	-- For durations < 1 second: seconds = 0
@@ -2966,14 +2962,14 @@ BEGIN
 		SET seconds = seconds + 1;
 		SET nanos = nanos - 1000000000;
 	END IF;
-	
+
 	-- Validate final ranges
 	-- seconds: -315,576,000,000 to +315,576,000,000
 	-- nanos: -999,999,999 to +999,999,999
 	IF seconds < -315576000000 OR seconds > 315576000000 THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Duration seconds out of range';
 	END IF;
-	
+
 	IF ABS(nanos) > 999999999 THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Duration nanos out of range';
 	END IF;
