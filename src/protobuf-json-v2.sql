@@ -329,12 +329,12 @@ proc: BEGIN
 							CALL _pb_message_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_message_field(element, 2, NULL), as_number_json, emit_default_values, map_value);
 						ELSEIF map_value_type = 14 THEN -- enum
 							IF as_number_json THEN
-								SET map_value = CAST(pb_wire_json_get_enum_field(element, 2, NULL) AS JSON);
+								SET map_value = CAST(pb_wire_json_get_enum_field(element, 2, 0) AS JSON);
 							ELSE
-								CALL _pb_enum_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_enum_field(element, 2, NULL), map_value);
+								CALL _pb_enum_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_enum_field(element, 2, 0), map_value);
 							END IF;
 						ELSE
-							CALL _pb_wire_json_get_primitive_field_as_json(element, 2, map_value_type, FALSE, TRUE, as_number_json, map_value);
+							CALL _pb_wire_json_get_primitive_field_as_json(element, 2, map_value_type, FALSE, FALSE, as_number_json, map_value);
 						END IF;
 
 						IF JSON_TYPE(map_key) = 'STRING' THEN

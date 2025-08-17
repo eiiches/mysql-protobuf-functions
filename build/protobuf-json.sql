@@ -496,12 +496,12 @@ proc: BEGIN
 							CALL _pb_message_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_message_field(element, 2, NULL), as_number_json, emit_default_values, map_value);
 						ELSEIF map_value_type = 14 THEN -- enum
 							IF as_number_json THEN
-								SET map_value = CAST(pb_wire_json_get_enum_field(element, 2, NULL) AS JSON);
+								SET map_value = CAST(pb_wire_json_get_enum_field(element, 2, 0) AS JSON);
 							ELSE
-								CALL _pb_enum_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_enum_field(element, 2, NULL), map_value);
+								CALL _pb_enum_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_enum_field(element, 2, 0), map_value);
 							END IF;
 						ELSE
-							CALL _pb_wire_json_get_primitive_field_as_json(element, 2, map_value_type, FALSE, TRUE, as_number_json, map_value);
+							CALL _pb_wire_json_get_primitive_field_as_json(element, 2, map_value_type, FALSE, FALSE, as_number_json, map_value);
 						END IF;
 
 						IF JSON_TYPE(map_key) = 'STRING' THEN
@@ -1553,7 +1553,11 @@ BEGIN
 
 	WHEN '.google.protobuf.Int64Value' THEN
 		-- Unwrapped number becomes {"1": value} - but omit if zero
-		SET int64_val = CAST(JSON_UNQUOTE(proto_json_value) AS SIGNED);
+		IF proto_json_value IS NULL THEN
+			SET int64_val = 0;
+		ELSE
+			SET int64_val = CAST(JSON_UNQUOTE(proto_json_value) AS SIGNED);
+		END IF;
 		IF int64_val != 0 THEN
 			SET number_json_value = JSON_OBJECT('1', int64_val);
 		ELSE
@@ -1561,7 +1565,11 @@ BEGIN
 		END IF;
 
 	WHEN '.google.protobuf.UInt64Value' THEN
-		SET uint64_val = CAST(JSON_UNQUOTE(proto_json_value) AS UNSIGNED);
+		IF proto_json_value IS NULL THEN
+			SET uint64_val = 0;
+		ELSE
+			SET uint64_val = CAST(JSON_UNQUOTE(proto_json_value) AS UNSIGNED);
+		END IF;
 		IF uint64_val != 0 THEN
 			SET number_json_value = JSON_OBJECT('1', uint64_val);
 		ELSE
@@ -1569,7 +1577,11 @@ BEGIN
 		END IF;
 
 	WHEN '.google.protobuf.Int32Value' THEN
-		SET int32_val = CAST(JSON_UNQUOTE(proto_json_value) AS SIGNED);
+		IF proto_json_value IS NULL THEN
+			SET int32_val = 0;
+		ELSE
+			SET int32_val = CAST(JSON_UNQUOTE(proto_json_value) AS SIGNED);
+		END IF;
 		IF int32_val != 0 THEN
 			SET number_json_value = JSON_OBJECT('1', int32_val);
 		ELSE
@@ -1577,7 +1589,11 @@ BEGIN
 		END IF;
 
 	WHEN '.google.protobuf.UInt32Value' THEN
-		SET uint32_val = CAST(JSON_UNQUOTE(proto_json_value) AS UNSIGNED);
+		IF proto_json_value IS NULL THEN
+			SET uint32_val = 0;
+		ELSE
+			SET uint32_val = CAST(JSON_UNQUOTE(proto_json_value) AS UNSIGNED);
+		END IF;
 		IF uint32_val != 0 THEN
 			SET number_json_value = JSON_OBJECT('1', uint32_val);
 		ELSE
@@ -1864,33 +1880,91 @@ BEGIN
 						SET map_key_name = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', map_key_index, ']')));
 						SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$."', map_key_name, '"'));
 
-						-- Convert value based on type
+						-- Convert value based on type, handling null values with appropriate defaults
 						CASE map_value_type
 						WHEN 14 THEN -- enum
-							CALL _pb_convert_json_enum_to_number(descriptor_set_json, map_value_type_name, JSON_UNQUOTE(map_value_json), enum_numeric_value);
-							SET converted_value = CAST(enum_numeric_value AS JSON);
-						WHEN 11 THEN -- message
-							-- Check if it's a well-known type
-							CALL _pb_is_well_known_type(map_value_type_name, @is_wkt);
-							IF @is_wkt THEN
-								CALL _pb_convert_json_wkt_to_number_json(map_value_type_name, map_value_json, converted_value);
+							IF map_value_json IS NULL THEN
+								-- Default enum value is 0
+								SET converted_value = CAST(0 AS JSON);
 							ELSE
-								-- Recursively convert nested message
-								CALL _pb_json_to_number_json_proc(descriptor_set_json, map_value_type_name, map_value_json, converted_value);
+								CALL _pb_convert_json_enum_to_number(descriptor_set_json, map_value_type_name, JSON_UNQUOTE(map_value_json), enum_numeric_value);
+								SET converted_value = CAST(enum_numeric_value AS JSON);
+							END IF;
+						WHEN 11 THEN -- message
+							IF map_value_json IS NULL THEN
+								-- Default message value is empty object
+								SET converted_value = JSON_OBJECT();
+							ELSE
+								-- Check if it's a well-known type
+								CALL _pb_is_well_known_type(map_value_type_name, @is_wkt);
+								IF @is_wkt THEN
+									CALL _pb_convert_json_wkt_to_number_json(map_value_type_name, map_value_json, converted_value);
+								ELSE
+									-- Recursively convert nested message
+									CALL _pb_json_to_number_json_proc(descriptor_set_json, map_value_type_name, map_value_json, converted_value);
+								END IF;
 							END IF;
 						WHEN 3 THEN -- int64 (convert string to number)
-							SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+							IF map_value_json IS NULL THEN
+								SET converted_value = CAST(0 AS JSON);
+							ELSE
+								SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+							END IF;
 						WHEN 4 THEN -- uint64 (convert string to number)
-							SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+							IF map_value_json IS NULL THEN
+								SET converted_value = CAST(0 AS JSON);
+							ELSE
+								SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+							END IF;
 						WHEN 6 THEN -- fixed64 (convert string to number)
-							SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+							IF map_value_json IS NULL THEN
+								SET converted_value = CAST(0 AS JSON);
+							ELSE
+								SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+							END IF;
 						WHEN 16 THEN -- sfixed64 (convert string to number)
-							SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+							IF map_value_json IS NULL THEN
+								SET converted_value = CAST(0 AS JSON);
+							ELSE
+								SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+							END IF;
 						WHEN 18 THEN -- sint64 (convert string to number)
-							SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+							IF map_value_json IS NULL THEN
+								SET converted_value = CAST(0 AS JSON);
+							ELSE
+								SET converted_value = CAST(CAST(JSON_UNQUOTE(map_value_json) AS DECIMAL(20,0)) AS JSON);
+							END IF;
 						ELSE
-							-- Other primitive types don't need conversion for map values
-							SET converted_value = map_value_json;
+							-- Other primitive types: handle null values with appropriate defaults
+							IF map_value_json IS NULL THEN
+								CASE map_value_type
+								WHEN 1 THEN -- double
+									SET converted_value = CAST(0.0 AS JSON);
+								WHEN 2 THEN -- float
+									SET converted_value = CAST(0.0 AS JSON);
+								WHEN 5 THEN -- int32
+									SET converted_value = CAST(0 AS JSON);
+								WHEN 7 THEN -- fixed32
+									SET converted_value = CAST(0 AS JSON);
+								WHEN 8 THEN -- bool
+									SET converted_value = CAST(FALSE AS JSON);
+								WHEN 9 THEN -- string
+									SET converted_value = JSON_QUOTE('');
+								WHEN 12 THEN -- bytes
+									SET converted_value = JSON_QUOTE('');
+								WHEN 13 THEN -- uint32
+									SET converted_value = CAST(0 AS JSON);
+								WHEN 15 THEN -- sfixed32
+									SET converted_value = CAST(0 AS JSON);
+								WHEN 17 THEN -- sint32
+									SET converted_value = CAST(0 AS JSON);
+								ELSE
+									-- Unknown type, use null
+									SET converted_value = NULL;
+								END CASE;
+							ELSE
+								SET converted_value = map_value_json;
+							END IF;
 						END CASE;
 
 						-- Add converted value to map
@@ -2385,29 +2459,75 @@ BEGIN
 		SET current_key = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', key_index, ']')));
 		SET current_value = JSON_EXTRACT(map_number_json, CONCAT('$."', current_key, '"'));
 
-		-- Convert the value based on its type
-		CASE value_field_type
-		WHEN 14 THEN -- enum
-			-- Convert enum number to string
-			CALL _pb_convert_number_enum_to_json(descriptor_set_json, value_field_type_name, current_value, enum_string_value);
-			SET converted_value = JSON_QUOTE(enum_string_value);
-		WHEN 11 THEN -- message
-			-- Recursively convert nested message
-			CALL _pb_number_json_to_json_proc(descriptor_set_json, value_field_type_name, current_value, TRUE, converted_value);
-		WHEN 3 THEN -- int64 (convert number to string)
-			SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-		WHEN 4 THEN -- uint64 (convert number to string)
-			SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-		WHEN 6 THEN -- fixed64 (convert number to string)
-			SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-		WHEN 16 THEN -- sfixed64 (convert number to string)
-			SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-		WHEN 18 THEN -- sint64 (convert number to string)
-			SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
+		-- Convert the value based on its type, handling null values with appropriate defaults
+		IF current_value IS NULL THEN
+			-- Handle null values with appropriate defaults based on type
+			CASE value_field_type
+			WHEN 14 THEN -- enum
+				-- Default enum value is first enum value (typically 0)
+				SET converted_value = JSON_QUOTE('');
+			WHEN 11 THEN -- message
+				-- Default message value is empty object
+				SET converted_value = JSON_OBJECT();
+			WHEN 3 THEN -- int64
+				SET converted_value = JSON_QUOTE('0');
+			WHEN 4 THEN -- uint64
+				SET converted_value = JSON_QUOTE('0');
+			WHEN 6 THEN -- fixed64
+				SET converted_value = JSON_QUOTE('0');
+			WHEN 16 THEN -- sfixed64
+				SET converted_value = JSON_QUOTE('0');
+			WHEN 18 THEN -- sint64
+				SET converted_value = JSON_QUOTE('0');
+			WHEN 1 THEN -- double
+				SET converted_value = CAST(0.0 AS JSON);
+			WHEN 2 THEN -- float
+				SET converted_value = CAST(0.0 AS JSON);
+			WHEN 5 THEN -- int32
+				SET converted_value = CAST(0 AS JSON);
+			WHEN 7 THEN -- fixed32
+				SET converted_value = CAST(0 AS JSON);
+			WHEN 8 THEN -- bool
+				SET converted_value = CAST(FALSE AS JSON);
+			WHEN 9 THEN -- string
+				SET converted_value = JSON_QUOTE('');
+			WHEN 12 THEN -- bytes
+				SET converted_value = JSON_QUOTE('');
+			WHEN 13 THEN -- uint32
+				SET converted_value = CAST(0 AS JSON);
+			WHEN 15 THEN -- sfixed32
+				SET converted_value = CAST(0 AS JSON);
+			WHEN 17 THEN -- sint32
+				SET converted_value = CAST(0 AS JSON);
+			ELSE
+				-- Unknown type, use appropriate default
+				SET converted_value = JSON_QUOTE('');
+			END CASE;
 		ELSE
-			-- Other types (primitives) stay the same
-			SET converted_value = current_value;
-		END CASE;
+			-- Value is not null, convert normally
+			CASE value_field_type
+			WHEN 14 THEN -- enum
+				-- Convert enum number to string
+				CALL _pb_convert_number_enum_to_json(descriptor_set_json, value_field_type_name, current_value, enum_string_value);
+				SET converted_value = JSON_QUOTE(enum_string_value);
+			WHEN 11 THEN -- message
+				-- Recursively convert nested message
+				CALL _pb_number_json_to_json_proc(descriptor_set_json, value_field_type_name, current_value, TRUE, converted_value);
+			WHEN 3 THEN -- int64 (convert number to string)
+				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
+			WHEN 4 THEN -- uint64 (convert number to string)
+				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
+			WHEN 6 THEN -- fixed64 (convert number to string)
+				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
+			WHEN 16 THEN -- sfixed64 (convert number to string)
+				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
+			WHEN 18 THEN -- sint64 (convert number to string)
+				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
+			ELSE
+				-- Other types (primitives) stay the same
+				SET converted_value = current_value;
+			END CASE;
+		END IF;
 
 		-- Add to result object
 		SET result = JSON_SET(result, CONCAT('$."', current_key, '"'), converted_value);

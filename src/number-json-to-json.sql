@@ -332,29 +332,75 @@ BEGIN
 		SET current_key = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', key_index, ']')));
 		SET current_value = JSON_EXTRACT(map_number_json, CONCAT('$."', current_key, '"'));
 
-		-- Convert the value based on its type
-		CASE value_field_type
-		WHEN 14 THEN -- enum
-			-- Convert enum number to string
-			CALL _pb_convert_number_enum_to_json(descriptor_set_json, value_field_type_name, current_value, enum_string_value);
-			SET converted_value = JSON_QUOTE(enum_string_value);
-		WHEN 11 THEN -- message
-			-- Recursively convert nested message
-			CALL _pb_number_json_to_json_proc(descriptor_set_json, value_field_type_name, current_value, TRUE, converted_value);
-		WHEN 3 THEN -- int64 (convert number to string)
-			SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-		WHEN 4 THEN -- uint64 (convert number to string)
-			SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-		WHEN 6 THEN -- fixed64 (convert number to string)
-			SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-		WHEN 16 THEN -- sfixed64 (convert number to string)
-			SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-		WHEN 18 THEN -- sint64 (convert number to string)
-			SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
+		-- Convert the value based on its type, handling null values with appropriate defaults
+		IF current_value IS NULL THEN
+			-- Handle null values with appropriate defaults based on type
+			CASE value_field_type
+			WHEN 14 THEN -- enum
+				-- Default enum value is first enum value (typically 0)
+				SET converted_value = JSON_QUOTE('');
+			WHEN 11 THEN -- message
+				-- Default message value is empty object
+				SET converted_value = JSON_OBJECT();
+			WHEN 3 THEN -- int64
+				SET converted_value = JSON_QUOTE('0');
+			WHEN 4 THEN -- uint64
+				SET converted_value = JSON_QUOTE('0');
+			WHEN 6 THEN -- fixed64
+				SET converted_value = JSON_QUOTE('0');
+			WHEN 16 THEN -- sfixed64
+				SET converted_value = JSON_QUOTE('0');
+			WHEN 18 THEN -- sint64
+				SET converted_value = JSON_QUOTE('0');
+			WHEN 1 THEN -- double
+				SET converted_value = CAST(0.0 AS JSON);
+			WHEN 2 THEN -- float
+				SET converted_value = CAST(0.0 AS JSON);
+			WHEN 5 THEN -- int32
+				SET converted_value = CAST(0 AS JSON);
+			WHEN 7 THEN -- fixed32
+				SET converted_value = CAST(0 AS JSON);
+			WHEN 8 THEN -- bool
+				SET converted_value = CAST(FALSE AS JSON);
+			WHEN 9 THEN -- string
+				SET converted_value = JSON_QUOTE('');
+			WHEN 12 THEN -- bytes
+				SET converted_value = JSON_QUOTE('');
+			WHEN 13 THEN -- uint32
+				SET converted_value = CAST(0 AS JSON);
+			WHEN 15 THEN -- sfixed32
+				SET converted_value = CAST(0 AS JSON);
+			WHEN 17 THEN -- sint32
+				SET converted_value = CAST(0 AS JSON);
+			ELSE
+				-- Unknown type, use appropriate default
+				SET converted_value = JSON_QUOTE('');
+			END CASE;
 		ELSE
-			-- Other types (primitives) stay the same
-			SET converted_value = current_value;
-		END CASE;
+			-- Value is not null, convert normally
+			CASE value_field_type
+			WHEN 14 THEN -- enum
+				-- Convert enum number to string
+				CALL _pb_convert_number_enum_to_json(descriptor_set_json, value_field_type_name, current_value, enum_string_value);
+				SET converted_value = JSON_QUOTE(enum_string_value);
+			WHEN 11 THEN -- message
+				-- Recursively convert nested message
+				CALL _pb_number_json_to_json_proc(descriptor_set_json, value_field_type_name, current_value, TRUE, converted_value);
+			WHEN 3 THEN -- int64 (convert number to string)
+				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
+			WHEN 4 THEN -- uint64 (convert number to string)
+				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
+			WHEN 6 THEN -- fixed64 (convert number to string)
+				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
+			WHEN 16 THEN -- sfixed64 (convert number to string)
+				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
+			WHEN 18 THEN -- sint64 (convert number to string)
+				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
+			ELSE
+				-- Other types (primitives) stay the same
+				SET converted_value = current_value;
+			END CASE;
+		END IF;
 
 		-- Add to result object
 		SET result = JSON_SET(result, CONCAT('$."', current_key, '"'), converted_value);
