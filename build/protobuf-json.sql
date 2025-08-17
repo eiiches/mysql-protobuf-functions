@@ -2773,13 +2773,14 @@ BEGIN
 	RETURN JSON_QUOTE(_pb_wkt_timestamp_format_rfc3339(seconds, nanos));
 END $$
 
--- Helper function to convert Timestamp string to wire_json
-DROP FUNCTION IF EXISTS _pb_json_encode_wkt_timestamp_as_wire_json $$
-CREATE FUNCTION _pb_json_encode_wkt_timestamp_as_wire_json(timestamp_str TEXT) RETURNS JSON DETERMINISTIC
+-- Helper procedure to parse RFC 3339 timestamp string into seconds and nanos
+DROP PROCEDURE IF EXISTS _pb_wkt_timestamp_parse_rfc3339 $$
+CREATE PROCEDURE _pb_wkt_timestamp_parse_rfc3339(
+	IN timestamp_str TEXT,
+	OUT seconds BIGINT,
+	OUT nanos INT
+)
 BEGIN
-	DECLARE result JSON;
-	DECLARE seconds BIGINT;
-	DECLARE nanos INT;
 	DECLARE dot_pos INT;
 	DECLARE nanos_str TEXT;
 	DECLARE target_datetime DATETIME;
@@ -2795,7 +2796,6 @@ BEGIN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid timestamp format - must follow RFC 3339 format';
 	END IF;
 
-	SET result = JSON_OBJECT();
 	-- Convert timestamp string to seconds since Unix epoch, handling timezone offsets
 	-- Extract timezone from the input string and convert to UTC
 	IF timestamp_str LIKE '%Z' THEN
@@ -2842,13 +2842,22 @@ BEGIN
 	IF seconds < -62135596800 OR seconds > 253402300799 THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Timestamp out of range';
 	END IF;
+END $$
 
-	-- For proto3 semantics, omit default values (seconds=0 and nanos=0)
-	IF seconds = 0 AND nanos = 0 THEN
-		RETURN result; -- Return empty wire_json
-	END IF;
+-- Helper function to convert Timestamp string to wire_json
+DROP FUNCTION IF EXISTS _pb_json_encode_wkt_timestamp_as_wire_json $$
+CREATE FUNCTION _pb_json_encode_wkt_timestamp_as_wire_json(timestamp_str TEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	DECLARE seconds BIGINT;
+	DECLARE nanos INT;
 
-	-- Add non-default values
+	SET result = JSON_OBJECT();
+
+	-- Parse timestamp string using helper procedure
+	CALL _pb_wkt_timestamp_parse_rfc3339(timestamp_str, seconds, nanos);
+
+	-- Add non-default values (proto3 semantics)
 	IF seconds <> 0 THEN
 		SET result = pb_wire_json_set_int64_field(result, 1, seconds);
 	END IF;
@@ -2875,23 +2884,9 @@ BEGIN
 
 	-- Convert ISO 8601 timestamp to {seconds, nanos}
 	SET timestamp_str = JSON_UNQUOTE(proto_json_value);
-	-- Parse RFC3339 timestamp format: "1972-01-01T10:00:20.021Z"
-	-- Since RFC3339 timestamps are UTC, parse and convert to Unix epoch
-	-- Use CONVERT_TZ to ensure we're treating input as UTC
-	SET seconds_part = UNIX_TIMESTAMP(CONVERT_TZ(STR_TO_DATE(LEFT(timestamp_str, 19), '%Y-%m-%dT%H:%i:%s'), '+00:00', @@session.time_zone));
 
-	-- Extract nanoseconds part if present
-	SET dot_pos = LOCATE('.', timestamp_str);
-	IF dot_pos > 0 THEN
-		SET nanos_str = SUBSTRING(timestamp_str, dot_pos + 1);
-		-- Remove trailing 'Z'
-		SET nanos_str = LEFT(nanos_str, LENGTH(nanos_str) - 1);
-		-- Pad to 9 digits (nanoseconds)
-		SET nanos_str = RPAD(nanos_str, 9, '0');
-		SET nanos_part = CAST(nanos_str AS UNSIGNED);
-	ELSE
-		SET nanos_part = 0;
-	END IF;
+	-- Parse timestamp string using helper procedure
+	CALL _pb_wkt_timestamp_parse_rfc3339(timestamp_str, seconds_part, nanos_part);
 
 	-- Build result with proto3 zero-value omission
 	SET number_json_value = JSON_OBJECT();
