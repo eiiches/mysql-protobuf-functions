@@ -1760,82 +1760,16 @@ BEGIN
 		SET number_json_value = JSON_OBJECT('1', paths_array);
 
 	WHEN '.google.protobuf.Value' THEN
-		-- Convert Value from its unwrapped form to structured form
-		-- JSON values can be: null, number, string, boolean, object (Struct), array (ListValue)
-		-- Handle special case of empty object (should be struct_value with empty struct)
-		IF JSON_TYPE(proto_json_value) = 'OBJECT' AND JSON_LENGTH(proto_json_value) = 0 THEN
-			-- Empty object -> struct_value with empty struct -> should result in zero-value
-			SET number_json_value = JSON_OBJECT('5', JSON_OBJECT());
-		ELSEIF proto_json_value IS NULL THEN
-			-- null_value (field 1)
-			SET number_json_value = JSON_OBJECT('1', 0); -- NULL_VALUE = 0
-		ELSEIF JSON_TYPE(proto_json_value) IN ('NUMBER', 'INTEGER', 'DECIMAL') THEN
-			-- number_value (field 2)
-			SET number_json_value = JSON_OBJECT('2', proto_json_value);
-		ELSEIF JSON_TYPE(proto_json_value) = 'STRING' THEN
-			-- string_value (field 3)
-			SET number_json_value = JSON_OBJECT('3', proto_json_value);
-		ELSEIF JSON_TYPE(proto_json_value) = 'BOOLEAN' THEN
-			-- bool_value (field 4)
-			SET number_json_value = JSON_OBJECT('4', proto_json_value);
-		ELSEIF JSON_TYPE(proto_json_value) = 'OBJECT' THEN
-			-- struct_value (field 5) - recursively convert as Struct
-			CALL _pb_convert_json_wkt_to_number_json('.google.protobuf.Struct', proto_json_value, converted_value);
-			SET number_json_value = JSON_OBJECT('5', converted_value);
-		ELSEIF JSON_TYPE(proto_json_value) = 'ARRAY' THEN
-			-- list_value (field 6) - recursively convert as ListValue
-			CALL _pb_convert_json_wkt_to_number_json('.google.protobuf.ListValue', proto_json_value, converted_value);
-			SET number_json_value = JSON_OBJECT('6', converted_value);
-		ELSE
-			-- Unknown type, default to null_value
-			SET number_json_value = JSON_OBJECT('1', 0);
-		END IF;
+		-- Convert using dedicated function
+		SET number_json_value = _pb_wkt_value_json_to_number_json(proto_json_value);
 
 	WHEN '.google.protobuf.Struct' THEN
-		-- Convert Struct {key: value, key: value} to {"1": {field_map}}
-		SET struct_keys = JSON_KEYS(proto_json_value);
-		SET struct_key_count = JSON_LENGTH(struct_keys);
-
-		-- Handle empty object - should still have field 1 with empty object
-		IF struct_key_count = 0 THEN
-			SET number_json_value = JSON_OBJECT('1', JSON_OBJECT());
-		ELSE
-			SET struct_key_index = 0;
-			SET struct_result = JSON_OBJECT();
-
-			struct_loop: WHILE struct_key_index < struct_key_count DO
-				SET struct_key_name = JSON_UNQUOTE(JSON_EXTRACT(struct_keys, CONCAT('$[', struct_key_index, ']')));
-				SET struct_value_json = JSON_EXTRACT(proto_json_value, CONCAT('$."', struct_key_name, '"'));
-				-- Recursively convert the value as Value
-				CALL _pb_convert_json_wkt_to_number_json('.google.protobuf.Value', struct_value_json, struct_converted_value);
-				SET struct_result = JSON_SET(struct_result, CONCAT('$."', struct_key_name, '"'), struct_converted_value);
-				SET struct_key_index = struct_key_index + 1;
-			END WHILE struct_loop;
-
-			SET number_json_value = JSON_OBJECT('1', struct_result);
-		END IF;
+		-- Convert using dedicated function
+		SET number_json_value = _pb_wkt_struct_json_to_number_json(proto_json_value);
 
 	WHEN '.google.protobuf.ListValue' THEN
-		-- Convert ListValue [value, value, value] to {"1": [values]}
-		SET list_length = JSON_LENGTH(proto_json_value);
-
-		-- Handle empty array - should still have field 1 with empty array
-		IF list_length = 0 THEN
-			SET number_json_value = JSON_OBJECT('1', JSON_ARRAY());
-		ELSE
-			SET list_index = 0;
-			SET list_result = JSON_ARRAY();
-
-			list_loop: WHILE list_index < list_length DO
-				SET list_element_json = JSON_EXTRACT(proto_json_value, CONCAT('$[', list_index, ']'));
-				-- Recursively convert the element as Value
-				CALL _pb_convert_json_wkt_to_number_json('.google.protobuf.Value', list_element_json, list_converted_value);
-				SET list_result = JSON_ARRAY_APPEND(list_result, '$', list_converted_value);
-				SET list_index = list_index + 1;
-			END WHILE list_loop;
-
-			SET number_json_value = JSON_OBJECT('1', list_result);
-		END IF;
+		-- Convert using dedicated function
+		SET number_json_value = _pb_wkt_list_value_json_to_number_json(proto_json_value);
 
 	WHEN '.google.protobuf.Any' THEN
 		-- {"@type": "url", "field": "value"} -> {"1": "url", "2": "base64data"}
@@ -2253,8 +2187,6 @@ BEGIN
 	CALL _pb_json_to_number_json_proc(descriptor_set_json, type_name, proto_json, result);
 	RETURN result;
 END $$
-
-DELIMITER ;
 
 DELIMITER $$
 
@@ -2929,7 +2861,6 @@ BEGIN
 	RETURN result;
 END $$
 
-DELIMITER ;
 DELIMITER $$
 
 -- Helper procedure to normalize timestamp seconds and nanoseconds
@@ -3603,8 +3534,8 @@ BEGIN
 END $$
 
 -- Helper procedure to convert JSON array to ListValue wire_json (allows recursion)
-DROP PROCEDURE IF EXISTS _pb_json_encode_wkt_listvalue_as_wire_json $$
-CREATE PROCEDURE _pb_json_encode_wkt_listvalue_as_wire_json(IN json_value JSON, IN from_number_json BOOLEAN, OUT result JSON)
+DROP PROCEDURE IF EXISTS _pb_json_encode_wkt_list_value_as_wire_json $$
+CREATE PROCEDURE _pb_json_encode_wkt_list_value_as_wire_json(IN json_value JSON, IN from_number_json BOOLEAN, OUT result JSON)
 BEGIN
 	DECLARE list_element_count INT;
 	DECLARE list_element_index INT;
@@ -3678,7 +3609,7 @@ BEGIN
 		END IF;
 	WHEN 'ARRAY' THEN
 		-- list_value (field 6) - convert to ListValue
-		CALL _pb_json_encode_wkt_listvalue_as_wire_json(json_value, from_number_json, list_wire_json);
+		CALL _pb_json_encode_wkt_list_value_as_wire_json(json_value, from_number_json, list_wire_json);
 		IF list_wire_json IS NOT NULL THEN
 			SET result = pb_wire_json_set_message_field(result, 6, pb_wire_json_to_message(list_wire_json));
 		END IF;
@@ -3689,6 +3620,146 @@ BEGIN
 		-- string_value (field 3) - treat opaque as string
 		SET result = pb_wire_json_set_string_field(result, 3, JSON_UNQUOTE(json_value));
 	END CASE;
+END $$
+
+-- Convert Struct JSON to number JSON format (stored procedure)
+DROP PROCEDURE IF EXISTS _pb_wkt_struct_json_to_number_json $$
+CREATE PROCEDURE _pb_wkt_struct_json_to_number_json(IN proto_json_value JSON, OUT result JSON)
+BEGIN
+	DECLARE struct_keys JSON;
+	DECLARE struct_key_count INT;
+	DECLARE struct_key_index INT;
+	DECLARE struct_key_name TEXT;
+	DECLARE struct_value_json JSON;
+	DECLARE struct_converted_value JSON;
+	DECLARE struct_result JSON;
+
+	SET @@SESSION.max_sp_recursion_depth = 255;
+
+	-- Convert Struct {key: value, key: value} to {"1": {field_map}}
+	SET struct_keys = JSON_KEYS(proto_json_value);
+	SET struct_key_count = JSON_LENGTH(struct_keys);
+	SET struct_key_index = 0;
+	SET struct_result = JSON_OBJECT();
+
+	WHILE struct_key_index < struct_key_count DO
+		SET struct_key_name = JSON_UNQUOTE(JSON_EXTRACT(struct_keys, CONCAT('$[', struct_key_index, ']')));
+		SET struct_value_json = JSON_EXTRACT(proto_json_value, CONCAT('$."', struct_key_name, '"'));
+		-- Recursively convert the value as Value
+		CALL _pb_wkt_value_json_to_number_json(struct_value_json, struct_converted_value);
+		SET struct_result = JSON_SET(struct_result, CONCAT('$."', struct_key_name, '"'), struct_converted_value);
+		SET struct_key_index = struct_key_index + 1;
+	END WHILE;
+
+	-- Empty struct should result in empty object, not {"1": {}}, because default values (empty map field) are omitted in ProtoNumberJSON.
+	IF struct_key_count = 0 THEN
+		SET result = JSON_OBJECT();
+	ELSE
+		SET result = JSON_OBJECT('1', struct_result);
+	END IF;
+END $$
+
+-- Convert Struct JSON to number JSON format (function wrapper)
+DROP FUNCTION IF EXISTS _pb_wkt_struct_json_to_number_json $$
+CREATE FUNCTION _pb_wkt_struct_json_to_number_json(proto_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wkt_struct_json_to_number_json(proto_json_value, result);
+	RETURN result;
+END $$
+
+-- Convert ListValue JSON to number JSON format (stored procedure)
+DROP PROCEDURE IF EXISTS _pb_wkt_list_value_json_to_number_json $$
+CREATE PROCEDURE _pb_wkt_list_value_json_to_number_json(IN proto_json_value JSON, OUT result JSON)
+BEGIN
+	DECLARE list_length INT;
+	DECLARE list_index INT;
+	DECLARE list_element_json JSON;
+	DECLARE list_converted_value JSON;
+	DECLARE list_result JSON;
+
+	SET @@SESSION.max_sp_recursion_depth = 255;
+
+	-- Convert ListValue [value, value, value] to {"1": [values]}
+	SET list_length = JSON_LENGTH(proto_json_value);
+	SET list_index = 0;
+	SET list_result = JSON_ARRAY();
+
+	WHILE list_index < list_length DO
+		SET list_element_json = JSON_EXTRACT(proto_json_value, CONCAT('$[', list_index, ']'));
+		-- Recursively convert the element as Value
+		CALL _pb_wkt_value_json_to_number_json(list_element_json, list_converted_value);
+		SET list_result = JSON_ARRAY_APPEND(list_result, '$', list_converted_value);
+		SET list_index = list_index + 1;
+	END WHILE;
+
+	-- Empty array should result in empty object, not {"1": []}, because default values (empty repeated field) are omitted in ProtoNumberJSON.
+	IF list_length = 0 THEN
+		SET result = JSON_OBJECT();
+	ELSE
+		SET result = JSON_OBJECT('1', list_result);
+	END IF;
+END $$
+
+-- Convert ListValue JSON to number JSON format (function wrapper)
+DROP FUNCTION IF EXISTS _pb_wkt_list_value_json_to_number_json $$
+CREATE FUNCTION _pb_wkt_list_value_json_to_number_json(proto_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wkt_list_value_json_to_number_json(proto_json_value, result);
+	RETURN result;
+END $$
+
+-- Convert Value JSON to number JSON format (stored procedure)
+DROP PROCEDURE IF EXISTS _pb_wkt_value_json_to_number_json $$
+CREATE PROCEDURE _pb_wkt_value_json_to_number_json(IN proto_json_value JSON, OUT result JSON)
+BEGIN
+	DECLARE converted_value JSON;
+	DECLARE message_text TEXT;
+
+	SET @@SESSION.max_sp_recursion_depth = 255;
+
+	CASE JSON_TYPE(proto_json_value)
+	WHEN 'NULL' THEN
+		-- null_value (field 1, enum value 0)
+		SET result = JSON_OBJECT('1', 0);
+	WHEN 'INTEGER' THEN
+		-- number_value (field 2)
+		SET result = JSON_OBJECT('2', CAST(proto_json_value AS DOUBLE));
+	WHEN 'UNSIGNED INTEGER' THEN
+		-- number_value (field 2)
+		SET result = JSON_OBJECT('2', CAST(proto_json_value AS DOUBLE));
+	WHEN 'DOUBLE' THEN
+		-- number_value (field 2)
+		SET result = JSON_OBJECT('2', CAST(proto_json_value AS DOUBLE));
+	WHEN 'STRING' THEN
+		-- string_value (field 3)
+		SET result = JSON_OBJECT('3', proto_json_value);
+	WHEN 'BOOLEAN' THEN
+		-- bool_value (field 4)
+		SET result = JSON_OBJECT('4', proto_json_value);
+	WHEN 'OBJECT' THEN
+		-- struct_value (field 5) - recursively convert as Struct
+		CALL _pb_wkt_struct_json_to_number_json(proto_json_value, converted_value);
+		SET result = JSON_OBJECT('5', converted_value);
+	WHEN 'ARRAY' THEN
+		-- list_value (field 6) - recursively convert as ListValue
+		CALL _pb_wkt_list_value_json_to_number_json(proto_json_value, converted_value);
+		SET result = JSON_OBJECT('6', converted_value);
+	ELSE
+		-- Unknown JSON type, signal error
+		SET message_text = CONCAT('Unsupported JSON type for Value: ', JSON_TYPE(proto_json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END CASE;
+END $$
+
+-- Convert Value JSON to number JSON format (function wrapper)
+DROP FUNCTION IF EXISTS _pb_wkt_value_json_to_number_json $$
+CREATE FUNCTION _pb_wkt_value_json_to_number_json(proto_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wkt_value_json_to_number_json(proto_json_value, result);
+	RETURN result;
 END $$
 
 DELIMITER $$
@@ -3896,7 +3967,7 @@ BEGIN
 			RETURN NULL;
 		END IF;
 		-- Convert JSON array to ListValue with repeated Value fields
-		CALL _pb_json_encode_wkt_listvalue_as_wire_json(json_value, from_number_json, result);
+		CALL _pb_json_encode_wkt_list_value_as_wire_json(json_value, from_number_json, result);
 		IF result IS NOT NULL THEN
 			RETURN result;
 		END IF;

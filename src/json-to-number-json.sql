@@ -386,82 +386,16 @@ BEGIN
 		SET number_json_value = JSON_OBJECT('1', paths_array);
 
 	WHEN '.google.protobuf.Value' THEN
-		-- Convert Value from its unwrapped form to structured form
-		-- JSON values can be: null, number, string, boolean, object (Struct), array (ListValue)
-		-- Handle special case of empty object (should be struct_value with empty struct)
-		IF JSON_TYPE(proto_json_value) = 'OBJECT' AND JSON_LENGTH(proto_json_value) = 0 THEN
-			-- Empty object -> struct_value with empty struct -> should result in zero-value
-			SET number_json_value = JSON_OBJECT('5', JSON_OBJECT());
-		ELSEIF proto_json_value IS NULL THEN
-			-- null_value (field 1)
-			SET number_json_value = JSON_OBJECT('1', 0); -- NULL_VALUE = 0
-		ELSEIF JSON_TYPE(proto_json_value) IN ('NUMBER', 'INTEGER', 'DECIMAL') THEN
-			-- number_value (field 2)
-			SET number_json_value = JSON_OBJECT('2', proto_json_value);
-		ELSEIF JSON_TYPE(proto_json_value) = 'STRING' THEN
-			-- string_value (field 3)
-			SET number_json_value = JSON_OBJECT('3', proto_json_value);
-		ELSEIF JSON_TYPE(proto_json_value) = 'BOOLEAN' THEN
-			-- bool_value (field 4)
-			SET number_json_value = JSON_OBJECT('4', proto_json_value);
-		ELSEIF JSON_TYPE(proto_json_value) = 'OBJECT' THEN
-			-- struct_value (field 5) - recursively convert as Struct
-			CALL _pb_convert_json_wkt_to_number_json('.google.protobuf.Struct', proto_json_value, converted_value);
-			SET number_json_value = JSON_OBJECT('5', converted_value);
-		ELSEIF JSON_TYPE(proto_json_value) = 'ARRAY' THEN
-			-- list_value (field 6) - recursively convert as ListValue
-			CALL _pb_convert_json_wkt_to_number_json('.google.protobuf.ListValue', proto_json_value, converted_value);
-			SET number_json_value = JSON_OBJECT('6', converted_value);
-		ELSE
-			-- Unknown type, default to null_value
-			SET number_json_value = JSON_OBJECT('1', 0);
-		END IF;
+		-- Convert using dedicated function
+		SET number_json_value = _pb_wkt_value_json_to_number_json(proto_json_value);
 
 	WHEN '.google.protobuf.Struct' THEN
-		-- Convert Struct {key: value, key: value} to {"1": {field_map}}
-		SET struct_keys = JSON_KEYS(proto_json_value);
-		SET struct_key_count = JSON_LENGTH(struct_keys);
-
-		-- Handle empty object - should still have field 1 with empty object
-		IF struct_key_count = 0 THEN
-			SET number_json_value = JSON_OBJECT('1', JSON_OBJECT());
-		ELSE
-			SET struct_key_index = 0;
-			SET struct_result = JSON_OBJECT();
-
-			struct_loop: WHILE struct_key_index < struct_key_count DO
-				SET struct_key_name = JSON_UNQUOTE(JSON_EXTRACT(struct_keys, CONCAT('$[', struct_key_index, ']')));
-				SET struct_value_json = JSON_EXTRACT(proto_json_value, CONCAT('$."', struct_key_name, '"'));
-				-- Recursively convert the value as Value
-				CALL _pb_convert_json_wkt_to_number_json('.google.protobuf.Value', struct_value_json, struct_converted_value);
-				SET struct_result = JSON_SET(struct_result, CONCAT('$."', struct_key_name, '"'), struct_converted_value);
-				SET struct_key_index = struct_key_index + 1;
-			END WHILE struct_loop;
-
-			SET number_json_value = JSON_OBJECT('1', struct_result);
-		END IF;
+		-- Convert using dedicated function
+		SET number_json_value = _pb_wkt_struct_json_to_number_json(proto_json_value);
 
 	WHEN '.google.protobuf.ListValue' THEN
-		-- Convert ListValue [value, value, value] to {"1": [values]}
-		SET list_length = JSON_LENGTH(proto_json_value);
-
-		-- Handle empty array - should still have field 1 with empty array
-		IF list_length = 0 THEN
-			SET number_json_value = JSON_OBJECT('1', JSON_ARRAY());
-		ELSE
-			SET list_index = 0;
-			SET list_result = JSON_ARRAY();
-
-			list_loop: WHILE list_index < list_length DO
-				SET list_element_json = JSON_EXTRACT(proto_json_value, CONCAT('$[', list_index, ']'));
-				-- Recursively convert the element as Value
-				CALL _pb_convert_json_wkt_to_number_json('.google.protobuf.Value', list_element_json, list_converted_value);
-				SET list_result = JSON_ARRAY_APPEND(list_result, '$', list_converted_value);
-				SET list_index = list_index + 1;
-			END WHILE list_loop;
-
-			SET number_json_value = JSON_OBJECT('1', list_result);
-		END IF;
+		-- Convert using dedicated function
+		SET number_json_value = _pb_wkt_list_value_json_to_number_json(proto_json_value);
 
 	WHEN '.google.protobuf.Any' THEN
 		-- {"@type": "url", "field": "value"} -> {"1": "url", "2": "base64data"}

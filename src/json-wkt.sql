@@ -106,7 +106,7 @@ BEGIN
 			RETURN NULL;
 		END IF;
 		-- Convert JSON array to ListValue with repeated Value fields
-		CALL _pb_json_encode_wkt_listvalue_as_wire_json(json_value, from_number_json, result);
+		CALL _pb_json_encode_wkt_list_value_as_wire_json(json_value, from_number_json, result);
 		IF result IS NOT NULL THEN
 			RETURN result;
 		END IF;
