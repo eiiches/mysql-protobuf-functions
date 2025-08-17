@@ -310,7 +310,7 @@ proc: BEGIN
 				IF is_map THEN
 					-- Handle map fields
 					SET elements = pb_wire_json_get_repeated_message_field_as_json_array(wire_json, field_number);
-					SET element_count = JSON_LENGTH(elements);
+					SET element_count = COALESCE(JSON_LENGTH(elements), 0);
 					SET element_index = 0;
 					SET field_json_value = JSON_OBJECT();
 
@@ -352,7 +352,7 @@ proc: BEGIN
 
 				ELSEIF is_repeated THEN
 					-- Handle repeated message fields
-					SET element_count = pb_wire_json_get_repeated_message_field_count(wire_json, field_number);
+					SET element_count = COALESCE(pb_wire_json_get_repeated_message_field_count(wire_json, field_number), 0);
 					SET element_index = 0;
 					SET field_json_value = JSON_ARRAY();
 
@@ -375,7 +375,7 @@ proc: BEGIN
 			WHEN 14 THEN -- TYPE_ENUM
 				IF is_repeated THEN
 					SET elements = pb_wire_json_get_repeated_enum_field_as_json_array(wire_json, field_number);
-					SET element_count = JSON_LENGTH(elements);
+					SET element_count = COALESCE(JSON_LENGTH(elements), 0);
 					SET element_index = 0;
 					SET field_json_value = JSON_ARRAY();
 
