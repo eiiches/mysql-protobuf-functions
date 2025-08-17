@@ -1,25 +1,30 @@
 DELIMITER $$
 
-DROP FUNCTION IF EXISTS _pb_json_wkt_timestamp_format_fractional_seconds $$
-CREATE FUNCTION _pb_json_wkt_timestamp_format_fractional_seconds(nanos INT) RETURNS TEXT DETERMINISTIC
+-- Helper procedure to normalize timestamp seconds and nanoseconds
+-- Ensures nanos is non-negative and within [0, 999999999] range
+-- Even for negative seconds, nanos must be non-negative and count forward in time
+DROP PROCEDURE IF EXISTS _pb_wkt_timestamp_normalize_fields $$
+CREATE PROCEDURE _pb_wkt_timestamp_normalize_fields(INOUT seconds BIGINT, INOUT nanos INT)
 BEGIN
-	DECLARE abs_nanos INT;
+	-- Handle case where nanos is outside [0, 999999999] range
+	-- For negative seconds with fractional part, nanos should still be positive
+	-- Example: -1.5 seconds = seconds=-2, nanos=500000000 (not seconds=-1, nanos=-500000000)
 
+	DECLARE extra_seconds BIGINT;
+
+	-- Handle nanos overflow/underflow
+	-- Calculate how many whole seconds are represented by nanos
+	SET extra_seconds = nanos DIV 1000000000;
 	SET nanos = nanos % 1000000000;
-	IF nanos = 0 THEN
-		RETURN '';
+
+	-- Handle negative modulo result (MySQL modulo can return negative values)
+	IF nanos < 0 THEN
+		SET extra_seconds = extra_seconds - 1;
+		SET nanos = nanos + 1000000000;
 	END IF;
 
-	-- Handle negative nanoseconds
-	SET abs_nanos = ABS(nanos);
-
-	IF abs_nanos % 1000000 = 0 THEN
-		RETURN CONCAT('.', LPAD(CAST(abs_nanos DIV 1000000 AS CHAR), 3, '0')); -- 3 digits
-	ELSEIF abs_nanos % 1000 = 0 THEN
-		RETURN CONCAT('.', LPAD(CAST(abs_nanos DIV 1000 AS CHAR), 6, '0')); -- 6 digits
-	ELSE
-		RETURN CONCAT('.', LPAD(CAST(abs_nanos AS CHAR), 9, '0')); -- 9 digits
-	END IF;
+	-- Add the extra seconds to the original seconds
+	SET seconds = seconds + extra_seconds;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_timestamp_as_json $$
@@ -62,8 +67,8 @@ BEGIN
 		SET element_index = element_index + 1;
 	END WHILE;
 
-	SET seconds = seconds + (nanos DIV 1000000000);
-	SET nanos = nanos % 1000000000;
+	-- Normalize seconds and nanos using helper procedure
+	CALL _pb_wkt_timestamp_normalize_fields(seconds, nanos);
 
 	-- Validate timestamp range: [0001-01-01T00:00:00Z, 9999-12-31T23:59:59.999999999Z]
 	-- This corresponds to seconds range: [-62135596800, 253402300799]
@@ -75,7 +80,7 @@ BEGIN
 	-- Convert seconds since Unix epoch to datetime string using TIMESTAMPADD
 	SET datetime_part = TIMESTAMPADD(SECOND, seconds, '1970-01-01 00:00:00');
 
-	RETURN JSON_QUOTE(CONCAT(REPLACE(datetime_part, " ", "T"), _pb_json_wkt_timestamp_format_fractional_seconds(nanos), "Z"));
+	RETURN JSON_QUOTE(CONCAT(REPLACE(datetime_part, " ", "T"), _pb_json_wkt_time_common_format_fractional_seconds(nanos), "Z"));
 END $$
 
 -- Helper function to convert Timestamp string to wire_json
@@ -138,6 +143,9 @@ BEGIN
 		SET nanos_str = LEFT(nanos_str, 9);
 		SET nanos = CAST(nanos_str AS UNSIGNED);
 	END IF;
+
+	-- Normalize seconds and nanos using helper procedure
+	CALL _pb_wkt_timestamp_normalize_fields(seconds, nanos);
 
 	-- Validate timestamp range: [0001-01-01T00:00:00Z, 9999-12-31T23:59:59.999999999Z]
 	-- This corresponds to seconds range: [-62135596800, 253402300799]

@@ -105,12 +105,15 @@ BEGIN
 			SET seconds_part = COALESCE(JSON_EXTRACT(number_json_value, '$."1"'), 0);
 			SET nanos_part = COALESCE(JSON_EXTRACT(number_json_value, '$."2"'), 0);
 
+			-- Normalize seconds and nanos using helper procedure
+			CALL _pb_wkt_timestamp_normalize_fields(seconds_part, nanos_part);
+
 			-- Convert seconds since Unix epoch to datetime string using TIMESTAMPADD
 			SET timestamp_str = TIMESTAMPADD(SECOND, seconds_part, '1970-01-01 00:00:00');
 			-- Format as ISO8601 with T separator
 			SET timestamp_str = REPLACE(timestamp_str, ' ', 'T');
-			-- Add fractional seconds using existing function
-			SET timestamp_str = CONCAT(timestamp_str, _pb_json_wkt_timestamp_format_fractional_seconds(nanos_part), 'Z');
+			-- Add fractional seconds using common function
+			SET timestamp_str = CONCAT(timestamp_str, _pb_json_wkt_time_common_format_fractional_seconds(nanos_part), 'Z');
 			SET proto_json_value = JSON_QUOTE(timestamp_str);
 		END IF;
 
@@ -123,11 +126,15 @@ BEGIN
 			SET seconds_part = COALESCE(JSON_EXTRACT(number_json_value, '$."1"'), 0);
 			SET nanos_part = COALESCE(JSON_EXTRACT(number_json_value, '$."2"'), 0);
 
+			-- Normalize seconds and nanos using duration-specific helper procedure
+			CALL _pb_wkt_duration_normalize_fields(seconds_part, nanos_part);
+
 			IF nanos_part = 0 THEN
 				SET duration_str = CONCAT(seconds_part, 's');
 			ELSE
-				-- Use existing function to format fractional seconds properly
-				SET duration_str = CONCAT(seconds_part, _pb_json_wkt_duration_format_fractional_seconds(nanos_part), 's');
+				-- Use common function to format fractional seconds properly
+				-- Duration nanos can be negative, so use absolute value for formatting
+				SET duration_str = CONCAT(seconds_part, _pb_json_wkt_time_common_format_fractional_seconds(ABS(nanos_part)), 's');
 			END IF;
 
 			SET proto_json_value = JSON_QUOTE(duration_str);
@@ -584,10 +591,10 @@ BEGIN
 			IF emit_default_values THEN
 				-- Determine if field has presence-sensing
 				-- In proto3: message fields always have presence, optional fields have presence, oneof fields have presence
-				-- Exception: map fields should always emit default values regardless of presence
-				-- Only non-optional primitive fields lack presence
-				IF is_map THEN
-					SET has_presence = FALSE; -- Maps always emit defaults
+				-- Exception: map fields and repeated fields should always emit default values regardless of presence
+				-- Only non-optional singular primitive fields lack presence
+				IF is_map OR is_repeated THEN
+					SET has_presence = FALSE; -- Maps and repeated fields always emit defaults
 				ELSE
 					SET has_presence = proto3_optional OR (JSON_EXTRACT(field_descriptor, '$.\"9\"') IS NOT NULL) OR (field_type = 11); -- oneof_index or message type
 				END IF;

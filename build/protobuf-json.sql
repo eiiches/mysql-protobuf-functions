@@ -2224,12 +2224,15 @@ BEGIN
 			SET seconds_part = COALESCE(JSON_EXTRACT(number_json_value, '$."1"'), 0);
 			SET nanos_part = COALESCE(JSON_EXTRACT(number_json_value, '$."2"'), 0);
 
+			-- Normalize seconds and nanos using helper procedure
+			CALL _pb_wkt_timestamp_normalize_fields(seconds_part, nanos_part);
+
 			-- Convert seconds since Unix epoch to datetime string using TIMESTAMPADD
 			SET timestamp_str = TIMESTAMPADD(SECOND, seconds_part, '1970-01-01 00:00:00');
 			-- Format as ISO8601 with T separator
 			SET timestamp_str = REPLACE(timestamp_str, ' ', 'T');
-			-- Add fractional seconds using existing function
-			SET timestamp_str = CONCAT(timestamp_str, _pb_json_wkt_timestamp_format_fractional_seconds(nanos_part), 'Z');
+			-- Add fractional seconds using common function
+			SET timestamp_str = CONCAT(timestamp_str, _pb_json_wkt_time_common_format_fractional_seconds(nanos_part), 'Z');
 			SET proto_json_value = JSON_QUOTE(timestamp_str);
 		END IF;
 
@@ -2242,11 +2245,15 @@ BEGIN
 			SET seconds_part = COALESCE(JSON_EXTRACT(number_json_value, '$."1"'), 0);
 			SET nanos_part = COALESCE(JSON_EXTRACT(number_json_value, '$."2"'), 0);
 
+			-- Normalize seconds and nanos using duration-specific helper procedure
+			CALL _pb_wkt_duration_normalize_fields(seconds_part, nanos_part);
+
 			IF nanos_part = 0 THEN
 				SET duration_str = CONCAT(seconds_part, 's');
 			ELSE
-				-- Use existing function to format fractional seconds properly
-				SET duration_str = CONCAT(seconds_part, _pb_json_wkt_duration_format_fractional_seconds(nanos_part), 's');
+				-- Use common function to format fractional seconds properly
+				-- Duration nanos can be negative, so use absolute value for formatting
+				SET duration_str = CONCAT(seconds_part, _pb_json_wkt_time_common_format_fractional_seconds(ABS(nanos_part)), 's');
 			END IF;
 
 			SET proto_json_value = JSON_QUOTE(duration_str);
@@ -2703,10 +2710,10 @@ BEGIN
 			IF emit_default_values THEN
 				-- Determine if field has presence-sensing
 				-- In proto3: message fields always have presence, optional fields have presence, oneof fields have presence
-				-- Exception: map fields should always emit default values regardless of presence
-				-- Only non-optional primitive fields lack presence
-				IF is_map THEN
-					SET has_presence = FALSE; -- Maps always emit defaults
+				-- Exception: map fields and repeated fields should always emit default values regardless of presence
+				-- Only non-optional singular primitive fields lack presence
+				IF is_map OR is_repeated THEN
+					SET has_presence = FALSE; -- Maps and repeated fields always emit defaults
 				ELSE
 					SET has_presence = proto3_optional OR (JSON_EXTRACT(field_descriptor, '$.\"9\"') IS NOT NULL) OR (field_type = 11); -- oneof_index or message type
 				END IF;
@@ -2780,26 +2787,31 @@ END $$
 DELIMITER ;
 DELIMITER $$
 
-DROP FUNCTION IF EXISTS _pb_json_wkt_timestamp_format_fractional_seconds $$
-CREATE FUNCTION _pb_json_wkt_timestamp_format_fractional_seconds(nanos INT) RETURNS TEXT DETERMINISTIC
+-- Helper procedure to normalize timestamp seconds and nanoseconds
+-- Ensures nanos is non-negative and within [0, 999999999] range
+-- Even for negative seconds, nanos must be non-negative and count forward in time
+DROP PROCEDURE IF EXISTS _pb_wkt_timestamp_normalize_fields $$
+CREATE PROCEDURE _pb_wkt_timestamp_normalize_fields(INOUT seconds BIGINT, INOUT nanos INT)
 BEGIN
-	DECLARE abs_nanos INT;
+	-- Handle case where nanos is outside [0, 999999999] range
+	-- For negative seconds with fractional part, nanos should still be positive
+	-- Example: -1.5 seconds = seconds=-2, nanos=500000000 (not seconds=-1, nanos=-500000000)
 
+	DECLARE extra_seconds BIGINT;
+
+	-- Handle nanos overflow/underflow
+	-- Calculate how many whole seconds are represented by nanos
+	SET extra_seconds = nanos DIV 1000000000;
 	SET nanos = nanos % 1000000000;
-	IF nanos = 0 THEN
-		RETURN '';
+
+	-- Handle negative modulo result (MySQL modulo can return negative values)
+	IF nanos < 0 THEN
+		SET extra_seconds = extra_seconds - 1;
+		SET nanos = nanos + 1000000000;
 	END IF;
 
-	-- Handle negative nanoseconds
-	SET abs_nanos = ABS(nanos);
-
-	IF abs_nanos % 1000000 = 0 THEN
-		RETURN CONCAT('.', LPAD(CAST(abs_nanos DIV 1000000 AS CHAR), 3, '0')); -- 3 digits
-	ELSEIF abs_nanos % 1000 = 0 THEN
-		RETURN CONCAT('.', LPAD(CAST(abs_nanos DIV 1000 AS CHAR), 6, '0')); -- 6 digits
-	ELSE
-		RETURN CONCAT('.', LPAD(CAST(abs_nanos AS CHAR), 9, '0')); -- 9 digits
-	END IF;
+	-- Add the extra seconds to the original seconds
+	SET seconds = seconds + extra_seconds;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_timestamp_as_json $$
@@ -2842,8 +2854,8 @@ BEGIN
 		SET element_index = element_index + 1;
 	END WHILE;
 
-	SET seconds = seconds + (nanos DIV 1000000000);
-	SET nanos = nanos % 1000000000;
+	-- Normalize seconds and nanos using helper procedure
+	CALL _pb_wkt_timestamp_normalize_fields(seconds, nanos);
 
 	-- Validate timestamp range: [0001-01-01T00:00:00Z, 9999-12-31T23:59:59.999999999Z]
 	-- This corresponds to seconds range: [-62135596800, 253402300799]
@@ -2855,7 +2867,7 @@ BEGIN
 	-- Convert seconds since Unix epoch to datetime string using TIMESTAMPADD
 	SET datetime_part = TIMESTAMPADD(SECOND, seconds, '1970-01-01 00:00:00');
 
-	RETURN JSON_QUOTE(CONCAT(REPLACE(datetime_part, " ", "T"), _pb_json_wkt_timestamp_format_fractional_seconds(nanos), "Z"));
+	RETURN JSON_QUOTE(CONCAT(REPLACE(datetime_part, " ", "T"), _pb_json_wkt_time_common_format_fractional_seconds(nanos), "Z"));
 END $$
 
 -- Helper function to convert Timestamp string to wire_json
@@ -2919,6 +2931,9 @@ BEGIN
 		SET nanos = CAST(nanos_str AS UNSIGNED);
 	END IF;
 
+	-- Normalize seconds and nanos using helper procedure
+	CALL _pb_wkt_timestamp_normalize_fields(seconds, nanos);
+
 	-- Validate timestamp range: [0001-01-01T00:00:00Z, 9999-12-31T23:59:59.999999999Z]
 	-- This corresponds to seconds range: [-62135596800, 253402300799]
 	IF seconds < -62135596800 OR seconds > 253402300799 THEN
@@ -2944,25 +2959,55 @@ END $$
 
 DELIMITER $$
 
-DROP FUNCTION IF EXISTS _pb_json_wkt_duration_format_fractional_seconds $$
-CREATE FUNCTION _pb_json_wkt_duration_format_fractional_seconds(nanos INT) RETURNS TEXT DETERMINISTIC
+-- Helper procedure to normalize duration seconds and nanoseconds
+-- Follows protobuf Duration specification:
+-- - nanos range: -999,999,999 to +999,999,999
+-- - For durations >= 1 second: nanos must have same sign as seconds
+-- - For durations < 1 second: seconds = 0, nanos can be positive or negative
+DROP PROCEDURE IF EXISTS _pb_wkt_duration_normalize_fields $$
+CREATE PROCEDURE _pb_wkt_duration_normalize_fields(INOUT seconds BIGINT, INOUT nanos INT)
 BEGIN
+	DECLARE extra_seconds BIGINT;
 	DECLARE abs_nanos INT;
-
-	SET nanos = nanos % 1000000000;
-	IF nanos = 0 THEN
-		RETURN '';
+	
+	-- Handle nanos overflow/underflow (outside [-999999999, 999999999])
+	IF ABS(nanos) > 999999999 THEN
+		-- Calculate how many whole seconds are represented by nanos
+		SET extra_seconds = nanos DIV 1000000000;
+		SET nanos = nanos % 1000000000;
+		
+		-- Handle negative modulo result (MySQL modulo can return negative values)
+		IF nanos < 0 THEN
+			SET extra_seconds = extra_seconds - 1;
+			SET nanos = nanos + 1000000000;
+		END IF;
+		
+		-- Add the extra seconds to the original seconds
+		SET seconds = seconds + extra_seconds;
 	END IF;
-
-	-- Handle negative nanoseconds
-	SET abs_nanos = ABS(nanos);
-
-	IF abs_nanos % 1000000 = 0 THEN
-		RETURN CONCAT('.', LPAD(CAST(abs_nanos DIV 1000000 AS CHAR), 3, '0')); -- 3 digits
-	ELSEIF abs_nanos % 1000 = 0 THEN
-		RETURN CONCAT('.', LPAD(CAST(abs_nanos DIV 1000 AS CHAR), 6, '0')); -- 6 digits
-	ELSE
-		RETURN CONCAT('.', LPAD(CAST(abs_nanos AS CHAR), 9, '0')); -- 9 digits
+	
+	-- Apply Duration-specific sign rules:
+	-- For durations >= 1 second: nanos must have same sign as seconds
+	-- For durations < 1 second: seconds = 0
+	IF seconds > 0 AND nanos < 0 THEN
+		-- Positive duration with negative nanos: adjust to maintain same sign
+		SET seconds = seconds - 1;
+		SET nanos = 1000000000 + nanos;
+	ELSEIF seconds < 0 AND nanos > 0 THEN
+		-- Negative duration with positive nanos: adjust to maintain same sign
+		SET seconds = seconds + 1;
+		SET nanos = nanos - 1000000000;
+	END IF;
+	
+	-- Validate final ranges
+	-- seconds: -315,576,000,000 to +315,576,000,000
+	-- nanos: -999,999,999 to +999,999,999
+	IF seconds < -315576000000 OR seconds > 315576000000 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Duration seconds out of range';
+	END IF;
+	
+	IF ABS(nanos) > 999999999 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Duration nanos out of range';
 	END IF;
 END $$
 
@@ -3015,9 +3060,9 @@ BEGIN
 
 	-- Handle case where seconds=0 but nanos<0 (e.g., -0.5s)
 	IF seconds = 0 AND nanos < 0 THEN
-		RETURN JSON_QUOTE(CONCAT('-0', _pb_json_wkt_duration_format_fractional_seconds(nanos), 's'));
+		RETURN JSON_QUOTE(CONCAT('-0', _pb_json_wkt_time_common_format_fractional_seconds(ABS(nanos)), 's'));
 	ELSE
-		RETURN JSON_QUOTE(CONCAT(CAST(seconds AS CHAR), _pb_json_wkt_duration_format_fractional_seconds(nanos), 's'));
+		RETURN JSON_QUOTE(CONCAT(CAST(seconds AS CHAR), _pb_json_wkt_time_common_format_fractional_seconds(ABS(nanos)), 's'));
 	END IF;
 END $$
 
@@ -3431,6 +3476,30 @@ BEGIN
 	END WHILE;
 
 	RETURN result;
+END $$
+
+DELIMITER $$
+
+DROP FUNCTION IF EXISTS _pb_json_wkt_time_common_format_fractional_seconds $$
+CREATE FUNCTION _pb_json_wkt_time_common_format_fractional_seconds(nanos INT) RETURNS TEXT DETERMINISTIC
+BEGIN
+	-- Validate that nanos is within [0, 999999999] range
+	-- Caller must ensure proper normalization before calling this function
+	IF nanos < 0 OR nanos > 999999999 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '_pb_json_wkt_time_common_format_fractional_seconds: nanos must be in range [0, 999999999]';
+	END IF;
+
+	IF nanos = 0 THEN
+		RETURN '';
+	END IF;
+
+	IF nanos % 1000000 = 0 THEN
+		RETURN CONCAT('.', LPAD(CAST(nanos DIV 1000000 AS CHAR), 3, '0')); -- 3 digits
+	ELSEIF nanos % 1000 = 0 THEN
+		RETURN CONCAT('.', LPAD(CAST(nanos DIV 1000 AS CHAR), 6, '0')); -- 6 digits
+	ELSE
+		RETURN CONCAT('.', LPAD(CAST(nanos AS CHAR), 9, '0')); -- 9 digits
+	END IF;
 END $$
 
 DELIMITER $$

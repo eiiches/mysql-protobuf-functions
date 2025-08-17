@@ -1,24 +1,54 @@
 DELIMITER $$
 
-DROP FUNCTION IF EXISTS _pb_json_wkt_duration_format_fractional_seconds $$
-CREATE FUNCTION _pb_json_wkt_duration_format_fractional_seconds(nanos INT) RETURNS TEXT DETERMINISTIC
+-- Helper procedure to normalize duration seconds and nanoseconds
+-- Follows protobuf Duration specification:
+-- - nanos range: -999,999,999 to +999,999,999
+-- - For durations >= 1 second: nanos must have same sign as seconds
+-- - For durations < 1 second: seconds = 0, nanos can be positive or negative
+DROP PROCEDURE IF EXISTS _pb_wkt_duration_normalize_fields $$
+CREATE PROCEDURE _pb_wkt_duration_normalize_fields(INOUT seconds BIGINT, INOUT nanos INT)
 BEGIN
+	DECLARE extra_seconds BIGINT;
 	DECLARE abs_nanos INT;
-
-	SET nanos = nanos % 1000000000;
-	IF nanos = 0 THEN
-		RETURN '';
+	
+	-- Handle nanos overflow/underflow (outside [-999999999, 999999999])
+	IF ABS(nanos) > 999999999 THEN
+		-- Calculate how many whole seconds are represented by nanos
+		SET extra_seconds = nanos DIV 1000000000;
+		SET nanos = nanos % 1000000000;
+		
+		-- Handle negative modulo result (MySQL modulo can return negative values)
+		IF nanos < 0 THEN
+			SET extra_seconds = extra_seconds - 1;
+			SET nanos = nanos + 1000000000;
+		END IF;
+		
+		-- Add the extra seconds to the original seconds
+		SET seconds = seconds + extra_seconds;
 	END IF;
-
-	-- Handle negative nanoseconds
-	SET abs_nanos = ABS(nanos);
-
-	IF abs_nanos % 1000000 = 0 THEN
-		RETURN CONCAT('.', LPAD(CAST(abs_nanos DIV 1000000 AS CHAR), 3, '0')); -- 3 digits
-	ELSEIF abs_nanos % 1000 = 0 THEN
-		RETURN CONCAT('.', LPAD(CAST(abs_nanos DIV 1000 AS CHAR), 6, '0')); -- 6 digits
-	ELSE
-		RETURN CONCAT('.', LPAD(CAST(abs_nanos AS CHAR), 9, '0')); -- 9 digits
+	
+	-- Apply Duration-specific sign rules:
+	-- For durations >= 1 second: nanos must have same sign as seconds
+	-- For durations < 1 second: seconds = 0
+	IF seconds > 0 AND nanos < 0 THEN
+		-- Positive duration with negative nanos: adjust to maintain same sign
+		SET seconds = seconds - 1;
+		SET nanos = 1000000000 + nanos;
+	ELSEIF seconds < 0 AND nanos > 0 THEN
+		-- Negative duration with positive nanos: adjust to maintain same sign
+		SET seconds = seconds + 1;
+		SET nanos = nanos - 1000000000;
+	END IF;
+	
+	-- Validate final ranges
+	-- seconds: -315,576,000,000 to +315,576,000,000
+	-- nanos: -999,999,999 to +999,999,999
+	IF seconds < -315576000000 OR seconds > 315576000000 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Duration seconds out of range';
+	END IF;
+	
+	IF ABS(nanos) > 999999999 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Duration nanos out of range';
 	END IF;
 END $$
 
@@ -71,9 +101,9 @@ BEGIN
 
 	-- Handle case where seconds=0 but nanos<0 (e.g., -0.5s)
 	IF seconds = 0 AND nanos < 0 THEN
-		RETURN JSON_QUOTE(CONCAT('-0', _pb_json_wkt_duration_format_fractional_seconds(nanos), 's'));
+		RETURN JSON_QUOTE(CONCAT('-0', _pb_json_wkt_time_common_format_fractional_seconds(ABS(nanos)), 's'));
 	ELSE
-		RETURN JSON_QUOTE(CONCAT(CAST(seconds AS CHAR), _pb_json_wkt_duration_format_fractional_seconds(nanos), 's'));
+		RETURN JSON_QUOTE(CONCAT(CAST(seconds AS CHAR), _pb_json_wkt_time_common_format_fractional_seconds(ABS(nanos)), 's'));
 	END IF;
 END $$
 

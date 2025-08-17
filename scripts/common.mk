@@ -35,6 +35,7 @@ PROTOBUF_JSON_SOURCES := \
 	src/json-wkt-duration.sql \
 	src/json-wkt-struct.sql \
 	src/json-wkt-field-mask.sql \
+	src/json-wkt-time-common.sql \
 	src/json-wkt.sql \
 	src/protobuf-descriptor.sql
 
