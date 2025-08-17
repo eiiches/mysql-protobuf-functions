@@ -10,6 +10,7 @@ import (
 	"github.com/eiiches/mysql-protobuf-functions/internal/protonumberjson"
 	"github.com/eiiches/mysql-protobuf-functions/internal/testutils"
 	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
@@ -46,6 +47,12 @@ func testJsonToNumberJson(t *testing.T, fieldDefinition string, inputJson string
 
 	// Parse input JSON with Go protojson to get expected result
 	expectedMessage := p.JsonToDynamicMessage(typeName, inputJson)
+	inputJsonRemarshalled, err := protojson.MarshalOptions{EmitDefaultValues: true}.Marshal(expectedMessage.Interface())
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(inputJson).To(gjson.EqualJson(string(inputJsonRemarshalled)), "Invalid test case; The input JSON does not match the Go protojson output. Input JSON is incorrect.")
+
+	inputJsonWithoutDefaults, err := protojson.MarshalOptions{EmitDefaultValues: false}.Marshal(expectedMessage.Interface())
+	g.Expect(err).NotTo(HaveOccurred())
 
 	// Validate that the expected number JSON matches the protonumberjson output
 	generatedExpectation, err := protonumberjson.Marshal(expectedMessage.Interface())
@@ -55,6 +62,7 @@ func testJsonToNumberJson(t *testing.T, fieldDefinition string, inputJson string
 	// Test the conversion: JSON -> number JSON
 	// MySQL implementation should produce the same number JSON as Go's protonumberjson
 	RunTestThatExpression(t, "_pb_json_to_number_json(?, ?, ?)", descriptorSetJson, typeName, inputJson).IsEqualToJsonString(expectedNumberJson)
+	RunTestThatExpression(t, "_pb_json_to_number_json(?, ?, ?)", descriptorSetJson, typeName, inputJsonWithoutDefaults).IsEqualToJsonString(expectedNumberJson)
 }
 
 func TestJsonToNumberJsonSingularFields(t *testing.T) {
