@@ -1380,8 +1380,10 @@ CREATE FUNCTION _pb_json_parse_signed_int(json_value JSON) RETURNS BIGINT DETERM
 BEGIN
 	DECLARE str_value TEXT;
 	DECLARE message_text TEXT;
+	DECLARE double_value DOUBLE;
 
-	IF JSON_TYPE(json_value) = 'STRING' THEN
+	CASE JSON_TYPE(json_value)
+	WHEN 'STRING' THEN
 		SET str_value = JSON_UNQUOTE(json_value);
 
 		-- Early return for invalid inputs
@@ -1402,9 +1404,18 @@ BEGIN
 		ELSE
 			RETURN CAST(str_value AS SIGNED);
 		END IF;
+	WHEN 'DOUBLE' THEN
+		-- Handle JSON numbers with exponential notation (e.g., 1e5)
+		-- But reject non-integer values (e.g., 0.5)
+		SET double_value = CAST(json_value AS DOUBLE);
+		IF double_value != FLOOR(double_value) THEN
+			SET message_text = CONCAT('Non-integer value for signed integer field: ', CAST(double_value AS CHAR));
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+		RETURN CAST(double_value AS SIGNED);
 	ELSE
 		RETURN CAST(json_value AS SIGNED);
-	END IF;
+	END CASE;
 END $$
 
 -- Helper function to parse JSON value as BIGINT UNSIGNED with validation
@@ -1413,8 +1424,10 @@ CREATE FUNCTION _pb_json_parse_unsigned_int(json_value JSON) RETURNS BIGINT UNSI
 BEGIN
 	DECLARE str_value TEXT;
 	DECLARE message_text TEXT;
+	DECLARE double_value DOUBLE;
 
-	IF JSON_TYPE(json_value) = 'STRING' THEN
+	CASE JSON_TYPE(json_value)
+	WHEN 'STRING' THEN
 		SET str_value = JSON_UNQUOTE(json_value);
 
 		-- Early return for invalid inputs
@@ -1435,9 +1448,18 @@ BEGIN
 		ELSE
 			RETURN CAST(str_value AS UNSIGNED);
 		END IF;
+	WHEN 'DOUBLE' THEN
+		-- Handle JSON numbers with exponential notation (e.g., 1e5)
+		-- But reject non-integer values (e.g., 0.5)
+		SET double_value = CAST(json_value AS DOUBLE);
+		IF double_value != FLOOR(double_value) THEN
+			SET message_text = CONCAT('Non-integer value for unsigned integer field: ', CAST(double_value AS CHAR));
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+		RETURN CAST(double_value AS UNSIGNED);
 	ELSE
 		RETURN CAST(json_value AS UNSIGNED);
-	END IF;
+	END CASE;
 END $$
 
 
