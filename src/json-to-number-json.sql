@@ -16,6 +16,12 @@ BEGIN
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 		END IF;
 
+		-- Early return for non-integer decimal values (e.g., "0.5")
+		IF str_value REGEXP '\\.[0-9]*[1-9]' THEN
+			SET message_text = CONCAT('Non-integer value for signed integer field: ', str_value);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+
 		-- Valid string input: parse appropriately
 		IF str_value REGEXP '[eE.]' THEN
 			RETURN CAST(CAST(str_value AS DOUBLE) AS SIGNED);
@@ -40,6 +46,12 @@ BEGIN
 		-- Early return for invalid inputs
 		IF str_value = '' OR NOT (str_value REGEXP '^[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$') THEN
 			SET message_text = CONCAT('Invalid number format for unsigned integer: ', str_value);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		-- Early return for non-integer decimal values (e.g., "0.5")
+		IF str_value REGEXP '\\.[0-9]*[1-9]' THEN
+			SET message_text = CONCAT('Non-integer value for unsigned integer field: ', str_value);
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 		END IF;
 
