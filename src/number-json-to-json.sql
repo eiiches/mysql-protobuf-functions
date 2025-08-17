@@ -670,5 +670,3 @@ BEGIN
 	CALL _pb_number_json_to_json_proc(descriptor_set_json, type_name, number_json, emit_default_values, result);
 	RETURN result;
 END $$
-
-DELIMITER ;

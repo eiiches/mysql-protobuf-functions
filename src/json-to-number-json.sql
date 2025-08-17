@@ -7,9 +7,9 @@ BEGIN
 	DECLARE str_value TEXT;
 	DECLARE message_text TEXT;
 	DECLARE double_value DOUBLE;
+	DECLARE uint_value BIGINT UNSIGNED;
 
-	CASE JSON_TYPE(json_value)
-	WHEN 'STRING' THEN
+	IF JSON_TYPE(json_value) = 'STRING' THEN
 		SET str_value = JSON_UNQUOTE(json_value);
 
 		-- Early return for invalid inputs
@@ -18,18 +18,21 @@ BEGIN
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 		END IF;
 
-		-- Early return for non-integer decimal values (e.g., "0.5")
-		IF str_value REGEXP '\\.[0-9]*[1-9]' THEN
-			SET message_text = CONCAT('Non-integer value for signed integer field: ', str_value);
+		SET json_value = CAST(str_value AS JSON);
+	END IF;
+
+	CASE JSON_TYPE(json_value)
+	WHEN 'UNSIGNED INTEGER' THEN
+		-- Cast to unsigned first, then check range for signed integer
+		SET uint_value = CAST(json_value AS UNSIGNED);
+		IF uint_value > 9223372036854775807 THEN
+			SET message_text = CONCAT('Value too large for signed integer field: ', CAST(uint_value AS CHAR));
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 		END IF;
-
-		-- Valid string input: parse appropriately
-		IF str_value REGEXP '[eE.]' THEN
-			RETURN CAST(CAST(str_value AS DOUBLE) AS SIGNED);
-		ELSE
-			RETURN CAST(str_value AS SIGNED);
-		END IF;
+		RETURN CAST(uint_value AS SIGNED);
+	WHEN 'INTEGER' THEN
+		-- JSON INTEGER type should be safe for signed integers
+		RETURN CAST(json_value AS SIGNED);
 	WHEN 'DOUBLE' THEN
 		-- Handle JSON numbers with exponential notation (e.g., 1e5)
 		-- But reject non-integer values (e.g., 0.5)
@@ -52,28 +55,29 @@ BEGIN
 	DECLARE message_text TEXT;
 	DECLARE double_value DOUBLE;
 
-	CASE JSON_TYPE(json_value)
-	WHEN 'STRING' THEN
+	IF JSON_TYPE(json_value) = 'STRING' THEN
 		SET str_value = JSON_UNQUOTE(json_value);
 
 		-- Early return for invalid inputs
-		IF str_value = '' OR NOT (str_value REGEXP '^[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$') THEN
-			SET message_text = CONCAT('Invalid number format for unsigned integer: ', str_value);
+		IF str_value = '' OR NOT (str_value REGEXP '^-?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$') THEN
+			SET message_text = CONCAT('Invalid number format for signed integer: ', str_value);
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 		END IF;
 
-		-- Early return for non-integer decimal values (e.g., "0.5")
-		IF str_value REGEXP '\\.[0-9]*[1-9]' THEN
-			SET message_text = CONCAT('Non-integer value for unsigned integer field: ', str_value);
+		SET json_value = CAST(str_value AS JSON);
+	END IF;
+
+	CASE JSON_TYPE(json_value)
+	WHEN 'INTEGER' THEN
+		-- Check if the INTEGER value is negative (invalid for unsigned)
+		IF CAST(json_value AS SIGNED) < 0 THEN
+			SET message_text = CONCAT('Negative value for unsigned integer field: ', CAST(json_value AS CHAR));
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 		END IF;
-
-		-- Valid string input: parse appropriately
-		IF str_value REGEXP '[eE.]' THEN
-			RETURN CAST(CAST(str_value AS DOUBLE) AS UNSIGNED);
-		ELSE
-			RETURN CAST(str_value AS UNSIGNED);
-		END IF;
+		RETURN CAST(json_value AS UNSIGNED);
+	WHEN 'UNSIGNED INTEGER' THEN
+		-- UNSIGNED INTEGER values are always valid for unsigned fields
+		RETURN CAST(json_value AS UNSIGNED);
 	WHEN 'DOUBLE' THEN
 		-- Handle JSON numbers with exponential notation (e.g., 1e5)
 		-- But reject non-integer values (e.g., 0.5)
@@ -875,5 +879,3 @@ BEGIN
 	CALL _pb_json_to_number_json_proc(descriptor_set_json, type_name, proto_json, result);
 	RETURN result;
 END $$
-
-DELIMITER ;
