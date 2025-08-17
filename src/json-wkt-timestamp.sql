@@ -169,3 +169,78 @@ BEGIN
 
 	RETURN result;
 END $$
+
+-- Helper procedure to convert Timestamp from ProtoJSON to ProtoNumberJSON
+DROP PROCEDURE IF EXISTS _pb_wkt_timestamp_json_to_number_json $$
+CREATE PROCEDURE _pb_wkt_timestamp_json_to_number_json(
+	IN proto_json_value JSON,
+	OUT number_json_value JSON
+)
+BEGIN
+	DECLARE timestamp_str TEXT;
+	DECLARE seconds_part BIGINT;
+	DECLARE nanos_part INT;
+	DECLARE dot_pos INT;
+	DECLARE nanos_str TEXT;
+
+	-- Convert ISO 8601 timestamp to {seconds, nanos}
+	SET timestamp_str = JSON_UNQUOTE(proto_json_value);
+	-- Parse RFC3339 timestamp format: "1972-01-01T10:00:20.021Z"
+	-- Since RFC3339 timestamps are UTC, parse and convert to Unix epoch
+	-- Use CONVERT_TZ to ensure we're treating input as UTC
+	SET seconds_part = UNIX_TIMESTAMP(CONVERT_TZ(STR_TO_DATE(LEFT(timestamp_str, 19), '%Y-%m-%dT%H:%i:%s'), '+00:00', @@session.time_zone));
+
+	-- Extract nanoseconds part if present
+	SET dot_pos = LOCATE('.', timestamp_str);
+	IF dot_pos > 0 THEN
+		SET nanos_str = SUBSTRING(timestamp_str, dot_pos + 1);
+		-- Remove trailing 'Z'
+		SET nanos_str = LEFT(nanos_str, LENGTH(nanos_str) - 1);
+		-- Pad to 9 digits (nanoseconds)
+		SET nanos_str = RPAD(nanos_str, 9, '0');
+		SET nanos_part = CAST(nanos_str AS UNSIGNED);
+	ELSE
+		SET nanos_part = 0;
+	END IF;
+
+	-- Build result with proto3 zero-value omission
+	SET number_json_value = JSON_OBJECT();
+	IF seconds_part != 0 THEN
+		SET number_json_value = JSON_SET(number_json_value, '$."1"', seconds_part);
+	END IF;
+	IF nanos_part != 0 THEN
+		SET number_json_value = JSON_SET(number_json_value, '$."2"', nanos_part);
+	END IF;
+END $$
+
+-- Helper procedure to convert Timestamp from ProtoNumberJSON to ProtoJSON
+DROP PROCEDURE IF EXISTS _pb_wkt_timestamp_number_json_to_json $$
+CREATE PROCEDURE _pb_wkt_timestamp_number_json_to_json(
+	IN number_json_value JSON,
+	OUT proto_json_value JSON
+)
+BEGIN
+	DECLARE seconds_part BIGINT;
+	DECLARE nanos_part INT;
+	DECLARE timestamp_str TEXT;
+
+	-- Convert {seconds, nanos} to ISO 8601 timestamp
+	-- Handle empty object (zero timestamp)
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		SET proto_json_value = JSON_QUOTE('1970-01-01T00:00:00Z');
+	ELSE
+		SET seconds_part = COALESCE(JSON_EXTRACT(number_json_value, '$."1"'), 0);
+		SET nanos_part = COALESCE(JSON_EXTRACT(number_json_value, '$."2"'), 0);
+
+		-- Normalize seconds and nanos using helper procedure
+		CALL _pb_wkt_timestamp_normalize_fields(seconds_part, nanos_part);
+
+		-- Convert seconds since Unix epoch to datetime string using TIMESTAMPADD
+		SET timestamp_str = TIMESTAMPADD(SECOND, seconds_part, '1970-01-01 00:00:00');
+		-- Format as ISO8601 with T separator
+		SET timestamp_str = REPLACE(timestamp_str, ' ', 'T');
+		-- Add fractional seconds using common function
+		SET timestamp_str = CONCAT(timestamp_str, _pb_json_wkt_time_common_format_fractional_seconds(nanos_part), 'Z');
+		SET proto_json_value = JSON_QUOTE(timestamp_str);
+	END IF;
+END $$

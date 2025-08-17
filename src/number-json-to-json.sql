@@ -63,11 +63,6 @@ CREATE PROCEDURE _pb_convert_number_json_to_wkt(
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 	DECLARE message_text TEXT;
-	DECLARE seconds_part BIGINT;
-	DECLARE nanos_part INT;
-	DECLARE timestamp_str TEXT;
-	DECLARE duration_str TEXT;
-	DECLARE nanos_str TEXT;
 	DECLARE wrapped_value JSON;
 	-- Variables for Any handling
 	DECLARE type_url TEXT;
@@ -98,47 +93,11 @@ BEGIN
 	CASE full_type_name
 	WHEN '.google.protobuf.Timestamp' THEN
 		-- Convert {seconds, nanos} to ISO 8601 timestamp
-		-- Handle empty object (zero timestamp)
-		IF JSON_LENGTH(number_json_value) = 0 THEN
-			SET proto_json_value = JSON_QUOTE('1970-01-01T00:00:00Z');
-		ELSE
-			SET seconds_part = COALESCE(JSON_EXTRACT(number_json_value, '$."1"'), 0);
-			SET nanos_part = COALESCE(JSON_EXTRACT(number_json_value, '$."2"'), 0);
-
-			-- Normalize seconds and nanos using helper procedure
-			CALL _pb_wkt_timestamp_normalize_fields(seconds_part, nanos_part);
-
-			-- Convert seconds since Unix epoch to datetime string using TIMESTAMPADD
-			SET timestamp_str = TIMESTAMPADD(SECOND, seconds_part, '1970-01-01 00:00:00');
-			-- Format as ISO8601 with T separator
-			SET timestamp_str = REPLACE(timestamp_str, ' ', 'T');
-			-- Add fractional seconds using common function
-			SET timestamp_str = CONCAT(timestamp_str, _pb_json_wkt_time_common_format_fractional_seconds(nanos_part), 'Z');
-			SET proto_json_value = JSON_QUOTE(timestamp_str);
-		END IF;
+		CALL _pb_wkt_timestamp_number_json_to_json(number_json_value, proto_json_value);
 
 	WHEN '.google.protobuf.Duration' THEN
 		-- Convert {seconds, nanos} to duration string like "3.5s"
-		-- Handle empty object (zero duration)
-		IF JSON_LENGTH(number_json_value) = 0 THEN
-			SET proto_json_value = JSON_QUOTE('0s');
-		ELSE
-			SET seconds_part = COALESCE(JSON_EXTRACT(number_json_value, '$."1"'), 0);
-			SET nanos_part = COALESCE(JSON_EXTRACT(number_json_value, '$."2"'), 0);
-
-			-- Normalize seconds and nanos using duration-specific helper procedure
-			CALL _pb_wkt_duration_normalize_fields(seconds_part, nanos_part);
-
-			IF nanos_part = 0 THEN
-				SET duration_str = CONCAT(seconds_part, 's');
-			ELSE
-				-- Use common function to format fractional seconds properly
-				-- Duration nanos can be negative, so use absolute value for formatting
-				SET duration_str = CONCAT(seconds_part, _pb_json_wkt_time_common_format_fractional_seconds(ABS(nanos_part)), 's');
-			END IF;
-
-			SET proto_json_value = JSON_QUOTE(duration_str);
-		END IF;
+		CALL _pb_wkt_duration_number_json_to_json(number_json_value, proto_json_value);
 
 	WHEN '.google.protobuf.StringValue' THEN
 		-- {"1": "value"} becomes unwrapped "value", {} becomes ""

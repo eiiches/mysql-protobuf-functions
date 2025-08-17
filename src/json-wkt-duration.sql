@@ -10,23 +10,23 @@ CREATE PROCEDURE _pb_wkt_duration_normalize_fields(INOUT seconds BIGINT, INOUT n
 BEGIN
 	DECLARE extra_seconds BIGINT;
 	DECLARE abs_nanos INT;
-	
+
 	-- Handle nanos overflow/underflow (outside [-999999999, 999999999])
 	IF ABS(nanos) > 999999999 THEN
 		-- Calculate how many whole seconds are represented by nanos
 		SET extra_seconds = nanos DIV 1000000000;
 		SET nanos = nanos % 1000000000;
-		
+
 		-- Handle negative modulo result (MySQL modulo can return negative values)
 		IF nanos < 0 THEN
 			SET extra_seconds = extra_seconds - 1;
 			SET nanos = nanos + 1000000000;
 		END IF;
-		
+
 		-- Add the extra seconds to the original seconds
 		SET seconds = seconds + extra_seconds;
 	END IF;
-	
+
 	-- Apply Duration-specific sign rules:
 	-- For durations >= 1 second: nanos must have same sign as seconds
 	-- For durations < 1 second: seconds = 0
@@ -39,14 +39,14 @@ BEGIN
 		SET seconds = seconds + 1;
 		SET nanos = nanos - 1000000000;
 	END IF;
-	
+
 	-- Validate final ranges
 	-- seconds: -315,576,000,000 to +315,576,000,000
 	-- nanos: -999,999,999 to +999,999,999
 	IF seconds < -315576000000 OR seconds > 315576000000 THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Duration seconds out of range';
 	END IF;
-	
+
 	IF ABS(nanos) > 999999999 THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Duration nanos out of range';
 	END IF;
@@ -180,4 +180,91 @@ BEGIN
 	END IF;
 
 	RETURN result;
+END $$
+
+-- Helper procedure to convert Duration from ProtoJSON to ProtoNumberJSON
+DROP PROCEDURE IF EXISTS _pb_wkt_duration_json_to_number_json $$
+CREATE PROCEDURE _pb_wkt_duration_json_to_number_json(
+	IN proto_json_value JSON,
+	OUT number_json_value JSON
+)
+BEGIN
+	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
+	DECLARE message_text TEXT;
+	DECLARE duration_str TEXT;
+	DECLARE seconds_part BIGINT;
+	DECLARE nanos_part INT;
+	DECLARE dot_pos INT;
+	DECLARE seconds_str TEXT;
+	DECLARE nanos_str TEXT;
+	DECLARE suffix_char CHAR(1);
+
+	-- Convert duration string like "3.5s" to {seconds, nanos}
+	SET duration_str = JSON_UNQUOTE(proto_json_value);
+	SET suffix_char = RIGHT(duration_str, 1);
+
+	IF suffix_char != 's' THEN
+		SET message_text = CONCAT('_pb_wkt_duration_json_to_number_json: invalid Duration format: ', duration_str);
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	-- Remove 's' suffix
+	SET duration_str = LEFT(duration_str, LENGTH(duration_str) - 1);
+
+	-- Split on decimal point
+	SET dot_pos = LOCATE('.', duration_str);
+	IF dot_pos > 0 THEN
+		SET seconds_str = LEFT(duration_str, dot_pos - 1);
+		SET nanos_str = SUBSTRING(duration_str, dot_pos + 1);
+		-- Pad to 9 digits
+		SET nanos_str = RPAD(nanos_str, 9, '0');
+		SET seconds_part = CAST(seconds_str AS SIGNED);
+		SET nanos_part = CAST(nanos_str AS UNSIGNED);
+	ELSE
+		SET seconds_part = CAST(duration_str AS SIGNED);
+		SET nanos_part = 0;
+	END IF;
+
+	-- Build result with proto3 zero-value omission
+	SET number_json_value = JSON_OBJECT();
+	IF seconds_part != 0 THEN
+		SET number_json_value = JSON_SET(number_json_value, '$."1"', seconds_part);
+	END IF;
+	IF nanos_part != 0 THEN
+		SET number_json_value = JSON_SET(number_json_value, '$."2"', nanos_part);
+	END IF;
+END $$
+
+-- Helper procedure to convert Duration from ProtoNumberJSON to ProtoJSON
+DROP PROCEDURE IF EXISTS _pb_wkt_duration_number_json_to_json $$
+CREATE PROCEDURE _pb_wkt_duration_number_json_to_json(
+	IN number_json_value JSON,
+	OUT proto_json_value JSON
+)
+BEGIN
+	DECLARE seconds_part BIGINT;
+	DECLARE nanos_part INT;
+	DECLARE duration_str TEXT;
+
+	-- Convert {seconds, nanos} to duration string like "3.5s"
+	-- Handle empty object (zero duration)
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		SET proto_json_value = JSON_QUOTE('0s');
+	ELSE
+		SET seconds_part = COALESCE(JSON_EXTRACT(number_json_value, '$."1"'), 0);
+		SET nanos_part = COALESCE(JSON_EXTRACT(number_json_value, '$."2"'), 0);
+
+		-- Normalize seconds and nanos using duration-specific helper procedure
+		CALL _pb_wkt_duration_normalize_fields(seconds_part, nanos_part);
+
+		IF nanos_part = 0 THEN
+			SET duration_str = CONCAT(seconds_part, 's');
+		ELSE
+			-- Use common function to format fractional seconds properly
+			-- Duration nanos can be negative, so use absolute value for formatting
+			SET duration_str = CONCAT(seconds_part, _pb_json_wkt_time_common_format_fractional_seconds(ABS(nanos_part)), 's');
+		END IF;
+
+		SET proto_json_value = JSON_QUOTE(duration_str);
+	END IF;
 END $$

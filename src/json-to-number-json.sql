@@ -135,14 +135,6 @@ CREATE PROCEDURE _pb_convert_json_wkt_to_number_json(
 BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 	DECLARE message_text TEXT;
-	DECLARE timestamp_str TEXT;
-	DECLARE duration_str TEXT;
-	DECLARE seconds_part BIGINT;
-	DECLARE nanos_part INT;
-	DECLARE dot_pos INT;
-	DECLARE seconds_str TEXT;
-	DECLARE nanos_str TEXT;
-	DECLARE suffix_char CHAR(1);
 	-- Variables for Any handling
 	DECLARE type_url TEXT;
 	DECLARE remaining_object JSON;
@@ -175,69 +167,11 @@ BEGIN
 	CASE full_type_name
 	WHEN '.google.protobuf.Timestamp' THEN
 		-- Convert ISO 8601 timestamp to {seconds, nanos}
-		SET timestamp_str = JSON_UNQUOTE(proto_json_value);
-		-- Parse RFC3339 timestamp format: "1972-01-01T10:00:20.021Z"
-		-- Since RFC3339 timestamps are UTC, parse and convert to Unix epoch
-		-- Use CONVERT_TZ to ensure we're treating input as UTC
-		SET seconds_part = UNIX_TIMESTAMP(CONVERT_TZ(STR_TO_DATE(LEFT(timestamp_str, 19), '%Y-%m-%dT%H:%i:%s'), '+00:00', @@session.time_zone));
-
-		-- Extract nanoseconds part if present
-		SET dot_pos = LOCATE('.', timestamp_str);
-		IF dot_pos > 0 THEN
-			SET nanos_str = SUBSTRING(timestamp_str, dot_pos + 1);
-			-- Remove trailing 'Z'
-			SET nanos_str = LEFT(nanos_str, LENGTH(nanos_str) - 1);
-			-- Pad to 9 digits (nanoseconds)
-			SET nanos_str = RPAD(nanos_str, 9, '0');
-			SET nanos_part = CAST(nanos_str AS UNSIGNED);
-		ELSE
-			SET nanos_part = 0;
-		END IF;
-
-		-- Build result with proto3 zero-value omission
-		SET number_json_value = JSON_OBJECT();
-		IF seconds_part != 0 THEN
-			SET number_json_value = JSON_SET(number_json_value, '$."1"', seconds_part);
-		END IF;
-		IF nanos_part != 0 THEN
-			SET number_json_value = JSON_SET(number_json_value, '$."2"', nanos_part);
-		END IF;
+		CALL _pb_wkt_timestamp_json_to_number_json(proto_json_value, number_json_value);
 
 	WHEN '.google.protobuf.Duration' THEN
 		-- Convert duration string like "3.5s" to {seconds, nanos}
-		SET duration_str = JSON_UNQUOTE(proto_json_value);
-		SET suffix_char = RIGHT(duration_str, 1);
-
-		IF suffix_char != 's' THEN
-			SET message_text = CONCAT('_pb_convert_json_wkt_to_number_json: invalid Duration format: ', duration_str);
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-		END IF;
-
-		-- Remove 's' suffix
-		SET duration_str = LEFT(duration_str, LENGTH(duration_str) - 1);
-
-		-- Split on decimal point
-		SET dot_pos = LOCATE('.', duration_str);
-		IF dot_pos > 0 THEN
-			SET seconds_str = LEFT(duration_str, dot_pos - 1);
-			SET nanos_str = SUBSTRING(duration_str, dot_pos + 1);
-			-- Pad to 9 digits
-			SET nanos_str = RPAD(nanos_str, 9, '0');
-			SET seconds_part = CAST(seconds_str AS SIGNED);
-			SET nanos_part = CAST(nanos_str AS UNSIGNED);
-		ELSE
-			SET seconds_part = CAST(duration_str AS SIGNED);
-			SET nanos_part = 0;
-		END IF;
-
-		-- Build result with proto3 zero-value omission
-		SET number_json_value = JSON_OBJECT();
-		IF seconds_part != 0 THEN
-			SET number_json_value = JSON_SET(number_json_value, '$."1"', seconds_part);
-		END IF;
-		IF nanos_part != 0 THEN
-			SET number_json_value = JSON_SET(number_json_value, '$."2"', nanos_part);
-		END IF;
+		CALL _pb_wkt_duration_json_to_number_json(proto_json_value, number_json_value);
 
 	WHEN '.google.protobuf.StringValue' THEN
 		-- Unwrapped string becomes {"1": "value"} - but omit if empty string
