@@ -2418,6 +2418,7 @@ CREATE PROCEDURE _pb_convert_map_number_json_to_proto_json(
 	IN descriptor_set_json JSON,
 	IN map_entry_type_name TEXT,
 	IN map_number_json JSON,
+	IN emit_default_values BOOLEAN,
 	OUT map_proto_json JSON
 )
 BEGIN
@@ -2512,7 +2513,7 @@ BEGIN
 				SET converted_value = JSON_QUOTE(enum_string_value);
 			WHEN 11 THEN -- message
 				-- Recursively convert nested message
-				CALL _pb_number_json_to_json_proc(descriptor_set_json, value_field_type_name, current_value, TRUE, converted_value);
+				CALL _pb_number_json_to_json_proc(descriptor_set_json, value_field_type_name, current_value, emit_default_values, converted_value);
 			WHEN 3 THEN -- int64 (convert number to string)
 				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
 			WHEN 4 THEN -- uint64 (convert number to string)
@@ -2637,7 +2638,7 @@ BEGIN
 				-- Handle map fields: convert object keys/values properly
 				-- For maps, field_json_value is an object like {"key1": value1, "key2": value2}
 				-- We need to convert the values based on the map value type
-				CALL _pb_convert_map_number_json_to_proto_json(descriptor_set_json, field_type_name, field_json_value, nested_json);
+				CALL _pb_convert_map_number_json_to_proto_json(descriptor_set_json, field_type_name, field_json_value, emit_default_values, nested_json);
 				SET result = JSON_SET(result, CONCAT('$.', target_field_name), nested_json);
 			ELSEIF is_repeated THEN
 				-- Handle repeated fields (arrays)
