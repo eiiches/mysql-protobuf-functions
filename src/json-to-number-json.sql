@@ -92,6 +92,104 @@ BEGIN
 	END CASE;
 END $$
 
+-- Helper function to parse JSON value as DOUBLE with validation
+DROP FUNCTION IF EXISTS _pb_json_parse_double $$
+CREATE FUNCTION _pb_json_parse_double(json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE str_value TEXT;
+	DECLARE message_text TEXT;
+
+	IF JSON_TYPE(json_value) = 'STRING' THEN
+		SET str_value = JSON_UNQUOTE(json_value);
+
+		-- Reject empty strings
+		IF str_value = '' THEN
+			SET message_text = 'Empty string is not a valid number for double field';
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		-- Reject non-numeric strings
+		IF NOT (str_value REGEXP '^[+-]?([0-9]*\\.?[0-9]+([eE][+-]?[0-9]+)?|Infinity|-Infinity|NaN)$') THEN
+			SET message_text = CONCAT('Invalid number format for double field: ', str_value);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		-- Handle special values that can't be cast to JSON
+		IF str_value IN ('Infinity', '-Infinity', 'NaN') THEN
+			-- Return the special value as JSON string
+			RETURN JSON_QUOTE(str_value);
+		END IF;
+
+		-- Convert string to JSON for further processing
+		SET json_value = CAST(str_value AS JSON);
+	END IF;
+
+	CASE JSON_TYPE(json_value)
+	WHEN 'INTEGER' THEN
+		RETURN CAST(CAST(json_value AS DOUBLE) AS JSON);
+	WHEN 'UNSIGNED INTEGER' THEN
+		RETURN CAST(CAST(json_value AS DOUBLE) AS JSON);
+	WHEN 'DECIMAL' THEN
+		RETURN CAST(CAST(json_value AS DOUBLE) AS JSON);
+	WHEN 'DOUBLE' THEN
+		RETURN CAST(CAST(json_value AS DOUBLE) AS JSON);
+	ELSE
+		SET message_text = CONCAT('Invalid JSON type for double field: ', JSON_TYPE(json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END CASE;
+END $$
+
+-- Helper function to parse JSON value as FLOAT with validation
+DROP FUNCTION IF EXISTS _pb_json_parse_float $$
+CREATE FUNCTION _pb_json_parse_float(json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE str_value TEXT;
+	DECLARE message_text TEXT;
+	DECLARE double_value DOUBLE;
+
+	IF JSON_TYPE(json_value) = 'STRING' THEN
+		SET str_value = JSON_UNQUOTE(json_value);
+
+		-- Reject empty strings
+		IF str_value = '' THEN
+			SET message_text = 'Empty string is not a valid number for float field';
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		-- Reject non-numeric strings
+		IF NOT (str_value REGEXP '^[+-]?([0-9]*\\.?[0-9]+([eE][+-]?[0-9]+)?|Infinity|-Infinity|NaN)$') THEN
+			SET message_text = CONCAT('Invalid number format for float field: ', str_value);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		-- Handle special values that can't be cast to JSON
+		IF str_value IN ('Infinity', '-Infinity', 'NaN') THEN
+			-- Return the special value as JSON string
+			RETURN JSON_QUOTE(str_value);
+		END IF;
+
+		-- Convert string to JSON for further processing
+		SET json_value = CAST(str_value AS JSON);
+	END IF;
+
+	CASE JSON_TYPE(json_value)
+	WHEN 'INTEGER' THEN
+		SET double_value = CAST(json_value AS DOUBLE);
+	WHEN 'UNSIGNED INTEGER' THEN
+		SET double_value = CAST(json_value AS DOUBLE);
+	WHEN 'DECIMAL' THEN
+		SET double_value = CAST(json_value AS DOUBLE);
+	WHEN 'DOUBLE' THEN
+		SET double_value = CAST(json_value AS DOUBLE);
+	ELSE
+		SET message_text = CONCAT('Invalid JSON type for float field: ', JSON_TYPE(json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END CASE;
+
+	-- Convert through float to get proper precision, then back to JSON
+	RETURN CAST(CAST(double_value AS FLOAT) AS JSON);
+END $$
+
 
 -- Helper procedure to check if a type is a well-known type
 DROP PROCEDURE IF EXISTS _pb_is_well_known_type $$
@@ -389,6 +487,8 @@ BEGIN
 	DECLARE uint64_value BIGINT UNSIGNED;
 	DECLARE int32_value INT;
 	DECLARE uint32_value INT UNSIGNED;
+	DECLARE double_json_value JSON;
+	DECLARE float_json_value JSON;
 	DECLARE str_value TEXT;
 	DECLARE enum_string_value TEXT;
 	DECLARE enum_numeric_value INT;
@@ -617,6 +717,12 @@ BEGIN
 						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', CAST(JSON_UNQUOTE(array_element) AS DECIMAL(20,0)));
 					WHEN 18 THEN -- sint64 (convert string to number)
 						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', CAST(JSON_UNQUOTE(array_element) AS DECIMAL(20,0)));
+					WHEN 1 THEN -- double (validate and convert)
+						SET double_json_value = _pb_json_parse_double(array_element);
+						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', double_json_value);
+					WHEN 2 THEN -- float (validate and convert)
+						SET float_json_value = _pb_json_parse_float(array_element);
+						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', float_json_value);
 					ELSE
 						-- Other primitive types stay the same
 						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', array_element);
@@ -717,11 +823,22 @@ BEGIN
 					IF syntax != 'proto3' OR proto3_optional OR NOT (int32_value = 0) THEN
 						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int32_value);
 					END IF;
+				WHEN 1 THEN -- double (handle with validation)
+					SET double_json_value = _pb_json_parse_double(field_json_value);
+					-- In proto3, skip zero values unless proto3_optional is true
+					IF syntax != 'proto3' OR proto3_optional OR NOT (double_json_value = CAST(0.0 AS JSON)) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), double_json_value);
+					END IF;
+				WHEN 2 THEN -- float (handle with validation)
+					SET float_json_value = _pb_json_parse_float(field_json_value);
+					-- In proto3, skip zero values unless proto3_optional is true
+					IF syntax != 'proto3' OR proto3_optional OR NOT (float_json_value = CAST(0.0 AS JSON)) THEN
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), float_json_value);
+					END IF;
 				ELSE
-					-- Other primitive types: float, double, bool, string, bytes
+					-- Other primitive types: bool, string, bytes
 					-- In proto3, skip zero/default values unless proto3_optional is true
 					IF syntax != 'proto3' OR proto3_optional OR NOT (
-						(field_type IN (1, 2) AND field_json_value = 0.0) OR            -- double, float = 0.0
 						(field_type = 8 AND field_json_value = false) OR                -- bool = false
 						(field_type = 9 AND JSON_UNQUOTE(field_json_value) = '') OR     -- string = ""
 						(field_type = 12 AND JSON_UNQUOTE(field_json_value) = '')       -- bytes = ""
