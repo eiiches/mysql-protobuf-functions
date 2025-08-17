@@ -1482,7 +1482,7 @@ BEGIN
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 		END IF;
 
-		-- Reject non-numeric strings  
+		-- Reject non-numeric strings
 		IF NOT (str_value REGEXP '^[+-]?([0-9]*\\.?[0-9]+([eE][+-]?[0-9]+)?|Infinity|-Infinity|NaN)$') THEN
 			SET message_text = CONCAT('Invalid number format for double field: ', str_value);
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
@@ -1559,7 +1559,7 @@ BEGIN
 		SET message_text = CONCAT('Invalid JSON type for float field: ', JSON_TYPE(json_value));
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END CASE;
-	
+
 	-- Convert through float to get proper precision, then back to JSON
 	RETURN CAST(CAST(double_value AS FLOAT) AS JSON);
 END $$
@@ -1937,6 +1937,19 @@ BEGIN
 		-- Check if field exists in source JSON
 		IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', source_field_name)) THEN
 			SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', source_field_name));
+
+			-- Handle null values: null is allowed for singular fields (treated as absent),
+			-- but not for repeated fields
+			IF JSON_TYPE(field_json_value) = 'NULL' THEN
+				IF is_repeated THEN
+					SET message_text = CONCAT('Invalid null value for repeated field `', field_name, '` (', field_number, ')');
+					SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+				ELSE
+					-- For singular fields, null means the field is absent - skip processing
+					SET field_index = field_index + 1;
+					ITERATE field_loop;
+				END IF;
+			END IF;
 
 			IF is_repeated THEN
 				IF is_map THEN
