@@ -78,6 +78,15 @@ make stop-profiling
 make flamegraph
 ```
 
+### Function Tracing
+```bash
+# Load instrumented functions for tracing (creates and loads .ftraced files)
+make load-ftrace-instrumented-files
+
+# Generate trace report after running tests
+./mysql-ftrace report --database "root@tcp(127.0.0.100:13306)/test" --format text
+```
+
 ### Code Generation
 ```bash
 # Generate protobuf accessor functions
