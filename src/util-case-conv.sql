@@ -102,4 +102,16 @@ BEGIN
 	RETURN camel_name;
 END $$
 
-DELIMITER ;
+-- Check if a string is valid camelCase for protobuf identifiers
+-- Valid camelCase: only letters and digits, no underscores or special characters
+DROP FUNCTION IF EXISTS _pb_util_is_camel $$
+CREATE FUNCTION _pb_util_is_camel(input_name TEXT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	-- Handle empty or null input
+	IF input_name IS NULL OR LENGTH(input_name) = 0 THEN
+		RETURN TRUE;
+	END IF;
+
+	-- Valid camelCase: only letters and digits (no underscores, special characters)
+	RETURN input_name REGEXP '^[a-zA-Z0-9]+$';
+END $$

@@ -64,6 +64,10 @@ BEGIN
 		END IF;
 
 		IF LENGTH(path) > 0 THEN
+			-- Validate that path is valid camelCase (no underscores allowed in JSON FieldMask)
+			IF NOT _pb_util_is_camel(path) THEN
+				SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FieldMask path contains invalid characters in JSON format';
+			END IF;
 			-- Convert camelCase JSON field path to snake_case proto path
 			-- Use add_repeated_string_field_element for repeated field
 			SET result = pb_wire_json_add_repeated_string_field_element(result, 1, _pb_util_camel_to_snake(path));
@@ -108,6 +112,10 @@ BEGIN
 		END IF;
 
 		IF LENGTH(current_path) > 0 THEN
+			-- Validate that path is valid camelCase (no underscores allowed in JSON FieldMask)
+			IF NOT _pb_util_is_camel(current_path) THEN
+				SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FieldMask path contains invalid characters in JSON format';
+			END IF;
 			-- Convert camelCase JSON field path to snake_case proto path
 			SET paths_array = JSON_ARRAY_APPEND(paths_array, '$', _pb_util_camel_to_snake(current_path));
 		END IF;
