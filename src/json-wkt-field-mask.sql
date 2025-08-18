@@ -1,5 +1,93 @@
 DELIMITER $$
 
+-- Convert snake_case field path to camelCase for FieldMask JSON output
+-- Implements logic from:
+-- https://github.com/protocolbuffers/protobuf/blob/89c585602af7d28646ce92cd3abba07cfdad7fa6/src/google/protobuf/json/internal/unparser.cc#L696-L733
+DROP FUNCTION IF EXISTS _pb_field_mask_snake_to_camel $$
+CREATE FUNCTION _pb_field_mask_snake_to_camel(snake_path TEXT) RETURNS TEXT DETERMINISTIC
+BEGIN
+	DECLARE result TEXT DEFAULT '';
+	DECLARE i INT DEFAULT 1;
+	DECLARE char_val BINARY(1);
+	DECLARE saw_underscore BOOLEAN DEFAULT FALSE;
+	DECLARE binary_path LONGBLOB;
+
+	-- Handle empty or null input
+	IF snake_path IS NULL OR LENGTH(snake_path) = 0 THEN
+		RETURN snake_path;
+	END IF;
+
+	-- Cast to binary for proper character comparisons
+	SET binary_path = CAST(snake_path AS BINARY);
+
+	-- Process character by character
+	char_loop: WHILE i <= LENGTH(binary_path) DO
+		SET char_val = SUBSTRING(binary_path, i, 1);
+
+		IF (char_val >= _binary 'a' AND char_val <= _binary 'z') AND saw_underscore THEN
+			-- Convert lowercase to uppercase after underscore
+			SET result = CONCAT(result, UPPER(CONVERT(char_val USING utf8mb4)));
+		ELSEIF (char_val >= _binary '0' AND char_val <= _binary '9') OR (char_val >= _binary 'a' AND char_val <= _binary 'z') OR char_val = _binary '.' THEN
+			-- Keep lowercase letters, digits, and dots as-is
+			SET result = CONCAT(result, CONVERT(char_val USING utf8mb4));
+		ELSEIF char_val = _binary '_' AND NOT saw_underscore THEN
+			-- Allow single underscore (will set saw_underscore = true and continue)
+			SET saw_underscore = TRUE;
+			SET i = i + 1;
+			ITERATE char_loop;
+		ELSE
+			-- Invalid character in field path (allow_legacy_nonconformant_behavior is disabled)
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid character in FieldMask path';
+		END IF;
+
+		SET saw_underscore = FALSE;
+
+		SET i = i + 1;
+	END WHILE;
+
+	RETURN result;
+END $$
+
+-- Convert camelCase field path to snake_case for FieldMask proto format
+-- Implements logic from:
+-- https://github.com/protocolbuffers/protobuf/blob/89c585602af7d28646ce92cd3abba07cfdad7fa6/src/google/protobuf/json/internal/parser.cc#L1001-L1036
+DROP FUNCTION IF EXISTS _pb_field_mask_camel_to_snake $$
+CREATE FUNCTION _pb_field_mask_camel_to_snake(camel_path TEXT) RETURNS TEXT DETERMINISTIC
+BEGIN
+	DECLARE result TEXT DEFAULT '';
+	DECLARE i INT DEFAULT 1;
+	DECLARE char_val BINARY(1);
+	DECLARE binary_path LONGBLOB;
+
+	-- Handle empty or null input
+	IF camel_path IS NULL OR LENGTH(camel_path) = 0 THEN
+		RETURN camel_path;
+	END IF;
+
+	-- Cast to binary for proper character comparisons
+	SET binary_path = CAST(camel_path AS BINARY);
+
+	-- Process character by character
+	WHILE i <= LENGTH(binary_path) DO
+		SET char_val = SUBSTRING(binary_path, i, 1);
+
+		IF (char_val >= _binary '0' AND char_val <= _binary '9') OR (char_val >= _binary 'a' AND char_val <= _binary 'z') OR char_val = _binary '.' THEN
+			-- Keep lowercase letters, digits, and dots as-is
+			SET result = CONCAT(result, CONVERT(char_val USING utf8mb4));
+		ELSEIF char_val >= _binary 'A' AND char_val <= _binary 'Z' THEN
+			-- Convert uppercase to lowercase with preceding underscore
+			SET result = CONCAT(result, '_', LOWER(CONVERT(char_val USING utf8mb4)));
+		ELSE
+			-- Invalid character in field path (allow_legacy_nonconformant_behavior is disabled)
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid character in FieldMask path';
+		END IF;
+
+		SET i = i + 1;
+	END WHILE;
+
+	RETURN result;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_field_mask_as_json $$
 CREATE FUNCTION _pb_wire_json_decode_wkt_field_mask_as_json(wire_json JSON) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -29,7 +117,8 @@ BEGIN
 			SET string_value = CONVERT(FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v'))) USING utf8mb4);
 			CASE field_number
 			WHEN 1 THEN -- values
-				SET result = CONCAT(result, sep, string_value);
+				-- Convert snake_case proto field path to camelCase JSON path
+				SET result = CONCAT(result, sep, _pb_field_mask_snake_to_camel(string_value));
 				SET sep = ',';
 			END CASE;
 		END CASE;
@@ -63,8 +152,9 @@ BEGIN
 		END IF;
 
 		IF LENGTH(path) > 0 THEN
+			-- Convert camelCase JSON field path to snake_case proto path
 			-- Use add_repeated_string_field_element for repeated field
-			SET result = pb_wire_json_add_repeated_string_field_element(result, 1, path);
+			SET result = pb_wire_json_add_repeated_string_field_element(result, 1, _pb_field_mask_camel_to_snake(path));
 		END IF;
 	END WHILE;
 
@@ -106,7 +196,8 @@ BEGIN
 		END IF;
 
 		IF LENGTH(current_path) > 0 THEN
-			SET paths_array = JSON_ARRAY_APPEND(paths_array, '$', current_path);
+			-- Convert camelCase JSON field path to snake_case proto path
+			SET paths_array = JSON_ARRAY_APPEND(paths_array, '$', _pb_field_mask_camel_to_snake(current_path));
 		END IF;
 	END WHILE split_loop;
 
