@@ -66,18 +66,6 @@ func main() {
 				},
 				Action: reportAction,
 			},
-			{
-				Name:  "clear",
-				Usage: "Clear function trace data from database",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "database",
-						Usage:    "Database connection string. Example: user:password@tcp(127.0.0.1:3306)/dbname",
-						Required: true,
-					},
-				},
-				Action: clearAction,
-			},
 		},
 	}
 
@@ -310,26 +298,6 @@ func reportAction(ctx context.Context, command *cli.Command) error {
 	}
 }
 
-func clearAction(ctx context.Context, command *cli.Command) error {
-	db, err := sql.Open("mysql", command.String("database"))
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	// Clear ftrace events
-	if _, err := db.Exec("DELETE FROM __FtraceEvent"); err != nil {
-		return fmt.Errorf("failed to clear __FtraceEvent table: %w", err)
-	}
-
-	// Reset call depth
-	if _, err := db.Exec("SET @__ftrace_call_depth = 0"); err != nil {
-		return fmt.Errorf("failed to reset call depth: %w", err)
-	}
-
-	fmt.Println("Successfully cleared function trace data")
-	return nil
-}
 
 // FtraceEvent represents a function trace event
 type FtraceEvent struct {

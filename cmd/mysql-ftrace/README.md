@@ -39,7 +39,7 @@ The tool uses a **two-pass AST-based parsing approach** that mirrors how MySQL c
 ## Features
 
 - **AST-Based Accuracy**: Uses structured parsing rather than fragile regex patterns
-- **MySQL Compatibility**: Follows MySQL client/server parsing behavior  
+- **MySQL Compatibility**: Follows MySQL client/server parsing behavior
 - **Function Call Tracing**: Logs entry/exit with arguments and return values
 - **Call Depth Tracking**: Handles nested function calls with proper indentation
 - **Multiple Report Formats**: Text, JSON, and flamegraph (planned) output formats
@@ -171,20 +171,12 @@ The `report` subcommand generates function call trace reports in various formats
 ./mysql-ftrace report --database "user:password@tcp(localhost:3306)/database" --format flamegraph --output trace.folded
 ```
 
-### 5. Clear Trace Data
-
-Clear function trace data between test runs:
-
-```bash
-# Clear all trace events and reset call depth
-./mysql-ftrace clear --database "user:password@tcp(localhost:3306)/database"
-```
 
 ## Command Reference
 
 ### init
 
-Initializes the database with function tracing schema.
+Initializes the database with function tracing schema and clears any existing trace data.
 
 ```bash
 ./mysql-ftrace init --database CONNECTION_STRING
@@ -194,10 +186,12 @@ Initializes the database with function tracing schema.
 - `--database string`: Database connection string (required)
 
 **Creates:**
-- `__FtraceEvent` table for trace storage
+- `__FtraceEvent` table for trace storage (recreates if exists)
 - `__record_ftrace_entry` procedure
 - `__record_ftrace_exit` procedure
 - Call depth management functions
+
+**Note:** Running `init` clears existing trace data by recreating the table.
 
 ### instrument
 
@@ -212,7 +206,7 @@ Instruments SQL files with function call tracing using AST-based parsing.
 # Basic usage (creates functions.sql.ftraced)
 ./mysql-ftrace instrument functions.sql
 
-# Multiple files 
+# Multiple files
 ./mysql-ftrace instrument file1.sql file2.sql file3.sql
 
 # Using wildcards
@@ -245,13 +239,6 @@ Generates function call trace reports from the trace database.
 ./mysql-ftrace report --database "root@tcp(127.0.0.1:3306)/test" --connection-id 42
 ```
 
-### clear
-
-Clears function trace data from the database.
-
-```bash
-./mysql-ftrace clear --database CONNECTION_STRING
-```
 
 ## Report Formats
 
@@ -294,7 +281,7 @@ Structured data suitable for analysis and visualization:
   {
     "id": 2,
     "connection_id": 42,
-    "filename": "test.sql", 
+    "filename": "test.sql",
     "function_name": "test_add",
     "call_type": "exit",
     "arguments": "",
@@ -363,8 +350,8 @@ go test ./tests -run TestWireJsonGetField -database "root@tcp(127.0.0.1:3306)/te
 # 7. Generate JSON report for analysis
 ./mysql-ftrace report --database "root@tcp(127.0.0.1:3306)/test" --format json --output trace.json
 
-# 8. Clear trace data for next run
-./mysql-ftrace clear --database "root@tcp(127.0.0.1:3306)/test"
+# 8. Run init again to clear trace data for next run (optional)
+./mysql-ftrace init --database "root@tcp(127.0.0.1:3306)/test"
 ```
 
 ## Technical Details
@@ -428,8 +415,8 @@ The tool uses the same sophisticated AST-based parsing as mysql-coverage:
    - Restart MySQL session if call depth becomes inconsistent
 
 4. **Large Trace Tables**
-   - Use the `clear` command between test runs
-   - Consider archiving old trace data
+   - Use the `init` command between test runs to clear data
+   - Consider archiving old trace data before running `init`
    - Monitor disk space usage
 
 ### Debugging
