@@ -73,7 +73,7 @@ $(CONFORMANCE_SCHEMA_SQL): $(CONFORMANCE_DESCRIPTOR_SET)
 test: $(CONFORMANCE_RUNNER) $(MYSQL_CONFORMANCE_BINARY)
 	@echo "Running MySQL protobuf conformance tests..."
 	@OUTPUT_FILE="test-`date +%s`.out"; \
-	$(CONFORMANCE_RUNNER) --failure_list expected_failures.txt --output_dir . $(MYSQL_CONFORMANCE_BINARY) \
+	$(CONFORMANCE_RUNNER) --failure_list expected_failures.txt --output_dir . --enforce_recommended $(MYSQL_CONFORMANCE_BINARY) \
 		--database "root@tcp(127.0.0.100:13306)/test" \
 		--debug \
 		> $$OUTPUT_FILE 2>&1; \
@@ -89,7 +89,7 @@ ifeq ($(shell echo "$(TEST_NAME)" | grep -E "^(Recommended\.|Required\.)" | wc -
 	$(error TEST_NAME must start with "Recommended." or "Required." (with dot). Regex or pattern matching is not supported. Got: $(TEST_NAME))
 endif
 	@echo "Running filtered MySQL protobuf conformance tests..."
-	$(CONFORMANCE_RUNNER) --test "$(TEST_NAME)" --debug $(MYSQL_CONFORMANCE_BINARY) \
+	$(CONFORMANCE_RUNNER) --test "$(TEST_NAME)" --debug --enforce_recommended $(MYSQL_CONFORMANCE_BINARY) \
 		--database "root@tcp(127.0.0.100:13306)/test"
 
 # Load conformance test message schema into MySQL
