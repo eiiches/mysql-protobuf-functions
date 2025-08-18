@@ -38,6 +38,7 @@ PROTOBUF_JSON_SOURCES := \
 	src/json-wkt-time-common.sql \
 	src/json-wkt.sql \
 	src/util-case-conv.sql \
+	src/util-base64.sql \
 	src/protobuf-descriptor.sql
 
 .PHONY: build/protobuf-json.sql

@@ -207,7 +207,7 @@ BEGIN
 			SET result = JSON_OBJECT();
 			-- Only encode non-default values (proto3 behavior)
 			IF JSON_UNQUOTE(json_value) <> '' THEN
-				SET result = pb_wire_json_set_bytes_field(result, 1, FROM_BASE64(JSON_UNQUOTE(json_value)));
+				SET result = pb_wire_json_set_bytes_field(result, 1, _pb_util_from_base64_url(JSON_UNQUOTE(json_value)));
 			END IF;
 			RETURN result;
 		END IF;

@@ -681,6 +681,14 @@ BEGIN
 							ELSE
 								SET converted_value = CAST(JSON_UNQUOTE(map_value_json) AS JSON);
 							END IF;
+						WHEN 12 THEN -- bytes
+							IF map_value_json IS NULL THEN
+								SET converted_value = JSON_QUOTE('');
+							ELSE
+								-- Decode and re-encode to ensure standard Base64 format
+								SET str_value = JSON_UNQUOTE(map_value_json);
+								SET converted_value = TO_BASE64(_pb_util_from_base64_url(str_value));
+							END IF;
 						ELSE
 							-- Other primitive types: handle null values with appropriate defaults
 							IF map_value_json IS NULL THEN
@@ -766,6 +774,9 @@ BEGIN
 					WHEN 2 THEN -- float (validate and convert)
 						SET float_json_value = _pb_json_parse_float(array_element);
 						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', float_json_value);
+					WHEN 12 THEN -- bytes (decode and re-encode)
+						SET str_value = JSON_UNQUOTE(array_element);
+						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', TO_BASE64(_pb_util_from_base64_url(str_value)));
 					ELSE
 						-- Other primitive types stay the same
 						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', array_element);
@@ -878,13 +889,20 @@ BEGIN
 					IF syntax != 'proto3' OR proto3_optional OR NOT (float_json_value = CAST(0.0 AS JSON)) THEN
 						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), float_json_value);
 					END IF;
+				WHEN 12 THEN -- bytes
+					-- Decode from JSON Base64/Base64URL and re-encode as standard Base64
+					SET str_value = JSON_UNQUOTE(field_json_value);
+					-- In proto3, skip empty bytes unless proto3_optional is true
+					IF syntax != 'proto3' OR proto3_optional OR str_value != '' THEN
+						-- Decode and re-encode to ensure standard Base64 format
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), TO_BASE64(_pb_util_from_base64_url(str_value)));
+					END IF;
 				ELSE
-					-- Other primitive types: bool, string, bytes
+					-- Other primitive types: bool, string
 					-- In proto3, skip zero/default values unless proto3_optional is true
 					IF syntax != 'proto3' OR proto3_optional OR NOT (
 						(field_type = 8 AND field_json_value = false) OR                -- bool = false
-						(field_type = 9 AND JSON_UNQUOTE(field_json_value) = '') OR     -- string = ""
-						(field_type = 12 AND JSON_UNQUOTE(field_json_value) = '')       -- bytes = ""
+						(field_type = 9 AND JSON_UNQUOTE(field_json_value) = '')        -- string = ""
 					) THEN
 						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), field_json_value);
 					END IF;

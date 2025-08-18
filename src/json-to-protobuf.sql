@@ -245,7 +245,7 @@ proc: BEGIN
 			WHEN 11 THEN -- TYPE_SFIXED32
 				SET result = pb_wire_json_add_repeated_sfixed32_field_element(result, field_number, _pb_json_to_signed_int(element), use_packed);
 			WHEN 12 THEN -- TYPE_BYTES
-				SET result = pb_wire_json_add_repeated_bytes_field_element(result, field_number, FROM_BASE64(JSON_UNQUOTE(element)));
+				SET result = pb_wire_json_add_repeated_bytes_field_element(result, field_number, _pb_util_from_base64_url(JSON_UNQUOTE(element)));
 			WHEN 13 THEN -- TYPE_UINT32
 				SET result = pb_wire_json_add_repeated_uint32_field_element(result, field_number, _pb_json_to_unsigned_int(element), use_packed);
 			WHEN 15 THEN -- TYPE_SFIXED32 (duplicate, but keeping for completeness)
@@ -286,7 +286,7 @@ proc: BEGIN
 		WHEN 11 THEN -- TYPE_SFIXED32
 			SET result = pb_wire_json_set_sfixed32_field(result, field_number, _pb_json_to_signed_int(json_value));
 		WHEN 12 THEN -- TYPE_BYTES
-			SET result = pb_wire_json_set_bytes_field(result, field_number, FROM_BASE64(JSON_UNQUOTE(json_value)));
+			SET result = pb_wire_json_set_bytes_field(result, field_number, _pb_util_from_base64_url(JSON_UNQUOTE(json_value)));
 		WHEN 13 THEN -- TYPE_UINT32
 			SET result = pb_wire_json_set_uint32_field(result, field_number, _pb_json_to_unsigned_int(json_value));
 		WHEN 15 THEN -- TYPE_SFIXED32 (duplicate, but keeping for completeness)

@@ -84,6 +84,7 @@ The package produces JSON where:
 - **Repeated fields** are serialized as JSON arrays
 - **Map fields** are serialized as JSON objects with string keys
 - **Enum fields** are serialized as numbers for robustness against enum value renames
+- **Bytes fields** are always encoded using standard Base64 with padding (Base64 URL encoding is not supported)
 - **All message types** follow the same consistent field number format
 - **Default values** are omitted from the JSON output to reduce payload size
 

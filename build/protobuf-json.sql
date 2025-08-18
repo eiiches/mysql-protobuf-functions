@@ -958,7 +958,7 @@ proc: BEGIN
 			WHEN 11 THEN -- TYPE_SFIXED32
 				SET result = pb_wire_json_add_repeated_sfixed32_field_element(result, field_number, _pb_json_to_signed_int(element), use_packed);
 			WHEN 12 THEN -- TYPE_BYTES
-				SET result = pb_wire_json_add_repeated_bytes_field_element(result, field_number, FROM_BASE64(JSON_UNQUOTE(element)));
+				SET result = pb_wire_json_add_repeated_bytes_field_element(result, field_number, _pb_util_from_base64_url(JSON_UNQUOTE(element)));
 			WHEN 13 THEN -- TYPE_UINT32
 				SET result = pb_wire_json_add_repeated_uint32_field_element(result, field_number, _pb_json_to_unsigned_int(element), use_packed);
 			WHEN 15 THEN -- TYPE_SFIXED32 (duplicate, but keeping for completeness)
@@ -999,7 +999,7 @@ proc: BEGIN
 		WHEN 11 THEN -- TYPE_SFIXED32
 			SET result = pb_wire_json_set_sfixed32_field(result, field_number, _pb_json_to_signed_int(json_value));
 		WHEN 12 THEN -- TYPE_BYTES
-			SET result = pb_wire_json_set_bytes_field(result, field_number, FROM_BASE64(JSON_UNQUOTE(json_value)));
+			SET result = pb_wire_json_set_bytes_field(result, field_number, _pb_util_from_base64_url(JSON_UNQUOTE(json_value)));
 		WHEN 13 THEN -- TYPE_UINT32
 			SET result = pb_wire_json_set_uint32_field(result, field_number, _pb_json_to_unsigned_int(json_value));
 		WHEN 15 THEN -- TYPE_SFIXED32 (duplicate, but keeping for completeness)
@@ -2069,6 +2069,14 @@ BEGIN
 							ELSE
 								SET converted_value = CAST(JSON_UNQUOTE(map_value_json) AS JSON);
 							END IF;
+						WHEN 12 THEN -- bytes
+							IF map_value_json IS NULL THEN
+								SET converted_value = JSON_QUOTE('');
+							ELSE
+								-- Decode and re-encode to ensure standard Base64 format
+								SET str_value = JSON_UNQUOTE(map_value_json);
+								SET converted_value = TO_BASE64(_pb_util_from_base64_url(str_value));
+							END IF;
 						ELSE
 							-- Other primitive types: handle null values with appropriate defaults
 							IF map_value_json IS NULL THEN
@@ -2154,6 +2162,9 @@ BEGIN
 					WHEN 2 THEN -- float (validate and convert)
 						SET float_json_value = _pb_json_parse_float(array_element);
 						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', float_json_value);
+					WHEN 12 THEN -- bytes (decode and re-encode)
+						SET str_value = JSON_UNQUOTE(array_element);
+						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', TO_BASE64(_pb_util_from_base64_url(str_value)));
 					ELSE
 						-- Other primitive types stay the same
 						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', array_element);
@@ -2266,13 +2277,20 @@ BEGIN
 					IF syntax != 'proto3' OR proto3_optional OR NOT (float_json_value = CAST(0.0 AS JSON)) THEN
 						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), float_json_value);
 					END IF;
+				WHEN 12 THEN -- bytes
+					-- Decode from JSON Base64/Base64URL and re-encode as standard Base64
+					SET str_value = JSON_UNQUOTE(field_json_value);
+					-- In proto3, skip empty bytes unless proto3_optional is true
+					IF syntax != 'proto3' OR proto3_optional OR str_value != '' THEN
+						-- Decode and re-encode to ensure standard Base64 format
+						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), TO_BASE64(_pb_util_from_base64_url(str_value)));
+					END IF;
 				ELSE
-					-- Other primitive types: bool, string, bytes
+					-- Other primitive types: bool, string
 					-- In proto3, skip zero/default values unless proto3_optional is true
 					IF syntax != 'proto3' OR proto3_optional OR NOT (
 						(field_type = 8 AND field_json_value = false) OR                -- bool = false
-						(field_type = 9 AND JSON_UNQUOTE(field_json_value) = '') OR     -- string = ""
-						(field_type = 12 AND JSON_UNQUOTE(field_json_value) = '')       -- bytes = ""
+						(field_type = 9 AND JSON_UNQUOTE(field_json_value) = '')        -- string = ""
 					) THEN
 						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), field_json_value);
 					END IF;
@@ -4254,7 +4272,7 @@ BEGIN
 			SET result = JSON_OBJECT();
 			-- Only encode non-default values (proto3 behavior)
 			IF JSON_UNQUOTE(json_value) <> '' THEN
-				SET result = pb_wire_json_set_bytes_field(result, 1, FROM_BASE64(JSON_UNQUOTE(json_value)));
+				SET result = pb_wire_json_set_bytes_field(result, 1, _pb_util_from_base64_url(JSON_UNQUOTE(json_value)));
 			END IF;
 			RETURN result;
 		END IF;
@@ -4382,6 +4400,36 @@ BEGIN
 	RETURN input_name REGEXP '^[a-zA-Z0-9]+$';
 END $$
 
+DELIMITER $$
+
+-- Decode Base64 encoded string to bytes
+-- Supports both standard Base64 (+/) and Base64 URL (-_) encoding
+-- Handles input with or without padding as per protobuf JSON spec
+DROP FUNCTION IF EXISTS _pb_util_from_base64_url $$
+CREATE FUNCTION _pb_util_from_base64_url(encoded_value LONGTEXT) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	DECLARE standard_base64 LONGTEXT;
+
+	-- Handle null/empty input
+	IF encoded_value IS NULL OR LENGTH(encoded_value) = 0 THEN
+		RETURN encoded_value;
+	END IF;
+
+	-- Convert Base64 URL encoding to standard Base64 if needed:
+	-- Replace - with + and _ with / (no-op for standard Base64)
+	SET standard_base64 = REPLACE(REPLACE(encoded_value, '-', '+'), '_', '/');
+
+	-- Add padding if needed (handles both Base64 URL without padding and standard Base64 without padding)
+	-- Base64 strings must be multiples of 4 characters
+	WHILE LENGTH(standard_base64) % 4 != 0 DO
+		SET standard_base64 = CONCAT(standard_base64, '=');
+	END WHILE;
+
+	-- Decode using MySQL's standard FROM_BASE64 function
+	RETURN FROM_BASE64(standard_base64);
+END $$
+
+DELIMITER ;
 DELIMITER $$
 
 -- Helper function to build fully-qualified type name
