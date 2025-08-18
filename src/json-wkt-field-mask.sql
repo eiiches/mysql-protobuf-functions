@@ -1,15 +1,15 @@
 DELIMITER $$
 
 -- Convert snake_case field path to camelCase for FieldMask JSON output
--- Implements logic from:
--- https://github.com/protocolbuffers/protobuf/blob/89c585602af7d28646ce92cd3abba07cfdad7fa6/src/google/protobuf/json/internal/unparser.cc#L696-L733
+-- Implements logic from protobuf-go JSONCamelCase:
+-- https://github.com/protocolbuffers/protobuf-go/blob/v1.28.1/internal/strs/strings.go
 DROP FUNCTION IF EXISTS _pb_field_mask_snake_to_camel $$
 CREATE FUNCTION _pb_field_mask_snake_to_camel(snake_path TEXT) RETURNS TEXT DETERMINISTIC
 BEGIN
 	DECLARE result TEXT DEFAULT '';
 	DECLARE i INT DEFAULT 1;
 	DECLARE char_val BINARY(1);
-	DECLARE saw_underscore BOOLEAN DEFAULT FALSE;
+	DECLARE was_underscore BOOLEAN DEFAULT FALSE;
 	DECLARE binary_path LONGBLOB;
 
 	-- Handle empty or null input
@@ -20,32 +20,49 @@ BEGIN
 	-- Cast to binary for proper character comparisons
 	SET binary_path = CAST(snake_path AS BINARY);
 
-	-- Process character by character
-	char_loop: WHILE i <= LENGTH(binary_path) DO
+	-- Process character by character (proto identifiers are always ASCII)
+	WHILE i <= LENGTH(binary_path) DO
 		SET char_val = SUBSTRING(binary_path, i, 1);
 
-		IF (char_val >= _binary 'a' AND char_val <= _binary 'z') AND saw_underscore THEN
-			-- Convert lowercase to uppercase after underscore
-			SET result = CONCAT(result, UPPER(CONVERT(char_val USING utf8mb4)));
-		ELSEIF (char_val >= _binary '0' AND char_val <= _binary '9') OR (char_val >= _binary 'a' AND char_val <= _binary 'z') OR char_val = _binary '.' THEN
-			-- Keep lowercase letters, digits, and dots as-is
-			SET result = CONCAT(result, CONVERT(char_val USING utf8mb4));
-		ELSEIF char_val = _binary '_' AND NOT saw_underscore THEN
-			-- Allow single underscore (will set saw_underscore = true and continue)
-			SET saw_underscore = TRUE;
-			SET i = i + 1;
-			ITERATE char_loop;
-		ELSE
-			-- Invalid character in field path (allow_legacy_nonconformant_behavior is disabled)
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid character in FieldMask path';
+		IF char_val != _binary '_' THEN
+			IF was_underscore AND (char_val >= _binary 'a' AND char_val <= _binary 'z') THEN
+				-- Convert lowercase to uppercase after underscore
+				SET result = CONCAT(result, UPPER(CONVERT(char_val USING utf8mb4)));
+			ELSE
+				-- Keep character as-is
+				SET result = CONCAT(result, CONVERT(char_val USING utf8mb4));
+			END IF;
 		END IF;
 
-		SET saw_underscore = FALSE;
-
+		SET was_underscore = (char_val = _binary '_');
 		SET i = i + 1;
 	END WHILE;
 
 	RETURN result;
+END $$
+
+-- Safe snake_case to camelCase conversion with round-trip validation
+-- Matches protobuf-go's marshalFieldMask validation logic
+DROP FUNCTION IF EXISTS _pb_field_mask_snake_to_camel_safe $$
+CREATE FUNCTION _pb_field_mask_snake_to_camel_safe(snake_path TEXT) RETURNS TEXT DETERMINISTIC
+BEGIN
+	DECLARE camel_path TEXT;
+	DECLARE roundtrip_path TEXT;
+	DECLARE message_text TEXT;
+
+	-- Convert snake_case to camelCase
+	SET camel_path = _pb_field_mask_snake_to_camel(snake_path);
+
+	-- Round-trip validation: snake→camel→snake should equal original
+	SET roundtrip_path = _pb_field_mask_camel_to_snake(camel_path);
+
+	IF snake_path != roundtrip_path THEN
+		-- FieldMask contains irreversible value, fail like protobuf-go
+		SET message_text = CONCAT('FieldMask contains irreversible value "', snake_path, '"');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	RETURN camel_path;
 END $$
 
 -- Convert camelCase field path to snake_case for FieldMask proto format
@@ -67,19 +84,16 @@ BEGIN
 	-- Cast to binary for proper character comparisons
 	SET binary_path = CAST(camel_path AS BINARY);
 
-	-- Process character by character
+	-- Process character by character (proto identifiers are always ASCII)
 	WHILE i <= LENGTH(binary_path) DO
 		SET char_val = SUBSTRING(binary_path, i, 1);
 
-		IF (char_val >= _binary '0' AND char_val <= _binary '9') OR (char_val >= _binary 'a' AND char_val <= _binary 'z') OR char_val = _binary '.' THEN
-			-- Keep lowercase letters, digits, and dots as-is
-			SET result = CONCAT(result, CONVERT(char_val USING utf8mb4));
-		ELSEIF char_val >= _binary 'A' AND char_val <= _binary 'Z' THEN
-			-- Convert uppercase to lowercase with preceding underscore
+		IF char_val >= _binary 'A' AND char_val <= _binary 'Z' THEN
+			-- Add underscore before uppercase letter, then convert to lowercase
 			SET result = CONCAT(result, '_', LOWER(CONVERT(char_val USING utf8mb4)));
 		ELSE
-			-- Invalid character in field path (allow_legacy_nonconformant_behavior is disabled)
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid character in FieldMask path';
+			-- Keep character as-is
+			SET result = CONCAT(result, CONVERT(char_val USING utf8mb4));
 		END IF;
 
 		SET i = i + 1;
@@ -117,8 +131,8 @@ BEGIN
 			SET string_value = CONVERT(FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(element, '$.v'))) USING utf8mb4);
 			CASE field_number
 			WHEN 1 THEN -- values
-				-- Convert snake_case proto field path to camelCase JSON path
-				SET result = CONCAT(result, sep, _pb_field_mask_snake_to_camel(string_value));
+				-- Convert snake_case proto field path to camelCase JSON path with validation
+				SET result = CONCAT(result, sep, _pb_field_mask_snake_to_camel_safe(string_value));
 				SET sep = ',';
 			END CASE;
 		END CASE;
@@ -229,8 +243,8 @@ BEGIN
 			IF path_index > 0 THEN
 				SET result_str = CONCAT(result_str, ',');
 			END IF;
-			-- Convert snake_case proto field path to camelCase JSON path
-			SET result_str = CONCAT(result_str, _pb_field_mask_snake_to_camel(current_path));
+			-- Convert snake_case proto field path to camelCase JSON path with validation
+			SET result_str = CONCAT(result_str, _pb_field_mask_snake_to_camel_safe(current_path));
 			SET path_index = path_index + 1;
 		END WHILE path_loop;
 
