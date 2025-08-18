@@ -37,6 +37,7 @@ PROTOBUF_JSON_SOURCES := \
 	src/json-wkt-field-mask.sql \
 	src/json-wkt-time-common.sql \
 	src/json-wkt.sql \
+	src/util-case-conv.sql \
 	src/protobuf-descriptor.sql
 
 .PHONY: build/protobuf-json.sql

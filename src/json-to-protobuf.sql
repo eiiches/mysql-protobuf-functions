@@ -449,15 +449,35 @@ proc: BEGIN
 				SET use_packed = (syntax = 'proto3');
 			END IF;
 
-			-- Determine JSON field name to look for
-			IF from_number_json THEN
-				SET json_field_name = CAST(field_number AS CHAR);
-			ELSE
-				SET json_field_name = IF(json_name IS NOT NULL, json_name, _pb_util_snake_to_lower_camel(field_name));
-			END IF;
-
 			-- Extract field value from JSON
-			SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', json_field_name, '"'));
+			IF from_number_json THEN
+				-- In number JSON mode, use field number
+				SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', field_number, '"'));
+			ELSE
+				-- Try multiple field name variations:
+				-- 1. json_name if specified in proto
+				-- 2. camelCase version of field name
+				-- 3. original proto field name
+				SET field_json_value = NULL;
+
+				-- First try json_name if specified
+				IF json_name IS NOT NULL THEN
+					SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', json_name, '"'));
+				END IF;
+
+				-- If not found and json_name is different from camelCase version, try camelCase
+				IF field_json_value IS NULL THEN
+					SET json_field_name = _pb_util_snake_to_camel(field_name);
+					IF json_name IS NULL OR json_name != json_field_name THEN
+						SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', json_field_name, '"'));
+					END IF;
+				END IF;
+
+				-- If still not found, try original proto field name
+				IF field_json_value IS NULL THEN
+					SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', field_name, '"'));
+				END IF;
+			END IF;
 
 			-- Process field if it exists in JSON
 			IF field_json_value IS NOT NULL THEN

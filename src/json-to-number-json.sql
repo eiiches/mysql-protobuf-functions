@@ -558,8 +558,6 @@ BEGIN
 		SET json_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."10"')); -- json_name
 		SET proto3_optional = CAST(JSON_EXTRACT(field_descriptor, '$."17"') AS UNSIGNED) = 1; -- proto3_optional
 
-		-- Determine source field name (json_name takes precedence over field_name)
-		SET source_field_name = COALESCE(json_name, field_name);
 		SET is_repeated = (field_label = 3);
 
 		-- Check if this is a map field
@@ -569,9 +567,38 @@ BEGIN
 			SET is_map = COALESCE(CAST(JSON_EXTRACT(map_entry_descriptor, '$."7"."7"') AS UNSIGNED), FALSE); -- map_entry
 		END IF;
 
-		-- Check if field exists in source JSON
-		IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', source_field_name)) THEN
-			SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', source_field_name));
+		-- Try multiple field name variations:
+		-- 1. json_name if specified in proto
+		-- 2. camelCase version of field name
+		-- 3. original proto field name
+		SET field_json_value = NULL;
+
+		-- First try json_name if specified
+		IF json_name IS NOT NULL THEN
+			IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', json_name)) THEN
+				SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', json_name));
+			END IF;
+		END IF;
+
+		-- If not found and json_name is different from camelCase version, try camelCase
+		IF field_json_value IS NULL THEN
+			SET source_field_name = _pb_util_snake_to_camel(field_name);
+			IF json_name IS NULL OR json_name != source_field_name THEN
+				IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', source_field_name)) THEN
+					SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', source_field_name));
+				END IF;
+			END IF;
+		END IF;
+
+		-- If still not found, try original proto field name
+		IF field_json_value IS NULL THEN
+			IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', field_name)) THEN
+				SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', field_name));
+			END IF;
+		END IF;
+
+		-- Process field if it exists in JSON
+		IF field_json_value IS NOT NULL THEN
 
 			-- Handle null values: null means "field is absent" for both singular and repeated fields
 			IF JSON_TYPE(field_json_value) = 'NULL' THEN

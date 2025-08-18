@@ -1,11 +1,5 @@
 DELIMITER $$
 
-DROP FUNCTION IF EXISTS _pb_util_snake_to_lower_camel $$
-CREATE FUNCTION _pb_util_snake_to_lower_camel(s TEXT) RETURNS TEXT DETERMINISTIC
-BEGIN
-	-- TODO: implement
-	RETURN s;
-END $$
 
 DROP PROCEDURE IF EXISTS _pb_wire_json_get_primitive_field_as_json $$
 CREATE PROCEDURE _pb_wire_json_get_primitive_field_as_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN has_field_presence BOOLEAN, IN emit_64bit_integers_as_numbers BOOLEAN, OUT field_json_value JSON)

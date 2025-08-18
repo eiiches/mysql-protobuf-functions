@@ -438,7 +438,7 @@ proc: BEGIN
 				IF as_number_json THEN
 					SET json_field_name = CAST(field_number AS CHAR);
 				ELSE
-					SET json_field_name = IF(json_name IS NOT NULL, json_name, _pb_util_snake_to_lower_camel(field_name));
+					SET json_field_name = IF(json_name IS NOT NULL, json_name, _pb_util_snake_to_camel(field_name));
 				END IF;
 
 				IF oneof_index IS NOT NULL AND NOT proto3_optional THEN

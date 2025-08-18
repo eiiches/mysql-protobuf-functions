@@ -2,12 +2,6 @@
 
 DELIMITER $$
 
-DROP FUNCTION IF EXISTS _pb_util_snake_to_lower_camel $$
-CREATE FUNCTION _pb_util_snake_to_lower_camel(s TEXT) RETURNS TEXT DETERMINISTIC
-BEGIN
-	-- TODO: implement
-	RETURN s;
-END $$
 
 DROP PROCEDURE IF EXISTS _pb_wire_json_get_primitive_field_as_json $$
 CREATE PROCEDURE _pb_wire_json_get_primitive_field_as_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN has_field_presence BOOLEAN, IN emit_64bit_integers_as_numbers BOOLEAN, OUT field_json_value JSON)
@@ -605,7 +599,7 @@ proc: BEGIN
 				IF as_number_json THEN
 					SET json_field_name = CAST(field_number AS CHAR);
 				ELSE
-					SET json_field_name = IF(json_name IS NOT NULL, json_name, _pb_util_snake_to_lower_camel(field_name));
+					SET json_field_name = IF(json_name IS NOT NULL, json_name, _pb_util_snake_to_camel(field_name));
 				END IF;
 
 				IF oneof_index IS NOT NULL AND NOT proto3_optional THEN
@@ -1168,15 +1162,35 @@ proc: BEGIN
 				SET use_packed = (syntax = 'proto3');
 			END IF;
 
-			-- Determine JSON field name to look for
-			IF from_number_json THEN
-				SET json_field_name = CAST(field_number AS CHAR);
-			ELSE
-				SET json_field_name = IF(json_name IS NOT NULL, json_name, _pb_util_snake_to_lower_camel(field_name));
-			END IF;
-
 			-- Extract field value from JSON
-			SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', json_field_name, '"'));
+			IF from_number_json THEN
+				-- In number JSON mode, use field number
+				SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', field_number, '"'));
+			ELSE
+				-- Try multiple field name variations:
+				-- 1. json_name if specified in proto
+				-- 2. camelCase version of field name
+				-- 3. original proto field name
+				SET field_json_value = NULL;
+
+				-- First try json_name if specified
+				IF json_name IS NOT NULL THEN
+					SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', json_name, '"'));
+				END IF;
+
+				-- If not found and json_name is different from camelCase version, try camelCase
+				IF field_json_value IS NULL THEN
+					SET json_field_name = _pb_util_snake_to_camel(field_name);
+					IF json_name IS NULL OR json_name != json_field_name THEN
+						SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', json_field_name, '"'));
+					END IF;
+				END IF;
+
+				-- If still not found, try original proto field name
+				IF field_json_value IS NULL THEN
+					SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', field_name, '"'));
+				END IF;
+			END IF;
 
 			-- Process field if it exists in JSON
 			IF field_json_value IS NOT NULL THEN
@@ -1932,8 +1946,6 @@ BEGIN
 		SET json_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."10"')); -- json_name
 		SET proto3_optional = CAST(JSON_EXTRACT(field_descriptor, '$."17"') AS UNSIGNED) = 1; -- proto3_optional
 
-		-- Determine source field name (json_name takes precedence over field_name)
-		SET source_field_name = COALESCE(json_name, field_name);
 		SET is_repeated = (field_label = 3);
 
 		-- Check if this is a map field
@@ -1943,9 +1955,38 @@ BEGIN
 			SET is_map = COALESCE(CAST(JSON_EXTRACT(map_entry_descriptor, '$."7"."7"') AS UNSIGNED), FALSE); -- map_entry
 		END IF;
 
-		-- Check if field exists in source JSON
-		IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', source_field_name)) THEN
-			SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', source_field_name));
+		-- Try multiple field name variations:
+		-- 1. json_name if specified in proto
+		-- 2. camelCase version of field name
+		-- 3. original proto field name
+		SET field_json_value = NULL;
+
+		-- First try json_name if specified
+		IF json_name IS NOT NULL THEN
+			IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', json_name)) THEN
+				SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', json_name));
+			END IF;
+		END IF;
+
+		-- If not found and json_name is different from camelCase version, try camelCase
+		IF field_json_value IS NULL THEN
+			SET source_field_name = _pb_util_snake_to_camel(field_name);
+			IF json_name IS NULL OR json_name != source_field_name THEN
+				IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', source_field_name)) THEN
+					SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', source_field_name));
+				END IF;
+			END IF;
+		END IF;
+
+		-- If still not found, try original proto field name
+		IF field_json_value IS NULL THEN
+			IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', field_name)) THEN
+				SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', field_name));
+			END IF;
+		END IF;
+
+		-- Process field if it exists in JSON
+		IF field_json_value IS NOT NULL THEN
 
 			-- Handle null values: null means "field is absent" for both singular and repeated fields
 			IF JSON_TYPE(field_json_value) = 'NULL' THEN
@@ -3822,108 +3863,6 @@ END $$
 
 DELIMITER $$
 
--- Convert snake_case field path to camelCase for FieldMask JSON output
--- Implements logic from protobuf-go JSONCamelCase:
--- https://github.com/protocolbuffers/protobuf-go/blob/v1.28.1/internal/strs/strings.go
-DROP FUNCTION IF EXISTS _pb_field_mask_snake_to_camel $$
-CREATE FUNCTION _pb_field_mask_snake_to_camel(snake_path TEXT) RETURNS TEXT DETERMINISTIC
-BEGIN
-	DECLARE result TEXT DEFAULT '';
-	DECLARE i INT DEFAULT 1;
-	DECLARE char_val BINARY(1);
-	DECLARE was_underscore BOOLEAN DEFAULT FALSE;
-	DECLARE binary_path LONGBLOB;
-
-	-- Handle empty or null input
-	IF snake_path IS NULL OR LENGTH(snake_path) = 0 THEN
-		RETURN snake_path;
-	END IF;
-
-	-- Cast to binary for proper character comparisons
-	SET binary_path = CAST(snake_path AS BINARY);
-
-	-- Process character by character (proto identifiers are always ASCII)
-	WHILE i <= LENGTH(binary_path) DO
-		SET char_val = SUBSTRING(binary_path, i, 1);
-
-		IF char_val != _binary '_' THEN
-			IF was_underscore AND (char_val >= _binary 'a' AND char_val <= _binary 'z') THEN
-				-- Convert lowercase to uppercase after underscore
-				SET result = CONCAT(result, UPPER(CONVERT(char_val USING utf8mb4)));
-			ELSE
-				-- Keep character as-is
-				SET result = CONCAT(result, CONVERT(char_val USING utf8mb4));
-			END IF;
-		END IF;
-
-		SET was_underscore = (char_val = _binary '_');
-		SET i = i + 1;
-	END WHILE;
-
-	RETURN result;
-END $$
-
--- Safe snake_case to camelCase conversion with round-trip validation
--- Matches protobuf-go's marshalFieldMask validation logic
-DROP FUNCTION IF EXISTS _pb_field_mask_snake_to_camel_safe $$
-CREATE FUNCTION _pb_field_mask_snake_to_camel_safe(snake_path TEXT) RETURNS TEXT DETERMINISTIC
-BEGIN
-	DECLARE camel_path TEXT;
-	DECLARE roundtrip_path TEXT;
-	DECLARE message_text TEXT;
-
-	-- Convert snake_case to camelCase
-	SET camel_path = _pb_field_mask_snake_to_camel(snake_path);
-
-	-- Round-trip validation: snake→camel→snake should equal original
-	SET roundtrip_path = _pb_field_mask_camel_to_snake(camel_path);
-
-	IF snake_path != roundtrip_path THEN
-		-- FieldMask contains irreversible value, fail like protobuf-go
-		SET message_text = CONCAT('FieldMask contains irreversible value "', snake_path, '"');
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-	END IF;
-
-	RETURN camel_path;
-END $$
-
--- Convert camelCase field path to snake_case for FieldMask proto format
--- Implements logic from:
--- https://github.com/protocolbuffers/protobuf/blob/89c585602af7d28646ce92cd3abba07cfdad7fa6/src/google/protobuf/json/internal/parser.cc#L1001-L1036
-DROP FUNCTION IF EXISTS _pb_field_mask_camel_to_snake $$
-CREATE FUNCTION _pb_field_mask_camel_to_snake(camel_path TEXT) RETURNS TEXT DETERMINISTIC
-BEGIN
-	DECLARE result TEXT DEFAULT '';
-	DECLARE i INT DEFAULT 1;
-	DECLARE char_val BINARY(1);
-	DECLARE binary_path LONGBLOB;
-
-	-- Handle empty or null input
-	IF camel_path IS NULL OR LENGTH(camel_path) = 0 THEN
-		RETURN camel_path;
-	END IF;
-
-	-- Cast to binary for proper character comparisons
-	SET binary_path = CAST(camel_path AS BINARY);
-
-	-- Process character by character (proto identifiers are always ASCII)
-	WHILE i <= LENGTH(binary_path) DO
-		SET char_val = SUBSTRING(binary_path, i, 1);
-
-		IF char_val >= _binary 'A' AND char_val <= _binary 'Z' THEN
-			-- Add underscore before uppercase letter, then convert to lowercase
-			SET result = CONCAT(result, '_', LOWER(CONVERT(char_val USING utf8mb4)));
-		ELSE
-			-- Keep character as-is
-			SET result = CONCAT(result, CONVERT(char_val USING utf8mb4));
-		END IF;
-
-		SET i = i + 1;
-	END WHILE;
-
-	RETURN result;
-END $$
-
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_field_mask_as_json $$
 CREATE FUNCTION _pb_wire_json_decode_wkt_field_mask_as_json(wire_json JSON) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -3954,7 +3893,7 @@ BEGIN
 			CASE field_number
 			WHEN 1 THEN -- values
 				-- Convert snake_case proto field path to camelCase JSON path with validation
-				SET result = CONCAT(result, sep, _pb_field_mask_snake_to_camel_safe(string_value));
+				SET result = CONCAT(result, sep, _pb_util_snake_to_camel_safe(string_value));
 				SET sep = ',';
 			END CASE;
 		END CASE;
@@ -3990,7 +3929,7 @@ BEGIN
 		IF LENGTH(path) > 0 THEN
 			-- Convert camelCase JSON field path to snake_case proto path
 			-- Use add_repeated_string_field_element for repeated field
-			SET result = pb_wire_json_add_repeated_string_field_element(result, 1, _pb_field_mask_camel_to_snake(path));
+			SET result = pb_wire_json_add_repeated_string_field_element(result, 1, _pb_util_camel_to_snake(path));
 		END IF;
 	END WHILE;
 
@@ -4033,7 +3972,7 @@ BEGIN
 
 		IF LENGTH(current_path) > 0 THEN
 			-- Convert camelCase JSON field path to snake_case proto path
-			SET paths_array = JSON_ARRAY_APPEND(paths_array, '$', _pb_field_mask_camel_to_snake(current_path));
+			SET paths_array = JSON_ARRAY_APPEND(paths_array, '$', _pb_util_camel_to_snake(current_path));
 		END IF;
 	END WHILE split_loop;
 
@@ -4066,7 +4005,7 @@ BEGIN
 				SET result_str = CONCAT(result_str, ',');
 			END IF;
 			-- Convert snake_case proto field path to camelCase JSON path with validation
-			SET result_str = CONCAT(result_str, _pb_field_mask_snake_to_camel_safe(current_path));
+			SET result_str = CONCAT(result_str, _pb_util_snake_to_camel_safe(current_path));
 			SET path_index = path_index + 1;
 		END WHILE path_loop;
 
@@ -4317,6 +4256,111 @@ BEGIN
 	RETURN NULL;
 END $$
 
+DELIMITER $$
+
+-- Convert snake_case to camelCase
+-- Implements logic from protobuf-go JSONCamelCase:
+-- https://github.com/protocolbuffers/protobuf-go/blob/v1.28.1/internal/strs/strings.go
+DROP FUNCTION IF EXISTS _pb_util_snake_to_camel $$
+CREATE FUNCTION _pb_util_snake_to_camel(snake_name TEXT) RETURNS TEXT DETERMINISTIC
+BEGIN
+	DECLARE result TEXT DEFAULT '';
+	DECLARE i INT DEFAULT 1;
+	DECLARE char_val BINARY(1);
+	DECLARE was_underscore BOOLEAN DEFAULT FALSE;
+	DECLARE binary_name LONGBLOB;
+
+	-- Handle empty or null input
+	IF snake_name IS NULL OR LENGTH(snake_name) = 0 THEN
+		RETURN snake_name;
+	END IF;
+
+	-- Cast to binary for proper character comparisons
+	SET binary_name = CAST(snake_name AS BINARY);
+
+	-- Process character by character (proto identifiers are always ASCII)
+	WHILE i <= LENGTH(binary_name) DO
+		SET char_val = SUBSTRING(binary_name, i, 1);
+
+		IF char_val != _binary '_' THEN
+			IF was_underscore AND (char_val >= _binary 'a' AND char_val <= _binary 'z') THEN
+				-- Convert lowercase to uppercase after underscore
+				SET result = CONCAT(result, UPPER(CONVERT(char_val USING utf8mb4)));
+			ELSE
+				-- Keep character as-is
+				SET result = CONCAT(result, CONVERT(char_val USING utf8mb4));
+			END IF;
+		END IF;
+
+		SET was_underscore = (char_val = _binary '_');
+		SET i = i + 1;
+	END WHILE;
+
+	RETURN result;
+END $$
+
+-- Convert camelCase to snake_case
+-- Implements logic from protobuf-go JSONSnakeCase:
+-- https://github.com/protocolbuffers/protobuf-go/blob/v1.28.1/internal/strs/strings.go
+DROP FUNCTION IF EXISTS _pb_util_camel_to_snake $$
+CREATE FUNCTION _pb_util_camel_to_snake(camel_name TEXT) RETURNS TEXT DETERMINISTIC
+BEGIN
+	DECLARE result TEXT DEFAULT '';
+	DECLARE i INT DEFAULT 1;
+	DECLARE char_val BINARY(1);
+	DECLARE binary_name LONGBLOB;
+
+	-- Handle empty or null input
+	IF camel_name IS NULL OR LENGTH(camel_name) = 0 THEN
+		RETURN camel_name;
+	END IF;
+
+	-- Cast to binary for proper character comparisons
+	SET binary_name = CAST(camel_name AS BINARY);
+
+	-- Process character by character (proto identifiers are always ASCII)
+	WHILE i <= LENGTH(binary_name) DO
+		SET char_val = SUBSTRING(binary_name, i, 1);
+
+		IF char_val >= _binary 'A' AND char_val <= _binary 'Z' THEN
+			-- Add underscore before uppercase letter, then convert to lowercase
+			SET result = CONCAT(result, '_', LOWER(CONVERT(char_val USING utf8mb4)));
+		ELSE
+			-- Keep character as-is
+			SET result = CONCAT(result, CONVERT(char_val USING utf8mb4));
+		END IF;
+
+		SET i = i + 1;
+	END WHILE;
+
+	RETURN result;
+END $$
+
+-- Safe snake_case to camelCase conversion with round-trip validation
+-- Matches protobuf-go's marshalFieldMask validation logic
+DROP FUNCTION IF EXISTS _pb_util_snake_to_camel_safe $$
+CREATE FUNCTION _pb_util_snake_to_camel_safe(snake_name TEXT) RETURNS TEXT DETERMINISTIC
+BEGIN
+	DECLARE camel_name TEXT;
+	DECLARE roundtrip_name TEXT;
+	DECLARE message_text TEXT;
+
+	-- Convert snake_case to camelCase
+	SET camel_name = _pb_util_snake_to_camel(snake_name);
+
+	-- Round-trip validation: snake→camel→snake should equal original
+	SET roundtrip_name = _pb_util_camel_to_snake(camel_name);
+
+	IF snake_name != roundtrip_name THEN
+		-- Contains irreversible value, fail like protobuf-go
+		SET message_text = CONCAT('Contains irreversible value "', snake_name, '"');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	RETURN camel_name;
+END $$
+
+DELIMITER ;
 DELIMITER $$
 
 -- Helper function to build fully-qualified type name
