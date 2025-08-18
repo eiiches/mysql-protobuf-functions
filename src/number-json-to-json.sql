@@ -249,26 +249,8 @@ BEGIN
 		END IF;
 
 	WHEN '.google.protobuf.FieldMask' THEN
-		-- Convert {"1": ["path1", "path2"]} to "path1,path2"
-		SET paths_array = JSON_EXTRACT(number_json_value, '$."1"');
-		IF paths_array IS NULL OR JSON_LENGTH(paths_array) = 0 THEN
-			SET proto_json_value = JSON_QUOTE('');
-		ELSE
-			SET path_count = JSON_LENGTH(paths_array);
-			SET path_index = 0;
-			SET result_str = '';
-
-			path_loop: WHILE path_index < path_count DO
-				SET current_path = JSON_UNQUOTE(JSON_EXTRACT(paths_array, CONCAT('$[', path_index, ']')));
-				IF path_index > 0 THEN
-					SET result_str = CONCAT(result_str, ',');
-				END IF;
-				SET result_str = CONCAT(result_str, current_path);
-				SET path_index = path_index + 1;
-			END WHILE path_loop;
-
-			SET proto_json_value = JSON_QUOTE(result_str);
-		END IF;
+		-- Convert {"1": ["path1", "path2"]} to "camelPath1,camelPath2"
+		SET proto_json_value = _pb_wkt_field_mask_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.Any' THEN
 		-- {"1": "url", "2": "base64data"} -> {"@type": "url", "field": "value"}
