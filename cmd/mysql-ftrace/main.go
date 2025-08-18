@@ -298,7 +298,6 @@ func reportAction(ctx context.Context, command *cli.Command) error {
 	}
 }
 
-
 // FtraceEvent represents a function trace event
 type FtraceEvent struct {
 	ID           int64
