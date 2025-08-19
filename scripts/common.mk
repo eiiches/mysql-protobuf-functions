@@ -36,6 +36,9 @@ PROTOBUF_JSON_SOURCES := \
 	src/json-wkt-struct.sql \
 	src/json-wkt-field-mask.sql \
 	src/json-wkt-time-common.sql \
+	src/json-wkt-any.sql \
+	src/json-wkt-empty.sql \
+	src/json-wkt-wrappers.sql \
 	src/json-wkt.sql \
 	src/util-case-conv.sql \
 	src/util-base64.sql \
