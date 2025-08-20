@@ -2726,6 +2726,27 @@ END $$
 
 DELIMITER $$
 
+-- Helper function to convert datetime with timezone offset to UTC datetime
+DROP FUNCTION IF EXISTS _pb_wkt_timestamp_convert_to_utc $$
+CREATE FUNCTION _pb_wkt_timestamp_convert_to_utc(local_datetime DATETIME, timezone_offset TEXT) RETURNS DATETIME DETERMINISTIC
+BEGIN
+	DECLARE offset_hours INT;
+	DECLARE offset_minutes INT;
+	DECLARE offset_seconds_total INT;
+	DECLARE offset_sign INT;
+
+	-- Parse timezone offset manually (+/-HH:MM)
+	SET offset_sign = IF(LEFT(timezone_offset, 1) = '+', 1, -1);
+	SET offset_hours = CAST(SUBSTRING(timezone_offset, 2, 2) AS SIGNED);
+	SET offset_minutes = CAST(SUBSTRING(timezone_offset, 5, 2) AS SIGNED);
+	SET offset_seconds_total = offset_sign * (offset_hours * 3600 + offset_minutes * 60);
+
+	-- Convert to UTC: subtract the timezone offset from the local time
+	-- For example: 16:00 -08:00 means local time is 8 hours behind UTC
+	-- So UTC time = local time + 8 hours = 16:00 + 8:00 = 24:00 = 00:00 next day
+	RETURN TIMESTAMPADD(SECOND, -offset_seconds_total, local_datetime);
+END $$
+
 -- Helper procedure to normalize timestamp seconds and nanoseconds
 -- Ensures nanos is non-negative and within [0, 999999999] range
 -- Even for negative seconds, nanos must be non-negative and count forward in time
@@ -2848,14 +2869,10 @@ BEGIN
 		-- UTC timezone, parse directly
 		SET target_datetime = STR_TO_DATE(LEFT(timestamp_str, 19), '%Y-%m-%dT%H:%i:%s');
 	ELSEIF timestamp_str REGEXP '[+-][0-9]{2}:[0-9]{2}$' THEN
-		-- Handle timezone offset (+08:00, -08:00)
+		-- Handle timezone offset (+08:00, -08:00) using helper function
 		SET timezone_offset = RIGHT(timestamp_str, 6);
 		SET target_datetime = STR_TO_DATE(LEFT(timestamp_str, 19), '%Y-%m-%dT%H:%i:%s');
-		-- Convert from local timezone to UTC using CONVERT_TZ
-		SET target_datetime = CONVERT_TZ(target_datetime, timezone_offset, '+00:00');
-		IF target_datetime IS NULL THEN
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid timezone offset in timestamp';
-		END IF;
+		SET target_datetime = _pb_wkt_timestamp_convert_to_utc(target_datetime, timezone_offset);
 	ELSE
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid timestamp format - must end with Z or timezone offset';
 	END IF;
