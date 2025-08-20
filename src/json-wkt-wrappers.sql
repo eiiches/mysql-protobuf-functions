@@ -137,11 +137,11 @@ BEGIN
 	IF proto_json_value IS NULL THEN
 		SET bool_val = FALSE;
 	ELSE
-		SET bool_val = CAST(proto_json_value AS UNSIGNED);
+		SET bool_val = _pb_json_parse_bool(proto_json_value);
 	END IF;
 
-	IF bool_val != FALSE THEN
-		RETURN JSON_OBJECT('1', bool_val);
+	IF bool_val THEN
+		RETURN JSON_OBJECT('1', CAST('true' AS JSON));
 	ELSE
 		RETURN JSON_OBJECT();
 	END IF;

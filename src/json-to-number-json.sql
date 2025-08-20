@@ -210,6 +210,23 @@ BEGIN
 	RETURN _pb_util_from_base64_url(str_value);
 END $$
 
+-- Helper function to parse JSON value as Protobuf bool type
+DROP FUNCTION IF EXISTS _pb_json_parse_bool $$
+CREATE FUNCTION _pb_json_parse_bool(json_value JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE bool_value BOOLEAN;
+	DECLARE message_text TEXT;
+
+	IF JSON_TYPE(json_value) <> 'BOOLEAN' THEN
+		SET message_text = CONCAT('Invalid JSON type for bool field: expected BOOLEAN, got ', JSON_TYPE(json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	SET bool_value = json_value;
+
+	RETURN bool_value;
+END $$
+
 -- Helper function to check if a type is a protobuf wrapper type
 DROP FUNCTION IF EXISTS _pb_is_wrapper_type $$
 CREATE FUNCTION _pb_is_wrapper_type(full_type_name TEXT) RETURNS BOOLEAN DETERMINISTIC
@@ -410,8 +427,134 @@ BEGIN
 	WHEN '.google.protobuf.Any' THEN
 		RETURN _pb_wkt_any_json_to_number_json(proto_json_value);
 	ELSE
-		-- Not a well-known type, return as-is
-		RETURN proto_json_value;
+		RETURN NULL;
+	END CASE;
+END $$
+
+-- Helper procedure to convert singular field value to ProtoNumberJSON
+DROP PROCEDURE IF EXISTS _pb_convert_singular_field_to_number_json $$
+CREATE PROCEDURE _pb_convert_singular_field_to_number_json(
+	IN descriptor_set_json JSON,
+	IN field_type INT,
+	IN field_type_name TEXT,
+	IN field_json_value JSON,
+	OUT converted_value JSON,
+	OUT is_default BOOLEAN
+)
+BEGIN
+	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
+	DECLARE message_text TEXT;
+	-- Type-specific variables
+	DECLARE enum_string_value TEXT;
+	DECLARE enum_numeric_value INT;
+	DECLARE int64_value BIGINT;
+	DECLARE uint64_value BIGINT UNSIGNED;
+	DECLARE int32_value INT;
+	DECLARE uint32_value INT UNSIGNED;
+	DECLARE double_json_value JSON;
+	DECLARE float_json_value JSON;
+	DECLARE str_value TEXT;
+	DECLARE bool_value BOOLEAN;
+	DECLARE nested_json JSON;
+
+	CASE field_type
+	WHEN 14 THEN -- enum
+		SET enum_string_value = JSON_UNQUOTE(field_json_value);
+		CALL _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, enum_string_value, enum_numeric_value);
+		SET converted_value = CAST(enum_numeric_value AS JSON);
+		SET is_default = (enum_numeric_value = 0);
+
+	WHEN 11 THEN -- message
+		IF field_json_value IS NULL THEN
+			SET is_default = TRUE;
+			SET converted_value = NULL;
+		ELSE
+			SET is_default = FALSE;
+			SET converted_value = _pb_convert_json_wkt_to_number_json(field_type_name, field_json_value);
+			IF converted_value IS NULL THEN
+				CALL _pb_json_to_number_json_proc(descriptor_set_json, field_type_name, field_json_value, converted_value);
+			END IF;
+		END IF;
+
+	WHEN 3 THEN -- int64 (convert string to number)
+		SET int64_value = _pb_json_parse_signed_int(field_json_value);
+		SET converted_value = CAST(int64_value AS JSON);
+		SET is_default = (int64_value = 0);
+
+	WHEN 4 THEN -- uint64 (convert string to number)
+		SET uint64_value = _pb_json_parse_unsigned_int(field_json_value);
+		SET converted_value = CAST(uint64_value AS JSON);
+		SET is_default = (uint64_value = 0);
+
+	WHEN 6 THEN -- fixed64 (convert string to number)
+		SET uint64_value = _pb_json_parse_unsigned_int(field_json_value);
+		SET converted_value = CAST(uint64_value AS JSON);
+		SET is_default = (uint64_value = 0);
+
+	WHEN 16 THEN -- sfixed64 (convert string to number)
+		SET int64_value = _pb_json_parse_signed_int(field_json_value);
+		SET converted_value = CAST(int64_value AS JSON);
+		SET is_default = (int64_value = 0);
+
+	WHEN 18 THEN -- sint64 (convert string to number)
+		SET int64_value = _pb_json_parse_signed_int(field_json_value);
+		SET converted_value = CAST(int64_value AS JSON);
+		SET is_default = (int64_value = 0);
+
+	WHEN 5 THEN -- int32 (handle string numbers including exponential notation)
+		SET int32_value = _pb_json_parse_signed_int(field_json_value);
+		SET converted_value = CAST(int32_value AS JSON);
+		SET is_default = (int32_value = 0);
+
+	WHEN 13 THEN -- uint32 (handle string numbers including exponential notation)
+		SET uint32_value = _pb_json_parse_unsigned_int(field_json_value);
+		SET converted_value = CAST(uint32_value AS JSON);
+		SET is_default = (uint32_value = 0);
+
+	WHEN 7 THEN -- fixed32 (handle with range validation)
+		SET uint32_value = _pb_json_parse_unsigned_int(field_json_value);
+		SET converted_value = CAST(uint32_value AS JSON);
+		SET is_default = (uint32_value = 0);
+
+	WHEN 15 THEN -- sfixed32 (handle with range validation)
+		SET int32_value = _pb_json_parse_signed_int(field_json_value);
+		SET converted_value = CAST(int32_value AS JSON);
+		SET is_default = (int32_value = 0);
+
+	WHEN 17 THEN -- sint32 (handle with range validation)
+		SET int32_value = _pb_json_parse_signed_int(field_json_value);
+		SET converted_value = CAST(int32_value AS JSON);
+		SET is_default = (int32_value = 0);
+
+	WHEN 1 THEN -- double (handle with validation)
+		SET double_json_value = _pb_json_parse_double(field_json_value);
+		SET converted_value = double_json_value;
+		SET is_default = (double_json_value = CAST(0.0 AS JSON));
+
+	WHEN 2 THEN -- float (handle with validation)
+		SET float_json_value = _pb_json_parse_float(field_json_value);
+		SET converted_value = float_json_value;
+		SET is_default = (float_json_value = CAST(0.0 AS JSON));
+
+	WHEN 12 THEN -- bytes
+		-- Decode from JSON Base64/Base64URL and re-encode as standard Base64
+		SET str_value = JSON_UNQUOTE(field_json_value);
+		SET converted_value = JSON_QUOTE(TO_BASE64(_pb_json_parse_bytes(field_json_value)));
+		SET is_default = (str_value = '');
+
+	WHEN 8 THEN -- bool
+		SET bool_value = CAST(_pb_json_parse_bool(field_json_value) AS JSON);
+		SET converted_value = IF(bool_value, CAST('true' AS JSON), CAST('false' AS JSON));
+		SET is_default = NOT bool_value;
+
+	WHEN 9 THEN -- string
+		SET converted_value = field_json_value;
+		SET is_default = (JSON_UNQUOTE(field_json_value) = '');
+
+	ELSE
+		-- Unknown field type
+		SET message_text = CONCAT('_pb_convert_singular_field_to_number_json: unknown field type: ', field_type);
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END CASE;
 END $$
 
@@ -445,18 +588,10 @@ BEGIN
 	-- Processing variables
 	DECLARE is_repeated BOOLEAN;
 	DECLARE has_presence BOOLEAN;
+	DECLARE is_default BOOLEAN;
 	DECLARE field_json_value JSON;
 	DECLARE source_field_name TEXT;
 	DECLARE converted_value JSON;
-	DECLARE int64_value BIGINT;
-	DECLARE uint64_value BIGINT UNSIGNED;
-	DECLARE int32_value INT;
-	DECLARE uint32_value INT UNSIGNED;
-	DECLARE double_json_value JSON;
-	DECLARE float_json_value JSON;
-	DECLARE str_value TEXT;
-	DECLARE enum_string_value TEXT;
-	DECLARE enum_numeric_value INT;
 	-- Array processing
 	DECLARE array_value JSON;
 	DECLARE array_length INT;
@@ -557,7 +692,6 @@ BEGIN
 
 		-- Process field if it exists in JSON
 		IF field_json_value IS NOT NULL THEN
-
 			-- Handle null values: null means "field is absent" for both singular and repeated fields
 			IF JSON_TYPE(field_json_value) = 'NULL' THEN
 				-- For both singular and repeated fields, null means the field is absent - skip processing
@@ -565,351 +699,65 @@ BEGIN
 				ITERATE field_loop;
 			END IF;
 
-			IF is_repeated THEN
-				IF is_map THEN
-					-- Handle map fields - convert JSON object to ProtoNumberJSON format
-					-- Maps in ProtoJSON are objects like {"key1": "value1", "key2": "value2"}
-					-- In ProtoNumberJSON, values may need conversion based on their types
-					-- Get map value field type for conversion
-					SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value)
-					SET map_value_type = JSON_EXTRACT(map_value_field, '$."5"');
-					SET map_value_type_name = JSON_UNQUOTE(JSON_EXTRACT(map_value_field, '$."6"'));
+			IF is_map THEN
+				-- Handle map fields - convert JSON object to ProtoNumberJSON format
+				-- Maps in ProtoJSON are objects like {"key1": "value1", "key2": "value2"}
+				-- In ProtoNumberJSON, values may need conversion based on their types
+				-- Get map value field type for conversion
+				SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value)
+				SET map_value_type = JSON_EXTRACT(map_value_field, '$."5"');
+				SET map_value_type_name = JSON_UNQUOTE(JSON_EXTRACT(map_value_field, '$."6"'));
 
-					-- Convert map values if necessary
-					SET map_keys = JSON_KEYS(field_json_value);
-					SET map_key_count = JSON_LENGTH(map_keys);
-					SET converted_map = JSON_OBJECT();
-					SET map_key_index = 0;
+				-- Convert map values if necessary
+				SET map_keys = JSON_KEYS(field_json_value);
+				SET map_key_count = JSON_LENGTH(map_keys);
+				SET converted_map = JSON_OBJECT();
+				SET map_key_index = 0;
 
-					WHILE map_key_index < map_key_count DO
-						SET map_key_name = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', map_key_index, ']')));
-						SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$."', map_key_name, '"'));
+				-- TODO: validate map_key
+				WHILE map_key_index < map_key_count DO
+					SET map_key_name = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', map_key_index, ']')));
+					SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$."', map_key_name, '"'));
 
-						-- Convert value based on type, handling null values with appropriate defaults
-						CASE map_value_type
-						WHEN 14 THEN -- enum
-							IF map_value_json IS NULL THEN
-								-- Default enum value is 0
-								SET converted_value = CAST(0 AS JSON);
-							ELSE
-								CALL _pb_convert_json_enum_to_number(descriptor_set_json, map_value_type_name, JSON_UNQUOTE(map_value_json), enum_numeric_value);
-								SET converted_value = CAST(enum_numeric_value AS JSON);
-							END IF;
-						WHEN 11 THEN -- message
-							IF map_value_json IS NULL THEN
-								-- Default message value is empty object
-								SET converted_value = JSON_OBJECT();
-							ELSE
-								-- Check if it's a well-known type
-								CALL _pb_is_well_known_type(map_value_type_name, @is_wkt);
-								IF @is_wkt THEN
-									SET converted_value = _pb_convert_json_wkt_to_number_json(map_value_type_name, map_value_json);
-								ELSE
-									-- Recursively convert nested message
-									CALL _pb_json_to_number_json_proc(descriptor_set_json, map_value_type_name, map_value_json, converted_value);
-								END IF;
-							END IF;
-						WHEN 3 THEN -- int64 (convert string to number)
-							IF map_value_json IS NULL THEN
-								SET converted_value = CAST(0 AS JSON);
-							ELSE
-								SET converted_value = CAST(JSON_UNQUOTE(map_value_json) AS JSON);
-							END IF;
-						WHEN 4 THEN -- uint64 (convert string to number)
-							IF map_value_json IS NULL THEN
-								SET converted_value = CAST(0 AS JSON);
-							ELSE
-								SET converted_value = CAST(JSON_UNQUOTE(map_value_json) AS JSON);
-							END IF;
-						WHEN 6 THEN -- fixed64 (convert string to number)
-							IF map_value_json IS NULL THEN
-								SET converted_value = CAST(0 AS JSON);
-							ELSE
-								SET converted_value = CAST(JSON_UNQUOTE(map_value_json) AS JSON);
-							END IF;
-						WHEN 16 THEN -- sfixed64 (convert string to number)
-							IF map_value_json IS NULL THEN
-								SET converted_value = CAST(0 AS JSON);
-							ELSE
-								SET converted_value = CAST(JSON_UNQUOTE(map_value_json) AS JSON);
-							END IF;
-						WHEN 18 THEN -- sint64 (convert string to number)
-							IF map_value_json IS NULL THEN
-								SET converted_value = CAST(0 AS JSON);
-							ELSE
-								SET converted_value = CAST(JSON_UNQUOTE(map_value_json) AS JSON);
-							END IF;
-						WHEN 12 THEN -- bytes
-							IF map_value_json IS NULL THEN
-								SET converted_value = JSON_QUOTE('');
-							ELSE
-								-- Decode and re-encode to ensure standard Base64 format
-								SET str_value = JSON_UNQUOTE(map_value_json);
-								SET converted_value = TO_BASE64(_pb_util_from_base64_url(str_value));
-							END IF;
-						ELSE
-							-- Other primitive types: handle null values with appropriate defaults
-							IF map_value_json IS NULL THEN
-								CASE map_value_type
-								WHEN 1 THEN -- double
-									SET converted_value = CAST(0.0 AS JSON);
-								WHEN 2 THEN -- float
-									SET converted_value = CAST(0.0 AS JSON);
-								WHEN 5 THEN -- int32
-									SET converted_value = CAST(0 AS JSON);
-								WHEN 7 THEN -- fixed32
-									SET converted_value = CAST(0 AS JSON);
-								WHEN 8 THEN -- bool
-									SET converted_value = CAST(FALSE AS JSON);
-								WHEN 9 THEN -- string
-									SET converted_value = JSON_QUOTE('');
-								WHEN 12 THEN -- bytes
-									SET converted_value = JSON_QUOTE('');
-								WHEN 13 THEN -- uint32
-									SET converted_value = CAST(0 AS JSON);
-								WHEN 15 THEN -- sfixed32
-									SET converted_value = CAST(0 AS JSON);
-								WHEN 17 THEN -- sint32
-									SET converted_value = CAST(0 AS JSON);
-								ELSE
-									-- Unknown type, use null
-									SET converted_value = NULL;
-								END CASE;
-							ELSE
-								SET converted_value = map_value_json;
-							END IF;
-						END CASE;
+					-- Use singular field conversion procedure
+					CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, map_value_type, map_value_type_name, map_value_json, converted_value, is_default);
 
-						-- Add converted value to map
-						SET converted_map = JSON_SET(converted_map, CONCAT('$."', map_key_name, '"'), converted_value);
-						SET map_key_index = map_key_index + 1;
-					END WHILE;
+					-- Add converted value to map
+					SET converted_map = JSON_SET(converted_map, CONCAT('$."', map_key_name, '"'), converted_value);
+					SET map_key_index = map_key_index + 1;
+				END WHILE;
 
-					-- In proto3, skip empty maps unless proto3_optional is true or it's a oneof field
-					IF has_presence OR JSON_LENGTH(converted_map) > 0 THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_map);
-					END IF;
-				ELSE
-					-- Handle repeated fields (arrays)
-					SET array_value = field_json_value;
-					SET array_length = JSON_LENGTH(array_value);
-					SET converted_array = JSON_ARRAY();
-					SET array_index = 0;
+				-- In proto3, skip empty maps unless proto3_optional is true or it's a oneof field
+				IF map_key_count > 0 THEN
+					SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_map);
+				END IF;
+			ELSEIF is_repeated THEN
+				-- Handle repeated fields (arrays)
+				SET array_value = field_json_value;
+				SET array_length = JSON_LENGTH(array_value);
+				SET converted_array = JSON_ARRAY();
+				SET array_index = 0;
 
-				array_loop: WHILE array_index < array_length DO
+				WHILE array_index < array_length DO
 					SET array_element = JSON_EXTRACT(array_value, CONCAT('$[', array_index, ']'));
 
-					-- Convert element based on field type
-					CASE field_type
-					WHEN 14 THEN -- enum
-						-- Validate that the array element is a string (enum names) or number (enum values)
-						IF JSON_TYPE(array_element) NOT IN ('STRING', 'INTEGER') THEN
-							SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid JSON: enum field must be a string name or number value, not another type';
-						END IF;
-						SET enum_string_value = JSON_UNQUOTE(array_element);
-						CALL _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, enum_string_value, enum_numeric_value);
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', enum_numeric_value);
-					WHEN 11 THEN -- message
-						-- Check if it's a well-known type
-						CALL _pb_is_well_known_type(field_type_name, @is_wkt);
-						IF @is_wkt THEN
-							-- For wrapper types, allow primitive JSON values
-							IF _pb_is_wrapper_type(field_type_name) THEN
-								-- Wrapper types can accept primitive values, no need to validate as OBJECT
-								-- The WKT conversion function will handle the appropriate validation
-								SET converted_value = _pb_convert_json_wkt_to_number_json(field_type_name, array_element);
-								SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
-							ELSE
-								-- Non-wrapper WKTs should be JSON objects
-								IF JSON_TYPE(array_element) != 'OBJECT' THEN
-									SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid JSON: message field must be a JSON object, not another type';
-								END IF;
-								SET converted_value = _pb_convert_json_wkt_to_number_json(field_type_name, array_element);
-								SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
-							END IF;
-						ELSE
-							-- Regular messages must be JSON objects
-							IF JSON_TYPE(array_element) != 'OBJECT' THEN
-								SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid JSON: message field must be a JSON object, not another type';
-							END IF;
-							-- Recursively convert nested message
-							CALL _pb_json_to_number_json_proc(descriptor_set_json, field_type_name, array_element, nested_json);
-							SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', nested_json);
-						END IF;
-					WHEN 3 THEN -- int64 (convert string to number)
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', CAST(JSON_UNQUOTE(array_element) AS DECIMAL(20,0)));
-					WHEN 4 THEN -- uint64 (convert string to number)
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', CAST(JSON_UNQUOTE(array_element) AS DECIMAL(20,0)));
-					WHEN 6 THEN -- fixed64 (convert string to number)
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', CAST(JSON_UNQUOTE(array_element) AS DECIMAL(20,0)));
-					WHEN 16 THEN -- sfixed64 (convert string to number)
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', CAST(JSON_UNQUOTE(array_element) AS DECIMAL(20,0)));
-					WHEN 18 THEN -- sint64 (convert string to number)
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', CAST(JSON_UNQUOTE(array_element) AS DECIMAL(20,0)));
-					WHEN 1 THEN -- double (validate and convert)
-						SET double_json_value = _pb_json_parse_double(array_element);
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', double_json_value);
-					WHEN 2 THEN -- float (validate and convert)
-						SET float_json_value = _pb_json_parse_float(array_element);
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', float_json_value);
-					WHEN 12 THEN -- bytes (decode and re-encode)
-						SET str_value = JSON_UNQUOTE(array_element);
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', TO_BASE64(_pb_util_from_base64_url(str_value)));
-					WHEN 5 THEN -- int32 (validate input type)
-						SET int32_value = _pb_json_parse_signed_int(array_element);
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', int32_value);
-					WHEN 13 THEN -- uint32 (validate input type)
-						SET uint32_value = _pb_json_parse_unsigned_int(array_element);
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', uint32_value);
-					WHEN 15 THEN -- sfixed32 (validate input type)
-						SET int32_value = _pb_json_parse_signed_int(array_element);
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', int32_value);
-					WHEN 7 THEN -- fixed32 (validate input type)
-						SET uint32_value = _pb_json_parse_unsigned_int(array_element);
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', uint32_value);
-					WHEN 17 THEN -- sint32 (validate input type)
-						SET int32_value = _pb_json_parse_signed_int(array_element);
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', int32_value);
-					WHEN 8 THEN -- bool (validate input type - should be true/false, not string)
-						IF JSON_TYPE(array_element) != 'BOOLEAN' THEN
-							SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid JSON: bool field must be true/false, not another type';
-						END IF;
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', array_element);
-					WHEN 9 THEN -- string (validate input type - should be string, not number/bool/object)
-						IF JSON_TYPE(array_element) != 'STRING' THEN
-							SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid JSON: string field must be a string, not another type';
-						END IF;
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', array_element);
-					ELSE
-						-- Fallback - this should not happen for well-defined field types
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', array_element);
-					END CASE;
+					-- Convert element using singular field conversion procedure
+					CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, array_element, converted_value, is_default);
+					SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
 
 					SET array_index = array_index + 1;
-				END WHILE array_loop;
+				END WHILE;
 
-					-- In proto3, skip empty arrays unless proto3_optional is true or it's a oneof field
-					IF has_presence OR array_length > 0 THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_array);
-					END IF;
+				IF array_length > 0 THEN
+					SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_array);
 				END IF;
 			ELSE
 				-- Handle singular fields
-				CASE field_type
-				WHEN 14 THEN -- enum
-					SET enum_string_value = JSON_UNQUOTE(field_json_value);
-					CALL _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, enum_string_value, enum_numeric_value);
-					-- In proto3, skip enum fields with zero value unless proto3_optional is true or it's a oneof field
-					IF has_presence OR enum_numeric_value != 0 THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), enum_numeric_value);
-					END IF;
-				WHEN 11 THEN -- message
-					-- Check if it's a well-known type
-					CALL _pb_is_well_known_type(field_type_name, @is_wkt);
-					IF @is_wkt THEN
-						SET converted_value = _pb_convert_json_wkt_to_number_json(field_type_name, field_json_value);
-						-- For WKTs, always include the field but use empty object for zero values
-						IF _pb_is_wkt_zero_value(field_type_name, converted_value) THEN
-							SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), JSON_OBJECT());
-						ELSE
-							SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_value);
-						END IF;
-					ELSE
-						-- Recursively convert nested message
-						CALL _pb_json_to_number_json_proc(descriptor_set_json, field_type_name, field_json_value, nested_json);
-						-- Always include nested messages in proto3 (they represent explicit field presence)
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), nested_json);
-					END IF;
-				WHEN 3 THEN -- int64 (convert string to number)
-					SET int64_value = _pb_json_parse_signed_int(field_json_value);
-					-- In proto3, skip zero values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (int64_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int64_value);
-					END IF;
-				WHEN 4 THEN -- uint64 (convert string to number)
-					SET uint64_value = _pb_json_parse_unsigned_int(field_json_value);
-					-- In proto3, skip zero values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (uint64_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), uint64_value);
-					END IF;
-				WHEN 6 THEN -- fixed64 (convert string to number)
-					SET uint64_value = _pb_json_parse_unsigned_int(field_json_value);
-					-- In proto3, skip zero values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (uint64_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), uint64_value);
-					END IF;
-				WHEN 16 THEN -- sfixed64 (convert string to number)
-					SET int64_value = _pb_json_parse_signed_int(field_json_value);
-					-- In proto3, skip zero values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (int64_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int64_value);
-					END IF;
-				WHEN 18 THEN -- sint64 (convert string to number)
-					SET int64_value = _pb_json_parse_signed_int(field_json_value);
-					-- In proto3, skip zero values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (int64_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int64_value);
-					END IF;
-				WHEN 5 THEN -- int32 (handle string numbers including exponential notation)
-					SET int32_value = _pb_json_parse_signed_int(field_json_value);
-					-- In proto3, skip zero values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (int32_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int32_value);
-					END IF;
-				WHEN 13 THEN -- uint32 (handle string numbers including exponential notation)
-					SET uint32_value = _pb_json_parse_unsigned_int(field_json_value);
-					-- In proto3, skip zero values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (uint32_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), uint32_value);
-					END IF;
-				WHEN 7 THEN -- fixed32 (handle with range validation)
-					SET uint32_value = _pb_json_parse_unsigned_int(field_json_value);
-					-- In proto3, skip zero values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (uint32_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), uint32_value);
-					END IF;
-				WHEN 15 THEN -- sfixed32 (handle with range validation)
-					SET int32_value = _pb_json_parse_signed_int(field_json_value);
-					-- In proto3, skip zero values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (int32_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int32_value);
-					END IF;
-				WHEN 17 THEN -- sint32 (handle with range validation)
-					SET int32_value = _pb_json_parse_signed_int(field_json_value);
-					-- In proto3, skip zero values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (int32_value = 0) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), int32_value);
-					END IF;
-				WHEN 1 THEN -- double (handle with validation)
-					SET double_json_value = _pb_json_parse_double(field_json_value);
-					-- In proto3, skip zero values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (double_json_value = CAST(0.0 AS JSON)) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), double_json_value);
-					END IF;
-				WHEN 2 THEN -- float (handle with validation)
-					SET float_json_value = _pb_json_parse_float(field_json_value);
-					-- In proto3, skip zero values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (float_json_value = CAST(0.0 AS JSON)) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), float_json_value);
-					END IF;
-				WHEN 12 THEN -- bytes
-					-- Decode from JSON Base64/Base64URL and re-encode as standard Base64
-					SET str_value = JSON_UNQUOTE(field_json_value);
-					-- In proto3, skip empty bytes unless proto3_optional is true or it's a oneof field
-					IF has_presence OR str_value != '' THEN
-						-- Use parsing function to decode and re-encode to ensure standard Base64 format
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), TO_BASE64(_pb_json_parse_bytes(field_json_value)));
-					END IF;
-				ELSE
-					-- Other primitive types: bool, string
-					-- In proto3, skip zero/default values unless proto3_optional is true or it's a oneof field
-					IF has_presence OR NOT (
-						(field_type = 8 AND field_json_value = false) OR                -- bool = false
-						(field_type = 9 AND JSON_UNQUOTE(field_json_value) = '')        -- string = ""
-					) THEN
-						SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), field_json_value);
-					END IF;
-				END CASE;
+				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, field_json_value, converted_value, is_default);
+				-- Include field unless it's a default value in proto3 without explicit presence
+				IF has_presence OR NOT is_default THEN
+					SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_value);
+				END IF;
 			END IF;
 		END IF;
 

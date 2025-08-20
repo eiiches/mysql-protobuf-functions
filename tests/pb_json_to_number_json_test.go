@@ -62,7 +62,7 @@ func testJsonToNumberJson(t *testing.T, fieldDefinition string, inputJson string
 	// Test the conversion: JSON -> number JSON
 	// MySQL implementation should produce the same number JSON as Go's protonumberjson
 	RunTestThatExpression(t, "_pb_json_to_number_json(?, ?, ?)", descriptorSetJson, typeName, inputJson).IsEqualToJsonString(expectedNumberJson)
-	RunTestThatExpression(t, "_pb_json_to_number_json(?, ?, ?)", descriptorSetJson, typeName, inputJsonWithoutDefaults).IsEqualToJsonString(expectedNumberJson)
+	RunTestThatExpression(t, "_pb_json_to_number_json(?, ?, ?)", descriptorSetJson, typeName, string(inputJsonWithoutDefaults)).IsEqualToJsonString(expectedNumberJson)
 }
 
 func TestJsonToNumberJsonSingularFields(t *testing.T) {
