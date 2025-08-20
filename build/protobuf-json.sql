@@ -2049,7 +2049,7 @@ BEGIN
 			-- as a non-null Value message with kind.null_value set to NULL_VALUE.
 			-- Explicit JSON null for a field that doesn't have a field presence tracking (>=proto3) means a zero
 			-- value is set (and zero values are omitted in ProtoNumberJSON or on wire).
-			IF JSON_TYPE(field_json_value) = 'NULL' AND (field_type IS NULL OR field_type <> '.google.protobuf.Value') THEN
+			IF JSON_TYPE(field_json_value) = 'NULL' AND (field_type_name IS NULL OR field_type_name <> '.google.protobuf.Value') THEN
 				SET field_index = field_index + 1;
 				ITERATE field_loop;
 			END IF;
