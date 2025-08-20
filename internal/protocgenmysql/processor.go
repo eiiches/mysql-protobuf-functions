@@ -67,7 +67,7 @@ END $$
 		methodFragments := GenerateMethodFragments(files, config.FileNameFunc, config.TypePrefixFunc, config.FunctionName)
 		for filename, fragments := range methodFragments {
 			if filename == "" {
-				filename = config.FunctionName
+				filename = descriptorSetFileName
 			}
 			fileFragments[filename] = append(fileFragments[filename], fragments...)
 		}

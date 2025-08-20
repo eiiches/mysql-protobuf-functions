@@ -22,10 +22,6 @@ func GenerateMethodFragments(files *protoregistry.Files, fileNameFunc FileNameFu
 	// Generate fragments for each proto file
 	files.RangeFiles(func(fileDesc protoreflect.FileDescriptor) bool {
 		filename := fileNameFunc(fileDesc.Path())
-		if filename == "" {
-			return true // continue iteration
-		}
-
 		content := generateMethodsForFile(fileDesc, typePrefixFunc, schemaFunctionName)
 		if content != "" {
 			fileFragments[filename] = append(fileFragments[filename], content)

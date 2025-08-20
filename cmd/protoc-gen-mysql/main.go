@@ -12,6 +12,7 @@ import (
 	"github.com/eiiches/mysql-protobuf-functions/internal/protocgenmysql"
 	"github.com/urfave/cli/v3"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/pluginpb"
 )
@@ -53,7 +54,7 @@ func runStandalone() {
 				Value: ".",
 			},
 			&cli.StringFlag{
-				Name:  "naming_strategy",
+				Name:  "file_naming_strategy",
 				Usage: "Naming strategy for generated method files: flatten, preserve, or single",
 				Value: "flatten",
 			},
@@ -73,7 +74,7 @@ func runStandalone() {
 			name := cmd.String("name")
 			includeSourceInfo := cmd.Bool("include_source_info")
 			mysqlOut := cmd.String("mysql_out")
-			namingStrategy := cmd.String("naming_strategy")
+			namingStrategy := cmd.String("file_naming_strategy")
 			packagePrefixMapStr := cmd.String("package_prefix_map")
 			generateMethods := cmd.Bool("generate_methods")
 
@@ -142,7 +143,7 @@ func runAsProtocPlugin() {
 	includeSourceInfo := false
 	namingStrategy := "flatten"
 	generateMethods := true
-	packagePrefixMap := make(map[string]string)
+	packagePrefixMap := make(map[protoreflect.FullName]string)
 	if req.Parameter != nil && *req.Parameter != "" {
 		params := parseParameters(*req.Parameter)
 		if name, ok := params["name"]; ok {
@@ -151,7 +152,7 @@ func runAsProtocPlugin() {
 		if include, ok := params["include_source_info"]; ok {
 			includeSourceInfo = include == "true"
 		}
-		if strategy, ok := params["naming_strategy"]; ok {
+		if strategy, ok := params["file_naming_strategy"]; ok {
 			namingStrategy = strategy
 		}
 		if methods, ok := params["generate_methods"]; ok {
@@ -226,8 +227,8 @@ func parseParameters(paramStr string) map[string]string {
 	return params
 }
 
-func parsePackagePrefixMap(mapStr string) map[string]string {
-	result := make(map[string]string)
+func parsePackagePrefixMap(mapStr string) map[protoreflect.FullName]string {
+	result := make(map[protoreflect.FullName]string)
 	if mapStr == "" {
 		return result
 	}
@@ -238,7 +239,7 @@ func parsePackagePrefixMap(mapStr string) map[string]string {
 		if len(kv) == 2 {
 			pkg := strings.TrimSpace(kv[0])
 			prefix := strings.TrimSpace(kv[1])
-			result[pkg] = prefix
+			result[protoreflect.FullName(pkg)] = prefix
 		}
 	}
 	return result
