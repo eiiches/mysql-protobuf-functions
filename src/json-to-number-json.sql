@@ -651,7 +651,14 @@ BEGIN
 		SET oneof_index = JSON_EXTRACT(field_descriptor, '$."9"'); -- oneof_index
 
 		SET is_repeated = (field_label = 3);
-		SET has_presence = (syntax != 'proto3' OR proto3_optional OR oneof_index IS NOT NULL);
+		-- Determine field presence
+		SET has_presence = (syntax = 'proto2' AND field_label <> 3) -- proto2: all non-repeated fields
+			OR (syntax = 'proto3'
+				AND (
+					(field_label = 1 AND proto3_optional) -- proto3 optional
+					OR (field_label <> 3 AND field_type = 11) -- message fields
+					OR (oneof_index IS NOT NULL) -- oneof fields
+			));
 
 		-- Check if this is a map field
 		SET is_map = FALSE;
@@ -690,74 +697,90 @@ BEGIN
 			END IF;
 		END IF;
 
-		-- Process field if it exists in JSON
-		IF field_json_value IS NOT NULL THEN
-			-- Handle null values: null means "field is absent" for both singular and repeated fields
+		-- If field is not found, skip to the next field processing.
+		IF field_json_value IS NULL THEN
+			SET field_index = field_index + 1;
+			ITERATE field_loop;
+		END IF;
+
+		IF is_map THEN
+			-- Explicit JSON null for a map field means the map is empty. This seems weird, but required by AllFieldAcceptNull.
 			IF JSON_TYPE(field_json_value) = 'NULL' THEN
-				-- For both singular and repeated fields, null means the field is absent - skip processing
 				SET field_index = field_index + 1;
 				ITERATE field_loop;
 			END IF;
 
-			IF is_map THEN
-				-- Handle map fields - convert JSON object to ProtoNumberJSON format
-				-- Maps in ProtoJSON are objects like {"key1": "value1", "key2": "value2"}
-				-- In ProtoNumberJSON, values may need conversion based on their types
-				-- Get map value field type for conversion
-				SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value)
-				SET map_value_type = JSON_EXTRACT(map_value_field, '$."5"');
-				SET map_value_type_name = JSON_UNQUOTE(JSON_EXTRACT(map_value_field, '$."6"'));
+			-- Handle map fields - convert JSON object to ProtoNumberJSON format
+			-- Maps in ProtoJSON are objects like {"key1": "value1", "key2": "value2"}
+			-- In ProtoNumberJSON, values may need conversion based on their types
+			-- Get map value field type for conversion
+			SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value)
+			SET map_value_type = JSON_EXTRACT(map_value_field, '$."5"');
+			SET map_value_type_name = JSON_UNQUOTE(JSON_EXTRACT(map_value_field, '$."6"'));
 
-				-- Convert map values if necessary
-				SET map_keys = JSON_KEYS(field_json_value);
-				SET map_key_count = JSON_LENGTH(map_keys);
-				SET converted_map = JSON_OBJECT();
-				SET map_key_index = 0;
+			-- Convert map values if necessary
+			SET map_keys = JSON_KEYS(field_json_value);
+			SET map_key_count = JSON_LENGTH(map_keys);
+			SET converted_map = JSON_OBJECT();
+			SET map_key_index = 0;
 
-				-- TODO: validate map_key
-				WHILE map_key_index < map_key_count DO
-					SET map_key_name = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', map_key_index, ']')));
-					SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$."', map_key_name, '"'));
+			-- TODO: validate map_key
+			WHILE map_key_index < map_key_count DO
+				SET map_key_name = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', map_key_index, ']')));
+				SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$."', map_key_name, '"'));
 
-					-- Use singular field conversion procedure
-					CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, map_value_type, map_value_type_name, map_value_json, converted_value, is_default);
+				-- Use singular field conversion procedure
+				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, map_value_type, map_value_type_name, map_value_json, converted_value, is_default);
 
-					-- Add converted value to map
-					SET converted_map = JSON_SET(converted_map, CONCAT('$."', map_key_name, '"'), converted_value);
-					SET map_key_index = map_key_index + 1;
-				END WHILE;
+				-- Add converted value to map
+				SET converted_map = JSON_SET(converted_map, CONCAT('$."', map_key_name, '"'), converted_value);
+				SET map_key_index = map_key_index + 1;
+			END WHILE;
 
-				-- In proto3, skip empty maps unless proto3_optional is true or it's a oneof field
-				IF map_key_count > 0 THEN
-					SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_map);
-				END IF;
-			ELSEIF is_repeated THEN
-				-- Handle repeated fields (arrays)
-				SET array_value = field_json_value;
-				SET array_length = JSON_LENGTH(array_value);
-				SET converted_array = JSON_ARRAY();
-				SET array_index = 0;
+			-- In proto3, skip empty maps unless proto3_optional is true or it's a oneof field
+			IF map_key_count > 0 THEN
+				SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_map);
+			END IF;
+		ELSEIF is_repeated THEN
+			-- Explicit JSON null for a repeated field means the list is empty. This seems weird, but required by AllFieldAcceptNull.
+			IF JSON_TYPE(field_json_value) = 'NULL' THEN
+				SET field_index = field_index + 1;
+				ITERATE field_loop;
+			END IF;
 
-				WHILE array_index < array_length DO
-					SET array_element = JSON_EXTRACT(array_value, CONCAT('$[', array_index, ']'));
+			-- Handle repeated fields (arrays)
+			SET array_value = field_json_value;
+			SET array_length = JSON_LENGTH(array_value);
+			SET converted_array = JSON_ARRAY();
+			SET array_index = 0;
 
-					-- Convert element using singular field conversion procedure
-					CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, array_element, converted_value, is_default);
-					SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
+			WHILE array_index < array_length DO
+				SET array_element = JSON_EXTRACT(array_value, CONCAT('$[', array_index, ']'));
 
-					SET array_index = array_index + 1;
-				END WHILE;
+				-- Convert element using singular field conversion procedure
+				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, array_element, converted_value, is_default);
+				SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
 
-				IF array_length > 0 THEN
-					SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_array);
-				END IF;
-			ELSE
-				-- Handle singular fields
-				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, field_json_value, converted_value, is_default);
-				-- Include field unless it's a default value in proto3 without explicit presence
-				IF has_presence OR NOT is_default THEN
-					SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_value);
-				END IF;
+				SET array_index = array_index + 1;
+			END WHILE;
+
+			IF array_length > 0 THEN
+				SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_array);
+			END IF;
+		ELSE
+			-- Explicit JSON null for a field that has field presence tracking means the field is not set, except
+			-- if the field is .google.protobuf.Value. Explicit JSON null for a Value field, should be recognized
+			-- as a non-null Value message with kind.null_value set to NULL_VALUE.
+			IF has_presence AND JSON_TYPE(field_json_value) = 'NULL' AND (field_type IS NULL OR field_type <> '.google.protobuf.Value') THEN
+				SET field_index = field_index + 1;
+				ITERATE field_loop;
+			END IF;
+
+			-- Handle singular fields
+			CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, field_json_value, converted_value, is_default);
+			-- Include field unless it's a default value in proto3 without explicit presence
+			IF has_presence OR NOT is_default THEN
+				SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_value);
 			END IF;
 		END IF;
 
