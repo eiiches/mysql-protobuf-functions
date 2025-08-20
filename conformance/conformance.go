@@ -122,6 +122,15 @@ func (h *ConformanceHandler) ProcessRequest(requestData []byte) ([]byte, error) 
 
 // HandleConformanceRequest processes a conformance request and returns the appropriate response
 func (h *ConformanceHandler) HandleConformanceRequest(request *ConformanceRequest) *ConformanceResponse {
+	// Skip tests with TEXT_FORMAT test category
+	if request.TestCategory == TestCategory_TEXT_FORMAT_TEST {
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_Skipped{
+				Skipped: "TEXT_FORMAT test category not supported",
+			},
+		}
+	}
+
 	// Handle different input and output formats
 	switch payload := request.Payload.(type) {
 	case *ConformanceRequest_ProtobufPayload:
