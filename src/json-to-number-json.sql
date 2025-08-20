@@ -647,7 +647,7 @@ BEGIN
 		SET field_type = JSON_EXTRACT(field_descriptor, '$."5"'); -- type
 		SET field_type_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."6"')); -- type_name
 		SET json_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."10"')); -- json_name
-		SET proto3_optional = CAST(COALESCE(JSON_EXTRACT(field_descriptor, '$."17"'), 0) AS UNSIGNED) = 1; -- proto3_optional
+		SET proto3_optional = JSON_EXTRACT(field_descriptor, '$."17"'); -- proto3_optional
 		SET oneof_index = JSON_EXTRACT(field_descriptor, '$."9"'); -- oneof_index
 
 		SET is_repeated = (field_label = 3);
