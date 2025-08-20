@@ -210,6 +210,21 @@ BEGIN
 	RETURN _pb_util_from_base64_url(str_value);
 END $$
 
+-- Helper function to parse JSON value as Protobuf string type
+DROP FUNCTION IF EXISTS _pb_json_parse_string $$
+CREATE FUNCTION _pb_json_parse_string(json_value JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+	DECLARE message_text TEXT;
+
+	-- String fields must receive JSON string values
+	IF JSON_TYPE(json_value) != 'STRING' THEN
+		SET message_text = CONCAT('Invalid JSON type for string field: expected STRING, got ', JSON_TYPE(json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	RETURN JSON_UNQUOTE(json_value);
+END $$
+
 -- Helper function to parse JSON value as Protobuf bool type
 DROP FUNCTION IF EXISTS _pb_json_parse_bool $$
 CREATE FUNCTION _pb_json_parse_bool(json_value JSON) RETURNS BOOLEAN DETERMINISTIC
@@ -426,8 +441,9 @@ BEGIN
 		SET is_default = NOT bool_value;
 
 	WHEN 9 THEN -- string
-		SET converted_value = field_json_value;
-		SET is_default = (JSON_UNQUOTE(field_json_value) = '');
+		SET str_value = _pb_json_parse_string(field_json_value);
+		SET converted_value = JSON_QUOTE(str_value);
+		SET is_default = (str_value = '');
 
 	ELSE
 		-- Unknown field type
