@@ -121,10 +121,12 @@ generate-coverage-report: run-coverage-tests
 instrument-ftrace-files: build/protobuf.sql.ftraced build/protobuf-json.sql.ftraced
 
 build/protobuf.sql.ftraced: build/protobuf.sql cmd/mysql-ftrace/main.go
-	go run cmd/mysql-ftrace/main.go instrument build/protobuf.sql
+	go tool pigeon -o internal/mysql/sqlflowparser/mysql_ast_parser.go internal/mysql/sqlflowparser/mysql_ast.peg
+	go run cmd/mysql-ftrace/main.go instrument --trace-statements build/protobuf.sql
 
 build/protobuf-json.sql.ftraced: build/protobuf-json.sql cmd/mysql-ftrace/main.go
-	go run cmd/mysql-ftrace/main.go instrument build/protobuf-json.sql
+	go tool pigeon -o internal/mysql/sqlflowparser/mysql_ast_parser.go internal/mysql/sqlflowparser/mysql_ast.peg
+	go run cmd/mysql-ftrace/main.go instrument --trace-statements build/protobuf-json.sql
 
 .PHONY: load-ftrace-instrumented-files
 load-ftrace-instrumented-files: instrument-ftrace-files ensure-test-database

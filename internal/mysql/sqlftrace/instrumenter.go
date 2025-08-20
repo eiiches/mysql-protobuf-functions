@@ -12,6 +12,11 @@ func NewInstrumenter(filename string) *Instrumenter {
 	}
 }
 
+// SetStatementTracing enables or disables statement-level tracing
+func (i *Instrumenter) SetStatementTracing(enabled bool) {
+	i.astInstrumenter.SetStatementTracing(enabled)
+}
+
 // InstrumentSQL adds function tracing instrumentation to SQL content
 func (i *Instrumenter) InstrumentSQL(content []byte) (string, error) {
 	return i.astInstrumenter.InstrumentSQL(content)

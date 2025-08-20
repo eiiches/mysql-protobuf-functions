@@ -26,7 +26,13 @@ func main() {
 				Name:      "instrument",
 				Usage:     "Instrument SQL files with function call tracing",
 				ArgsUsage: "file1.sql [file2.sql ...]",
-				Action:    instrumentAction,
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "trace-statements",
+						Usage: "Enable statement-level tracing within functions (adds significant overhead)",
+					},
+				},
+				Action: instrumentAction,
 			},
 			{
 				Name:  "init",
@@ -107,7 +113,7 @@ func instrumentAction(ctx context.Context, command *cli.Command) error {
 		output = outFile
 
 		// Process the file
-		if err := instrumentSQL(input, output, inputFilename); err != nil {
+		if err := instrumentSQL(input, output, inputFilename, command.Bool("trace-statements")); err != nil {
 			return fmt.Errorf("failed to instrument %s: %w", inputFilename, err)
 		}
 
@@ -117,7 +123,7 @@ func instrumentAction(ctx context.Context, command *cli.Command) error {
 	return nil
 }
 
-func instrumentSQL(input io.Reader, output io.Writer, filename string) error {
+func instrumentSQL(input io.Reader, output io.Writer, filename string, traceStatements bool) error {
 	// Read all input content
 	content, err := io.ReadAll(input)
 	if err != nil {
@@ -126,6 +132,7 @@ func instrumentSQL(input io.Reader, output io.Writer, filename string) error {
 
 	// Create AST-based instrumenter for function tracing
 	instrumenter := sqlftrace.NewInstrumenter(filename)
+	instrumenter.SetStatementTracing(traceStatements)
 
 	// Instrument the SQL content
 	instrumentedSQL, err := instrumenter.InstrumentSQL(content)
@@ -168,11 +175,14 @@ func initAction(ctx context.Context, command *cli.Command) error {
 			connection_id INT NOT NULL,
 			filename VARCHAR(255) NOT NULL,
 			function_name VARCHAR(255) NOT NULL,
-			object_type ENUM('function', 'procedure') NOT NULL,
-			call_type ENUM('entry', 'exit') NOT NULL,
+			object_type ENUM('function', 'procedure', 'statement', 'variable') NOT NULL,
+			call_type ENUM('entry', 'exit', 'statement', 'set_variable') NOT NULL,
 			arguments JSON,
 			return_value JSON,
 			call_depth INT NOT NULL DEFAULT 0,
+			line_number INT,
+			statement_type VARCHAR(50),
+			variable_name VARCHAR(255),
 			timestamp TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6)
 		) ENGINE = ARCHIVE`
 
@@ -184,6 +194,8 @@ func initAction(ctx context.Context, command *cli.Command) error {
 	dropProcedures := []string{
 		`DROP PROCEDURE IF EXISTS __record_ftrace_entry`,
 		`DROP PROCEDURE IF EXISTS __record_ftrace_exit`,
+		`DROP PROCEDURE IF EXISTS __record_ftrace_statement`,
+		`DROP PROCEDURE IF EXISTS __record_ftrace_set`,
 		`DROP FUNCTION IF EXISTS __get_call_depth`,
 		`DROP PROCEDURE IF EXISTS __increment_call_depth`,
 		`DROP PROCEDURE IF EXISTS __decrement_call_depth`,
@@ -256,10 +268,36 @@ func initAction(ctx context.Context, command *cli.Command) error {
 		return fmt.Errorf("failed to create __record_ftrace_exit procedure: %w", err)
 	}
 
+	// Create the __record_ftrace_statement procedure
+	createStatementProcedureSQL := `
+		CREATE PROCEDURE __record_ftrace_statement(IN filename VARCHAR(255), IN function_name VARCHAR(255), IN line_number INT, IN statement_type VARCHAR(50), IN statement_text TEXT)
+		BEGIN
+			INSERT INTO __FtraceEvent (connection_id, filename, function_name, object_type, call_type, call_depth, line_number, statement_type, return_value)
+			VALUES (CONNECTION_ID(), filename, function_name, 'statement', 'statement', __get_call_depth(), line_number, statement_type, JSON_QUOTE(statement_text));
+		END`
+
+	if _, err := db.Exec(createStatementProcedureSQL); err != nil {
+		return fmt.Errorf("failed to create __record_ftrace_statement procedure: %w", err)
+	}
+
+	// Create the __record_ftrace_set procedure
+	createSetProcedureSQL := `
+		CREATE PROCEDURE __record_ftrace_set(IN filename VARCHAR(255), IN function_name VARCHAR(255), IN line_number INT, IN variable_name VARCHAR(255), IN new_value TEXT)
+		BEGIN
+			INSERT INTO __FtraceEvent (connection_id, filename, function_name, object_type, call_type, call_depth, line_number, statement_type, variable_name, return_value)
+			VALUES (CONNECTION_ID(), filename, function_name, 'variable', 'set_variable', __get_call_depth(), line_number, 'SET', variable_name, JSON_QUOTE(COALESCE(new_value, 'NULL')));
+		END`
+
+	if _, err := db.Exec(createSetProcedureSQL); err != nil {
+		return fmt.Errorf("failed to create __record_ftrace_set procedure: %w", err)
+	}
+
 	fmt.Println("Successfully initialized database with function tracing schema")
 	fmt.Println("- Created __FtraceEvent table")
 	fmt.Println("- Created __record_ftrace_entry procedure")
 	fmt.Println("- Created __record_ftrace_exit procedure")
+	fmt.Println("- Created __record_ftrace_statement procedure")
+	fmt.Println("- Created __record_ftrace_set procedure")
 	fmt.Println("- Created call depth management functions")
 
 	return nil
@@ -300,16 +338,19 @@ func reportAction(ctx context.Context, command *cli.Command) error {
 
 // FtraceEvent represents a function trace event
 type FtraceEvent struct {
-	ID           int64
-	ConnectionID int
-	Filename     string
-	FunctionName string
-	ObjectType   string
-	CallType     string
-	Arguments    string
-	ReturnValue  string
-	CallDepth    int
-	Timestamp    string
+	ID            int64
+	ConnectionID  int
+	Filename      string
+	FunctionName  string
+	ObjectType    string
+	CallType      string
+	Arguments     string
+	ReturnValue   string
+	CallDepth     int
+	LineNumber    int
+	StatementType string
+	VariableName  string
+	Timestamp     string
 }
 
 func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
@@ -318,7 +359,8 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 
 	if connectionID > 0 {
 		query = `
-			SELECT id, connection_id, filename, function_name, object_type, call_type, arguments, return_value, call_depth, CAST(timestamp AS DATETIME(6))
+			SELECT id, connection_id, filename, function_name, object_type, call_type, arguments, return_value, call_depth, 
+			       line_number, statement_type, variable_name, CAST(timestamp AS DATETIME(6))
 			FROM __FtraceEvent
 			WHERE connection_id = ?
 			ORDER BY timestamp, id
@@ -326,7 +368,8 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 		args = []interface{}{connectionID}
 	} else {
 		query = `
-			SELECT id, connection_id, filename, function_name, object_type, call_type, arguments, return_value, call_depth, CAST(timestamp AS DATETIME(6))
+			SELECT id, connection_id, filename, function_name, object_type, call_type, arguments, return_value, call_depth,
+			       line_number, statement_type, variable_name, CAST(timestamp AS DATETIME(6))
 			FROM __FtraceEvent
 			ORDER BY connection_id, timestamp, id
 		`
@@ -348,15 +391,20 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 
 	for rows.Next() {
 		var event FtraceEvent
-		var args, retVal sql.NullString
+		var args, retVal, stmtType, varName sql.NullString
+		var lineNum sql.NullInt64
 
 		if err := rows.Scan(&event.ID, &event.ConnectionID, &event.Filename, &event.FunctionName,
-			&event.ObjectType, &event.CallType, &args, &retVal, &event.CallDepth, &event.Timestamp); err != nil {
+			&event.ObjectType, &event.CallType, &args, &retVal, &event.CallDepth, 
+			&lineNum, &stmtType, &varName, &event.Timestamp); err != nil {
 			return err
 		}
 
 		event.Arguments = args.String
 		event.ReturnValue = retVal.String
+		event.LineNumber = int(lineNum.Int64)
+		event.StatementType = stmtType.String
+		event.VariableName = varName.String
 
 		// Show connection ID separator when it changes (only if showing multiple connections)
 		if connectionID == 0 && event.ConnectionID != currentConnectionID {
@@ -382,10 +430,11 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 			timestampDisplay = t.Format("15:04:05.000")
 		}
 
-		if event.CallType == "entry" {
+		switch event.CallType {
+		case "entry":
 			writer.WriteString(fmt.Sprintf("%s[%s] -> %s%s(%s)\n",
 				indent, timestampDisplay, objIndicator, event.FunctionName, event.Arguments))
-		} else {
+		case "exit":
 			if event.ObjectType == "procedure" {
 				writer.WriteString(fmt.Sprintf("%s[%s] <- %s%s OUT: %s\n",
 					indent, timestampDisplay, objIndicator, event.FunctionName, event.ReturnValue))
@@ -393,6 +442,20 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 				writer.WriteString(fmt.Sprintf("%s[%s] <- %s%s = %s\n",
 					indent, timestampDisplay, objIndicator, event.FunctionName, event.ReturnValue))
 			}
+		case "statement":
+			lineDisplay := ""
+			if event.LineNumber > 0 {
+				lineDisplay = fmt.Sprintf(":%d", event.LineNumber)
+			}
+			writer.WriteString(fmt.Sprintf("%s[%s]   %s%s %s: %s\n",
+				indent, timestampDisplay, event.Filename, lineDisplay, event.StatementType, event.ReturnValue))
+		case "set_variable":
+			lineDisplay := ""
+			if event.LineNumber > 0 {
+				lineDisplay = fmt.Sprintf(":%d", event.LineNumber)
+			}
+			writer.WriteString(fmt.Sprintf("%s[%s]   %s%s SET %s = %s\n",
+				indent, timestampDisplay, event.Filename, lineDisplay, event.VariableName, event.ReturnValue))
 		}
 	}
 
@@ -405,7 +468,8 @@ func generateJSONReport(db *sql.DB, output io.Writer, connectionID int) error {
 
 	if connectionID > 0 {
 		query = `
-			SELECT id, connection_id, filename, function_name, object_type, call_type, arguments, return_value, call_depth, CAST(timestamp AS DATETIME(6))
+			SELECT id, connection_id, filename, function_name, object_type, call_type, arguments, return_value, call_depth,
+			       line_number, statement_type, variable_name, CAST(timestamp AS DATETIME(6))
 			FROM __FtraceEvent
 			WHERE connection_id = ?
 			ORDER BY timestamp, id
@@ -413,7 +477,8 @@ func generateJSONReport(db *sql.DB, output io.Writer, connectionID int) error {
 		args = []interface{}{connectionID}
 	} else {
 		query = `
-			SELECT id, connection_id, filename, function_name, object_type, call_type, arguments, return_value, call_depth, CAST(timestamp AS DATETIME(6))
+			SELECT id, connection_id, filename, function_name, object_type, call_type, arguments, return_value, call_depth,
+			       line_number, statement_type, variable_name, CAST(timestamp AS DATETIME(6))
 			FROM __FtraceEvent
 			ORDER BY connection_id, timestamp, id
 		`
@@ -433,15 +498,20 @@ func generateJSONReport(db *sql.DB, output io.Writer, connectionID int) error {
 
 	for rows.Next() {
 		var event FtraceEvent
-		var args, retVal sql.NullString
+		var args, retVal, stmtType, varName sql.NullString
+		var lineNum sql.NullInt64
 
 		if err := rows.Scan(&event.ID, &event.ConnectionID, &event.Filename, &event.FunctionName,
-			&event.ObjectType, &event.CallType, &args, &retVal, &event.CallDepth, &event.Timestamp); err != nil {
+			&event.ObjectType, &event.CallType, &args, &retVal, &event.CallDepth, 
+			&lineNum, &stmtType, &varName, &event.Timestamp); err != nil {
 			return err
 		}
 
 		event.Arguments = args.String
 		event.ReturnValue = retVal.String
+		event.LineNumber = int(lineNum.Int64)
+		event.StatementType = stmtType.String
+		event.VariableName = varName.String
 
 		if !first {
 			writer.WriteString(",\n")
@@ -458,11 +528,14 @@ func generateJSONReport(db *sql.DB, output io.Writer, connectionID int) error {
     "arguments": "%s",
     "return_value": "%s",
     "call_depth": %d,
+    "line_number": %d,
+    "statement_type": "%s",
+    "variable_name": "%s",
     "timestamp": "%s"
   }`, event.ID, event.ConnectionID, event.Filename, event.FunctionName, event.ObjectType, event.CallType,
 			strings.ReplaceAll(event.Arguments, `"`, `\"`),
 			strings.ReplaceAll(event.ReturnValue, `"`, `\"`),
-			event.CallDepth, event.Timestamp))
+			event.CallDepth, event.LineNumber, event.StatementType, event.VariableName, event.Timestamp))
 	}
 
 	writer.WriteString("\n]\n")

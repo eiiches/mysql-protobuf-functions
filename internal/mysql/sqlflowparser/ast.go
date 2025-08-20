@@ -140,11 +140,32 @@ type (
 		// Text is inherited from BaseStatement
 	}
 
+	// SetVariableStmt represents SET variable statements (user variables, system variables)
+	SetVariableStmt struct {
+		BaseStatement
+		Assignments []VariableAssignment // Multiple variables can be set in one statement
+	}
+
 	// Parameter represents procedure/function parameter
 	Parameter struct {
 		Name string
 		Type string
 		Mode string // IN, OUT, INOUT
+	}
+
+	// VariableAssignment represents a single variable assignment within SET
+	VariableAssignment struct {
+		// Explicit scope keyword (GLOBAL, SESSION, PERSIST, PERSIST_ONLY) or empty string
+		ScopeKeyword string
+		
+		// Variable reference as written (e.g., "var", "@var", "@@var", "@@GLOBAL.var")
+		VariableRef string
+		
+		// Assignment operator (usually "=", but could be ":=" for user variables)
+		Operator string
+		
+		// Right-hand side expression
+		Value string
 	}
 )
 
