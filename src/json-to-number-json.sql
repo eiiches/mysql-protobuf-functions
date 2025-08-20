@@ -227,23 +227,6 @@ BEGIN
 	RETURN bool_value;
 END $$
 
--- Helper function to check if a type is a protobuf wrapper type
-DROP FUNCTION IF EXISTS _pb_is_wrapper_type $$
-CREATE FUNCTION _pb_is_wrapper_type(full_type_name TEXT) RETURNS BOOLEAN DETERMINISTIC
-BEGIN
-	RETURN full_type_name IN (
-		'.google.protobuf.DoubleValue',
-		'.google.protobuf.FloatValue',
-		'.google.protobuf.Int64Value',
-		'.google.protobuf.UInt64Value',
-		'.google.protobuf.Int32Value',
-		'.google.protobuf.UInt32Value',
-		'.google.protobuf.BoolValue',
-		'.google.protobuf.StringValue',
-		'.google.protobuf.BytesValue'
-	);
-END $$
-
 -- Helper procedure to check if a type is a well-known type
 DROP PROCEDURE IF EXISTS _pb_is_well_known_type $$
 CREATE PROCEDURE _pb_is_well_known_type(IN full_type_name TEXT, OUT is_wkt BOOLEAN)
@@ -254,7 +237,6 @@ BEGIN
 		SET is_wkt = FALSE;
 	END IF;
 END $$
-
 
 -- Helper procedure to convert enum string name or numeric value to numeric value
 DROP PROCEDURE IF EXISTS _pb_convert_json_enum_to_number $$
@@ -316,59 +298,6 @@ BEGIN
 		SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum value not found: ', enum_string_value, ' in enum ', full_enum_type_name);
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
-END $$
-
--- Helper function to convert well-known type from ProtoJSON to ProtoNumberJSON
-DROP FUNCTION IF EXISTS _pb_convert_json_wkt_to_number_json $$
-CREATE FUNCTION _pb_convert_json_wkt_to_number_json(
-	full_type_name TEXT,
-	proto_json_value JSON
-) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
-	DECLARE message_text TEXT;
-	-- Variables for Any handling
-	DECLARE type_url TEXT;
-	DECLARE remaining_object JSON;
-
-	CASE full_type_name
-	WHEN '.google.protobuf.Timestamp' THEN
-		RETURN _pb_wkt_timestamp_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Duration' THEN
-		RETURN _pb_wkt_duration_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.FieldMask' THEN
-		RETURN _pb_wkt_field_mask_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Value' THEN
-		RETURN _pb_wkt_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Struct' THEN
-		RETURN _pb_wkt_struct_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.ListValue' THEN
-		RETURN _pb_wkt_list_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.StringValue' THEN
-		RETURN _pb_wkt_string_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Int64Value' THEN
-		RETURN _pb_wkt_int64_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.UInt64Value' THEN
-		RETURN _pb_wkt_uint64_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Int32Value' THEN
-		RETURN _pb_wkt_int32_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.UInt32Value' THEN
-		RETURN _pb_wkt_uint32_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.BoolValue' THEN
-		RETURN _pb_wkt_bool_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.FloatValue' THEN
-		RETURN _pb_wkt_float_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.DoubleValue' THEN
-		RETURN _pb_wkt_double_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.BytesValue' THEN
-		RETURN _pb_wkt_bytes_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Empty' THEN
-		RETURN _pb_wkt_empty_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Any' THEN
-		RETURN _pb_wkt_any_json_to_number_json(proto_json_value);
-	ELSE
-		RETURN NULL;
-	END CASE;
 END $$
 
 -- Helper procedure to convert singular field value to ProtoNumberJSON
