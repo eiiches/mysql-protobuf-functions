@@ -439,11 +439,9 @@ func (i *ASTInstrumenter) instrumentStatementList(stmt sqlsplitter.Statement, fu
 					result = append(result, stmtCall)
 					result = append(result, s)
 
-					// Add variable tracing for each assignment
-					for _, assignment := range s.Assignments {
-						varName := i.extractVariableName(assignment.VariableRef)
-						variableRef := i.buildFullVariableReference(assignment)
-						setCall := i.createSetTracingCall(functionName, lineNum, varName, variableRef)
+					// Add variable tracing - create JSON object for all assignments
+					if len(s.Assignments) > 0 {
+						setCall := i.createSetTracingCallForMultipleVars(functionName, lineNum, s.Assignments)
 						result = append(result, setCall)
 					}
 					continue
@@ -705,6 +703,28 @@ func (i *ASTInstrumenter) createStatementTracingCall(functionName string, lineNu
 func (i *ASTInstrumenter) createSetTracingCall(functionName string, lineNumber int, variableName string, variableRef string) sqlflowparser.StatementAST {
 	callText := fmt.Sprintf("CALL __record_ftrace_set('%s', '%s', %d, '%s', %s)",
 		i.filename, functionName, lineNumber, variableName, variableRef)
+
+	return &sqlflowparser.GenericStmt{
+		BaseStatement: sqlflowparser.BaseStatement{
+			Pos:  sqlflowparser.Position{Line: lineNumber, Column: 1},
+			Text: callText,
+		},
+	}
+}
+
+func (i *ASTInstrumenter) createSetTracingCallForMultipleVars(functionName string, lineNumber int, assignments []sqlflowparser.VariableAssignment) sqlflowparser.StatementAST {
+	// Build JSON object with all variable assignments
+	jsonPairs := make([]string, 0, len(assignments))
+	for _, assignment := range assignments {
+		varName := i.extractVariableName(assignment.VariableRef)
+		variableRef := i.buildFullVariableReference(assignment)
+		jsonPairs = append(jsonPairs, fmt.Sprintf("'%s', %s", varName, variableRef))
+	}
+	
+	jsonObject := fmt.Sprintf("JSON_OBJECT(%s)", strings.Join(jsonPairs, ", "))
+	
+	callText := fmt.Sprintf("CALL __record_ftrace_set('%s', '%s', %d, %s)",
+		i.filename, functionName, lineNumber, jsonObject)
 
 	return &sqlflowparser.GenericStmt{
 		BaseStatement: sqlflowparser.BaseStatement{

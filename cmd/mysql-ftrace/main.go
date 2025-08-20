@@ -183,7 +183,7 @@ func initAction(ctx context.Context, command *cli.Command) error {
 			call_depth INT NOT NULL DEFAULT 0,
 			line_number INT,
 			statement_type VARCHAR(50),
-			variable_name VARCHAR(255),
+			variable_assignments JSON,
 			timestamp TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6)
 		) ENGINE = ARCHIVE`
 
@@ -283,10 +283,10 @@ func initAction(ctx context.Context, command *cli.Command) error {
 
 	// Create the __record_ftrace_set procedure
 	createSetProcedureSQL := `
-		CREATE PROCEDURE __record_ftrace_set(IN filename VARCHAR(255), IN function_name VARCHAR(255), IN line_number INT, IN variable_name VARCHAR(255), IN new_value TEXT)
+		CREATE PROCEDURE __record_ftrace_set(IN filename VARCHAR(255), IN function_name VARCHAR(255), IN line_number INT, IN variable_assignments JSON)
 		BEGIN
-			INSERT INTO __FtraceEvent (connection_id, filename, function_name, object_type, call_type, call_depth, line_number, statement_type, variable_name, return_value)
-			VALUES (CONNECTION_ID(), filename, function_name, 'variable', 'set_variable', __get_call_depth(), line_number, 'SET', variable_name, JSON_QUOTE(COALESCE(new_value, 'NULL')));
+			INSERT INTO __FtraceEvent (connection_id, filename, function_name, object_type, call_type, call_depth, line_number, statement_type, variable_assignments)
+			VALUES (CONNECTION_ID(), filename, function_name, 'variable', 'set_variable', __get_call_depth(), line_number, 'SET', variable_assignments);
 		END`
 
 	if _, err := db.Exec(createSetProcedureSQL); err != nil {
@@ -350,7 +350,7 @@ type FtraceEvent struct {
 	CallDepth     int
 	LineNumber    int
 	StatementType string
-	VariableName  string
+	VariableAssignments string
 	Timestamp     string
 }
 
@@ -361,7 +361,7 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 	if connectionID > 0 {
 		query = `
 			SELECT id, connection_id, filename, function_name, object_type, call_type, arguments, return_value, call_depth, 
-			       line_number, statement_type, variable_name, CAST(timestamp AS DATETIME(6))
+			       line_number, statement_type, variable_assignments, CAST(timestamp AS DATETIME(6))
 			FROM __FtraceEvent
 			WHERE connection_id = ?
 			ORDER BY timestamp, id
@@ -370,7 +370,7 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 	} else {
 		query = `
 			SELECT id, connection_id, filename, function_name, object_type, call_type, arguments, return_value, call_depth,
-			       line_number, statement_type, variable_name, CAST(timestamp AS DATETIME(6))
+			       line_number, statement_type, variable_assignments, CAST(timestamp AS DATETIME(6))
 			FROM __FtraceEvent
 			ORDER BY connection_id, timestamp, id
 		`
@@ -463,7 +463,7 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 		event.ReturnValue = retVal.String
 		event.LineNumber = int(lineNum.Int64)
 		event.StatementType = stmtType.String
-		event.VariableName = varName.String
+		event.VariableAssignments = varName.String
 
 		// Show connection ID separator when it changes (only if showing multiple connections)
 		if connectionID == 0 && event.ConnectionID != currentConnectionID {
@@ -538,7 +538,7 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 
 				writer.WriteString(fmt.Sprintf("[%s] %s%s%-30s → %s=%s\n",
 					timestampDisplay, stmtIndent, lineDisplay, pendingStatement.ReturnValue,
-					event.VariableName, event.ReturnValue))
+					event.VariableAssignments, event.ReturnValue))
 				pendingStatement = nil
 			} else {
 				// Standalone set_variable event (shouldn't normally happen)
@@ -549,7 +549,7 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 				}
 				stmtIndent := indent + "    "
 				writer.WriteString(fmt.Sprintf("[%s] %s%sSET %s = %s\n",
-					timestampDisplay, stmtIndent, lineDisplay, event.VariableName, event.ReturnValue))
+					timestampDisplay, stmtIndent, lineDisplay, event.VariableAssignments, event.ReturnValue))
 			}
 		}
 	}
@@ -566,7 +566,7 @@ func generateJSONReport(db *sql.DB, output io.Writer, connectionID int) error {
 	if connectionID > 0 {
 		query = `
 			SELECT id, connection_id, filename, function_name, object_type, call_type, arguments, return_value, call_depth,
-			       line_number, statement_type, variable_name, CAST(timestamp AS DATETIME(6))
+			       line_number, statement_type, variable_assignments, CAST(timestamp AS DATETIME(6))
 			FROM __FtraceEvent
 			WHERE connection_id = ?
 			ORDER BY timestamp, id
@@ -575,7 +575,7 @@ func generateJSONReport(db *sql.DB, output io.Writer, connectionID int) error {
 	} else {
 		query = `
 			SELECT id, connection_id, filename, function_name, object_type, call_type, arguments, return_value, call_depth,
-			       line_number, statement_type, variable_name, CAST(timestamp AS DATETIME(6))
+			       line_number, statement_type, variable_assignments, CAST(timestamp AS DATETIME(6))
 			FROM __FtraceEvent
 			ORDER BY connection_id, timestamp, id
 		`
@@ -608,7 +608,7 @@ func generateJSONReport(db *sql.DB, output io.Writer, connectionID int) error {
 		event.ReturnValue = retVal.String
 		event.LineNumber = int(lineNum.Int64)
 		event.StatementType = stmtType.String
-		event.VariableName = varName.String
+		event.VariableAssignments = varName.String
 
 		if !first {
 			writer.WriteString(",\n")
@@ -627,12 +627,12 @@ func generateJSONReport(db *sql.DB, output io.Writer, connectionID int) error {
     "call_depth": %d,
     "line_number": %d,
     "statement_type": "%s",
-    "variable_name": "%s",
+    "variable_assignments": "%s",
     "timestamp": "%s"
   }`, event.ID, event.ConnectionID, event.Filename, event.FunctionName, event.ObjectType, event.CallType,
 			strings.ReplaceAll(event.Arguments, `"`, `\"`),
 			strings.ReplaceAll(event.ReturnValue, `"`, `\"`),
-			event.CallDepth, event.LineNumber, event.StatementType, event.VariableName, event.Timestamp))
+			event.CallDepth, event.LineNumber, event.StatementType, event.VariableAssignments, event.Timestamp))
 	}
 
 	writer.WriteString("\n]\n")
