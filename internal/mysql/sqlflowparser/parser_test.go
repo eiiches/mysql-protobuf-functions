@@ -42,7 +42,7 @@ END`
 	g.Expect(declareStmt.Text).To(Equal("DECLARE temp VARCHAR(100)"))
 
 	// Check second statement: SET temp = 'Hello';
-	setStmt, ok := beginStmt.Body[1].(*GenericStmt)
+	setStmt, ok := beginStmt.Body[1].(*SetVariableStmt)
 	g.Expect(ok).To(BeTrue())
 	g.Expect(setStmt.Text).To(Equal("SET temp = 'Hello'"))
 
@@ -109,7 +109,7 @@ END IF`
 
 	// Check THEN clause has 1 statement
 	g.Expect(stmt.Then).To(HaveLen(1))
-	thenStmt, ok := stmt.Then[0].(*GenericStmt)
+	thenStmt, ok := stmt.Then[0].(*SetVariableStmt)
 	g.Expect(ok).To(BeTrue())
 	g.Expect(thenStmt.Text).To(Equal("SET result = 'positive'"))
 
@@ -117,13 +117,13 @@ END IF`
 	g.Expect(stmt.ElseIfs).To(HaveLen(1))
 	g.Expect(stmt.ElseIfs[0].Condition).To(Equal("x < 0"))
 	g.Expect(stmt.ElseIfs[0].Then).To(HaveLen(1))
-	elseifStmt, ok := stmt.ElseIfs[0].Then[0].(*GenericStmt)
+	elseifStmt, ok := stmt.ElseIfs[0].Then[0].(*SetVariableStmt)
 	g.Expect(ok).To(BeTrue())
 	g.Expect(elseifStmt.Text).To(Equal("SET result = 'negative'"))
 
 	// Check ELSE clause has 1 statement
 	g.Expect(stmt.Else).To(HaveLen(1))
-	elseStmt, ok := stmt.Else[0].(*GenericStmt)
+	elseStmt, ok := stmt.Else[0].(*SetVariableStmt)
 	g.Expect(ok).To(BeTrue())
 	g.Expect(elseStmt.Text).To(Equal("SET result = 'zero'"))
 }
@@ -145,7 +145,7 @@ END WHILE`
 	g.Expect(stmt.Body).To(HaveLen(2))
 
 	// Check first statement in WHILE body
-	setStmt, ok := stmt.Body[0].(*GenericStmt)
+	setStmt, ok := stmt.Body[0].(*SetVariableStmt)
 	g.Expect(ok).To(BeTrue())
 	g.Expect(setStmt.Text).To(Equal("SET counter = counter + 1"))
 
@@ -175,7 +175,7 @@ END LOOP`
 		g.Expect(stmt.Label).To(Equal("my_loop"))
 
 		// Check first statement in LOOP body
-		setStmt, ok := stmt.Body[0].(*GenericStmt)
+		setStmt, ok := stmt.Body[0].(*SetVariableStmt)
 		g.Expect(ok).To(BeTrue())
 		g.Expect(setStmt.Text).To(Equal("SET x = x + 1"))
 
@@ -208,7 +208,7 @@ END REPEAT`
 	g.Expect(stmt.Body).To(HaveLen(2))
 
 	// Check first statement in REPEAT body
-	setStmt, ok := stmt.Body[0].(*GenericStmt)
+	setStmt, ok := stmt.Body[0].(*SetVariableStmt)
 	g.Expect(ok).To(BeTrue())
 	g.Expect(setStmt.Text).To(Equal("SET x = x + 1"))
 
@@ -238,20 +238,20 @@ END CASE`
 	// Check first WHEN clause
 	g.Expect(stmt.WhenClauses[0].Condition).To(Equal("'A'"))
 	g.Expect(stmt.WhenClauses[0].Then).To(HaveLen(1))
-	firstWhenStmt, ok := stmt.WhenClauses[0].Then[0].(*GenericStmt)
+	firstWhenStmt, ok := stmt.WhenClauses[0].Then[0].(*SetVariableStmt)
 	g.Expect(ok).To(BeTrue())
 	g.Expect(firstWhenStmt.Text).To(Equal("SET result = 'Excellent'"))
 
 	// Check second WHEN clause
 	g.Expect(stmt.WhenClauses[1].Condition).To(Equal("'B'"))
 	g.Expect(stmt.WhenClauses[1].Then).To(HaveLen(1))
-	secondWhenStmt, ok := stmt.WhenClauses[1].Then[0].(*GenericStmt)
+	secondWhenStmt, ok := stmt.WhenClauses[1].Then[0].(*SetVariableStmt)
 	g.Expect(ok).To(BeTrue())
 	g.Expect(secondWhenStmt.Text).To(Equal("SET result = 'Good'"))
 
 	// Check ELSE clause
 	g.Expect(stmt.Else).To(HaveLen(1))
-	elseStmt, ok := stmt.Else[0].(*GenericStmt)
+	elseStmt, ok := stmt.Else[0].(*SetVariableStmt)
 	g.Expect(ok).To(BeTrue())
 	g.Expect(elseStmt.Text).To(Equal("SET result = 'Other'"))
 }

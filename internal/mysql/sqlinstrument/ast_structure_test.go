@@ -39,7 +39,7 @@ END`
 	firstStmt, ok := beginStmt.Body[0].(*sqlflowparser.DeclareStmt)
 	g.Expect(ok).To(BeTrue())
 
-	secondStmt, ok := beginStmt.Body[1].(*sqlflowparser.GenericStmt)
+	secondStmt, ok := beginStmt.Body[1].(*sqlflowparser.SetVariableStmt)
 	g.Expect(ok).To(BeTrue())
 
 	// First statement should contain the entire DECLARE CURSOR including SELECT

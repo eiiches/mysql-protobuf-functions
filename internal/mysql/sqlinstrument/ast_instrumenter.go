@@ -230,6 +230,8 @@ func (i *ASTInstrumenter) shouldInstrumentStatement(stmt sqlflowparser.Statement
 		return false
 	case *sqlflowparser.GenericStmt:
 		return true
+	case *sqlflowparser.SetVariableStmt:
+		return true
 	case *sqlflowparser.IfStmt, *sqlflowparser.WhileStmt, *sqlflowparser.LoopStmt,
 		*sqlflowparser.RepeatStmt, *sqlflowparser.CaseStmt, *sqlflowparser.ReturnStmt,
 		*sqlflowparser.LeaveStmt, *sqlflowparser.IterateStmt:
