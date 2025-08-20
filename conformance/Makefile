@@ -66,15 +66,20 @@ $(CONFORMANCE_DESCRIPTOR_SET):
 	protoc --descriptor_set_out=$(CONFORMANCE_DESCRIPTOR_SET) \
 		--include_imports \
 		--proto_path=$(PROTOBUF_DIR)/src \
+		--proto_path=$(PROTOBUF_DIR)/conformance/test_protos \
+		--proto_path=$(PROTOBUF_DIR)/editions/golden \
 		$(PROTOBUF_DIR)/src/google/protobuf/test_messages_proto2.proto \
-		$(PROTOBUF_DIR)/src/google/protobuf/test_messages_proto3.proto
+		$(PROTOBUF_DIR)/src/google/protobuf/test_messages_proto3.proto \
+		$(PROTOBUF_DIR)/conformance/test_protos/test_messages_edition2023.proto \
+		$(PROTOBUF_DIR)/editions/golden/test_messages_proto3_editions.proto
 
 # Generate schema SQL function from descriptor set
 $(CONFORMANCE_SCHEMA_SQL): $(CONFORMANCE_DESCRIPTOR_SET)
 	@echo "Generating conformance test message schema SQL..."
-	go run github.com/eiiches/mysql-protobuf-functions/cmd/protoc-gen-mysql@latest \
+	go run ../cmd/protoc-gen-mysql \
 		--descriptor_set_in=$(CONFORMANCE_DESCRIPTOR_SET) \
 		--name=conformance_test_messages_schema \
+		--generate_methods=false \
 		--mysql_out=.
 
 # Run conformance tests
