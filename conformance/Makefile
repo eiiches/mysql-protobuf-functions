@@ -56,7 +56,7 @@ build-mysql-conformance: $(MYSQL_CONFORMANCE_BINARY)
 build-schema: $(CONFORMANCE_SCHEMA_SQL)
 
 .PHONY: $(MYSQL_CONFORMANCE_BINARY)
-$(MYSQL_CONFORMANCE_BINARY): $(CONFORMANCE_PB_GO) $(JSON_OPTIONS_PB_GO)
+$(MYSQL_CONFORMANCE_BINARY): $(CONFORMANCE_PB_GO)
 	@echo "Building MySQL conformance test program..."
 	cd $(MYSQL_CONFORMANCE_DIR) && go build -o mysql-conformance .
 
@@ -112,7 +112,6 @@ load-schema: $(CONFORMANCE_SCHEMA_SQL)
 clean:
 	@echo "Cleaning conformance test files..."
 	$(RM) $(CONFORMANCE_PB_GO)
-	$(RM) $(JSON_OPTIONS_PB_GO)
 	$(RM) $(MYSQL_CONFORMANCE_BINARY)
 	$(RM) $(CONFORMANCE_DESCRIPTOR_SET)
 	$(RM) $(CONFORMANCE_SCHEMA_SQL)
@@ -136,7 +135,6 @@ validate: $(CONFORMANCE_RUNNER) $(MYSQL_CONFORMANCE_BINARY)
 	@echo "✓ Conformance test runner built: $(CONFORMANCE_RUNNER)"
 	@echo "✓ MySQL conformance program built: $(MYSQL_CONFORMANCE_BINARY)"
 	@echo "✓ Protobuf Go code generated: $(CONFORMANCE_PB_GO)"
-	@echo "✓ JSON options Go code generated: $(JSON_OPTIONS_PB_GO)"
 	@echo "Setup validation complete!"
 
 .PHONY: help
