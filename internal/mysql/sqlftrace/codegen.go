@@ -296,27 +296,27 @@ func (cg *CodeGenerator) generateCase(stmt sqlflowparser.CaseStmt, indentLevel i
 // generateSetVariable generates SET variable statement
 func (cg *CodeGenerator) generateSetVariable(stmt sqlflowparser.SetVariableStmt, indentLevel int) string {
 	indent := strings.Repeat(cg.indent, indentLevel)
-	
+
 	var assignments []string
 	for _, assignment := range stmt.Assignments {
 		// Reconstruct the assignment exactly as written
 		var assignmentStr string
 		if assignment.ScopeKeyword != "" {
 			// Explicit scope keyword: SET GLOBAL var = value
-			assignmentStr = fmt.Sprintf("%s %s %s %s", 
+			assignmentStr = fmt.Sprintf("%s %s %s %s",
 				assignment.ScopeKeyword, assignment.VariableRef, assignment.Operator, assignment.Value)
 		} else {
-			// Direct variable reference: SET @var = value, SET @@GLOBAL.var = value  
-			assignmentStr = fmt.Sprintf("%s %s %s", 
+			// Direct variable reference: SET @var = value, SET @@GLOBAL.var = value
+			assignmentStr = fmt.Sprintf("%s %s %s",
 				assignment.VariableRef, assignment.Operator, assignment.Value)
 		}
 		assignments = append(assignments, assignmentStr)
 	}
-	
+
 	result := fmt.Sprintf("SET %s", strings.Join(assignments, ", "))
 	if stmt.GetLabel() != "" {
 		result = stmt.GetLabel() + ": " + result
 	}
-	
+
 	return indent + result + ";"
 }

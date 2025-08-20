@@ -157,13 +157,13 @@ type (
 	VariableAssignment struct {
 		// Explicit scope keyword (GLOBAL, SESSION, PERSIST, PERSIST_ONLY) or empty string
 		ScopeKeyword string
-		
+
 		// Variable reference as written (e.g., "var", "@var", "@@var", "@@GLOBAL.var")
 		VariableRef string
-		
+
 		// Assignment operator (usually "=", but could be ":=" for user variables)
 		Operator string
-		
+
 		// Right-hand side expression
 		Value string
 	}

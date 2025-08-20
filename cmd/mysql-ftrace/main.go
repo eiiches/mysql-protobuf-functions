@@ -390,7 +390,7 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 
 	var currentConnectionID int = -1
 	var pendingStatement *FtraceEvent
-	
+
 	// Helper function to format arguments as key=[JSON value] pairs
 	formatArgs := func(jsonArgs string) string {
 		if jsonArgs == "" {
@@ -433,15 +433,15 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 			if t, err := time.Parse("2006-01-02 15:04:05.000000", pendingStatement.Timestamp); err == nil {
 				timestampDisplay = t.Format("15:04:05.000")
 			}
-			
+
 			lineDisplay := ""
 			if pendingStatement.LineNumber > 0 {
 				lineDisplay = fmt.Sprintf("L%d: ", pendingStatement.LineNumber)
 			}
-			
+
 			// Statements are indented more than ENTER/EXIT
 			stmtIndent := indent + "    "
-			
+
 			writer.WriteString(fmt.Sprintf("[%s] %s%s%s\n",
 				timestampDisplay, stmtIndent, lineDisplay, pendingStatement.ReturnValue))
 			pendingStatement = nil
@@ -454,7 +454,7 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 		var lineNum sql.NullInt64
 
 		if err := rows.Scan(&event.ID, &event.ConnectionID, &event.Filename, &event.FunctionName,
-			&event.ObjectType, &event.CallType, &args, &retVal, &event.CallDepth, 
+			&event.ObjectType, &event.CallType, &args, &retVal, &event.CallDepth,
 			&lineNum, &stmtType, &varName, &event.Timestamp); err != nil {
 			return err
 		}
@@ -493,28 +493,28 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 			flushPendingStatement() // Flush any pending statement before function entry
 			writer.WriteString(fmt.Sprintf("[%s] %sENTER %s(%s)\n",
 				timestampDisplay, indent, event.FunctionName, formatArgs(event.Arguments)))
-				
+
 		case "exit":
 			flushPendingStatement() // Flush any pending statement before function exit
 			writer.WriteString(fmt.Sprintf("[%s] %sRETURN %s\n",
 				timestampDisplay, indent, event.ReturnValue))
-				
+
 		case "statement":
 			// Check if this is a SET statement that will have a corresponding set_variable event
 			if event.StatementType == "SET" {
-				flushPendingStatement() // Flush any previous pending statement
+				flushPendingStatement()   // Flush any previous pending statement
 				pendingStatement = &event // Store this statement to be combined with variable assignment
 			} else {
 				flushPendingStatement() // Flush any previous pending statement
-				
+
 				lineDisplay := ""
 				if event.LineNumber > 0 {
 					lineDisplay = fmt.Sprintf("L%d: ", event.LineNumber)
 				}
-				
+
 				// Statements are indented more than ENTER/EXIT
 				stmtIndent := indent + "    "
-				
+
 				// For control flow statements, show the condition result
 				if event.StatementType == "IF" || event.StatementType == "WHILE" || event.StatementType == "CASE" {
 					writer.WriteString(fmt.Sprintf("[%s] %s%s%s\n",
@@ -524,7 +524,7 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 						timestampDisplay, stmtIndent, lineDisplay, event.ReturnValue))
 				}
 			}
-			
+
 		case "set_variable":
 			// Combine with pending SET statement
 			if pendingStatement != nil && pendingStatement.LineNumber == event.LineNumber {
@@ -532,12 +532,12 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 				if event.LineNumber > 0 {
 					lineDisplay = fmt.Sprintf("L%d: ", event.LineNumber)
 				}
-				
+
 				// Statements are indented more than ENTER/EXIT
 				stmtIndent := indent + "    "
-				
+
 				writer.WriteString(fmt.Sprintf("[%s] %s%s%-30s → %s=%s\n",
-					timestampDisplay, stmtIndent, lineDisplay, pendingStatement.ReturnValue, 
+					timestampDisplay, stmtIndent, lineDisplay, pendingStatement.ReturnValue,
 					event.VariableName, event.ReturnValue))
 				pendingStatement = nil
 			} else {
@@ -553,7 +553,7 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 			}
 		}
 	}
-	
+
 	flushPendingStatement() // Flush any final pending statement
 
 	return rows.Err()
@@ -599,7 +599,7 @@ func generateJSONReport(db *sql.DB, output io.Writer, connectionID int) error {
 		var lineNum sql.NullInt64
 
 		if err := rows.Scan(&event.ID, &event.ConnectionID, &event.Filename, &event.FunctionName,
-			&event.ObjectType, &event.CallType, &args, &retVal, &event.CallDepth, 
+			&event.ObjectType, &event.CallType, &args, &retVal, &event.CallDepth,
 			&lineNum, &stmtType, &varName, &event.Timestamp); err != nil {
 			return err
 		}

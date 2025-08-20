@@ -25,7 +25,7 @@ func isBinaryType(dataType string) bool {
 
 // ASTInstrumenter adds function tracing instrumentation using AST reconstruction
 type ASTInstrumenter struct {
-	filename          string
+	filename         string
 	codegen          *CodeGenerator
 	statementTracing bool // Enable statement-level tracing
 }
@@ -252,7 +252,7 @@ func (i *ASTInstrumenter) instrumentSingleStatement(stmt sqlsplitter.Statement, 
 	if i.statementTracing {
 		return i.instrumentSingleStatementWithTracing(stmt, functionName, astStmt, isFunction, returnType)
 	}
-	
+
 	// Original logic for function-only tracing
 	switch s := astStmt.(type) {
 	case *sqlflowparser.BeginStmt:
@@ -438,7 +438,7 @@ func (i *ASTInstrumenter) instrumentStatementList(stmt sqlsplitter.Statement, fu
 					stmtCall := i.createStatementTracingCall(functionName, lineNum, "SET", s.Text)
 					result = append(result, stmtCall)
 					result = append(result, s)
-					
+
 					// Add variable tracing for each assignment
 					for _, assignment := range s.Assignments {
 						varName := i.extractVariableName(assignment.VariableRef)
@@ -456,12 +456,12 @@ func (i *ASTInstrumenter) instrumentStatementList(stmt sqlsplitter.Statement, fu
 					lineNum := astStmt.GetPosition().Line
 					stmtType := i.getStatementType(astStmt)
 					stmtText := i.getStatementText(astStmt)
-					
+
 					stmtCall := i.createStatementTracingCall(functionName, lineNum, stmtType, stmtText)
 					result = append(result, stmtCall)
 				}
 			}
-			
+
 			// Add the instrumented statement
 			instrumentedStmt := i.instrumentSingleStatement(stmt, functionName, astStmt, isFunction, returnType)
 			result = append(result, instrumentedStmt)
@@ -693,7 +693,7 @@ func (i *ASTInstrumenter) getStatementText(astStmt sqlflowparser.StatementAST) s
 func (i *ASTInstrumenter) createStatementTracingCall(functionName string, lineNumber int, stmtType string, stmtText string) sqlflowparser.StatementAST {
 	callText := fmt.Sprintf("CALL __record_ftrace_statement('%s', '%s', %d, '%s', %s)",
 		i.filename, functionName, lineNumber, stmtType, i.escapeSQL(stmtText))
-	
+
 	return &sqlflowparser.GenericStmt{
 		BaseStatement: sqlflowparser.BaseStatement{
 			Pos:  sqlflowparser.Position{Line: lineNumber, Column: 1},
@@ -705,7 +705,7 @@ func (i *ASTInstrumenter) createStatementTracingCall(functionName string, lineNu
 func (i *ASTInstrumenter) createSetTracingCall(functionName string, lineNumber int, variableName string, variableRef string) sqlflowparser.StatementAST {
 	callText := fmt.Sprintf("CALL __record_ftrace_set('%s', '%s', %d, '%s', %s)",
 		i.filename, functionName, lineNumber, variableName, variableRef)
-	
+
 	return &sqlflowparser.GenericStmt{
 		BaseStatement: sqlflowparser.BaseStatement{
 			Pos:  sqlflowparser.Position{Line: lineNumber, Column: 1},
