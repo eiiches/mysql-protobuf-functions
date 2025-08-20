@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/eiiches/mysql-protobuf-functions/internal/protonumberjson"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -441,9 +442,29 @@ func (h *ConformanceHandler) HandleJsonInputWithProtoNumberJSON(request *Conform
 	}
 
 	// Convert JSON to ProtoNumberJSON using MySQL function
+	// Check if this is an "ignore unknown" test based on test category
+	ignoreUnknownFields := request.TestCategory == TestCategory_JSON_IGNORE_UNKNOWN_PARSING_TEST
+	ignoreUnknownEnums := request.TestCategory == TestCategory_JSON_IGNORE_UNKNOWN_PARSING_TEST
+
+	// Create JsonUnmarshalOptions using generated Go struct
+	options := &JsonUnmarshalOptions{
+		IgnoreUnknownFields: ignoreUnknownFields,
+		IgnoreUnknownEnums:  ignoreUnknownEnums,
+	}
+
+	// Convert to ProtoNumberJSON format
+	optionsJSON, err := protonumberjson.Marshal(options)
+	if err != nil {
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_RuntimeError{
+				RuntimeError: fmt.Sprintf("Failed to marshal JsonUnmarshalOptions: %v", err),
+			},
+		}
+	}
+
 	var protoNumberJSON string
-	query := "SELECT _pb_json_to_number_json(conformance_test_messages_schema(), ?, ?)"
-	err := h.db.QueryRow(query, messageType, jsonInput).Scan(&protoNumberJSON)
+	query := "SELECT _pb_json_to_number_json(conformance_test_messages_schema(), ?, ?, ?)"
+	err = h.db.QueryRow(query, messageType, jsonInput, string(optionsJSON)).Scan(&protoNumberJSON)
 	if err != nil {
 		// Check if this is a GROUP field error (unsupported feature)
 		if isGroupFieldError(err) {

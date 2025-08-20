@@ -10,6 +10,7 @@ CONFORMANCE_PROTO = $(PROTOBUF_DIR)/conformance/conformance.proto
 MYSQL_CONFORMANCE_DIR = .
 MYSQL_CONFORMANCE_BINARY = ./mysql-conformance
 CONFORMANCE_PB_GO = ./conformance.pb.go
+JSON_OPTIONS_PB_GO = ./json_options.pb.go
 
 # Conformance test message descriptor set
 CONFORMANCE_DESCRIPTOR_SET = ./conformance_test_messages.binpb
@@ -34,9 +35,17 @@ $(CONFORMANCE_PB_GO): $(CONFORMANCE_PROTO)
 	protoc --proto_path=$(PROTOBUF_DIR)/conformance \
 		--go_out=$(MYSQL_CONFORMANCE_DIR) \
 		--go_opt=paths=source_relative \
-		--go_opt=Mconformance.proto=github.com/eiiches/mysql-protobuf-functions/conformance \
+		--go_opt=Mconformance.proto='github.com/eiiches/mysql-protobuf-functions/conformance;main' \
 		$(CONFORMANCE_PROTO)
-	sed -i 's/package conformance/package main/' $(CONFORMANCE_PB_GO)
+
+# Generate Go protobuf code from json_options.proto
+$(JSON_OPTIONS_PB_GO): ../src/json_options.proto
+	@echo "Generating Go protobuf code for json_options.proto..."
+	protoc --proto_path=../src \
+		--go_out=$(MYSQL_CONFORMANCE_DIR) \
+		--go_opt=paths=source_relative \
+		--go_opt=Mjson_options.proto='github.com/eiiches/mysql-protobuf-functions/conformance;main' \
+		../src/json_options.proto
 
 # Build the MySQL conformance test program
 .PHONY: build-mysql-conformance
@@ -47,7 +56,7 @@ build-mysql-conformance: $(MYSQL_CONFORMANCE_BINARY)
 build-schema: $(CONFORMANCE_SCHEMA_SQL)
 
 .PHONY: $(MYSQL_CONFORMANCE_BINARY)
-$(MYSQL_CONFORMANCE_BINARY): $(CONFORMANCE_PB_GO)
+$(MYSQL_CONFORMANCE_BINARY): $(CONFORMANCE_PB_GO) $(JSON_OPTIONS_PB_GO)
 	@echo "Building MySQL conformance test program..."
 	cd $(MYSQL_CONFORMANCE_DIR) && go build -o mysql-conformance .
 
@@ -103,6 +112,7 @@ load-schema: $(CONFORMANCE_SCHEMA_SQL)
 clean:
 	@echo "Cleaning conformance test files..."
 	$(RM) $(CONFORMANCE_PB_GO)
+	$(RM) $(JSON_OPTIONS_PB_GO)
 	$(RM) $(MYSQL_CONFORMANCE_BINARY)
 	$(RM) $(CONFORMANCE_DESCRIPTOR_SET)
 	$(RM) $(CONFORMANCE_SCHEMA_SQL)
@@ -126,6 +136,7 @@ validate: $(CONFORMANCE_RUNNER) $(MYSQL_CONFORMANCE_BINARY)
 	@echo "✓ Conformance test runner built: $(CONFORMANCE_RUNNER)"
 	@echo "✓ MySQL conformance program built: $(MYSQL_CONFORMANCE_BINARY)"
 	@echo "✓ Protobuf Go code generated: $(CONFORMANCE_PB_GO)"
+	@echo "✓ JSON options Go code generated: $(JSON_OPTIONS_PB_GO)"
 	@echo "Setup validation complete!"
 
 .PHONY: help
