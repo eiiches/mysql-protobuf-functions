@@ -311,9 +311,12 @@ BEGIN
 		SET value_index = value_index + 1;
 	END WHILE search_loop;
 
-	-- If not found, handle based on ignore_unknown_enums flag
+	-- If not found, handle based on ignore_unknown_enums flag and numeric input
 	IF value_index >= value_count THEN
-		IF ignore_unknown_enums THEN
+		IF is_numeric THEN
+			-- For Proto3, unknown numeric enum values should be accepted as-is
+			SET enum_numeric_value = input_as_number;
+		ELSEIF ignore_unknown_enums THEN
 			SET enum_numeric_value = NULL;  -- Return NULL to indicate unknown value should be ignored
 		ELSE
 			SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum value not found: ', enum_string_value, ' in enum ', full_enum_type_name);

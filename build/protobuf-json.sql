@@ -1699,9 +1699,12 @@ BEGIN
 		SET value_index = value_index + 1;
 	END WHILE search_loop;
 
-	-- If not found, handle based on ignore_unknown_enums flag
+	-- If not found, handle based on ignore_unknown_enums flag and numeric input
 	IF value_index >= value_count THEN
-		IF ignore_unknown_enums THEN
+		IF is_numeric THEN
+			-- For Proto3, unknown numeric enum values should be accepted as-is
+			SET enum_numeric_value = input_as_number;
+		ELSEIF ignore_unknown_enums THEN
 			SET enum_numeric_value = NULL;  -- Return NULL to indicate unknown value should be ignored
 		ELSE
 			SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum value not found: ', enum_string_value, ' in enum ', full_enum_type_name);
@@ -2115,16 +2118,14 @@ END $$
 
 DELIMITER $$
 
--- Helper procedure to convert enum numeric value to string name
-DROP PROCEDURE IF EXISTS _pb_convert_number_enum_to_json $$
-CREATE PROCEDURE _pb_convert_number_enum_to_json(
-	IN descriptor_set_json JSON,
-	IN full_enum_type_name TEXT,
-	IN enum_numeric_value INT,
-	OUT enum_string_value TEXT
-)
+-- Helper function to convert enum numeric value to JSON (string name for known values, number for unknown values)
+DROP FUNCTION IF EXISTS _pb_convert_number_enum_to_json $$
+CREATE FUNCTION _pb_convert_number_enum_to_json(
+	descriptor_set_json JSON,
+	full_enum_type_name TEXT,
+	enum_numeric_value INT
+) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 	DECLARE message_text TEXT;
 	DECLARE enum_descriptor JSON;
 	DECLARE values_array JSON;
@@ -2154,18 +2155,15 @@ BEGIN
 
 		IF value_number = enum_numeric_value THEN
 			SET value_name = JSON_UNQUOTE(JSON_EXTRACT(value_descriptor, '$."1"')); -- name field
-			SET enum_string_value = value_name;
-			LEAVE search_loop;
+			RETURN JSON_QUOTE(value_name);
 		END IF;
 
 		SET value_index = value_index + 1;
 	END WHILE search_loop;
 
-	-- If not found, signal error
-	IF value_index >= value_count THEN
-		SET message_text = CONCAT('_pb_convert_number_enum_to_json: enum value not found: ', enum_numeric_value, ' in enum ', full_enum_type_name);
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-	END IF;
+	-- If not found, return the numeric value as JSON number for Proto3 unknown enum values
+	-- For Proto3, unknown enum values should be serialized as their numeric values
+	RETURN CAST(enum_numeric_value AS JSON);
 END $$
 
 -- Helper procedure to convert well-known type from ProtoNumberJSON to ProtoJSON
@@ -2403,7 +2401,7 @@ BEGIN
 	DECLARE current_key TEXT;
 	DECLARE current_value JSON;
 	DECLARE converted_value JSON;
-	DECLARE enum_string_value TEXT;
+	DECLARE enum_json_value JSON;
 	DECLARE result JSON;
 
 	-- Get the map entry descriptor
@@ -2478,9 +2476,8 @@ BEGIN
 			-- Value is not null, convert normally
 			CASE value_field_type
 			WHEN 14 THEN -- enum
-				-- Convert enum number to string
-				CALL _pb_convert_number_enum_to_json(descriptor_set_json, value_field_type_name, current_value, enum_string_value);
-				SET converted_value = JSON_QUOTE(enum_string_value);
+				-- Convert enum number to JSON (string for known, number for unknown)
+				SET converted_value = _pb_convert_number_enum_to_json(descriptor_set_json, value_field_type_name, current_value);
 			WHEN 11 THEN -- message
 				-- Recursively convert nested message
 				CALL _pb_number_json_to_json_proc(descriptor_set_json, value_field_type_name, current_value, emit_default_values, converted_value);
@@ -2542,7 +2539,7 @@ BEGIN
 	DECLARE target_field_name TEXT;
 	DECLARE converted_value JSON;
 	DECLARE enum_numeric_value INT;
-	DECLARE enum_string_value TEXT;
+	DECLARE enum_json_value JSON;
 	-- Array processing
 	DECLARE array_value JSON;
 	DECLARE array_length INT;
@@ -2624,8 +2621,8 @@ BEGIN
 					CASE field_type
 					WHEN 14 THEN -- enum
 						SET enum_numeric_value = JSON_EXTRACT(array_element, '$');
-						CALL _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value, enum_string_value);
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', enum_string_value);
+						SET enum_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value);
+						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', enum_json_value);
 					WHEN 11 THEN -- message
 						-- Check if it's a well-known type
 						CALL _pb_is_well_known_type(field_type_name, @is_wkt);
@@ -2661,8 +2658,8 @@ BEGIN
 				CASE field_type
 				WHEN 14 THEN -- enum
 					SET enum_numeric_value = JSON_EXTRACT(field_json_value, '$');
-					CALL _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value, enum_string_value);
-					SET result = JSON_SET(result, CONCAT('$.', target_field_name), enum_string_value);
+					SET enum_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value);
+					SET result = JSON_SET(result, CONCAT('$.', target_field_name), enum_json_value);
 				WHEN 11 THEN -- message
 					-- Check if it's a well-known type
 					CALL _pb_is_well_known_type(field_type_name, @is_wkt);
@@ -2715,8 +2712,8 @@ BEGIN
 						CASE field_type
 						WHEN 14 THEN -- enum
 							-- Get the first (zero) enum value
-							CALL _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, 0, enum_string_value);
-							SET result = JSON_SET(result, CONCAT('$.', target_field_name), enum_string_value);
+							SET enum_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, 0);
+							SET result = JSON_SET(result, CONCAT('$.', target_field_name), enum_json_value);
 						WHEN 11 THEN -- message
 							IF is_map THEN
 								-- For map fields, default is empty object
