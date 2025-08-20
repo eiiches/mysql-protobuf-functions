@@ -48,6 +48,56 @@ BEGIN
 	RETURN CAST(enum_numeric_value AS JSON);
 END $$
 
+-- Helper procedure to convert singular field value from ProtoNumberJSON to ProtoJSON
+DROP PROCEDURE IF EXISTS _pb_convert_singular_field_from_number_json $$
+CREATE PROCEDURE _pb_convert_singular_field_from_number_json(
+	IN descriptor_set_json JSON,
+	IN field_type INT,
+	IN field_type_name TEXT,
+	IN field_number_json_value JSON,
+	IN emit_default_values BOOLEAN,
+	OUT converted_value JSON
+)
+BEGIN
+	DECLARE enum_numeric_value INT;
+	DECLARE nested_json JSON;
+
+	CASE field_type
+	WHEN 14 THEN -- enum
+		-- Check if it's a well-known type
+		CALL _pb_is_well_known_type(field_type_name, @is_wkt);
+		IF @is_wkt THEN
+			SET converted_value = _pb_convert_number_json_to_wkt(field_type, field_type_name, field_number_json_value);
+		ELSE
+			SET enum_numeric_value = JSON_EXTRACT(field_number_json_value, '$');
+			SET converted_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value);
+		END IF;
+	WHEN 11 THEN -- message
+		-- Check if it's a well-known type
+		CALL _pb_is_well_known_type(field_type_name, @is_wkt);
+		IF @is_wkt THEN
+			SET converted_value = _pb_convert_number_json_to_wkt(field_type, field_type_name, field_number_json_value);
+		ELSE
+			-- Recursively convert nested message
+			CALL _pb_number_json_to_json_proc(descriptor_set_json, field_type_name, field_number_json_value, emit_default_values, nested_json);
+			SET converted_value = nested_json;
+		END IF;
+	WHEN 3 THEN -- int64 (convert number to string)
+		SET converted_value = JSON_QUOTE(CAST(field_number_json_value AS CHAR));
+	WHEN 4 THEN -- uint64 (convert number to string)
+		SET converted_value = JSON_QUOTE(CAST(field_number_json_value AS CHAR));
+	WHEN 6 THEN -- fixed64 (convert number to string)
+		SET converted_value = JSON_QUOTE(CAST(field_number_json_value AS CHAR));
+	WHEN 16 THEN -- sfixed64 (convert number to string)
+		SET converted_value = JSON_QUOTE(CAST(field_number_json_value AS CHAR));
+	WHEN 18 THEN -- sint64 (convert number to string)
+		SET converted_value = JSON_QUOTE(CAST(field_number_json_value AS CHAR));
+	ELSE
+		-- Other primitive types stay the same
+		SET converted_value = field_number_json_value;
+	END CASE;
+END $$
+
 -- Helper procedure to convert map fields from ProtoNumberJSON to ProtoJSON
 DROP PROCEDURE IF EXISTS _pb_convert_map_number_json_to_proto_json $$
 CREATE PROCEDURE _pb_convert_map_number_json_to_proto_json(
@@ -69,7 +119,6 @@ BEGIN
 	DECLARE current_key TEXT;
 	DECLARE current_value JSON;
 	DECLARE converted_value JSON;
-	DECLARE enum_json_value JSON;
 	DECLARE result JSON;
 
 	-- Get the map entry descriptor
@@ -141,28 +190,8 @@ BEGIN
 				SET converted_value = JSON_QUOTE('');
 			END CASE;
 		ELSE
-			-- Value is not null, convert normally
-			CASE value_field_type
-			WHEN 14 THEN -- enum
-				-- Convert enum number to JSON (string for known, number for unknown)
-				SET converted_value = _pb_convert_number_enum_to_json(descriptor_set_json, value_field_type_name, current_value);
-			WHEN 11 THEN -- message
-				-- Recursively convert nested message
-				CALL _pb_number_json_to_json_proc(descriptor_set_json, value_field_type_name, current_value, emit_default_values, converted_value);
-			WHEN 3 THEN -- int64 (convert number to string)
-				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-			WHEN 4 THEN -- uint64 (convert number to string)
-				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-			WHEN 6 THEN -- fixed64 (convert number to string)
-				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-			WHEN 16 THEN -- sfixed64 (convert number to string)
-				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-			WHEN 18 THEN -- sint64 (convert number to string)
-				SET converted_value = JSON_QUOTE(CAST(current_value AS CHAR));
-			ELSE
-				-- Other types (primitives) stay the same
-				SET converted_value = current_value;
-			END CASE;
+			-- Value is not null, convert using unified singular field conversion
+			CALL _pb_convert_singular_field_from_number_json(descriptor_set_json, value_field_type, value_field_type_name, current_value, emit_default_values, converted_value);
 		END IF;
 
 		-- Add to result object
@@ -206,8 +235,6 @@ BEGIN
 	DECLARE field_json_value JSON;
 	DECLARE target_field_name TEXT;
 	DECLARE converted_value JSON;
-	DECLARE enum_numeric_value INT;
-	DECLARE enum_json_value JSON;
 	-- Array processing
 	DECLARE array_value JSON;
 	DECLARE array_length INT;
@@ -285,88 +312,18 @@ BEGIN
 				array_loop: WHILE array_index < array_length DO
 					SET array_element = JSON_EXTRACT(array_value, CONCAT('$[', array_index, ']'));
 
-					-- Convert element based on field type
-					CASE field_type
-					WHEN 14 THEN -- enum
-						-- Check if it's a well-known type
-						CALL _pb_is_well_known_type(field_type_name, @is_wkt);
-						IF @is_wkt THEN
-							SET converted_value = _pb_convert_number_json_to_wkt(field_type, field_type_name, array_element);
-							SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
-						ELSE
-							SET enum_numeric_value = JSON_EXTRACT(array_element, '$');
-							SET enum_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value);
-							SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', enum_json_value);
-						END IF;
-					WHEN 11 THEN -- message
-						-- Check if it's a well-known type
-						CALL _pb_is_well_known_type(field_type_name, @is_wkt);
-						IF @is_wkt THEN
-							SET converted_value = _pb_convert_number_json_to_wkt(field_type, field_type_name, array_element);
-							SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
-						ELSE
-							-- Recursively convert nested message
-							CALL _pb_number_json_to_json_proc(descriptor_set_json, field_type_name, array_element, emit_default_values, nested_json);
-							SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', nested_json);
-						END IF;
-					WHEN 3 THEN -- int64 (convert number to string)
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', CAST(array_element AS CHAR));
-					WHEN 4 THEN -- uint64 (convert number to string)
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', CAST(array_element AS CHAR));
-					WHEN 6 THEN -- fixed64 (convert number to string)
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', CAST(array_element AS CHAR));
-					WHEN 16 THEN -- sfixed64 (convert number to string)
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', CAST(array_element AS CHAR));
-					WHEN 18 THEN -- sint64 (convert number to string)
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', CAST(array_element AS CHAR));
-					ELSE
-						-- Other primitive types stay the same
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', array_element);
-					END CASE;
+					-- Convert element using unified singular field conversion
+					CALL _pb_convert_singular_field_from_number_json(descriptor_set_json, field_type, field_type_name, array_element, emit_default_values, converted_value);
+					SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
 
 					SET array_index = array_index + 1;
 				END WHILE array_loop;
 
 				SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_array);
 			ELSE
-				-- Handle singular fields
-				CASE field_type
-				WHEN 14 THEN -- enum
-					-- Check if it's a well-known type
-					CALL _pb_is_well_known_type(field_type_name, @is_wkt);
-					IF @is_wkt THEN
-						SET converted_value = _pb_convert_number_json_to_wkt(field_type, field_type_name, field_json_value);
-						SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_value);
-					ELSE
-						SET enum_numeric_value = JSON_EXTRACT(field_json_value, '$');
-						SET enum_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value);
-						SET result = JSON_SET(result, CONCAT('$.', target_field_name), enum_json_value);
-					END IF;
-				WHEN 11 THEN -- message
-					-- Check if it's a well-known type
-					CALL _pb_is_well_known_type(field_type_name, @is_wkt);
-					IF @is_wkt THEN
-						SET converted_value = _pb_convert_number_json_to_wkt(field_type, field_type_name, field_json_value);
-						SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_value);
-					ELSE
-						-- Recursively convert nested message
-						CALL _pb_number_json_to_json_proc(descriptor_set_json, field_type_name, field_json_value, emit_default_values, nested_json);
-						SET result = JSON_SET(result, CONCAT('$.', target_field_name), nested_json);
-					END IF;
-				WHEN 3 THEN -- int64 (convert number to string)
-					SET result = JSON_SET(result, CONCAT('$.', target_field_name), CAST(field_json_value AS CHAR));
-				WHEN 4 THEN -- uint64 (convert number to string)
-					SET result = JSON_SET(result, CONCAT('$.', target_field_name), CAST(field_json_value AS CHAR));
-				WHEN 6 THEN -- fixed64 (convert number to string)
-					SET result = JSON_SET(result, CONCAT('$.', target_field_name), CAST(field_json_value AS CHAR));
-				WHEN 16 THEN -- sfixed64 (convert number to string)
-					SET result = JSON_SET(result, CONCAT('$.', target_field_name), CAST(field_json_value AS CHAR));
-				WHEN 18 THEN -- sint64 (convert number to string)
-					SET result = JSON_SET(result, CONCAT('$.', target_field_name), CAST(field_json_value AS CHAR));
-				ELSE
-					-- Other primitive types stay the same
-					SET result = JSON_SET(result, CONCAT('$.', target_field_name), field_json_value);
-				END CASE;
+				-- Handle singular fields using unified conversion
+				CALL _pb_convert_singular_field_from_number_json(descriptor_set_json, field_type, field_type_name, field_json_value, emit_default_values, converted_value);
+				SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_value);
 			END IF;
 		ELSE
 			-- Field is missing from number JSON - emit default value if requested for non-optional fields
@@ -394,8 +351,8 @@ BEGIN
 						CASE field_type
 						WHEN 14 THEN -- enum
 							-- Get the first (zero) enum value
-							SET enum_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, 0);
-							SET result = JSON_SET(result, CONCAT('$.', target_field_name), enum_json_value);
+							SET converted_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, 0);
+							SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_value);
 						WHEN 11 THEN -- message
 							IF is_map THEN
 								-- For map fields, default is empty object
