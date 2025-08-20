@@ -114,7 +114,7 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_get_%s $$\n", funcPrefix, fieldName))
 		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_get_%s(proto_data JSON) RETURNS %s DETERMINISTIC\n", funcPrefix, fieldName, getterType))
 		content.WriteString("BEGIN\n")
-		if isRepeated || fieldType == protoreflect.MessageKind {
+		if isRepeated || fieldType == protoreflect.MessageKind || fieldType == protoreflect.BoolKind {
 			// For repeated fields and messages, return JSON directly
 			content.WriteString(fmt.Sprintf("    RETURN JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
 		} else {
