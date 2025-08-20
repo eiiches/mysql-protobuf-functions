@@ -12,6 +12,7 @@ import (
 	"github.com/eiiches/mysql-protobuf-functions/internal/protocgenmysql"
 	"github.com/urfave/cli/v3"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/pluginpb"
@@ -68,6 +69,11 @@ func runStandalone() {
 				Usage: "Generate type method functions (constructors, getters, setters)",
 				Value: true,
 			},
+			&cli.BoolFlag{
+				Name:  "validate",
+				Usage: "Validate the file descriptor set",
+				Value: true,
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			descriptorSetIn := cmd.String("descriptor_set_in")
@@ -77,6 +83,7 @@ func runStandalone() {
 			namingStrategy := cmd.String("file_naming_strategy")
 			packagePrefixMapStr := cmd.String("package_prefix_map")
 			generateMethods := cmd.Bool("generate_methods")
+			validate := cmd.Bool("validate")
 
 			// Read binary FileDescriptorSet from file
 			data, err := os.ReadFile(descriptorSetIn)
@@ -96,6 +103,13 @@ func runStandalone() {
 				GenerateMethods:   generateMethods,
 				FileNameFunc:      getFileNameFunc(namingStrategy),
 				TypePrefixFunc:    createTypePrefixFunc(parsePackagePrefixMap(packagePrefixMapStr)),
+			}
+
+			if validate {
+				_, err := protodesc.NewFiles(&fileDescriptorSet)
+				if err != nil {
+					return fmt.Errorf("validation failed: %w", err)
+				}
 			}
 
 			// Process and generate files
