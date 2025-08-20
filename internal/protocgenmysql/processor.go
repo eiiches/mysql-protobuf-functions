@@ -35,11 +35,6 @@ func Generate(fileDescriptorSet *descriptorpb.FileDescriptorSet, config Generate
 		fileDescriptorSet.File = files
 	}
 
-	files, err := protodesc.NewFiles(fileDescriptorSet)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create protoregistry.Files from FileDescriptorSet: %w", err)
-	}
-
 	// Convert to JSON using descriptorsetjson
 	jsonStr, err := descriptorsetjson.ToJson(fileDescriptorSet)
 	if err != nil {
@@ -64,6 +59,11 @@ END $$
 
 	// Generate method fragments if requested
 	if config.GenerateMethods {
+		files, err := protodesc.NewFiles(fileDescriptorSet)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create protoregistry.Files from FileDescriptorSet: %w", err)
+		}
+
 		methodFragments := GenerateMethodFragments(files, config.FileNameFunc, config.TypePrefixFunc, config.FunctionName)
 		for filename, fragments := range methodFragments {
 			if filename == "" {

@@ -34,7 +34,7 @@ func getFileNameFunc(strategy string) protocgenmysql.FileNameFunc {
 	case "single":
 		return singleFileNameFunc
 	case "flatten":
-		fallthrough
+		return flattenFileNameFunc
 	default:
 		panic("unknown file naming strategy: " + strategy)
 	}

@@ -56,7 +56,7 @@ func runStandalone() {
 			&cli.StringFlag{
 				Name:  "file_naming_strategy",
 				Usage: "Naming strategy for generated method files: flatten, preserve, or single",
-				Value: "flatten",
+				Value: "single",
 			},
 			&cli.StringFlag{
 				Name:  "package_prefix_map",
