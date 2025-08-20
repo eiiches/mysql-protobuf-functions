@@ -4867,7 +4867,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_value_get_bool_value $$
 CREATE FUNCTION _pb_wkt_value_get_bool_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."4"')), 0);
+    RETURN JSON_EXTRACT(proto_data, '$."4"');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_value_set_struct_value $$
@@ -5299,7 +5299,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_bool_value_get_value $$
 CREATE FUNCTION _pb_wkt_bool_value_get_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
+    RETURN JSON_EXTRACT(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_string_value_new $$
@@ -5651,7 +5651,7 @@ END $$
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_get_ignore_unknown_fields $$
 CREATE FUNCTION pb_json_unmarshal_options_get_ignore_unknown_fields(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
+    RETURN JSON_EXTRACT(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_set_ignore_unknown_enums $$
@@ -5663,7 +5663,7 @@ END $$
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_get_ignore_unknown_enums $$
 CREATE FUNCTION pb_json_unmarshal_options_get_ignore_unknown_enums(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."2"')), 0);
+    RETURN JSON_EXTRACT(proto_data, '$."2"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_marshal_options_new $$
@@ -5705,6 +5705,6 @@ END $$
 DROP FUNCTION IF EXISTS pb_json_marshal_options_get_emit_default_values $$
 CREATE FUNCTION pb_json_marshal_options_get_emit_default_values(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
+    RETURN JSON_EXTRACT(proto_data, '$."1"');
 END $$
 
