@@ -368,6 +368,11 @@ BEGIN
 			SET is_default = FALSE;
 			SET converted_value = _pb_convert_json_wkt_to_number_json(field_type_name, field_json_value);
 			IF converted_value IS NULL THEN
+				-- For regular (non-WKT) messages, validate that the JSON value is an object
+				IF JSON_TYPE(field_json_value) != 'OBJECT' THEN
+					SET message_text = CONCAT('Invalid JSON type for message field: expected OBJECT, got ', JSON_TYPE(field_json_value));
+					SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+				END IF;
 				CALL _pb_json_to_number_json_proc(descriptor_set_json, field_type_name, field_json_value, ignore_unknown_fields, ignore_unknown_enums, converted_value);
 			END IF;
 		END IF;
