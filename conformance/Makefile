@@ -80,6 +80,7 @@ $(CONFORMANCE_SCHEMA_SQL): $(CONFORMANCE_DESCRIPTOR_SET)
 		--descriptor_set_in=$(CONFORMANCE_DESCRIPTOR_SET) \
 		--name=conformance_test_messages_schema \
 		--generate_methods=false \
+		--validate=false \
 		--mysql_out=.
 
 # Run conformance tests
