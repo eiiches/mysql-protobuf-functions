@@ -401,3 +401,37 @@ BEGIN
 	CALL _pb_wkt_value_json_to_number_json(proto_json_value, result);
 	RETURN result;
 END $$
+
+-- Helper function to convert google.protobuf.NullValue from ProtoJSON to ProtoNumberJSON
+DROP FUNCTION IF EXISTS _pb_wkt_null_value_json_to_number_json $$
+CREATE FUNCTION _pb_wkt_null_value_json_to_number_json(proto_json_value JSON) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE message_text TEXT;
+	-- google.protobuf.NullValue in ProtoJSON can be:
+	-- 1. JSON null -> should convert to enum value 0 (NULL_VALUE)
+	-- 2. String "NULL_VALUE" -> should convert to enum value 0
+	-- 3. Number 0 -> should convert to enum value 0
+
+	IF JSON_TYPE(proto_json_value) = 'NULL' THEN
+		-- JSON null represents NULL_VALUE (enum value 0)
+		RETURN 0;
+	ELSEIF JSON_TYPE(proto_json_value) = 'STRING' THEN
+		-- String name "NULL_VALUE"
+		IF JSON_UNQUOTE(proto_json_value) = 'NULL_VALUE' THEN
+			RETURN 0;
+		ELSE
+			-- TODO: STRING '0'?
+			-- Invalid string value for NullValue enum
+			-- TODO: What if ignore_unknown_enums is set?
+			SET message_text = CONCAT('Invalid NullValue enum string: ', JSON_UNQUOTE(proto_json_value));
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+	ELSEIF JSON_TYPE(proto_json_value) IN ('INTEGER', 'UNSIGNED INTEGER') THEN
+		-- Numeric value (should be 0 for NULL_VALUE)
+		RETURN proto_json_value;
+	ELSE
+		-- Invalid JSON type for NullValue
+		SET message_text = CONCAT('Invalid JSON type for NullValue: ', JSON_TYPE(proto_json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+END $$

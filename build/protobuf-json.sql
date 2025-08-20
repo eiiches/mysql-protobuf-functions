@@ -1643,7 +1643,7 @@ BEGIN
 END $$
 
 -- Helper procedure to convert enum string name or numeric value to numeric value
--- If enum value is not found when ignore_unknown_enums is set, enum_numeric_value IS SET TO 0.
+-- If enum value is not found when ignore_unknown_enums is set, enum_numeric_value IS SET TO NULL.
 DROP PROCEDURE IF EXISTS _pb_convert_json_enum_to_number $$
 CREATE PROCEDURE _pb_convert_json_enum_to_number(
 	IN descriptor_set_json JSON,
@@ -1743,10 +1743,16 @@ BEGIN
 
 	CASE field_type
 	WHEN 14 THEN -- enum
-		SET enum_string_value = JSON_UNQUOTE(field_json_value);
-		CALL _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, enum_string_value, ignore_unknown_enums, enum_numeric_value);
-		SET converted_value = CAST(enum_numeric_value AS JSON);
-		SET is_default = (enum_numeric_value = 0);
+		SET converted_value = _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value);
+		IF converted_value IS NULL THEN -- Not handled by well-known type parser
+			SET enum_string_value = JSON_UNQUOTE(field_json_value);
+			CALL _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, enum_string_value, ignore_unknown_enums, enum_numeric_value);
+			SET converted_value = CAST(enum_numeric_value AS JSON);
+			SET is_default = (enum_numeric_value = 0);
+		ELSE
+			SET enum_numeric_value = converted_value;
+			SET is_default = (enum_numeric_value = 0);
+		END IF;
 
 	WHEN 11 THEN -- message
 		IF field_json_value IS NULL THEN
@@ -1754,8 +1760,8 @@ BEGIN
 			SET converted_value = NULL;
 		ELSE
 			SET is_default = FALSE;
-			SET converted_value = _pb_convert_json_wkt_to_number_json(field_type_name, field_json_value);
-			IF converted_value IS NULL THEN
+			SET converted_value = _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value);
+			IF converted_value IS NULL THEN -- Not handled by well-known type parser
 				-- For regular (non-WKT) messages, validate that the JSON value is an object
 				IF JSON_TYPE(field_json_value) != 'OBJECT' THEN
 					SET message_text = CONCAT('Invalid JSON type for message field: expected OBJECT, got ', JSON_TYPE(field_json_value));
@@ -2073,7 +2079,7 @@ BEGIN
 			-- as a non-null Value message with kind.null_value set to NULL_VALUE.
 			-- Explicit JSON null for a field that doesn't have a field presence tracking (>=proto3) means a zero
 			-- value is set (and zero values are omitted in ProtoNumberJSON or on wire).
-			IF JSON_TYPE(field_json_value) = 'NULL' AND (field_type_name IS NULL OR field_type_name <> '.google.protobuf.Value') THEN
+			IF JSON_TYPE(field_json_value) = 'NULL' AND (field_type_name IS NULL OR (field_type_name <> '.google.protobuf.Value' AND field_type_name <> '.google.protobuf.NullValue')) THEN
 				SET field_index = field_index + 1;
 				ITERATE field_loop;
 			END IF;
@@ -3694,6 +3700,40 @@ BEGIN
 	RETURN result;
 END $$
 
+-- Helper function to convert google.protobuf.NullValue from ProtoJSON to ProtoNumberJSON
+DROP FUNCTION IF EXISTS _pb_wkt_null_value_json_to_number_json $$
+CREATE FUNCTION _pb_wkt_null_value_json_to_number_json(proto_json_value JSON) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE message_text TEXT;
+	-- google.protobuf.NullValue in ProtoJSON can be:
+	-- 1. JSON null -> should convert to enum value 0 (NULL_VALUE)
+	-- 2. String "NULL_VALUE" -> should convert to enum value 0
+	-- 3. Number 0 -> should convert to enum value 0
+
+	IF JSON_TYPE(proto_json_value) = 'NULL' THEN
+		-- JSON null represents NULL_VALUE (enum value 0)
+		RETURN 0;
+	ELSEIF JSON_TYPE(proto_json_value) = 'STRING' THEN
+		-- String name "NULL_VALUE"
+		IF JSON_UNQUOTE(proto_json_value) = 'NULL_VALUE' THEN
+			RETURN 0;
+		ELSE
+			-- TODO: STRING '0'?
+			-- Invalid string value for NullValue enum
+			-- TODO: What if ignore_unknown_enums is set?
+			SET message_text = CONCAT('Invalid NullValue enum string: ', JSON_UNQUOTE(proto_json_value));
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+	ELSEIF JSON_TYPE(proto_json_value) IN ('INTEGER', 'UNSIGNED INTEGER') THEN
+		-- Numeric value (should be 0 for NULL_VALUE)
+		RETURN proto_json_value;
+	ELSE
+		-- Invalid JSON type for NullValue
+		SET message_text = CONCAT('Invalid JSON type for NullValue: ', JSON_TYPE(proto_json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+END $$
+
 DELIMITER $$
 
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_field_mask_as_json $$
@@ -4073,45 +4113,55 @@ DELIMITER $$
 
 -- Helper function to convert well-known type from ProtoJSON to ProtoNumberJSON
 DROP FUNCTION IF EXISTS _pb_convert_json_wkt_to_number_json $$
-CREATE FUNCTION _pb_convert_json_wkt_to_number_json(full_type_name TEXT, proto_json_value JSON) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION _pb_convert_json_wkt_to_number_json(field_type INT, full_type_name TEXT, proto_json_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-	CASE full_type_name
-	WHEN '.google.protobuf.Timestamp' THEN
-		RETURN _pb_wkt_timestamp_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Duration' THEN
-		RETURN _pb_wkt_duration_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.FieldMask' THEN
-		RETURN _pb_wkt_field_mask_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Value' THEN
-		RETURN _pb_wkt_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Struct' THEN
-		RETURN _pb_wkt_struct_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.ListValue' THEN
-		RETURN _pb_wkt_list_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.StringValue' THEN
-		RETURN _pb_wkt_string_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Int64Value' THEN
-		RETURN _pb_wkt_int64_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.UInt64Value' THEN
-		RETURN _pb_wkt_uint64_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Int32Value' THEN
-		RETURN _pb_wkt_int32_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.UInt32Value' THEN
-		RETURN _pb_wkt_uint32_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.BoolValue' THEN
-		RETURN _pb_wkt_bool_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.FloatValue' THEN
-		RETURN _pb_wkt_float_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.DoubleValue' THEN
-		RETURN _pb_wkt_double_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.BytesValue' THEN
-		RETURN _pb_wkt_bytes_value_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Empty' THEN
-		RETURN _pb_wkt_empty_json_to_number_json(proto_json_value);
-	WHEN '.google.protobuf.Any' THEN
-		RETURN _pb_wkt_any_json_to_number_json(proto_json_value);
-	ELSE
-		RETURN NULL;
+	CASE field_type
+	WHEN 14 THEN -- enum
+		CASE full_type_name
+		WHEN '.google.protobuf.NullValue' THEN
+			RETURN CAST(_pb_wkt_null_value_json_to_number_json(proto_json_value) AS JSON);
+		ELSE
+			RETURN NULL;
+		END CASE;
+	WHEN 11 THEN -- message
+		CASE full_type_name
+		WHEN '.google.protobuf.Timestamp' THEN
+			RETURN _pb_wkt_timestamp_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.Duration' THEN
+			RETURN _pb_wkt_duration_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.FieldMask' THEN
+			RETURN _pb_wkt_field_mask_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.Value' THEN
+			RETURN _pb_wkt_value_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.Struct' THEN
+			RETURN _pb_wkt_struct_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.ListValue' THEN
+			RETURN _pb_wkt_list_value_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.StringValue' THEN
+			RETURN _pb_wkt_string_value_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.Int64Value' THEN
+			RETURN _pb_wkt_int64_value_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.UInt64Value' THEN
+			RETURN _pb_wkt_uint64_value_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.Int32Value' THEN
+			RETURN _pb_wkt_int32_value_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.UInt32Value' THEN
+			RETURN _pb_wkt_uint32_value_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.BoolValue' THEN
+			RETURN _pb_wkt_bool_value_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.FloatValue' THEN
+			RETURN _pb_wkt_float_value_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.DoubleValue' THEN
+			RETURN _pb_wkt_double_value_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.BytesValue' THEN
+			RETURN _pb_wkt_bytes_value_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.Empty' THEN
+			RETURN _pb_wkt_empty_json_to_number_json(proto_json_value);
+		WHEN '.google.protobuf.Any' THEN
+			RETURN _pb_wkt_any_json_to_number_json(proto_json_value);
+		ELSE
+			RETURN NULL;
+		END CASE;
 	END CASE;
 END $$
 

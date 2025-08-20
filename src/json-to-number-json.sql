@@ -255,7 +255,7 @@ BEGIN
 END $$
 
 -- Helper procedure to convert enum string name or numeric value to numeric value
--- If enum value is not found when ignore_unknown_enums is set, enum_numeric_value IS SET TO 0.
+-- If enum value is not found when ignore_unknown_enums is set, enum_numeric_value IS SET TO NULL.
 DROP PROCEDURE IF EXISTS _pb_convert_json_enum_to_number $$
 CREATE PROCEDURE _pb_convert_json_enum_to_number(
 	IN descriptor_set_json JSON,
@@ -355,10 +355,16 @@ BEGIN
 
 	CASE field_type
 	WHEN 14 THEN -- enum
-		SET enum_string_value = JSON_UNQUOTE(field_json_value);
-		CALL _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, enum_string_value, ignore_unknown_enums, enum_numeric_value);
-		SET converted_value = CAST(enum_numeric_value AS JSON);
-		SET is_default = (enum_numeric_value = 0);
+		SET converted_value = _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value);
+		IF converted_value IS NULL THEN -- Not handled by well-known type parser
+			SET enum_string_value = JSON_UNQUOTE(field_json_value);
+			CALL _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, enum_string_value, ignore_unknown_enums, enum_numeric_value);
+			SET converted_value = CAST(enum_numeric_value AS JSON);
+			SET is_default = (enum_numeric_value = 0);
+		ELSE
+			SET enum_numeric_value = converted_value;
+			SET is_default = (enum_numeric_value = 0);
+		END IF;
 
 	WHEN 11 THEN -- message
 		IF field_json_value IS NULL THEN
@@ -366,8 +372,8 @@ BEGIN
 			SET converted_value = NULL;
 		ELSE
 			SET is_default = FALSE;
-			SET converted_value = _pb_convert_json_wkt_to_number_json(field_type_name, field_json_value);
-			IF converted_value IS NULL THEN
+			SET converted_value = _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value);
+			IF converted_value IS NULL THEN -- Not handled by well-known type parser
 				-- For regular (non-WKT) messages, validate that the JSON value is an object
 				IF JSON_TYPE(field_json_value) != 'OBJECT' THEN
 					SET message_text = CONCAT('Invalid JSON type for message field: expected OBJECT, got ', JSON_TYPE(field_json_value));
@@ -685,7 +691,7 @@ BEGIN
 			-- as a non-null Value message with kind.null_value set to NULL_VALUE.
 			-- Explicit JSON null for a field that doesn't have a field presence tracking (>=proto3) means a zero
 			-- value is set (and zero values are omitted in ProtoNumberJSON or on wire).
-			IF JSON_TYPE(field_json_value) = 'NULL' AND (field_type_name IS NULL OR field_type_name <> '.google.protobuf.Value') THEN
+			IF JSON_TYPE(field_json_value) = 'NULL' AND (field_type_name IS NULL OR (field_type_name <> '.google.protobuf.Value' AND field_type_name <> '.google.protobuf.NullValue')) THEN
 				SET field_index = field_index + 1;
 				ITERATE field_loop;
 			END IF;
