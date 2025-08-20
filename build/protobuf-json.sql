@@ -1628,11 +1628,13 @@ BEGIN
 END $$
 
 -- Helper procedure to convert enum string name or numeric value to numeric value
+-- If enum value is not found when ignore_unknown_enums is set, enum_numeric_value IS SET TO 0.
 DROP PROCEDURE IF EXISTS _pb_convert_json_enum_to_number $$
 CREATE PROCEDURE _pb_convert_json_enum_to_number(
 	IN descriptor_set_json JSON,
 	IN full_enum_type_name TEXT,
 	IN enum_string_value TEXT,
+	IN ignore_unknown_enums BOOLEAN,
 	OUT enum_numeric_value INT
 )
 BEGIN
@@ -1682,10 +1684,14 @@ BEGIN
 		SET value_index = value_index + 1;
 	END WHILE search_loop;
 
-	-- If not found, signal error
+	-- If not found, handle based on ignore_unknown_enums flag
 	IF value_index >= value_count THEN
-		SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum value not found: ', enum_string_value, ' in enum ', full_enum_type_name);
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		IF ignore_unknown_enums THEN
+			SET enum_numeric_value = 0;  -- Return NULL to indicate unknown value should be ignored
+		ELSE
+			SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum value not found: ', enum_string_value, ' in enum ', full_enum_type_name);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
 	END IF;
 END $$
 
@@ -1696,6 +1702,8 @@ CREATE PROCEDURE _pb_convert_singular_field_to_number_json(
 	IN field_type INT,
 	IN field_type_name TEXT,
 	IN field_json_value JSON,
+	IN ignore_unknown_fields BOOLEAN,
+	IN ignore_unknown_enums BOOLEAN,
 	OUT converted_value JSON,
 	OUT is_default BOOLEAN
 )
@@ -1718,7 +1726,7 @@ BEGIN
 	CASE field_type
 	WHEN 14 THEN -- enum
 		SET enum_string_value = JSON_UNQUOTE(field_json_value);
-		CALL _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, enum_string_value, enum_numeric_value);
+		CALL _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, enum_string_value, ignore_unknown_enums, enum_numeric_value);
 		SET converted_value = CAST(enum_numeric_value AS JSON);
 		SET is_default = (enum_numeric_value = 0);
 
@@ -1730,7 +1738,7 @@ BEGIN
 			SET is_default = FALSE;
 			SET converted_value = _pb_convert_json_wkt_to_number_json(field_type_name, field_json_value);
 			IF converted_value IS NULL THEN
-				CALL _pb_json_to_number_json_proc(descriptor_set_json, field_type_name, field_json_value, converted_value);
+				CALL _pb_json_to_number_json_proc(descriptor_set_json, field_type_name, field_json_value, ignore_unknown_fields, ignore_unknown_enums, converted_value);
 			END IF;
 		END IF;
 
@@ -1822,6 +1830,8 @@ CREATE PROCEDURE _pb_json_to_number_json_proc(
 	IN descriptor_set_json JSON,
 	IN full_type_name TEXT,
 	IN proto_json JSON,
+	IN ignore_unknown_fields BOOLEAN,
+	IN ignore_unknown_enums BOOLEAN,
 	OUT result JSON
 )
 BEGIN
@@ -1988,7 +1998,7 @@ BEGIN
 				SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$."', map_key_name, '"'));
 
 				-- Use singular field conversion procedure
-				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, map_value_type, map_value_type_name, map_value_json, converted_value, is_default);
+				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, map_value_type, map_value_type_name, map_value_json, ignore_unknown_fields, ignore_unknown_enums, converted_value, is_default);
 
 				-- Add converted value to map
 				SET converted_map = JSON_SET(converted_map, CONCAT('$."', map_key_name, '"'), converted_value);
@@ -2016,7 +2026,8 @@ BEGIN
 				SET array_element = JSON_EXTRACT(array_value, CONCAT('$[', array_index, ']'));
 
 				-- Convert element using singular field conversion procedure
-				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, array_element, converted_value, is_default);
+				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, array_element, ignore_unknown_fields, ignore_unknown_enums, converted_value, is_default);
+
 				SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
 
 				SET array_index = array_index + 1;
@@ -2037,7 +2048,7 @@ BEGIN
 			END IF;
 
 			-- Handle singular fields
-			CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, field_json_value, converted_value, is_default);
+			CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, field_json_value, ignore_unknown_fields, ignore_unknown_enums, converted_value, is_default);
 			-- Include field unless it's a default value in proto3 without explicit presence
 			IF has_presence OR NOT is_default THEN
 				SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_value);
@@ -2050,10 +2061,18 @@ END $$
 
 -- Public function interface
 DROP FUNCTION IF EXISTS _pb_json_to_number_json $$
-CREATE FUNCTION _pb_json_to_number_json(descriptor_set_json JSON, type_name TEXT, proto_json JSON) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION _pb_json_to_number_json(descriptor_set_json JSON, type_name TEXT, proto_json JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE message_text TEXT;
 	DECLARE result JSON;
+	DECLARE ignore_unknown_fields BOOLEAN DEFAULT FALSE;
+	DECLARE ignore_unknown_enums BOOLEAN DEFAULT FALSE;
+
+	-- Extract options using the generated accessor functions
+	IF json_unmarshal_options IS NOT NULL THEN
+		SET ignore_unknown_fields = pb_json_unmarshal_options_get_ignore_unknown_fields(json_unmarshal_options);
+		SET ignore_unknown_enums = pb_json_unmarshal_options_get_ignore_unknown_enums(json_unmarshal_options);
+	END IF;
 
 	-- Validate type name starts with dot
 	IF type_name NOT LIKE '.%' THEN
@@ -2065,7 +2084,7 @@ BEGIN
 		RETURN NULL;
 	END IF;
 
-	CALL _pb_json_to_number_json_proc(descriptor_set_json, type_name, proto_json, result);
+	CALL _pb_json_to_number_json_proc(descriptor_set_json, type_name, proto_json, ignore_unknown_fields, ignore_unknown_enums, result);
 	RETURN result;
 END $$
 
@@ -5581,5 +5600,111 @@ DROP FUNCTION IF EXISTS _pb_wkt_empty_to_message $$
 CREATE FUNCTION _pb_wkt_empty_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_empty_proto(), '.google.protobuf.Empty', proto_data);
+END $$
+
+-- Code generated by protoc-gen-mysql. DO NOT EDIT.
+
+DELIMITER $$
+
+DROP FUNCTION IF EXISTS _pb_json_options_proto $$
+CREATE FUNCTION _pb_json_options_proto() RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN CAST('[1,{"1":[{"1":"json_options.proto","12":"proto3","2":"mysqlprotobuf","4":[{"1":"JsonUnmarshalOptions","2":[{"1":"ignore_unknown_fields","10":"ignoreUnknownFields","3":1,"4":1,"5":8},{"1":"ignore_unknown_enums","10":"ignoreUnknownEnums","3":2,"4":1,"5":8}]},{"1":"JsonMarshalOptions","2":[{"1":"emit_default_values","10":"emitDefaultValues","3":1,"4":1,"5":8}]}]}]},{".mysqlprotobuf.JsonMarshalOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[1]"],".mysqlprotobuf.JsonUnmarshalOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_new $$
+CREATE FUNCTION pb_json_unmarshal_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_from_json $$
+CREATE FUNCTION pb_json_unmarshal_options_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_json_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', json_data);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_from_message $$
+CREATE FUNCTION pb_json_unmarshal_options_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_json_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', message_data);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_to_json $$
+CREATE FUNCTION pb_json_unmarshal_options_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_json_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', proto_data, TRUE);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_to_message $$
+CREATE FUNCTION pb_json_unmarshal_options_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_json_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', proto_data);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_set_ignore_unknown_fields $$
+CREATE FUNCTION pb_json_unmarshal_options_set_ignore_unknown_fields(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_get_ignore_unknown_fields $$
+CREATE FUNCTION pb_json_unmarshal_options_get_ignore_unknown_fields(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_set_ignore_unknown_enums $$
+CREATE FUNCTION pb_json_unmarshal_options_set_ignore_unknown_enums(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_get_ignore_unknown_enums $$
+CREATE FUNCTION pb_json_unmarshal_options_get_ignore_unknown_enums(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."2"')), 0);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_marshal_options_new $$
+CREATE FUNCTION pb_json_marshal_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_marshal_options_from_json $$
+CREATE FUNCTION pb_json_marshal_options_from_json(json_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_json_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', json_data);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_marshal_options_from_message $$
+CREATE FUNCTION pb_json_marshal_options_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_json_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', message_data);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_marshal_options_to_json $$
+CREATE FUNCTION pb_json_marshal_options_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_json_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', proto_data, TRUE);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_marshal_options_to_message $$
+CREATE FUNCTION pb_json_marshal_options_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_json_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', proto_data);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_marshal_options_set_emit_default_values $$
+CREATE FUNCTION pb_json_marshal_options_set_emit_default_values(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_marshal_options_get_emit_default_values $$
+CREATE FUNCTION pb_json_marshal_options_get_emit_default_values(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
 END $$
 

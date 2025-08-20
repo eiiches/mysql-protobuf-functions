@@ -51,6 +51,18 @@ build/protobuf-json.sql: $(PROTOBUF_JSON_SOURCES) scripts/common.mk
 	$(foreach file,$(PROTOBUF_JSON_SOURCES),echo >> $@.tmp && cat $(file) >> $@.tmp;)
 	echo >> $@.tmp
 	go run cmd/generate-descriptorsets/main.go >> $@.tmp
+	protoc --descriptor_set_out=./json_options.binpb \
+		--include_imports \
+		--proto_path=src/ \
+		src/json_options.proto
+	go run ./cmd/protoc-gen-mysql \
+		--descriptor_set_in=./json_options.binpb \
+		--name=_pb_json_options_proto \
+		--file_naming_strategy=single \
+		--package_prefix_map=mysqlprotobuf=pb_ \
+		--generate_methods \
+		--mysql_out=/tmp
+	cat /tmp/_pb_json_options_proto.sql >> $@.tmp
 	mv $@.tmp $@
 
 .PHONY: reload

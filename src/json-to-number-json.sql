@@ -240,11 +240,13 @@ BEGIN
 END $$
 
 -- Helper procedure to convert enum string name or numeric value to numeric value
+-- If enum value is not found when ignore_unknown_enums is set, enum_numeric_value IS SET TO 0.
 DROP PROCEDURE IF EXISTS _pb_convert_json_enum_to_number $$
 CREATE PROCEDURE _pb_convert_json_enum_to_number(
 	IN descriptor_set_json JSON,
 	IN full_enum_type_name TEXT,
 	IN enum_string_value TEXT,
+	IN ignore_unknown_enums BOOLEAN,
 	OUT enum_numeric_value INT
 )
 BEGIN
@@ -294,10 +296,14 @@ BEGIN
 		SET value_index = value_index + 1;
 	END WHILE search_loop;
 
-	-- If not found, signal error
+	-- If not found, handle based on ignore_unknown_enums flag
 	IF value_index >= value_count THEN
-		SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum value not found: ', enum_string_value, ' in enum ', full_enum_type_name);
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		IF ignore_unknown_enums THEN
+			SET enum_numeric_value = 0;  -- Return NULL to indicate unknown value should be ignored
+		ELSE
+			SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum value not found: ', enum_string_value, ' in enum ', full_enum_type_name);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
 	END IF;
 END $$
 
@@ -308,6 +314,8 @@ CREATE PROCEDURE _pb_convert_singular_field_to_number_json(
 	IN field_type INT,
 	IN field_type_name TEXT,
 	IN field_json_value JSON,
+	IN ignore_unknown_fields BOOLEAN,
+	IN ignore_unknown_enums BOOLEAN,
 	OUT converted_value JSON,
 	OUT is_default BOOLEAN
 )
@@ -330,7 +338,7 @@ BEGIN
 	CASE field_type
 	WHEN 14 THEN -- enum
 		SET enum_string_value = JSON_UNQUOTE(field_json_value);
-		CALL _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, enum_string_value, enum_numeric_value);
+		CALL _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, enum_string_value, ignore_unknown_enums, enum_numeric_value);
 		SET converted_value = CAST(enum_numeric_value AS JSON);
 		SET is_default = (enum_numeric_value = 0);
 
@@ -342,7 +350,7 @@ BEGIN
 			SET is_default = FALSE;
 			SET converted_value = _pb_convert_json_wkt_to_number_json(field_type_name, field_json_value);
 			IF converted_value IS NULL THEN
-				CALL _pb_json_to_number_json_proc(descriptor_set_json, field_type_name, field_json_value, converted_value);
+				CALL _pb_json_to_number_json_proc(descriptor_set_json, field_type_name, field_json_value, ignore_unknown_fields, ignore_unknown_enums, converted_value);
 			END IF;
 		END IF;
 
@@ -434,6 +442,8 @@ CREATE PROCEDURE _pb_json_to_number_json_proc(
 	IN descriptor_set_json JSON,
 	IN full_type_name TEXT,
 	IN proto_json JSON,
+	IN ignore_unknown_fields BOOLEAN,
+	IN ignore_unknown_enums BOOLEAN,
 	OUT result JSON
 )
 BEGIN
@@ -600,7 +610,7 @@ BEGIN
 				SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$."', map_key_name, '"'));
 
 				-- Use singular field conversion procedure
-				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, map_value_type, map_value_type_name, map_value_json, converted_value, is_default);
+				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, map_value_type, map_value_type_name, map_value_json, ignore_unknown_fields, ignore_unknown_enums, converted_value, is_default);
 
 				-- Add converted value to map
 				SET converted_map = JSON_SET(converted_map, CONCAT('$."', map_key_name, '"'), converted_value);
@@ -628,7 +638,8 @@ BEGIN
 				SET array_element = JSON_EXTRACT(array_value, CONCAT('$[', array_index, ']'));
 
 				-- Convert element using singular field conversion procedure
-				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, array_element, converted_value, is_default);
+				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, array_element, ignore_unknown_fields, ignore_unknown_enums, converted_value, is_default);
+
 				SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
 
 				SET array_index = array_index + 1;
@@ -649,7 +660,7 @@ BEGIN
 			END IF;
 
 			-- Handle singular fields
-			CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, field_json_value, converted_value, is_default);
+			CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, field_json_value, ignore_unknown_fields, ignore_unknown_enums, converted_value, is_default);
 			-- Include field unless it's a default value in proto3 without explicit presence
 			IF has_presence OR NOT is_default THEN
 				SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_value);
@@ -662,10 +673,18 @@ END $$
 
 -- Public function interface
 DROP FUNCTION IF EXISTS _pb_json_to_number_json $$
-CREATE FUNCTION _pb_json_to_number_json(descriptor_set_json JSON, type_name TEXT, proto_json JSON) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION _pb_json_to_number_json(descriptor_set_json JSON, type_name TEXT, proto_json JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE message_text TEXT;
 	DECLARE result JSON;
+	DECLARE ignore_unknown_fields BOOLEAN DEFAULT FALSE;
+	DECLARE ignore_unknown_enums BOOLEAN DEFAULT FALSE;
+
+	-- Extract options using the generated accessor functions
+	IF json_unmarshal_options IS NOT NULL THEN
+		SET ignore_unknown_fields = pb_json_unmarshal_options_get_ignore_unknown_fields(json_unmarshal_options);
+		SET ignore_unknown_enums = pb_json_unmarshal_options_get_ignore_unknown_enums(json_unmarshal_options);
+	END IF;
 
 	-- Validate type name starts with dot
 	IF type_name NOT LIKE '.%' THEN
@@ -677,6 +696,6 @@ BEGIN
 		RETURN NULL;
 	END IF;
 
-	CALL _pb_json_to_number_json_proc(descriptor_set_json, type_name, proto_json, result);
+	CALL _pb_json_to_number_json_proc(descriptor_set_json, type_name, proto_json, ignore_unknown_fields, ignore_unknown_enums, result);
 	RETURN result;
 END $$
