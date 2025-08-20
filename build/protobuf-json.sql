@@ -1687,7 +1687,7 @@ BEGIN
 	-- If not found, handle based on ignore_unknown_enums flag
 	IF value_index >= value_count THEN
 		IF ignore_unknown_enums THEN
-			SET enum_numeric_value = 0;  -- Return NULL to indicate unknown value should be ignored
+			SET enum_numeric_value = NULL;  -- Return NULL to indicate unknown value should be ignored
 		ELSE
 			SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum value not found: ', enum_string_value, ' in enum ', full_enum_type_name);
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
@@ -2001,7 +2001,11 @@ BEGIN
 				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, map_value_type, map_value_type_name, map_value_json, ignore_unknown_fields, ignore_unknown_enums, converted_value, is_default);
 
 				-- Add converted value to map
-				SET converted_map = JSON_SET(converted_map, CONCAT('$."', map_key_name, '"'), converted_value);
+				-- converted_value can be NULL if ignore_unknown_enums is set and enum name value is unknown.
+				IF converted_value IS NOT NULL THEN
+					SET converted_map = JSON_SET(converted_map, CONCAT('$."', map_key_name, '"'), converted_value);
+				END IF;
+
 				SET map_key_index = map_key_index + 1;
 			END WHILE;
 
@@ -2028,7 +2032,10 @@ BEGIN
 				-- Convert element using singular field conversion procedure
 				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, array_element, ignore_unknown_fields, ignore_unknown_enums, converted_value, is_default);
 
-				SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
+				-- converted_value can be NULL if ignore_unknown_enums is set and enum name value is unknown.
+				IF converted_value IS NOT NULL THEN
+					SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
+				END IF;
 
 				SET array_index = array_index + 1;
 			END WHILE;
@@ -2049,8 +2056,10 @@ BEGIN
 
 			-- Handle singular fields
 			CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, field_json_value, ignore_unknown_fields, ignore_unknown_enums, converted_value, is_default);
+
 			-- Include field unless it's a default value in proto3 without explicit presence
-			IF has_presence OR NOT is_default THEN
+			-- converted_value can be NULL if ignore_unknown_enums is set and enum name value is unknown.
+			IF converted_value IS NOT NULL AND has_presence OR NOT is_default THEN
 				SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_value);
 			END IF;
 		END IF;
