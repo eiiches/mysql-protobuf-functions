@@ -720,9 +720,9 @@ func (i *ASTInstrumenter) createSetTracingCallForMultipleVars(functionName strin
 		variableRef := i.buildFullVariableReference(assignment)
 		jsonPairs = append(jsonPairs, fmt.Sprintf("'%s', %s", varName, variableRef))
 	}
-	
+
 	jsonObject := fmt.Sprintf("JSON_OBJECT(%s)", strings.Join(jsonPairs, ", "))
-	
+
 	callText := fmt.Sprintf("CALL __record_ftrace_set('%s', '%s', %d, %s)",
 		i.filename, functionName, lineNumber, jsonObject)
 

@@ -339,19 +339,19 @@ func reportAction(ctx context.Context, command *cli.Command) error {
 
 // FtraceEvent represents a function trace event
 type FtraceEvent struct {
-	ID            int64
-	ConnectionID  int
-	Filename      string
-	FunctionName  string
-	ObjectType    string
-	CallType      string
-	Arguments     string
-	ReturnValue   string
-	CallDepth     int
-	LineNumber    int
-	StatementType string
+	ID                  int64
+	ConnectionID        int
+	Filename            string
+	FunctionName        string
+	ObjectType          string
+	CallType            string
+	Arguments           string
+	ReturnValue         string
+	CallDepth           int
+	LineNumber          int
+	StatementType       string
 	VariableAssignments string
-	Timestamp     string
+	Timestamp           string
 }
 
 func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
