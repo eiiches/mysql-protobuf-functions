@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -388,6 +389,64 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 	writer.WriteString("================================\n\n")
 
 	var currentConnectionID int = -1
+	var pendingStatement *FtraceEvent
+	
+	// Helper function to format arguments as key=[JSON value] pairs
+	formatArgs := func(jsonArgs string) string {
+		if jsonArgs == "" {
+			return ""
+		}
+		// Parse JSON and convert to key=[JSON value] format
+		var argMap map[string]interface{}
+		if err := json.Unmarshal([]byte(jsonArgs), &argMap); err == nil {
+			var parts []string
+			for key, value := range argMap {
+				// Convert each value to proper JSON
+				if jsonValue, err := json.Marshal(value); err == nil {
+					parts = append(parts, fmt.Sprintf("%s=%s", key, string(jsonValue)))
+				} else {
+					parts = append(parts, fmt.Sprintf("%s=%v", key, value))
+				}
+			}
+			// Sort for consistent output
+			for i := 0; i < len(parts); i++ {
+				for j := i + 1; j < len(parts); j++ {
+					if parts[i] > parts[j] {
+						parts[i], parts[j] = parts[j], parts[i]
+					}
+				}
+			}
+			return strings.Join(parts, ", ")
+		}
+		return jsonArgs
+	}
+
+	// Helper function to write a pending statement with its variable assignment
+	flushPendingStatement := func() {
+		if pendingStatement != nil {
+			indentLevel := pendingStatement.CallDepth - 1
+			if indentLevel < 0 {
+				indentLevel = 0
+			}
+			indent := strings.Repeat("    ", indentLevel)
+			timestampDisplay := pendingStatement.Timestamp
+			if t, err := time.Parse("2006-01-02 15:04:05.000000", pendingStatement.Timestamp); err == nil {
+				timestampDisplay = t.Format("15:04:05.000")
+			}
+			
+			lineDisplay := ""
+			if pendingStatement.LineNumber > 0 {
+				lineDisplay = fmt.Sprintf("L%d: ", pendingStatement.LineNumber)
+			}
+			
+			// Statements are indented more than ENTER/EXIT
+			stmtIndent := indent + "    "
+			
+			writer.WriteString(fmt.Sprintf("[%s] %s%s%s\n",
+				timestampDisplay, stmtIndent, lineDisplay, pendingStatement.ReturnValue))
+			pendingStatement = nil
+		}
+	}
 
 	for rows.Next() {
 		var event FtraceEvent
@@ -408,6 +467,7 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 
 		// Show connection ID separator when it changes (only if showing multiple connections)
 		if connectionID == 0 && event.ConnectionID != currentConnectionID {
+			flushPendingStatement() // Flush any pending statement before connection change
 			if currentConnectionID != -1 {
 				writer.WriteString("\n")
 			}
@@ -415,14 +475,12 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 			currentConnectionID = event.ConnectionID
 		}
 
-		// Create indentation based on call depth
-		indent := strings.Repeat("  ", event.CallDepth)
-
-		// Add object type indicator
-		objIndicator := "F"
-		if event.ObjectType == "procedure" {
-			objIndicator = "P"
+		// Create indentation based on call depth (subtract 1 since call depths start at 1)
+		indentLevel := event.CallDepth - 1
+		if indentLevel < 0 {
+			indentLevel = 0
 		}
+		indent := strings.Repeat("    ", indentLevel)
 
 		// Parse timestamp for display
 		timestampDisplay := event.Timestamp
@@ -432,32 +490,71 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 
 		switch event.CallType {
 		case "entry":
-			writer.WriteString(fmt.Sprintf("%s[%s] -> %s%s(%s)\n",
-				indent, timestampDisplay, objIndicator, event.FunctionName, event.Arguments))
+			flushPendingStatement() // Flush any pending statement before function entry
+			writer.WriteString(fmt.Sprintf("[%s] %sENTER %s(%s)\n",
+				timestampDisplay, indent, event.FunctionName, formatArgs(event.Arguments)))
+				
 		case "exit":
-			if event.ObjectType == "procedure" {
-				writer.WriteString(fmt.Sprintf("%s[%s] <- %s%s OUT: %s\n",
-					indent, timestampDisplay, objIndicator, event.FunctionName, event.ReturnValue))
-			} else {
-				writer.WriteString(fmt.Sprintf("%s[%s] <- %s%s = %s\n",
-					indent, timestampDisplay, objIndicator, event.FunctionName, event.ReturnValue))
-			}
+			flushPendingStatement() // Flush any pending statement before function exit
+			writer.WriteString(fmt.Sprintf("[%s] %sRETURN %s\n",
+				timestampDisplay, indent, event.ReturnValue))
+				
 		case "statement":
-			lineDisplay := ""
-			if event.LineNumber > 0 {
-				lineDisplay = fmt.Sprintf(":%d", event.LineNumber)
+			// Check if this is a SET statement that will have a corresponding set_variable event
+			if event.StatementType == "SET" {
+				flushPendingStatement() // Flush any previous pending statement
+				pendingStatement = &event // Store this statement to be combined with variable assignment
+			} else {
+				flushPendingStatement() // Flush any previous pending statement
+				
+				lineDisplay := ""
+				if event.LineNumber > 0 {
+					lineDisplay = fmt.Sprintf("L%d: ", event.LineNumber)
+				}
+				
+				// Statements are indented more than ENTER/EXIT
+				stmtIndent := indent + "    "
+				
+				// For control flow statements, show the condition result
+				if event.StatementType == "IF" || event.StatementType == "WHILE" || event.StatementType == "CASE" {
+					writer.WriteString(fmt.Sprintf("[%s] %s%s%s\n",
+						timestampDisplay, stmtIndent, lineDisplay, event.ReturnValue))
+				} else {
+					writer.WriteString(fmt.Sprintf("[%s] %s%s%s\n",
+						timestampDisplay, stmtIndent, lineDisplay, event.ReturnValue))
+				}
 			}
-			writer.WriteString(fmt.Sprintf("%s[%s]   %s%s %s: %s\n",
-				indent, timestampDisplay, event.Filename, lineDisplay, event.StatementType, event.ReturnValue))
+			
 		case "set_variable":
-			lineDisplay := ""
-			if event.LineNumber > 0 {
-				lineDisplay = fmt.Sprintf(":%d", event.LineNumber)
+			// Combine with pending SET statement
+			if pendingStatement != nil && pendingStatement.LineNumber == event.LineNumber {
+				lineDisplay := ""
+				if event.LineNumber > 0 {
+					lineDisplay = fmt.Sprintf("L%d: ", event.LineNumber)
+				}
+				
+				// Statements are indented more than ENTER/EXIT
+				stmtIndent := indent + "    "
+				
+				writer.WriteString(fmt.Sprintf("[%s] %s%s%-30s → %s=%s\n",
+					timestampDisplay, stmtIndent, lineDisplay, pendingStatement.ReturnValue, 
+					event.VariableName, event.ReturnValue))
+				pendingStatement = nil
+			} else {
+				// Standalone set_variable event (shouldn't normally happen)
+				flushPendingStatement()
+				lineDisplay := ""
+				if event.LineNumber > 0 {
+					lineDisplay = fmt.Sprintf("L%d: ", event.LineNumber)
+				}
+				stmtIndent := indent + "    "
+				writer.WriteString(fmt.Sprintf("[%s] %s%sSET %s = %s\n",
+					timestampDisplay, stmtIndent, lineDisplay, event.VariableName, event.ReturnValue))
 			}
-			writer.WriteString(fmt.Sprintf("%s[%s]   %s%s SET %s = %s\n",
-				indent, timestampDisplay, event.Filename, lineDisplay, event.VariableName, event.ReturnValue))
 		}
 	}
+	
+	flushPendingStatement() // Flush any final pending statement
 
 	return rows.Err()
 }
