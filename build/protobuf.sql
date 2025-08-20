@@ -5361,13 +5361,13 @@ END $$
 DROP FUNCTION IF EXISTS pb_wire_json_set_enum_field $$
 CREATE FUNCTION pb_wire_json_set_enum_field(wire_json JSON, field_number INT, value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN _pb_wire_json_set_varint_field(wire_json, field_number, _pb_util_reinterpret_int32_as_uint32(value));
+	RETURN _pb_wire_json_set_varint_field(wire_json, field_number, _pb_util_reinterpret_int64_as_uint64(value));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_add_repeated_enum_field_element $$
 CREATE FUNCTION pb_wire_json_add_repeated_enum_field_element(wire_json JSON, field_number INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_int32_as_uint32(value), use_packed);
+	RETURN _pb_wire_json_add_repeated_varint_field_element(wire_json, field_number, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_add_all_repeated_enum_field_elements $$
@@ -5379,13 +5379,13 @@ END $$
 DROP FUNCTION IF EXISTS pb_wire_json_insert_repeated_enum_field_element $$
 CREATE FUNCTION pb_wire_json_insert_repeated_enum_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT, use_packed BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN _pb_wire_json_insert_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int32_as_uint32(value), use_packed);
+	RETURN _pb_wire_json_insert_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int64_as_uint64(value), use_packed);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_set_repeated_enum_field_element $$
 CREATE FUNCTION pb_wire_json_set_repeated_enum_field_element(wire_json JSON, field_number INT, repeated_index INT, value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN _pb_wire_json_set_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int32_as_uint32(value));
+	RETURN _pb_wire_json_set_repeated_varint_field_element(wire_json, field_number, repeated_index, _pb_util_reinterpret_int64_as_uint64(value));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wire_json_remove_repeated_enum_field_element $$
@@ -8486,7 +8486,7 @@ BEGIN
 		-- Build packed data
 		WHILE i < array_length DO
 			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
-			CALL _pb_wire_write_varint(_pb_util_reinterpret_int32_as_uint32(current_value), temp_encoded);
+			CALL _pb_wire_write_varint(_pb_util_reinterpret_int64_as_uint64(current_value), temp_encoded);
 			SET packed_data = CONCAT(packed_data, temp_encoded);
 			SET i = i + 1;
 		END WHILE;
@@ -8520,7 +8520,7 @@ BEGIN
 		-- Add unpacked elements
 		WHILE i < array_length DO
 			SET current_value = JSON_EXTRACT(value_array, CONCAT('$[', i, ']'));
-			SET result = _pb_wire_json_add_repeated_varint_field_element(result, field_number, _pb_util_reinterpret_int32_as_uint32(current_value), FALSE);
+			SET result = _pb_wire_json_add_repeated_varint_field_element(result, field_number, _pb_util_reinterpret_int64_as_uint64(current_value), FALSE);
 			SET i = i + 1;
 		END WHILE;
 		RETURN result;
