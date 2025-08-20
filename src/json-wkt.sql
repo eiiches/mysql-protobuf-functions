@@ -54,6 +54,60 @@ BEGIN
 	END CASE;
 END $$
 
+-- Helper function to convert well-known type from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_convert_number_json_to_wkt $$
+CREATE FUNCTION _pb_convert_number_json_to_wkt(field_type INT, full_type_name TEXT, number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	CASE field_type
+	WHEN 14 THEN -- enum
+		CASE full_type_name
+		WHEN '.google.protobuf.NullValue' THEN
+			RETURN _pb_wkt_null_value_number_json_to_json(number_json_value);
+		ELSE
+			RETURN NULL;
+		END CASE;
+	WHEN 11 THEN -- message
+		CASE full_type_name
+		WHEN '.google.protobuf.Timestamp' THEN
+			RETURN _pb_wkt_timestamp_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Duration' THEN
+			RETURN _pb_wkt_duration_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.StringValue' THEN
+			RETURN _pb_wkt_string_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Int64Value' THEN
+			RETURN _pb_wkt_int64_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.UInt64Value' THEN
+			RETURN _pb_wkt_uint64_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Int32Value' THEN
+			RETURN _pb_wkt_int32_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.UInt32Value' THEN
+			RETURN _pb_wkt_uint32_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.BoolValue' THEN
+			RETURN _pb_wkt_bool_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.FloatValue' THEN
+			RETURN _pb_wkt_float_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.DoubleValue' THEN
+			RETURN _pb_wkt_double_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.BytesValue' THEN
+			RETURN _pb_wkt_bytes_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Empty' THEN
+			RETURN _pb_wkt_empty_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Value' THEN
+			RETURN _pb_wkt_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Struct' THEN
+			RETURN _pb_wkt_struct_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.ListValue' THEN
+			RETURN _pb_wkt_list_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.FieldMask' THEN
+			RETURN _pb_wkt_field_mask_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Any' THEN
+			RETURN _pb_wkt_any_number_json_to_json(number_json_value);
+		ELSE
+			RETURN NULL;
+		END CASE;
+	END CASE;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_as_json $$
 CREATE FUNCTION _pb_wire_json_decode_wkt_as_json(wire_json JSON, full_type_name TEXT) RETURNS JSON DETERMINISTIC
 BEGIN

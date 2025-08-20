@@ -2177,175 +2177,6 @@ BEGIN
 	RETURN CAST(enum_numeric_value AS JSON);
 END $$
 
--- Helper procedure to convert well-known type from ProtoNumberJSON to ProtoJSON
-DROP PROCEDURE IF EXISTS _pb_convert_number_json_to_wkt $$
-CREATE PROCEDURE _pb_convert_number_json_to_wkt(
-	IN full_type_name TEXT,
-	IN number_json_value JSON,
-	OUT proto_json_value JSON
-)
-BEGIN
-	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
-	DECLARE message_text TEXT;
-	DECLARE wrapped_value JSON;
-	-- Variables for Any handling
-	DECLARE type_url TEXT;
-	DECLARE any_data TEXT;
-	-- Variables for FieldMask handling
-	DECLARE paths_array JSON;
-	DECLARE path_count INT;
-	DECLARE path_index INT;
-	DECLARE current_path TEXT;
-	DECLARE result_str TEXT;
-	-- Variables for Struct handling
-	DECLARE struct_fields JSON;
-	DECLARE struct_keys JSON;
-	DECLARE struct_key_count INT;
-	DECLARE struct_key_index INT;
-	DECLARE struct_key_name TEXT;
-	DECLARE struct_value_json JSON;
-	DECLARE struct_converted_value JSON;
-	DECLARE struct_result JSON;
-	-- Variables for ListValue handling
-	DECLARE list_values JSON;
-	DECLARE list_length INT;
-	DECLARE list_index INT;
-	DECLARE list_element_json JSON;
-	DECLARE list_converted_value JSON;
-	DECLARE list_result JSON;
-
-	CASE full_type_name
-	WHEN '.google.protobuf.Timestamp' THEN
-		-- Convert {seconds, nanos} to ISO 8601 timestamp
-		SET proto_json_value = _pb_wkt_timestamp_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.Duration' THEN
-		-- Convert {seconds, nanos} to duration string like "3.5s"
-		SET proto_json_value = _pb_wkt_duration_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.StringValue' THEN
-		SET proto_json_value = _pb_wkt_string_value_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.Int64Value' THEN
-		SET proto_json_value = _pb_wkt_int64_value_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.UInt64Value' THEN
-		SET proto_json_value = _pb_wkt_uint64_value_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.Int32Value' THEN
-		SET proto_json_value = _pb_wkt_int32_value_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.UInt32Value' THEN
-		SET proto_json_value = _pb_wkt_uint32_value_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.BoolValue' THEN
-		SET proto_json_value = _pb_wkt_bool_value_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.FloatValue' THEN
-		SET proto_json_value = _pb_wkt_float_value_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.DoubleValue' THEN
-		SET proto_json_value = _pb_wkt_double_value_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.BytesValue' THEN
-		SET proto_json_value = _pb_wkt_bytes_value_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.Empty' THEN
-		SET proto_json_value = _pb_wkt_empty_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.NullValue' THEN
-		SET proto_json_value = _pb_wkt_null_value_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.Value' THEN
-		-- Convert Value to its unwrapped form
-		-- Value has oneof fields: null_value(1), number_value(2), string_value(3), bool_value(4), struct_value(5), list_value(6)
-		IF JSON_LENGTH(number_json_value) = 0 THEN
-			SET proto_json_value = NULL;
-		ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."1"') THEN
-			-- null_value
-			SET proto_json_value = NULL;
-		ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."2"') THEN
-			-- number_value
-			SET proto_json_value = JSON_EXTRACT(number_json_value, '$."2"');
-		ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."3"') THEN
-			-- string_value
-			SET proto_json_value = JSON_EXTRACT(number_json_value, '$."3"');
-		ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."4"') THEN
-			-- bool_value
-			SET proto_json_value = JSON_EXTRACT(number_json_value, '$."4"');
-		ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."5"') THEN
-			-- struct_value - recursively convert
-			CALL _pb_convert_number_json_to_wkt('.google.protobuf.Struct', JSON_EXTRACT(number_json_value, '$."5"'), proto_json_value);
-		ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."6"') THEN
-			-- list_value - recursively convert
-			CALL _pb_convert_number_json_to_wkt('.google.protobuf.ListValue', JSON_EXTRACT(number_json_value, '$."6"'), proto_json_value);
-		ELSE
-			SET proto_json_value = NULL;
-		END IF;
-
-	WHEN '.google.protobuf.Struct' THEN
-		-- Convert Struct {"1": {field_map}} to {key: value, key: value}
-		SET struct_fields = JSON_EXTRACT(number_json_value, '$."1"');
-		IF struct_fields IS NULL OR JSON_LENGTH(struct_fields) = 0 THEN
-			SET proto_json_value = JSON_OBJECT();
-		ELSE
-			SET struct_keys = JSON_KEYS(struct_fields);
-			SET struct_key_count = JSON_LENGTH(struct_keys);
-			SET struct_key_index = 0;
-			SET struct_result = JSON_OBJECT();
-
-			struct_loop: WHILE struct_key_index < struct_key_count DO
-				SET struct_key_name = JSON_UNQUOTE(JSON_EXTRACT(struct_keys, CONCAT('$[', struct_key_index, ']')));
-				SET struct_value_json = JSON_EXTRACT(struct_fields, CONCAT('$."', struct_key_name, '"'));
-				-- Recursively convert the Value
-				CALL _pb_convert_number_json_to_wkt('.google.protobuf.Value', struct_value_json, struct_converted_value);
-				SET struct_result = JSON_SET(struct_result, CONCAT('$.', struct_key_name), struct_converted_value);
-				SET struct_key_index = struct_key_index + 1;
-			END WHILE struct_loop;
-
-			SET proto_json_value = struct_result;
-		END IF;
-
-	WHEN '.google.protobuf.ListValue' THEN
-		-- Convert ListValue {"1": [values]} to [value, value, value]
-		SET list_values = JSON_EXTRACT(number_json_value, '$."1"');
-		IF list_values IS NULL OR JSON_LENGTH(list_values) = 0 THEN
-			SET proto_json_value = JSON_ARRAY();
-		ELSE
-			SET list_length = JSON_LENGTH(list_values);
-			SET list_index = 0;
-			SET list_result = JSON_ARRAY();
-
-			list_loop: WHILE list_index < list_length DO
-				SET list_element_json = JSON_EXTRACT(list_values, CONCAT('$[', list_index, ']'));
-				-- Recursively convert the Value
-				CALL _pb_convert_number_json_to_wkt('.google.protobuf.Value', list_element_json, list_converted_value);
-				SET list_result = JSON_ARRAY_APPEND(list_result, '$', list_converted_value);
-				SET list_index = list_index + 1;
-			END WHILE list_loop;
-
-			SET proto_json_value = list_result;
-		END IF;
-
-	WHEN '.google.protobuf.FieldMask' THEN
-		-- Convert {"1": ["path1", "path2"]} to "camelPath1,camelPath2"
-		SET proto_json_value = _pb_wkt_field_mask_number_json_to_json(number_json_value);
-
-	WHEN '.google.protobuf.Any' THEN
-		-- {"1": "url", "2": "base64data"} -> {"@type": "url", "field": "value"}
-		-- This is simplified - real Any handling is more complex
-		SET type_url = JSON_UNQUOTE(JSON_EXTRACT(number_json_value, '$."1"'));
-		SET any_data = JSON_UNQUOTE(JSON_EXTRACT(number_json_value, '$."2"'));
-		-- Convert base64 data back to object (simplified)
-		SET proto_json_value = JSON_OBJECT('@type', type_url);
-		-- In reality, we would decode the base64 data and merge it
-
-	ELSE
-		-- Not a well-known type, return as-is
-		SET proto_json_value = number_json_value;
-	END CASE;
-END $$
-
 -- Helper procedure to convert map fields from ProtoNumberJSON to ProtoJSON
 DROP PROCEDURE IF EXISTS _pb_convert_map_number_json_to_proto_json $$
 CREATE PROCEDURE _pb_convert_map_number_json_to_proto_json(
@@ -2589,7 +2420,7 @@ BEGIN
 						-- Check if it's a well-known type
 						CALL _pb_is_well_known_type(field_type_name, @is_wkt);
 						IF @is_wkt THEN
-							CALL _pb_convert_number_json_to_wkt(field_type_name, array_element, converted_value);
+							SET converted_value = _pb_convert_number_json_to_wkt(field_type, field_type_name, array_element);
 							SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
 						ELSE
 							SET enum_numeric_value = JSON_EXTRACT(array_element, '$');
@@ -2600,7 +2431,7 @@ BEGIN
 						-- Check if it's a well-known type
 						CALL _pb_is_well_known_type(field_type_name, @is_wkt);
 						IF @is_wkt THEN
-							CALL _pb_convert_number_json_to_wkt(field_type_name, array_element, converted_value);
+							SET converted_value = _pb_convert_number_json_to_wkt(field_type, field_type_name, array_element);
 							SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
 						ELSE
 							-- Recursively convert nested message
@@ -2633,7 +2464,7 @@ BEGIN
 					-- Check if it's a well-known type
 					CALL _pb_is_well_known_type(field_type_name, @is_wkt);
 					IF @is_wkt THEN
-						CALL _pb_convert_number_json_to_wkt(field_type_name, field_json_value, converted_value);
+						SET converted_value = _pb_convert_number_json_to_wkt(field_type, field_type_name, field_json_value);
 						SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_value);
 					ELSE
 						SET enum_numeric_value = JSON_EXTRACT(field_json_value, '$');
@@ -2644,7 +2475,7 @@ BEGIN
 					-- Check if it's a well-known type
 					CALL _pb_is_well_known_type(field_type_name, @is_wkt);
 					IF @is_wkt THEN
-						CALL _pb_convert_number_json_to_wkt(field_type_name, field_json_value, converted_value);
+						SET converted_value = _pb_convert_number_json_to_wkt(field_type, field_type_name, field_json_value);
 						SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_value);
 					ELSE
 						-- Recursively convert nested message
@@ -3730,6 +3561,143 @@ BEGIN
 	END IF;
 END $$
 
+-- Helper procedure to convert google.protobuf.Value from ProtoNumberJSON to ProtoJSON
+DROP PROCEDURE IF EXISTS _pb_wkt_value_number_json_to_json $$
+CREATE PROCEDURE _pb_wkt_value_number_json_to_json(IN number_json_value JSON, OUT result JSON)
+BEGIN
+	DECLARE struct_converted_value JSON;
+	DECLARE list_converted_value JSON;
+
+	SET @@SESSION.max_sp_recursion_depth = 255;
+
+	-- Convert Value to its unwrapped form
+	-- Value has oneof fields: null_value(1), number_value(2), string_value(3), bool_value(4), struct_value(5), list_value(6)
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		SET result = CAST(NULL AS JSON);
+	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."1"') THEN
+		-- null_value
+		SET result = CAST(NULL AS JSON);
+	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."2"') THEN
+		-- number_value
+		SET result = JSON_EXTRACT(number_json_value, '$."2"');
+	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."3"') THEN
+		-- string_value
+		SET result = JSON_EXTRACT(number_json_value, '$."3"');
+	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."4"') THEN
+		-- bool_value
+		SET result = JSON_EXTRACT(number_json_value, '$."4"');
+	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."5"') THEN
+		-- struct_value - recursively convert
+		CALL _pb_wkt_struct_number_json_to_json(JSON_EXTRACT(number_json_value, '$."5"'), struct_converted_value);
+		SET result = struct_converted_value;
+	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."6"') THEN
+		-- list_value - recursively convert
+		CALL _pb_wkt_list_value_number_json_to_json(JSON_EXTRACT(number_json_value, '$."6"'), list_converted_value);
+		SET result = list_converted_value;
+	ELSE
+		SET result = CAST(NULL AS JSON);
+	END IF;
+END $$
+
+-- Helper function to convert google.protobuf.Value from ProtoNumberJSON to ProtoJSON (function wrapper)
+DROP FUNCTION IF EXISTS _pb_wkt_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wkt_value_number_json_to_json(number_json_value, result);
+	RETURN result;
+END $$
+
+-- Helper procedure to convert google.protobuf.Struct from ProtoNumberJSON to ProtoJSON
+DROP PROCEDURE IF EXISTS _pb_wkt_struct_number_json_to_json $$
+CREATE PROCEDURE _pb_wkt_struct_number_json_to_json(IN number_json_value JSON, OUT result JSON)
+BEGIN
+	DECLARE struct_fields JSON;
+	DECLARE struct_keys JSON;
+	DECLARE struct_key_count INT;
+	DECLARE struct_key_index INT;
+	DECLARE struct_key_name TEXT;
+	DECLARE struct_value_json JSON;
+	DECLARE struct_converted_value JSON;
+	DECLARE struct_result JSON;
+
+	SET @@SESSION.max_sp_recursion_depth = 255;
+
+	-- Convert Struct {"1": {field_map}} to {key: value, key: value}
+	SET struct_fields = JSON_EXTRACT(number_json_value, '$."1"');
+	IF struct_fields IS NULL OR JSON_LENGTH(struct_fields) = 0 THEN
+		SET result = JSON_OBJECT();
+	ELSE
+		SET struct_keys = JSON_KEYS(struct_fields);
+		SET struct_key_count = JSON_LENGTH(struct_keys);
+		SET struct_key_index = 0;
+		SET struct_result = JSON_OBJECT();
+
+		struct_loop: WHILE struct_key_index < struct_key_count DO
+			SET struct_key_name = JSON_UNQUOTE(JSON_EXTRACT(struct_keys, CONCAT('$[', struct_key_index, ']')));
+			SET struct_value_json = JSON_EXTRACT(struct_fields, CONCAT('$."', struct_key_name, '"'));
+			-- Recursively convert the Value
+			CALL _pb_wkt_value_number_json_to_json(struct_value_json, struct_converted_value);
+			SET struct_result = JSON_SET(struct_result, CONCAT('$.', struct_key_name), struct_converted_value);
+			SET struct_key_index = struct_key_index + 1;
+		END WHILE struct_loop;
+
+		SET result = struct_result;
+	END IF;
+END $$
+
+-- Helper function to convert google.protobuf.Struct from ProtoNumberJSON to ProtoJSON (function wrapper)
+DROP FUNCTION IF EXISTS _pb_wkt_struct_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_struct_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wkt_struct_number_json_to_json(number_json_value, result);
+	RETURN result;
+END $$
+
+-- Helper procedure to convert google.protobuf.ListValue from ProtoNumberJSON to ProtoJSON
+DROP PROCEDURE IF EXISTS _pb_wkt_list_value_number_json_to_json $$
+CREATE PROCEDURE _pb_wkt_list_value_number_json_to_json(IN number_json_value JSON, OUT result JSON)
+BEGIN
+	DECLARE list_values JSON;
+	DECLARE list_length INT;
+	DECLARE list_index INT;
+	DECLARE list_element_json JSON;
+	DECLARE list_converted_value JSON;
+	DECLARE list_result JSON;
+
+	SET @@SESSION.max_sp_recursion_depth = 255;
+
+	-- Convert ListValue {"1": [values]} to [value, value, value]
+	SET list_values = JSON_EXTRACT(number_json_value, '$."1"');
+	IF list_values IS NULL OR JSON_LENGTH(list_values) = 0 THEN
+		SET result = JSON_ARRAY();
+	ELSE
+		SET list_length = JSON_LENGTH(list_values);
+		SET list_index = 0;
+		SET list_result = JSON_ARRAY();
+
+		list_loop: WHILE list_index < list_length DO
+			SET list_element_json = JSON_EXTRACT(list_values, CONCAT('$[', list_index, ']'));
+			-- Recursively convert the Value
+			CALL _pb_wkt_value_number_json_to_json(list_element_json, list_converted_value);
+			SET list_result = JSON_ARRAY_APPEND(list_result, '$', list_converted_value);
+			SET list_index = list_index + 1;
+		END WHILE list_loop;
+
+		SET result = list_result;
+	END IF;
+END $$
+
+-- Helper function to convert google.protobuf.ListValue from ProtoNumberJSON to ProtoJSON (function wrapper)
+DROP FUNCTION IF EXISTS _pb_wkt_list_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_list_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wkt_list_value_number_json_to_json(number_json_value, result);
+	RETURN result;
+END $$
+
 DELIMITER $$
 
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_field_mask_as_json $$
@@ -3915,6 +3883,22 @@ BEGIN
 END $$
 
 DELIMITER $$
+
+-- Helper function to convert google.protobuf.Any from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_any_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_any_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE type_url TEXT;
+	DECLARE any_data TEXT;
+
+	-- {"1": "url", "2": "base64data"} -> {"@type": "url", "field": "value"}
+	-- This is simplified - real Any handling is more complex
+	SET type_url = JSON_UNQUOTE(JSON_EXTRACT(number_json_value, '$."1"'));
+	SET any_data = JSON_UNQUOTE(JSON_EXTRACT(number_json_value, '$."2"'));
+	-- Convert base64 data back to object (simplified)
+	RETURN JSON_OBJECT('@type', type_url);
+	-- In reality, we would decode the base64 data and merge it
+END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_any_json_to_number_json $$
 CREATE FUNCTION _pb_wkt_any_json_to_number_json(proto_json_value JSON) RETURNS JSON DETERMINISTIC
@@ -4275,6 +4259,60 @@ BEGIN
 			RETURN _pb_wkt_empty_json_to_number_json(proto_json_value);
 		WHEN '.google.protobuf.Any' THEN
 			RETURN _pb_wkt_any_json_to_number_json(proto_json_value);
+		ELSE
+			RETURN NULL;
+		END CASE;
+	END CASE;
+END $$
+
+-- Helper function to convert well-known type from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_convert_number_json_to_wkt $$
+CREATE FUNCTION _pb_convert_number_json_to_wkt(field_type INT, full_type_name TEXT, number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	CASE field_type
+	WHEN 14 THEN -- enum
+		CASE full_type_name
+		WHEN '.google.protobuf.NullValue' THEN
+			RETURN _pb_wkt_null_value_number_json_to_json(number_json_value);
+		ELSE
+			RETURN NULL;
+		END CASE;
+	WHEN 11 THEN -- message
+		CASE full_type_name
+		WHEN '.google.protobuf.Timestamp' THEN
+			RETURN _pb_wkt_timestamp_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Duration' THEN
+			RETURN _pb_wkt_duration_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.StringValue' THEN
+			RETURN _pb_wkt_string_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Int64Value' THEN
+			RETURN _pb_wkt_int64_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.UInt64Value' THEN
+			RETURN _pb_wkt_uint64_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Int32Value' THEN
+			RETURN _pb_wkt_int32_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.UInt32Value' THEN
+			RETURN _pb_wkt_uint32_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.BoolValue' THEN
+			RETURN _pb_wkt_bool_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.FloatValue' THEN
+			RETURN _pb_wkt_float_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.DoubleValue' THEN
+			RETURN _pb_wkt_double_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.BytesValue' THEN
+			RETURN _pb_wkt_bytes_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Empty' THEN
+			RETURN _pb_wkt_empty_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Value' THEN
+			RETURN _pb_wkt_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Struct' THEN
+			RETURN _pb_wkt_struct_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.ListValue' THEN
+			RETURN _pb_wkt_list_value_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.FieldMask' THEN
+			RETURN _pb_wkt_field_mask_number_json_to_json(number_json_value);
+		WHEN '.google.protobuf.Any' THEN
+			RETURN _pb_wkt_any_number_json_to_json(number_json_value);
 		ELSE
 			RETURN NULL;
 		END CASE;

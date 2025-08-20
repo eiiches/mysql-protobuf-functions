@@ -462,3 +462,140 @@ BEGIN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
 END $$
+
+-- Helper procedure to convert google.protobuf.Value from ProtoNumberJSON to ProtoJSON
+DROP PROCEDURE IF EXISTS _pb_wkt_value_number_json_to_json $$
+CREATE PROCEDURE _pb_wkt_value_number_json_to_json(IN number_json_value JSON, OUT result JSON)
+BEGIN
+	DECLARE struct_converted_value JSON;
+	DECLARE list_converted_value JSON;
+
+	SET @@SESSION.max_sp_recursion_depth = 255;
+
+	-- Convert Value to its unwrapped form
+	-- Value has oneof fields: null_value(1), number_value(2), string_value(3), bool_value(4), struct_value(5), list_value(6)
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		SET result = CAST(NULL AS JSON);
+	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."1"') THEN
+		-- null_value
+		SET result = CAST(NULL AS JSON);
+	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."2"') THEN
+		-- number_value
+		SET result = JSON_EXTRACT(number_json_value, '$."2"');
+	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."3"') THEN
+		-- string_value
+		SET result = JSON_EXTRACT(number_json_value, '$."3"');
+	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."4"') THEN
+		-- bool_value
+		SET result = JSON_EXTRACT(number_json_value, '$."4"');
+	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."5"') THEN
+		-- struct_value - recursively convert
+		CALL _pb_wkt_struct_number_json_to_json(JSON_EXTRACT(number_json_value, '$."5"'), struct_converted_value);
+		SET result = struct_converted_value;
+	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."6"') THEN
+		-- list_value - recursively convert
+		CALL _pb_wkt_list_value_number_json_to_json(JSON_EXTRACT(number_json_value, '$."6"'), list_converted_value);
+		SET result = list_converted_value;
+	ELSE
+		SET result = CAST(NULL AS JSON);
+	END IF;
+END $$
+
+-- Helper function to convert google.protobuf.Value from ProtoNumberJSON to ProtoJSON (function wrapper)
+DROP FUNCTION IF EXISTS _pb_wkt_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wkt_value_number_json_to_json(number_json_value, result);
+	RETURN result;
+END $$
+
+-- Helper procedure to convert google.protobuf.Struct from ProtoNumberJSON to ProtoJSON
+DROP PROCEDURE IF EXISTS _pb_wkt_struct_number_json_to_json $$
+CREATE PROCEDURE _pb_wkt_struct_number_json_to_json(IN number_json_value JSON, OUT result JSON)
+BEGIN
+	DECLARE struct_fields JSON;
+	DECLARE struct_keys JSON;
+	DECLARE struct_key_count INT;
+	DECLARE struct_key_index INT;
+	DECLARE struct_key_name TEXT;
+	DECLARE struct_value_json JSON;
+	DECLARE struct_converted_value JSON;
+	DECLARE struct_result JSON;
+
+	SET @@SESSION.max_sp_recursion_depth = 255;
+
+	-- Convert Struct {"1": {field_map}} to {key: value, key: value}
+	SET struct_fields = JSON_EXTRACT(number_json_value, '$."1"');
+	IF struct_fields IS NULL OR JSON_LENGTH(struct_fields) = 0 THEN
+		SET result = JSON_OBJECT();
+	ELSE
+		SET struct_keys = JSON_KEYS(struct_fields);
+		SET struct_key_count = JSON_LENGTH(struct_keys);
+		SET struct_key_index = 0;
+		SET struct_result = JSON_OBJECT();
+
+		struct_loop: WHILE struct_key_index < struct_key_count DO
+			SET struct_key_name = JSON_UNQUOTE(JSON_EXTRACT(struct_keys, CONCAT('$[', struct_key_index, ']')));
+			SET struct_value_json = JSON_EXTRACT(struct_fields, CONCAT('$."', struct_key_name, '"'));
+			-- Recursively convert the Value
+			CALL _pb_wkt_value_number_json_to_json(struct_value_json, struct_converted_value);
+			SET struct_result = JSON_SET(struct_result, CONCAT('$.', struct_key_name), struct_converted_value);
+			SET struct_key_index = struct_key_index + 1;
+		END WHILE struct_loop;
+
+		SET result = struct_result;
+	END IF;
+END $$
+
+-- Helper function to convert google.protobuf.Struct from ProtoNumberJSON to ProtoJSON (function wrapper)
+DROP FUNCTION IF EXISTS _pb_wkt_struct_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_struct_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wkt_struct_number_json_to_json(number_json_value, result);
+	RETURN result;
+END $$
+
+-- Helper procedure to convert google.protobuf.ListValue from ProtoNumberJSON to ProtoJSON
+DROP PROCEDURE IF EXISTS _pb_wkt_list_value_number_json_to_json $$
+CREATE PROCEDURE _pb_wkt_list_value_number_json_to_json(IN number_json_value JSON, OUT result JSON)
+BEGIN
+	DECLARE list_values JSON;
+	DECLARE list_length INT;
+	DECLARE list_index INT;
+	DECLARE list_element_json JSON;
+	DECLARE list_converted_value JSON;
+	DECLARE list_result JSON;
+
+	SET @@SESSION.max_sp_recursion_depth = 255;
+
+	-- Convert ListValue {"1": [values]} to [value, value, value]
+	SET list_values = JSON_EXTRACT(number_json_value, '$."1"');
+	IF list_values IS NULL OR JSON_LENGTH(list_values) = 0 THEN
+		SET result = JSON_ARRAY();
+	ELSE
+		SET list_length = JSON_LENGTH(list_values);
+		SET list_index = 0;
+		SET list_result = JSON_ARRAY();
+
+		list_loop: WHILE list_index < list_length DO
+			SET list_element_json = JSON_EXTRACT(list_values, CONCAT('$[', list_index, ']'));
+			-- Recursively convert the Value
+			CALL _pb_wkt_value_number_json_to_json(list_element_json, list_converted_value);
+			SET list_result = JSON_ARRAY_APPEND(list_result, '$', list_converted_value);
+			SET list_index = list_index + 1;
+		END WHILE list_loop;
+
+		SET result = list_result;
+	END IF;
+END $$
+
+-- Helper function to convert google.protobuf.ListValue from ProtoNumberJSON to ProtoJSON (function wrapper)
+DROP FUNCTION IF EXISTS _pb_wkt_list_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_list_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE result JSON;
+	CALL _pb_wkt_list_value_number_json_to_json(number_json_value, result);
+	RETURN result;
+END $$
