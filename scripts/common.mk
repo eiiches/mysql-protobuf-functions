@@ -1,5 +1,15 @@
+# Generate Go code for json_options.proto in internal/jsonoptionspb
+internal/jsonoptionspb/json_options.pb.go: src/json_options.proto
+	@echo "Generating Go protobuf code for json_options.proto..."
+	mkdir -p internal/jsonoptionspb
+	protoc --proto_path=src \
+		--go_out=internal/jsonoptionspb \
+		--go_opt=paths=source_relative \
+		--go_opt=Mjson_options.proto='github.com/eiiches/mysql-protobuf-functions/internal/jsonoptionspb' \
+		src/json_options.proto
+
 .PHONY: test
-test: purge reload ensure-test-database
+test: purge reload ensure-test-database internal/jsonoptionspb/json_options.pb.go
 	go test ./internal/...
 	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" -fuzz-iterations 20 $${GO_TEST_FLAGS:-}
 

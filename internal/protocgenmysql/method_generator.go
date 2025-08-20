@@ -67,9 +67,9 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 
 	// Generate from_json
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_from_json $$\n", funcPrefix))
-	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_from_json(json_data JSON) RETURNS JSON DETERMINISTIC\n", funcPrefix))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC\n", funcPrefix))
 	content.WriteString("BEGIN\n")
-	content.WriteString(fmt.Sprintf("    RETURN _pb_json_to_number_json(%s(), '.%s', json_data);\n", schemaFunctionName, fullTypeName))
+	content.WriteString(fmt.Sprintf("    RETURN _pb_json_to_number_json(%s(), '.%s', json_data, json_unmarshal_options);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
 
 	// Generate from_message
@@ -81,9 +81,9 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 
 	// Generate to_json
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_to_json $$\n", funcPrefix))
-	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_to_json(proto_data JSON) RETURNS JSON DETERMINISTIC\n", funcPrefix))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC\n", funcPrefix))
 	content.WriteString("BEGIN\n")
-	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_json(%s(), '.%s', proto_data, TRUE);\n", schemaFunctionName, fullTypeName))
+	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_json(%s(), '.%s', proto_data, json_marshal_options);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
 
 	// Generate to_message

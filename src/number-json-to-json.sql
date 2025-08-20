@@ -628,10 +628,16 @@ END $$
 
 -- Public function interface
 DROP FUNCTION IF EXISTS _pb_number_json_to_json $$
-CREATE FUNCTION _pb_number_json_to_json(descriptor_set_json JSON, type_name TEXT, number_json JSON, emit_default_values BOOLEAN) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION _pb_number_json_to_json(descriptor_set_json JSON, type_name TEXT, number_json JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE message_text TEXT;
 	DECLARE result JSON;
+	DECLARE emit_default_values BOOLEAN DEFAULT FALSE;
+
+	-- Extract emit_default_values from json_marshal_options
+	IF json_marshal_options IS NOT NULL THEN
+		SET emit_default_values = pb_json_marshal_options_get_emit_default_values(json_marshal_options);
+	END IF;
 
 	-- Validate type name starts with dot
 	IF type_name NOT LIKE '.%' THEN

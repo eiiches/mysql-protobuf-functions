@@ -7,6 +7,7 @@ import (
 	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
 	"github.com/eiiches/mysql-protobuf-functions/internal/descriptorsetjson"
 	"github.com/eiiches/mysql-protobuf-functions/internal/gomega/gjson"
+	"github.com/eiiches/mysql-protobuf-functions/internal/jsonoptionspb"
 	"github.com/eiiches/mysql-protobuf-functions/internal/protonumberjson"
 	"github.com/eiiches/mysql-protobuf-functions/internal/testutils"
 	. "github.com/onsi/gomega"
@@ -61,9 +62,22 @@ func testNumberJsonToJson(t *testing.T, fieldDefinition string, numberJsonInput 
 
 	// Test the conversion: number JSON -> JSON
 	// MySQL implementation should produce the same JSON as Go's protojson
-	RunTestThatExpression(t, "_pb_number_json_to_json(?, ?, ?, ?)", descriptorSetJson, typeName, numberJsonInput, true).IsEqualToJsonString(expectedJson)
 
-	RunTestThatExpression(t, "_pb_number_json_to_json(?, ?, ?, ?)", descriptorSetJson, typeName, numberJsonInput, false).IsEqualToJsonString(string(expectedJsonWithoutDefaults))
+	// Create JsonMarshalOptions with emit_default_values = true
+	marshalOptionsWithDefaultsJSON, err := protonumberjson.Marshal(&jsonoptionspb.JsonMarshalOptions{
+		EmitDefaultValues: true,
+	})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	// Create JsonMarshalOptions with emit_default_values = false
+	marshalOptionsWithoutDefaultsJSON, err := protonumberjson.Marshal(&jsonoptionspb.JsonMarshalOptions{
+		EmitDefaultValues: false,
+	})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	RunTestThatExpression(t, "_pb_number_json_to_json(?, ?, ?, ?)", descriptorSetJson, typeName, numberJsonInput, string(marshalOptionsWithDefaultsJSON)).IsEqualToJsonString(expectedJson)
+
+	RunTestThatExpression(t, "_pb_number_json_to_json(?, ?, ?, ?)", descriptorSetJson, typeName, numberJsonInput, string(marshalOptionsWithoutDefaultsJSON)).IsEqualToJsonString(string(expectedJsonWithoutDefaults))
 }
 
 func TestNumberJsonToJsonSingularFields(t *testing.T) {
@@ -661,5 +675,10 @@ func TestNumberJsonToJsonNullInput(t *testing.T) {
 	g := NewWithT(t)
 	g.Expect(err).NotTo(HaveOccurred())
 
-	RunTestThatExpression(t, "_pb_number_json_to_json(?, ?, ?, ?)", descriptorSetJson, typeName, nil, true).IsNull()
+	marshalOptionsJSON, err := protonumberjson.Marshal(&jsonoptionspb.JsonMarshalOptions{
+		EmitDefaultValues: true,
+	})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	RunTestThatExpression(t, "_pb_number_json_to_json(?, ?, ?, ?)", descriptorSetJson, typeName, nil, string(marshalOptionsJSON)).IsNull()
 }
