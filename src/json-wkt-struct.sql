@@ -435,3 +435,30 @@ BEGIN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
 END $$
+
+-- Helper function to convert google.protobuf.NullValue from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_null_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_null_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE message_text TEXT;
+	DECLARE enum_value INT;
+
+	-- google.protobuf.NullValue in ProtoNumberJSON is just the enum numeric value
+	-- It should always be 0 (NULL_VALUE), and converts back to JSON null
+
+	IF JSON_TYPE(number_json_value) IN ('INTEGER', 'UNSIGNED INTEGER') THEN
+		SET enum_value = CAST(number_json_value AS SIGNED);
+		IF enum_value = 0 THEN
+			-- NULL_VALUE (enum value 0) converts to JSON null
+			RETURN CAST(NULL AS JSON);
+		ELSE
+			-- Invalid numeric value for NullValue enum
+			SET message_text = CONCAT('Invalid NullValue enum number in ProtoNumberJSON: ', enum_value);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+	ELSE
+		-- Invalid JSON type for NullValue in ProtoNumberJSON
+		SET message_text = CONCAT('Invalid JSON type for NullValue in ProtoNumberJSON: ', JSON_TYPE(number_json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+END $$

@@ -164,3 +164,115 @@ BEGIN
 		RETURN JSON_OBJECT();
 	END IF;
 END $$
+
+-- Helper function to convert StringValue from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_string_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_string_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": "value"} becomes unwrapped "value", {} becomes ""
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN JSON_QUOTE('');
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$
+
+-- Helper function to convert Int64Value from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_int64_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_int64_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE wrapped_value JSON;
+	-- {"1": value} becomes unwrapped "value" (as string for 64-bit), {} becomes "0"
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN JSON_QUOTE('0');
+	ELSE
+		SET wrapped_value = JSON_EXTRACT(number_json_value, '$."1"');
+		RETURN JSON_QUOTE(CAST(wrapped_value AS CHAR));
+	END IF;
+END $$
+
+-- Helper function to convert UInt64Value from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_uint64_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_uint64_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE wrapped_value JSON;
+	-- {"1": value} becomes unwrapped "value" (as string for 64-bit), {} becomes "0"
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN JSON_QUOTE('0');
+	ELSE
+		SET wrapped_value = JSON_EXTRACT(number_json_value, '$."1"');
+		RETURN JSON_QUOTE(CAST(wrapped_value AS CHAR));
+	END IF;
+END $$
+
+-- Helper function to convert Int32Value from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_int32_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_int32_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": value} becomes unwrapped value (as number for 32-bit), {} becomes 0
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN CAST(0 AS JSON);
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$
+
+-- Helper function to convert UInt32Value from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_uint32_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_uint32_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": value} becomes unwrapped value (as number for 32-bit), {} becomes 0
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN CAST(0 AS JSON);
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$
+
+-- Helper function to convert BoolValue from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_bool_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_bool_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": value} becomes unwrapped value, {} becomes false
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN CAST(false AS JSON);
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$
+
+-- Helper function to convert FloatValue from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_float_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_float_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": value} becomes unwrapped value, {} becomes 0.0
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN CAST(0.0 AS JSON);
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$
+
+-- Helper function to convert DoubleValue from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_double_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_double_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": value} becomes unwrapped value, {} becomes 0.0
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN CAST(0.0 AS JSON);
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$
+
+-- Helper function to convert BytesValue from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_bytes_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_bytes_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": "value"} becomes unwrapped "value", {} becomes ""
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN JSON_QUOTE('');
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$

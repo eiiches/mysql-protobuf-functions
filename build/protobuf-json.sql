@@ -2224,82 +2224,37 @@ BEGIN
 		SET proto_json_value = _pb_wkt_duration_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.StringValue' THEN
-		-- {"1": "value"} becomes unwrapped "value", {} becomes ""
-		IF JSON_LENGTH(number_json_value) = 0 THEN
-			SET proto_json_value = JSON_QUOTE('');
-		ELSE
-			SET proto_json_value = JSON_EXTRACT(number_json_value, '$."1"');
-		END IF;
+		SET proto_json_value = _pb_wkt_string_value_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.Int64Value' THEN
-		-- {"1": value} becomes unwrapped "value" (as string for 64-bit), {} becomes "0"
-		IF JSON_LENGTH(number_json_value) = 0 THEN
-			SET proto_json_value = JSON_QUOTE('0');
-		ELSE
-			SET wrapped_value = JSON_EXTRACT(number_json_value, '$."1"');
-			SET proto_json_value = JSON_QUOTE(CAST(wrapped_value AS CHAR));
-		END IF;
+		SET proto_json_value = _pb_wkt_int64_value_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.UInt64Value' THEN
-		-- {"1": value} becomes unwrapped "value" (as string for 64-bit), {} becomes "0"
-		IF JSON_LENGTH(number_json_value) = 0 THEN
-			SET proto_json_value = JSON_QUOTE('0');
-		ELSE
-			SET wrapped_value = JSON_EXTRACT(number_json_value, '$."1"');
-			SET proto_json_value = JSON_QUOTE(CAST(wrapped_value AS CHAR));
-		END IF;
+		SET proto_json_value = _pb_wkt_uint64_value_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.Int32Value' THEN
-		-- {"1": value} becomes unwrapped value (as number for 32-bit), {} becomes 0
-		IF JSON_LENGTH(number_json_value) = 0 THEN
-			SET proto_json_value = CAST(0 AS JSON);
-		ELSE
-			SET proto_json_value = JSON_EXTRACT(number_json_value, '$."1"');
-		END IF;
+		SET proto_json_value = _pb_wkt_int32_value_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.UInt32Value' THEN
-		-- {"1": value} becomes unwrapped value (as number for 32-bit), {} becomes 0
-		IF JSON_LENGTH(number_json_value) = 0 THEN
-			SET proto_json_value = CAST(0 AS JSON);
-		ELSE
-			SET proto_json_value = JSON_EXTRACT(number_json_value, '$."1"');
-		END IF;
+		SET proto_json_value = _pb_wkt_uint32_value_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.BoolValue' THEN
-		-- {"1": value} becomes unwrapped value, {} becomes false
-		IF JSON_LENGTH(number_json_value) = 0 THEN
-			SET proto_json_value = CAST(false AS JSON);
-		ELSE
-			SET proto_json_value = JSON_EXTRACT(number_json_value, '$."1"');
-		END IF;
+		SET proto_json_value = _pb_wkt_bool_value_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.FloatValue' THEN
-		-- {"1": value} becomes unwrapped value, {} becomes 0.0
-		IF JSON_LENGTH(number_json_value) = 0 THEN
-			SET proto_json_value = CAST(0.0 AS JSON);
-		ELSE
-			SET proto_json_value = JSON_EXTRACT(number_json_value, '$."1"');
-		END IF;
+		SET proto_json_value = _pb_wkt_float_value_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.DoubleValue' THEN
-		-- {"1": value} becomes unwrapped value, {} becomes 0.0
-		IF JSON_LENGTH(number_json_value) = 0 THEN
-			SET proto_json_value = CAST(0.0 AS JSON);
-		ELSE
-			SET proto_json_value = JSON_EXTRACT(number_json_value, '$."1"');
-		END IF;
+		SET proto_json_value = _pb_wkt_double_value_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.BytesValue' THEN
-		-- {"1": "value"} becomes unwrapped "value", {} becomes ""
-		IF JSON_LENGTH(number_json_value) = 0 THEN
-			SET proto_json_value = JSON_QUOTE('');
-		ELSE
-			SET proto_json_value = JSON_EXTRACT(number_json_value, '$."1"');
-		END IF;
+		SET proto_json_value = _pb_wkt_bytes_value_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.Empty' THEN
-		-- Empty object stays empty
-		SET proto_json_value = JSON_OBJECT();
+		SET proto_json_value = _pb_wkt_empty_number_json_to_json(number_json_value);
+
+	WHEN '.google.protobuf.NullValue' THEN
+		SET proto_json_value = _pb_wkt_null_value_number_json_to_json(number_json_value);
 
 	WHEN '.google.protobuf.Value' THEN
 		-- Convert Value to its unwrapped form
@@ -2631,9 +2586,16 @@ BEGIN
 					-- Convert element based on field type
 					CASE field_type
 					WHEN 14 THEN -- enum
-						SET enum_numeric_value = JSON_EXTRACT(array_element, '$');
-						SET enum_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value);
-						SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', enum_json_value);
+						-- Check if it's a well-known type
+						CALL _pb_is_well_known_type(field_type_name, @is_wkt);
+						IF @is_wkt THEN
+							CALL _pb_convert_number_json_to_wkt(field_type_name, array_element, converted_value);
+							SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', converted_value);
+						ELSE
+							SET enum_numeric_value = JSON_EXTRACT(array_element, '$');
+							SET enum_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value);
+							SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', enum_json_value);
+						END IF;
 					WHEN 11 THEN -- message
 						-- Check if it's a well-known type
 						CALL _pb_is_well_known_type(field_type_name, @is_wkt);
@@ -2668,9 +2630,16 @@ BEGIN
 				-- Handle singular fields
 				CASE field_type
 				WHEN 14 THEN -- enum
-					SET enum_numeric_value = JSON_EXTRACT(field_json_value, '$');
-					SET enum_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value);
-					SET result = JSON_SET(result, CONCAT('$.', target_field_name), enum_json_value);
+					-- Check if it's a well-known type
+					CALL _pb_is_well_known_type(field_type_name, @is_wkt);
+					IF @is_wkt THEN
+						CALL _pb_convert_number_json_to_wkt(field_type_name, field_json_value, converted_value);
+						SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_value);
+					ELSE
+						SET enum_numeric_value = JSON_EXTRACT(field_json_value, '$');
+						SET enum_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value);
+						SET result = JSON_SET(result, CONCAT('$.', target_field_name), enum_json_value);
+					END IF;
 				WHEN 11 THEN -- message
 					-- Check if it's a well-known type
 					CALL _pb_is_well_known_type(field_type_name, @is_wkt);
@@ -3734,6 +3703,33 @@ BEGIN
 	END IF;
 END $$
 
+-- Helper function to convert google.protobuf.NullValue from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_null_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_null_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE message_text TEXT;
+	DECLARE enum_value INT;
+
+	-- google.protobuf.NullValue in ProtoNumberJSON is just the enum numeric value
+	-- It should always be 0 (NULL_VALUE), and converts back to JSON null
+
+	IF JSON_TYPE(number_json_value) IN ('INTEGER', 'UNSIGNED INTEGER') THEN
+		SET enum_value = CAST(number_json_value AS SIGNED);
+		IF enum_value = 0 THEN
+			-- NULL_VALUE (enum value 0) converts to JSON null
+			RETURN CAST(NULL AS JSON);
+		ELSE
+			-- Invalid numeric value for NullValue enum
+			SET message_text = CONCAT('Invalid NullValue enum number in ProtoNumberJSON: ', enum_value);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+	ELSE
+		-- Invalid JSON type for NullValue in ProtoNumberJSON
+		SET message_text = CONCAT('Invalid JSON type for NullValue in ProtoNumberJSON: ', JSON_TYPE(number_json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+END $$
+
 DELIMITER $$
 
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_field_mask_as_json $$
@@ -3942,6 +3938,14 @@ BEGIN
 	-- Empty always returns an empty JSON object regardless of input
 	RETURN JSON_OBJECT();
 END $$
+
+-- Helper function to convert Empty from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_empty_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_empty_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- Empty object stays empty
+	RETURN JSON_OBJECT();
+END $$
 DELIMITER $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_int64_value_json_to_number_json $$
@@ -4106,6 +4110,118 @@ BEGIN
 		RETURN JSON_OBJECT('1', proto_json_value);
 	ELSE
 		RETURN JSON_OBJECT();
+	END IF;
+END $$
+
+-- Helper function to convert StringValue from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_string_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_string_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": "value"} becomes unwrapped "value", {} becomes ""
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN JSON_QUOTE('');
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$
+
+-- Helper function to convert Int64Value from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_int64_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_int64_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE wrapped_value JSON;
+	-- {"1": value} becomes unwrapped "value" (as string for 64-bit), {} becomes "0"
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN JSON_QUOTE('0');
+	ELSE
+		SET wrapped_value = JSON_EXTRACT(number_json_value, '$."1"');
+		RETURN JSON_QUOTE(CAST(wrapped_value AS CHAR));
+	END IF;
+END $$
+
+-- Helper function to convert UInt64Value from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_uint64_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_uint64_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE wrapped_value JSON;
+	-- {"1": value} becomes unwrapped "value" (as string for 64-bit), {} becomes "0"
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN JSON_QUOTE('0');
+	ELSE
+		SET wrapped_value = JSON_EXTRACT(number_json_value, '$."1"');
+		RETURN JSON_QUOTE(CAST(wrapped_value AS CHAR));
+	END IF;
+END $$
+
+-- Helper function to convert Int32Value from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_int32_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_int32_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": value} becomes unwrapped value (as number for 32-bit), {} becomes 0
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN CAST(0 AS JSON);
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$
+
+-- Helper function to convert UInt32Value from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_uint32_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_uint32_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": value} becomes unwrapped value (as number for 32-bit), {} becomes 0
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN CAST(0 AS JSON);
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$
+
+-- Helper function to convert BoolValue from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_bool_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_bool_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": value} becomes unwrapped value, {} becomes false
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN CAST(false AS JSON);
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$
+
+-- Helper function to convert FloatValue from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_float_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_float_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": value} becomes unwrapped value, {} becomes 0.0
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN CAST(0.0 AS JSON);
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$
+
+-- Helper function to convert DoubleValue from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_double_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_double_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": value} becomes unwrapped value, {} becomes 0.0
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN CAST(0.0 AS JSON);
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+	END IF;
+END $$
+
+-- Helper function to convert BytesValue from ProtoNumberJSON to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_wkt_bytes_value_number_json_to_json $$
+CREATE FUNCTION _pb_wkt_bytes_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- {"1": "value"} becomes unwrapped "value", {} becomes ""
+	IF JSON_LENGTH(number_json_value) = 0 THEN
+		RETURN JSON_QUOTE('');
+	ELSE
+		RETURN JSON_EXTRACT(number_json_value, '$."1"');
 	END IF;
 END $$
 
