@@ -4,68 +4,54 @@ DELIMITER $$
 DROP FUNCTION IF EXISTS _pb_get_message_descriptor $$
 CREATE FUNCTION _pb_get_message_descriptor(descriptor_set_json JSON, type_name TEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE type_index JSON;
+	DECLARE message_type_index JSON;
 	DECLARE type_paths JSON;
-	DECLARE kind INT;
 	DECLARE file_path TEXT;
 	DECLARE type_path TEXT;
 
-	-- Get type index (element 2)
-	SET type_index = JSON_EXTRACT(descriptor_set_json, '$[2]');
+	-- Get message type index (field 2 from DescriptorSet)
+	SET message_type_index = JSON_EXTRACT(descriptor_set_json, '$.\"2\"');
 
 	-- Get paths for the type
-	SET type_paths = JSON_EXTRACT(type_index, CONCAT('$."', type_name, '"'));
+	SET type_paths = JSON_EXTRACT(message_type_index, CONCAT('$."', type_name, '"'));
 
 	IF type_paths IS NULL THEN
 		RETURN NULL;
 	END IF;
 
-	-- Extract kind, file path and type path
-	SET kind = JSON_EXTRACT(type_paths, '$[0]');
-	SET file_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$[1]'));
-	SET type_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$[2]'));
+	-- Extract file path and type path from MessageTypeIndex message
+	SET file_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$.\"1\"'));
+	SET type_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$.\"2\"'));
 
-	-- Verify this is a message type (kind = 11)
-	IF kind <> 11 THEN
-		RETURN NULL;
-	END IF;
-
-	-- Return the message descriptor
-	RETURN JSON_EXTRACT(descriptor_set_json, type_path);
+	-- Get FileDescriptorSet (field "1" of DescriptorSet), then apply type_path directly
+	RETURN JSON_EXTRACT(JSON_EXTRACT(descriptor_set_json, '$.\"1\"'), type_path);
 END $$
 
 -- Helper function to get enum descriptor from descriptor set JSON
 DROP FUNCTION IF EXISTS _pb_get_enum_descriptor $$
 CREATE FUNCTION _pb_get_enum_descriptor(descriptor_set_json JSON, type_name TEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE type_index JSON;
+	DECLARE enum_type_index JSON;
 	DECLARE type_paths JSON;
-	DECLARE kind INT;
 	DECLARE file_path TEXT;
 	DECLARE type_path TEXT;
 
-	-- Get type index (element 2)
-	SET type_index = JSON_EXTRACT(descriptor_set_json, '$[2]');
+	-- Get enum type index (field 3 from DescriptorSet)
+	SET enum_type_index = JSON_EXTRACT(descriptor_set_json, '$.\"3\"');
 
 	-- Get paths for the type
-	SET type_paths = JSON_EXTRACT(type_index, CONCAT('$."', type_name, '"'));
+	SET type_paths = JSON_EXTRACT(enum_type_index, CONCAT('$."', type_name, '"'));
 
 	IF type_paths IS NULL THEN
 		RETURN NULL;
 	END IF;
 
-	-- Extract kind, file path and type path
-	SET kind = JSON_EXTRACT(type_paths, '$[0]');
-	SET file_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$[1]'));
-	SET type_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$[2]'));
+	-- Extract file path and type path from EnumTypeIndex message
+	SET file_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$.\"1\"'));
+	SET type_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$.\"2\"'));
 
-	-- Verify this is an enum type (kind = 14)
-	IF kind <> 14 THEN
-		RETURN NULL;
-	END IF;
-
-	-- Return the enum descriptor
-	RETURN JSON_EXTRACT(descriptor_set_json, type_path);
+	-- Get FileDescriptorSet (field "1" of DescriptorSet), then apply type_path directly
+	RETURN JSON_EXTRACT(JSON_EXTRACT(descriptor_set_json, '$.\"1\"'), type_path);
 END $$
 
 -- Helper procedure to convert enum value to JSON using descriptor set
@@ -126,8 +112,8 @@ BEGIN
 	DECLARE type_paths JSON;
 	DECLARE file_path TEXT;
 
-	-- Get type index (element 2)
-	SET type_index = JSON_EXTRACT(descriptor_set_json, '$[2]');
+	-- Get type index (field 2 from DescriptorSet)
+	SET type_index = JSON_EXTRACT(descriptor_set_json, '$.\"2\"');
 
 	-- Get paths for the type
 	SET type_paths = JSON_EXTRACT(type_index, CONCAT('$."', type_name, '"'));
@@ -136,11 +122,11 @@ BEGIN
 		RETURN NULL;
 	END IF;
 
-	-- Extract file path (now at index 1)
-	SET file_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$[1]'));
+	-- Extract file path from MessageTypeIndex message (field "1")
+	SET file_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$.\"1\"'));
 
-	-- Return the file descriptor
-	RETURN JSON_EXTRACT(descriptor_set_json, file_path);
+	-- Get FileDescriptorSet (field "1" of DescriptorSet), then apply file_path
+	RETURN JSON_EXTRACT(JSON_EXTRACT(descriptor_set_json, '$.\"1\"'), file_path);
 END $$
 
 -- Helper function to get the appropriate descriptor set for Google well-known types
@@ -253,6 +239,10 @@ proc: BEGIN
 
 	-- Get file descriptor to determine syntax
 	SET file_descriptor = _pb_get_file_descriptor(descriptor_set_json, full_type_name);
+	IF file_descriptor IS NULL THEN
+		SET message_text = CONCAT('_pb_wire_json_to_json: file descriptor not found for type `', full_type_name, '`');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
 	SET syntax = JSON_UNQUOTE(JSON_EXTRACT(file_descriptor, '$."12"')); -- syntax field
 	IF syntax IS NULL THEN
 		SET syntax = 'proto2'; -- default

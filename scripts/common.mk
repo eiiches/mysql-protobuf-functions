@@ -8,8 +8,18 @@ internal/jsonoptionspb/json_options.pb.go: src/json_options.proto
 		--go_opt=Mjson_options.proto='github.com/eiiches/mysql-protobuf-functions/internal/jsonoptionspb' \
 		src/json_options.proto
 
+# Generate Go code for descriptor_set.proto in internal/descriptorsetpb
+internal/descriptorsetpb/descriptor_set.pb.go: src/descriptor_set.proto
+	@echo "Generating Go protobuf code for descriptor_set.proto..."
+	mkdir -p internal/descriptorsetpb
+	protoc --proto_path=src \
+		--go_out=internal/descriptorsetpb \
+		--go_opt=paths=source_relative \
+		--go_opt=Mdescriptor_set.proto='github.com/eiiches/mysql-protobuf-functions/internal/descriptorsetpb' \
+		src/descriptor_set.proto
+
 .PHONY: test
-test: purge reload ensure-test-database internal/jsonoptionspb/json_options.pb.go
+test: purge reload ensure-test-database internal/jsonoptionspb/json_options.pb.go internal/descriptorsetpb/descriptor_set.pb.go
 	go test ./internal/...
 	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" -fuzz-iterations 20 $${GO_TEST_FLAGS:-}
 

@@ -165,68 +165,54 @@ DELIMITER $$
 DROP FUNCTION IF EXISTS _pb_get_message_descriptor $$
 CREATE FUNCTION _pb_get_message_descriptor(descriptor_set_json JSON, type_name TEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE type_index JSON;
+	DECLARE message_type_index JSON;
 	DECLARE type_paths JSON;
-	DECLARE kind INT;
 	DECLARE file_path TEXT;
 	DECLARE type_path TEXT;
 
-	-- Get type index (element 2)
-	SET type_index = JSON_EXTRACT(descriptor_set_json, '$[2]');
+	-- Get message type index (field 2 from DescriptorSet)
+	SET message_type_index = JSON_EXTRACT(descriptor_set_json, '$.\"2\"');
 
 	-- Get paths for the type
-	SET type_paths = JSON_EXTRACT(type_index, CONCAT('$."', type_name, '"'));
+	SET type_paths = JSON_EXTRACT(message_type_index, CONCAT('$."', type_name, '"'));
 
 	IF type_paths IS NULL THEN
 		RETURN NULL;
 	END IF;
 
-	-- Extract kind, file path and type path
-	SET kind = JSON_EXTRACT(type_paths, '$[0]');
-	SET file_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$[1]'));
-	SET type_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$[2]'));
+	-- Extract file path and type path from MessageTypeIndex message
+	SET file_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$.\"1\"'));
+	SET type_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$.\"2\"'));
 
-	-- Verify this is a message type (kind = 11)
-	IF kind <> 11 THEN
-		RETURN NULL;
-	END IF;
-
-	-- Return the message descriptor
-	RETURN JSON_EXTRACT(descriptor_set_json, type_path);
+	-- Get FileDescriptorSet (field "1" of DescriptorSet), then apply type_path directly
+	RETURN JSON_EXTRACT(JSON_EXTRACT(descriptor_set_json, '$.\"1\"'), type_path);
 END $$
 
 -- Helper function to get enum descriptor from descriptor set JSON
 DROP FUNCTION IF EXISTS _pb_get_enum_descriptor $$
 CREATE FUNCTION _pb_get_enum_descriptor(descriptor_set_json JSON, type_name TEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE type_index JSON;
+	DECLARE enum_type_index JSON;
 	DECLARE type_paths JSON;
-	DECLARE kind INT;
 	DECLARE file_path TEXT;
 	DECLARE type_path TEXT;
 
-	-- Get type index (element 2)
-	SET type_index = JSON_EXTRACT(descriptor_set_json, '$[2]');
+	-- Get enum type index (field 3 from DescriptorSet)
+	SET enum_type_index = JSON_EXTRACT(descriptor_set_json, '$.\"3\"');
 
 	-- Get paths for the type
-	SET type_paths = JSON_EXTRACT(type_index, CONCAT('$."', type_name, '"'));
+	SET type_paths = JSON_EXTRACT(enum_type_index, CONCAT('$."', type_name, '"'));
 
 	IF type_paths IS NULL THEN
 		RETURN NULL;
 	END IF;
 
-	-- Extract kind, file path and type path
-	SET kind = JSON_EXTRACT(type_paths, '$[0]');
-	SET file_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$[1]'));
-	SET type_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$[2]'));
+	-- Extract file path and type path from EnumTypeIndex message
+	SET file_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$.\"1\"'));
+	SET type_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$.\"2\"'));
 
-	-- Verify this is an enum type (kind = 14)
-	IF kind <> 14 THEN
-		RETURN NULL;
-	END IF;
-
-	-- Return the enum descriptor
-	RETURN JSON_EXTRACT(descriptor_set_json, type_path);
+	-- Get FileDescriptorSet (field "1" of DescriptorSet), then apply type_path directly
+	RETURN JSON_EXTRACT(JSON_EXTRACT(descriptor_set_json, '$.\"1\"'), type_path);
 END $$
 
 -- Helper procedure to convert enum value to JSON using descriptor set
@@ -287,8 +273,8 @@ BEGIN
 	DECLARE type_paths JSON;
 	DECLARE file_path TEXT;
 
-	-- Get type index (element 2)
-	SET type_index = JSON_EXTRACT(descriptor_set_json, '$[2]');
+	-- Get type index (field 2 from DescriptorSet)
+	SET type_index = JSON_EXTRACT(descriptor_set_json, '$.\"2\"');
 
 	-- Get paths for the type
 	SET type_paths = JSON_EXTRACT(type_index, CONCAT('$."', type_name, '"'));
@@ -297,11 +283,11 @@ BEGIN
 		RETURN NULL;
 	END IF;
 
-	-- Extract file path (now at index 1)
-	SET file_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$[1]'));
+	-- Extract file path from MessageTypeIndex message (field "1")
+	SET file_path = JSON_UNQUOTE(JSON_EXTRACT(type_paths, '$.\"1\"'));
 
-	-- Return the file descriptor
-	RETURN JSON_EXTRACT(descriptor_set_json, file_path);
+	-- Get FileDescriptorSet (field "1" of DescriptorSet), then apply file_path
+	RETURN JSON_EXTRACT(JSON_EXTRACT(descriptor_set_json, '$.\"1\"'), file_path);
 END $$
 
 -- Helper function to get the appropriate descriptor set for Google well-known types
@@ -414,6 +400,10 @@ proc: BEGIN
 
 	-- Get file descriptor to determine syntax
 	SET file_descriptor = _pb_get_file_descriptor(descriptor_set_json, full_type_name);
+	IF file_descriptor IS NULL THEN
+		SET message_text = CONCAT('_pb_wire_json_to_json: file descriptor not found for type `', full_type_name, '`');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
 	SET syntax = JSON_UNQUOTE(JSON_EXTRACT(file_descriptor, '$."12"')); -- syntax field
 	IF syntax IS NULL THEN
 		SET syntax = 'proto2'; -- default
@@ -4661,7 +4651,8 @@ CREATE PROCEDURE _pb_build_nested_types(
 	IN parent_name TEXT,
 	IN parent_path TEXT,
 	IN file_path TEXT,
-	INOUT type_index JSON
+	INOUT message_type_index JSON,
+	INOUT enum_type_index JSON
 )
 proc: BEGIN
 	DECLARE nested_messages JSON;
@@ -4679,6 +4670,26 @@ proc: BEGIN
 	DECLARE nested_type_name TEXT;
 	DECLARE type_entry JSON;
 
+	-- Enum indexing variables
+	DECLARE enum_name_index JSON;
+	DECLARE enum_number_index JSON;
+	DECLARE enum_values_array JSON;
+	DECLARE enum_value_count INT DEFAULT 0;
+	DECLARE enum_value_idx INT DEFAULT 0;
+	DECLARE enum_value_desc JSON;
+	DECLARE enum_value_name TEXT;
+	DECLARE enum_value_number INT;
+
+	-- Nested field indexing variables
+	DECLARE nested_field_name_index JSON;
+	DECLARE nested_field_number_index JSON;
+	DECLARE nested_field_array JSON;
+	DECLARE nested_field_count INT DEFAULT 0;
+	DECLARE nested_field_idx INT DEFAULT 0;
+	DECLARE nested_field_desc JSON;
+	DECLARE nested_field_name_val TEXT;
+	DECLARE nested_field_number_val INT;
+
 	-- Process nested message types (field 3 in DescriptorProto)
 	SET nested_messages = JSON_EXTRACT(message_descriptor, '$."3"');
 
@@ -4692,12 +4703,43 @@ proc: BEGIN
 			SET nested_msg_path = CONCAT(parent_path, '."3"[', nested_msg_index, ']');
 			SET nested_type_name = CONCAT(parent_name, '.', nested_msg_name);
 
-			-- Add to type index: [kind=11, file_path, type_path]
-			SET type_entry = JSON_ARRAY(11, file_path, nested_msg_path);
-			SET type_index = JSON_SET(type_index, CONCAT('$."', nested_type_name, '"'), type_entry);
+			-- Build field indexes for nested message
+			SET nested_field_name_index = JSON_OBJECT();
+			SET nested_field_number_index = JSON_OBJECT();
+			SET nested_field_array = JSON_EXTRACT(nested_msg_descriptor, '$."2"'); -- field array
+			IF nested_field_array IS NOT NULL THEN
+				SET nested_field_count = JSON_LENGTH(nested_field_array);
+				SET nested_field_idx = 0;
+				WHILE nested_field_idx < nested_field_count DO
+					SET nested_field_desc = JSON_EXTRACT(nested_field_array, CONCAT('$[', nested_field_idx, ']'));
+					SET nested_field_name_val = JSON_UNQUOTE(JSON_EXTRACT(nested_field_desc, '$."1"')); -- name
+					SET nested_field_number_val = JSON_EXTRACT(nested_field_desc, '$."3"'); -- number
+					IF nested_field_name_val IS NOT NULL THEN
+						SET nested_field_name_index = JSON_SET(nested_field_name_index, CONCAT('$."', nested_field_name_val, '"'), nested_field_idx);
+					END IF;
+					IF nested_field_number_val IS NOT NULL THEN
+						SET nested_field_number_index = JSON_SET(nested_field_number_index, CONCAT('$."', nested_field_number_val, '"'), nested_field_idx);
+					END IF;
+					SET nested_field_idx = nested_field_idx + 1;
+				END WHILE;
+			END IF;
+
+			-- Add to message type index: MessageTypeIndex format
+			SET type_entry = JSON_OBJECT(
+				'1', file_path,
+				'2', nested_msg_path
+			);
+			-- Only include field indexes if they're non-empty
+			IF JSON_LENGTH(JSON_KEYS(nested_field_name_index)) > 0 THEN
+				SET type_entry = JSON_SET(type_entry, '$.\"3\"', nested_field_name_index);
+			END IF;
+			IF JSON_LENGTH(JSON_KEYS(nested_field_number_index)) > 0 THEN
+				SET type_entry = JSON_SET(type_entry, '$.\"4\"', nested_field_number_index);
+			END IF;
+			SET message_type_index = JSON_SET(message_type_index, CONCAT('$."', nested_type_name, '"'), type_entry);
 
 			-- Recursively process further nested types
-			CALL _pb_build_nested_types(nested_msg_descriptor, nested_type_name, nested_msg_path, file_path, type_index);
+			CALL _pb_build_nested_types(nested_msg_descriptor, nested_type_name, nested_msg_path, file_path, message_type_index, enum_type_index);
 
 			SET nested_msg_index = nested_msg_index + 1;
 		END WHILE;
@@ -4716,20 +4758,49 @@ proc: BEGIN
 			SET nested_enum_path = CONCAT(parent_path, '."4"[', nested_enum_index, ']');
 			SET nested_type_name = CONCAT(parent_name, '.', nested_enum_name);
 
-			-- Add to type index: [kind=14, file_path, type_path]
-			SET type_entry = JSON_ARRAY(14, file_path, nested_enum_path);
-			SET type_index = JSON_SET(type_index, CONCAT('$."', nested_type_name, '"'), type_entry);
+			-- Build enum value indexes
+			SET enum_name_index = JSON_OBJECT();
+			SET enum_number_index = JSON_OBJECT();
+			SET enum_values_array = JSON_EXTRACT(nested_enum_descriptor, '$."2"'); -- value array
+			IF enum_values_array IS NOT NULL THEN
+				SET enum_value_count = JSON_LENGTH(enum_values_array);
+				SET enum_value_idx = 0;
+				WHILE enum_value_idx < enum_value_count DO
+					SET enum_value_desc = JSON_EXTRACT(enum_values_array, CONCAT('$[', enum_value_idx, ']'));
+					SET enum_value_name = JSON_UNQUOTE(JSON_EXTRACT(enum_value_desc, '$."1"')); -- name
+					SET enum_value_number = JSON_EXTRACT(enum_value_desc, '$."2"'); -- number
+					IF enum_value_name IS NOT NULL THEN
+						SET enum_name_index = JSON_SET(enum_name_index, CONCAT('$."', enum_value_name, '"'), enum_value_idx);
+					END IF;
+					IF enum_value_number IS NOT NULL THEN
+						SET enum_number_index = JSON_SET(enum_number_index, CONCAT('$."', enum_value_number, '"'), enum_value_idx);
+					END IF;
+					SET enum_value_idx = enum_value_idx + 1;
+				END WHILE;
+			END IF;
+
+			-- Add to enum type index: EnumTypeIndex format
+			SET type_entry = JSON_OBJECT(
+				'1', file_path,
+				'2', nested_enum_path,
+				'3', enum_name_index,
+				'4', enum_number_index
+			);
+			SET enum_type_index = JSON_SET(enum_type_index, CONCAT('$."', nested_type_name, '"'), type_entry);
 
 			SET nested_enum_index = nested_enum_index + 1;
 		END WHILE;
 	END IF;
 END $$
 
--- Public function to generate type index from FileDescriptorSet in protonumberjson format
-DROP FUNCTION IF EXISTS _pb_build_type_index_from_descriptor_set $$
-CREATE FUNCTION _pb_build_type_index_from_descriptor_set(file_descriptor_set_json JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE type_index JSON DEFAULT JSON_OBJECT();
+-- Public procedure to generate type indexes from FileDescriptorSet in protonumberjson format
+DROP PROCEDURE IF EXISTS _pb_build_type_indexes_from_descriptor_set $$
+CREATE PROCEDURE _pb_build_type_indexes_from_descriptor_set(
+	IN file_descriptor_set_json JSON,
+	OUT message_type_index JSON,
+	OUT enum_type_index JSON
+)
+proc: BEGIN
 	DECLARE files JSON;
 	DECLARE file_count INT DEFAULT 0;
 	DECLARE file_index INT DEFAULT 0;
@@ -4751,11 +4822,36 @@ BEGIN
 	DECLARE full_type_name TEXT;
 	DECLARE type_entry JSON;
 
+	-- Field indexing variables
+	DECLARE field_name_index JSON;
+	DECLARE field_number_index JSON;
+	DECLARE field_array JSON;
+	DECLARE field_count INT DEFAULT 0;
+	DECLARE field_idx INT DEFAULT 0;
+	DECLARE field_desc JSON;
+	DECLARE field_name_val TEXT;
+	DECLARE field_number_val INT;
+
+	-- Enum indexing variables
+	DECLARE enum_name_index JSON;
+	DECLARE enum_number_index JSON;
+	DECLARE enum_values_array JSON;
+	DECLARE enum_value_count INT DEFAULT 0;
+	DECLARE enum_value_idx INT DEFAULT 0;
+	DECLARE enum_value_desc JSON;
+	DECLARE enum_value_name TEXT;
+	DECLARE enum_value_number INT;
+
+	-- Initialize indexes
+	SET message_type_index = JSON_OBJECT();
+	SET enum_type_index = JSON_OBJECT();
+
 	-- Extract files array (field 1 in FileDescriptorSet)
 	SET files = JSON_EXTRACT(file_descriptor_set_json, '$."1"');
 
 	IF files IS NULL THEN
-		RETURN type_index;
+		-- Return empty indexes (OUT parameters already initialized)
+		LEAVE proc;
 	END IF;
 
 	SET file_count = JSON_LENGTH(files);
@@ -4765,7 +4861,7 @@ BEGIN
 	WHILE file_index < file_count DO
 		SET file_descriptor = JSON_EXTRACT(files, CONCAT('$[', file_index, ']'));
 		SET file_package = COALESCE(JSON_UNQUOTE(JSON_EXTRACT(file_descriptor, '$."2"')), ''); -- package field
-		SET file_path = CONCAT('$[1]."1"[', file_index, ']');
+		SET file_path = CONCAT('$."1"[', file_index, ']');
 
 		-- Process message types (field 4 in FileDescriptorProto)
 		SET message_types = JSON_EXTRACT(file_descriptor, '$."4"');
@@ -4780,12 +4876,43 @@ BEGIN
 				SET message_path = CONCAT(file_path, '."4"[', msg_index, ']');
 				SET full_type_name = _pb_build_type_name(file_package, message_name);
 
-				-- Add to type index: [kind=11, file_path, type_path]
-				SET type_entry = JSON_ARRAY(11, file_path, message_path);
-				SET type_index = JSON_SET(type_index, CONCAT('$."', full_type_name, '"'), type_entry);
+				-- Build field indexes for message
+				SET field_name_index = JSON_OBJECT();
+				SET field_number_index = JSON_OBJECT();
+				SET field_array = JSON_EXTRACT(message_descriptor, '$."2"'); -- field array
+				IF field_array IS NOT NULL THEN
+					SET field_count = JSON_LENGTH(field_array);
+					SET field_idx = 0;
+					WHILE field_idx < field_count DO
+						SET field_desc = JSON_EXTRACT(field_array, CONCAT('$[', field_idx, ']'));
+						SET field_name_val = JSON_UNQUOTE(JSON_EXTRACT(field_desc, '$."1"')); -- name
+						SET field_number_val = JSON_EXTRACT(field_desc, '$."3"'); -- number
+						IF field_name_val IS NOT NULL THEN
+							SET field_name_index = JSON_SET(field_name_index, CONCAT('$."', field_name_val, '"'), field_idx);
+						END IF;
+						IF field_number_val IS NOT NULL THEN
+							SET field_number_index = JSON_SET(field_number_index, CONCAT('$."', field_number_val, '"'), field_idx);
+						END IF;
+						SET field_idx = field_idx + 1;
+					END WHILE;
+				END IF;
+
+				-- Add to message type index: MessageTypeIndex format
+				SET type_entry = JSON_OBJECT(
+					'1', file_path,
+					'2', message_path
+				);
+				-- Only include field indexes if they're non-empty
+				IF JSON_LENGTH(JSON_KEYS(field_name_index)) > 0 THEN
+					SET type_entry = JSON_SET(type_entry, '$.\"3\"', field_name_index);
+				END IF;
+				IF JSON_LENGTH(JSON_KEYS(field_number_index)) > 0 THEN
+					SET type_entry = JSON_SET(type_entry, '$.\"4\"', field_number_index);
+				END IF;
+				SET message_type_index = JSON_SET(message_type_index, CONCAT('$."', full_type_name, '"'), type_entry);
 
 				-- Process nested types recursively
-				CALL _pb_build_nested_types(message_descriptor, full_type_name, message_path, file_path, type_index);
+				CALL _pb_build_nested_types(message_descriptor, full_type_name, message_path, file_path, message_type_index, enum_type_index);
 
 				SET msg_index = msg_index + 1;
 			END WHILE;
@@ -4804,9 +4931,35 @@ BEGIN
 				SET enum_path = CONCAT(file_path, '."5"[', enum_index, ']');
 				SET full_type_name = _pb_build_type_name(file_package, enum_name);
 
-				-- Add to type index: [kind=14, file_path, type_path]
-				SET type_entry = JSON_ARRAY(14, file_path, enum_path);
-				SET type_index = JSON_SET(type_index, CONCAT('$."', full_type_name, '"'), type_entry);
+				-- Build enum value indexes
+				SET enum_name_index = JSON_OBJECT();
+				SET enum_number_index = JSON_OBJECT();
+				SET enum_values_array = JSON_EXTRACT(enum_descriptor, '$."2"'); -- value array
+				IF enum_values_array IS NOT NULL THEN
+					SET enum_value_count = JSON_LENGTH(enum_values_array);
+					SET enum_value_idx = 0;
+					WHILE enum_value_idx < enum_value_count DO
+						SET enum_value_desc = JSON_EXTRACT(enum_values_array, CONCAT('$[', enum_value_idx, ']'));
+						SET enum_value_name = JSON_UNQUOTE(JSON_EXTRACT(enum_value_desc, '$."1"')); -- name
+						SET enum_value_number = JSON_EXTRACT(enum_value_desc, '$."2"'); -- number
+						IF enum_value_name IS NOT NULL THEN
+							SET enum_name_index = JSON_SET(enum_name_index, CONCAT('$."', enum_value_name, '"'), enum_value_idx);
+						END IF;
+						IF enum_value_number IS NOT NULL THEN
+							SET enum_number_index = JSON_SET(enum_number_index, CONCAT('$."', enum_value_number, '"'), enum_value_idx);
+						END IF;
+						SET enum_value_idx = enum_value_idx + 1;
+					END WHILE;
+				END IF;
+
+				-- Add to enum type index: EnumTypeIndex format
+				SET type_entry = JSON_OBJECT(
+					'1', file_path,
+					'2', enum_path,
+					'3', enum_name_index,
+					'4', enum_number_index
+				);
+				SET enum_type_index = JSON_SET(enum_type_index, CONCAT('$."', full_type_name, '"'), type_entry);
 
 				SET enum_index = enum_index + 1;
 			END WHILE;
@@ -4814,17 +4967,16 @@ BEGIN
 
 		SET file_index = file_index + 1;
 	END WHILE;
-
-	RETURN type_index;
 END $$
 
 -- Public function to convert FileDescriptorSet LONGBLOB to descriptor set JSON
--- Returns a 2-element JSON array: [fileDescriptorSet, typeIndex]
+-- Returns a DescriptorSet message in protonumberjson format
 DROP FUNCTION IF EXISTS pb_build_descriptor_set_json $$
 CREATE FUNCTION pb_build_descriptor_set_json(file_descriptor_set_blob LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE file_descriptor_set_number_json JSON;
-	DECLARE type_index JSON;
+	DECLARE message_type_index JSON;
+	DECLARE enum_type_index JSON;
 	DECLARE result JSON;
 
 	-- Convert FileDescriptorSet LONGBLOB to protonumberjson format
@@ -4834,11 +4986,22 @@ BEGIN
 		file_descriptor_set_blob
 	);
 
-	-- Build type index from the FileDescriptorSet
-	SET type_index = _pb_build_type_index_from_descriptor_set(file_descriptor_set_number_json);
+	-- Build type indexes from the FileDescriptorSet
+	CALL _pb_build_type_indexes_from_descriptor_set(
+		file_descriptor_set_number_json,
+		message_type_index,
+		enum_type_index
+	);
 
-	-- Return 3-element array: [version, fileDescriptorSet, typeIndex]
-	SET result = JSON_ARRAY(1, file_descriptor_set_number_json, type_index);
+	-- Return DescriptorSet message: {"1": fileDescriptorSet, "2": messageTypeIndex, "3": enumTypeIndex}
+	SET result = JSON_OBJECT(
+		'1', file_descriptor_set_number_json,
+		'2', message_type_index
+	);
+	-- Only include enumTypeIndex if it's non-empty
+	IF JSON_LENGTH(JSON_KEYS(enum_type_index)) > 0 THEN
+		SET result = JSON_SET(result, '$.\"3\"', enum_type_index);
+	END IF;
 
 	RETURN result;
 END $$
@@ -4881,13 +5044,13 @@ DELIMITER $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto $$
 CREATE FUNCTION _pb_descriptor_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/descriptor.proto","2":"google.protobuf","4":[{"1":"FileDescriptorSet","2":[{"1":"file","10":"file","3":1,"4":3,"5":11,"6":".google.protobuf.FileDescriptorProto"}],"5":[{"1":536000000,"2":536000001}]},{"1":"FileDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"package","10":"package","3":2,"4":1,"5":9},{"1":"dependency","10":"dependency","3":3,"4":3,"5":9},{"1":"public_dependency","10":"publicDependency","3":10,"4":3,"5":5},{"1":"weak_dependency","10":"weakDependency","3":11,"4":3,"5":5},{"1":"message_type","10":"messageType","3":4,"4":3,"5":11,"6":".google.protobuf.DescriptorProto"},{"1":"enum_type","10":"enumType","3":5,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto"},{"1":"service","10":"service","3":6,"4":3,"5":11,"6":".google.protobuf.ServiceDescriptorProto"},{"1":"extension","10":"extension","3":7,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"options","10":"options","3":8,"4":1,"5":11,"6":".google.protobuf.FileOptions"},{"1":"source_code_info","10":"sourceCodeInfo","3":9,"4":1,"5":11,"6":".google.protobuf.SourceCodeInfo"},{"1":"syntax","10":"syntax","3":12,"4":1,"5":9},{"1":"edition","10":"edition","3":14,"4":1,"5":14,"6":".google.protobuf.Edition"}]},{"1":"DescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"field","10":"field","3":2,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"extension","10":"extension","3":6,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"nested_type","10":"nestedType","3":3,"4":3,"5":11,"6":".google.protobuf.DescriptorProto"},{"1":"enum_type","10":"enumType","3":4,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto"},{"1":"extension_range","10":"extensionRange","3":5,"4":3,"5":11,"6":".google.protobuf.DescriptorProto.ExtensionRange"},{"1":"oneof_decl","10":"oneofDecl","3":8,"4":3,"5":11,"6":".google.protobuf.OneofDescriptorProto"},{"1":"options","10":"options","3":7,"4":1,"5":11,"6":".google.protobuf.MessageOptions"},{"1":"reserved_range","10":"reservedRange","3":9,"4":3,"5":11,"6":".google.protobuf.DescriptorProto.ReservedRange"},{"1":"reserved_name","10":"reservedName","3":10,"4":3,"5":9}],"3":[{"1":"ExtensionRange","2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.ExtensionRangeOptions"}]},{"1":"ReservedRange","2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5}]}]},{"1":"ExtensionRangeOptions","2":[{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"},{"1":"declaration","10":"declaration","3":2,"4":3,"5":11,"6":".google.protobuf.ExtensionRangeOptions.Declaration","8":{"17":2}},{"1":"features","10":"features","3":50,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"verification","10":"verification","3":3,"4":1,"5":14,"6":".google.protobuf.ExtensionRangeOptions.VerificationState","7":"UNVERIFIED","8":{"17":2}}],"3":[{"1":"Declaration","2":[{"1":"number","10":"number","3":1,"4":1,"5":5},{"1":"full_name","10":"fullName","3":2,"4":1,"5":9},{"1":"type","10":"type","3":3,"4":1,"5":9},{"1":"reserved","10":"reserved","3":5,"4":1,"5":8},{"1":"repeated","10":"repeated","3":6,"4":1,"5":8}],"9":[{"1":4,"2":5}]}],"4":[{"1":"VerificationState","2":[{"1":"DECLARATION","2":0},{"1":"UNVERIFIED","2":1}]}],"5":[{"1":1000,"2":536870912}]},{"1":"FieldDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"number","10":"number","3":3,"4":1,"5":5},{"1":"label","10":"label","3":4,"4":1,"5":14,"6":".google.protobuf.FieldDescriptorProto.Label"},{"1":"type","10":"type","3":5,"4":1,"5":14,"6":".google.protobuf.FieldDescriptorProto.Type"},{"1":"type_name","10":"typeName","3":6,"4":1,"5":9},{"1":"extendee","10":"extendee","3":2,"4":1,"5":9},{"1":"default_value","10":"defaultValue","3":7,"4":1,"5":9},{"1":"oneof_index","10":"oneofIndex","3":9,"4":1,"5":5},{"1":"json_name","10":"jsonName","3":10,"4":1,"5":9},{"1":"options","10":"options","3":8,"4":1,"5":11,"6":".google.protobuf.FieldOptions"},{"1":"proto3_optional","10":"proto3Optional","3":17,"4":1,"5":8}],"4":[{"1":"Type","2":[{"1":"TYPE_DOUBLE","2":1},{"1":"TYPE_FLOAT","2":2},{"1":"TYPE_INT64","2":3},{"1":"TYPE_UINT64","2":4},{"1":"TYPE_INT32","2":5},{"1":"TYPE_FIXED64","2":6},{"1":"TYPE_FIXED32","2":7},{"1":"TYPE_BOOL","2":8},{"1":"TYPE_STRING","2":9},{"1":"TYPE_GROUP","2":10},{"1":"TYPE_MESSAGE","2":11},{"1":"TYPE_BYTES","2":12},{"1":"TYPE_UINT32","2":13},{"1":"TYPE_ENUM","2":14},{"1":"TYPE_SFIXED32","2":15},{"1":"TYPE_SFIXED64","2":16},{"1":"TYPE_SINT32","2":17},{"1":"TYPE_SINT64","2":18}]},{"1":"Label","2":[{"1":"LABEL_OPTIONAL","2":1},{"1":"LABEL_REPEATED","2":3},{"1":"LABEL_REQUIRED","2":2}]}]},{"1":"OneofDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"options","10":"options","3":2,"4":1,"5":11,"6":".google.protobuf.OneofOptions"}]},{"1":"EnumDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":3,"5":11,"6":".google.protobuf.EnumValueDescriptorProto"},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.EnumOptions"},{"1":"reserved_range","10":"reservedRange","3":4,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto.EnumReservedRange"},{"1":"reserved_name","10":"reservedName","3":5,"4":3,"5":9}],"3":[{"1":"EnumReservedRange","2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5}]}]},{"1":"EnumValueDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"number","10":"number","3":2,"4":1,"5":5},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.EnumValueOptions"}]},{"1":"ServiceDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"method","10":"method","3":2,"4":3,"5":11,"6":".google.protobuf.MethodDescriptorProto"},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.ServiceOptions"}]},{"1":"MethodDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"input_type","10":"inputType","3":2,"4":1,"5":9},{"1":"output_type","10":"outputType","3":3,"4":1,"5":9},{"1":"options","10":"options","3":4,"4":1,"5":11,"6":".google.protobuf.MethodOptions"},{"1":"client_streaming","10":"clientStreaming","3":5,"4":1,"5":8,"7":"false"},{"1":"server_streaming","10":"serverStreaming","3":6,"4":1,"5":8,"7":"false"}]},{"1":"FileOptions","10":["php_generic_services"],"2":[{"1":"java_package","10":"javaPackage","3":1,"4":1,"5":9},{"1":"java_outer_classname","10":"javaOuterClassname","3":8,"4":1,"5":9},{"1":"java_multiple_files","10":"javaMultipleFiles","3":10,"4":1,"5":8,"7":"false"},{"1":"java_generate_equals_and_hash","10":"javaGenerateEqualsAndHash","3":20,"4":1,"5":8,"8":{"3":true}},{"1":"java_string_check_utf8","10":"javaStringCheckUtf8","3":27,"4":1,"5":8,"7":"false"},{"1":"optimize_for","10":"optimizeFor","3":9,"4":1,"5":14,"6":".google.protobuf.FileOptions.OptimizeMode","7":"SPEED"},{"1":"go_package","10":"goPackage","3":11,"4":1,"5":9},{"1":"cc_generic_services","10":"ccGenericServices","3":16,"4":1,"5":8,"7":"false"},{"1":"java_generic_services","10":"javaGenericServices","3":17,"4":1,"5":8,"7":"false"},{"1":"py_generic_services","10":"pyGenericServices","3":18,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":23,"4":1,"5":8,"7":"false"},{"1":"cc_enable_arenas","10":"ccEnableArenas","3":31,"4":1,"5":8,"7":"true"},{"1":"objc_class_prefix","10":"objcClassPrefix","3":36,"4":1,"5":9},{"1":"csharp_namespace","10":"csharpNamespace","3":37,"4":1,"5":9},{"1":"swift_prefix","10":"swiftPrefix","3":39,"4":1,"5":9},{"1":"php_class_prefix","10":"phpClassPrefix","3":40,"4":1,"5":9},{"1":"php_namespace","10":"phpNamespace","3":41,"4":1,"5":9},{"1":"php_metadata_namespace","10":"phpMetadataNamespace","3":44,"4":1,"5":9},{"1":"ruby_package","10":"rubyPackage","3":45,"4":1,"5":9},{"1":"features","10":"features","3":50,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"4":[{"1":"OptimizeMode","2":[{"1":"SPEED","2":1},{"1":"CODE_SIZE","2":2},{"1":"LITE_RUNTIME","2":3}]}],"5":[{"1":1000,"2":536870912}],"9":[{"1":42,"2":43},{"1":38,"2":39}]},{"1":"MessageOptions","2":[{"1":"message_set_wire_format","10":"messageSetWireFormat","3":1,"4":1,"5":8,"7":"false"},{"1":"no_standard_descriptor_accessor","10":"noStandardDescriptorAccessor","3":2,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"map_entry","10":"mapEntry","3":7,"4":1,"5":8},{"1":"deprecated_legacy_json_field_conflicts","10":"deprecatedLegacyJsonFieldConflicts","3":11,"4":1,"5":8,"8":{"3":true}},{"1":"features","10":"features","3":12,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}],"9":[{"1":4,"2":5},{"1":5,"2":6},{"1":6,"2":7},{"1":8,"2":9},{"1":9,"2":10}]},{"1":"FieldOptions","2":[{"1":"ctype","10":"ctype","3":1,"4":1,"5":14,"6":".google.protobuf.FieldOptions.CType","7":"STRING"},{"1":"packed","10":"packed","3":2,"4":1,"5":8},{"1":"jstype","10":"jstype","3":6,"4":1,"5":14,"6":".google.protobuf.FieldOptions.JSType","7":"JS_NORMAL"},{"1":"lazy","10":"lazy","3":5,"4":1,"5":8,"7":"false"},{"1":"unverified_lazy","10":"unverifiedLazy","3":15,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"weak","10":"weak","3":10,"4":1,"5":8,"7":"false"},{"1":"debug_redact","10":"debugRedact","3":16,"4":1,"5":8,"7":"false"},{"1":"retention","10":"retention","3":17,"4":1,"5":14,"6":".google.protobuf.FieldOptions.OptionRetention"},{"1":"targets","10":"targets","3":19,"4":3,"5":14,"6":".google.protobuf.FieldOptions.OptionTargetType"},{"1":"edition_defaults","10":"editionDefaults","3":20,"4":3,"5":11,"6":".google.protobuf.FieldOptions.EditionDefault"},{"1":"features","10":"features","3":21,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"feature_support","10":"featureSupport","3":22,"4":1,"5":11,"6":".google.protobuf.FieldOptions.FeatureSupport"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"3":[{"1":"EditionDefault","2":[{"1":"edition","10":"edition","3":3,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"value","10":"value","3":2,"4":1,"5":9}]},{"1":"FeatureSupport","2":[{"1":"edition_introduced","10":"editionIntroduced","3":1,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"edition_deprecated","10":"editionDeprecated","3":2,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"deprecation_warning","10":"deprecationWarning","3":3,"4":1,"5":9},{"1":"edition_removed","10":"editionRemoved","3":4,"4":1,"5":14,"6":".google.protobuf.Edition"}]}],"4":[{"1":"CType","2":[{"1":"STRING","2":0},{"1":"CORD","2":1},{"1":"STRING_PIECE","2":2}]},{"1":"JSType","2":[{"1":"JS_NORMAL","2":0},{"1":"JS_STRING","2":1},{"1":"JS_NUMBER","2":2}]},{"1":"OptionRetention","2":[{"1":"RETENTION_UNKNOWN","2":0},{"1":"RETENTION_RUNTIME","2":1},{"1":"RETENTION_SOURCE","2":2}]},{"1":"OptionTargetType","2":[{"1":"TARGET_TYPE_UNKNOWN","2":0},{"1":"TARGET_TYPE_FILE","2":1},{"1":"TARGET_TYPE_EXTENSION_RANGE","2":2},{"1":"TARGET_TYPE_MESSAGE","2":3},{"1":"TARGET_TYPE_FIELD","2":4},{"1":"TARGET_TYPE_ONEOF","2":5},{"1":"TARGET_TYPE_ENUM","2":6},{"1":"TARGET_TYPE_ENUM_ENTRY","2":7},{"1":"TARGET_TYPE_SERVICE","2":8},{"1":"TARGET_TYPE_METHOD","2":9}]}],"5":[{"1":1000,"2":536870912}],"9":[{"1":4,"2":5},{"1":18,"2":19}]},{"1":"OneofOptions","2":[{"1":"features","10":"features","3":1,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}]},{"1":"EnumOptions","2":[{"1":"allow_alias","10":"allowAlias","3":2,"4":1,"5":8},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"deprecated_legacy_json_field_conflicts","10":"deprecatedLegacyJsonFieldConflicts","3":6,"4":1,"5":8,"8":{"3":true}},{"1":"features","10":"features","3":7,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}],"9":[{"1":5,"2":6}]},{"1":"EnumValueOptions","2":[{"1":"deprecated","10":"deprecated","3":1,"4":1,"5":8,"7":"false"},{"1":"features","10":"features","3":2,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"debug_redact","10":"debugRedact","3":3,"4":1,"5":8,"7":"false"},{"1":"feature_support","10":"featureSupport","3":4,"4":1,"5":11,"6":".google.protobuf.FieldOptions.FeatureSupport"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}]},{"1":"ServiceOptions","2":[{"1":"features","10":"features","3":34,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"deprecated","10":"deprecated","3":33,"4":1,"5":8,"7":"false"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}]},{"1":"MethodOptions","2":[{"1":"deprecated","10":"deprecated","3":33,"4":1,"5":8,"7":"false"},{"1":"idempotency_level","10":"idempotencyLevel","3":34,"4":1,"5":14,"6":".google.protobuf.MethodOptions.IdempotencyLevel","7":"IDEMPOTENCY_UNKNOWN"},{"1":"features","10":"features","3":35,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"4":[{"1":"IdempotencyLevel","2":[{"1":"IDEMPOTENCY_UNKNOWN","2":0},{"1":"NO_SIDE_EFFECTS","2":1},{"1":"IDEMPOTENT","2":2}]}],"5":[{"1":1000,"2":536870912}]},{"1":"UninterpretedOption","2":[{"1":"name","10":"name","3":2,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption.NamePart"},{"1":"identifier_value","10":"identifierValue","3":3,"4":1,"5":9},{"1":"positive_int_value","10":"positiveIntValue","3":4,"4":1,"5":4},{"1":"negative_int_value","10":"negativeIntValue","3":5,"4":1,"5":3},{"1":"double_value","10":"doubleValue","3":6,"4":1,"5":1},{"1":"string_value","10":"stringValue","3":7,"4":1,"5":12},{"1":"aggregate_value","10":"aggregateValue","3":8,"4":1,"5":9}],"3":[{"1":"NamePart","2":[{"1":"name_part","10":"namePart","3":1,"4":2,"5":9},{"1":"is_extension","10":"isExtension","3":2,"4":2,"5":8}]}]},{"1":"FeatureSet","2":[{"1":"field_presence","10":"fieldPresence","3":1,"4":1,"5":14,"6":".google.protobuf.FeatureSet.FieldPresence","8":{"17":1,"19":[4,1],"20":[{"2":"EXPLICIT","3":900},{"2":"IMPLICIT","3":999},{"2":"EXPLICIT","3":1000}],"22":{"1":1000}}},{"1":"enum_type","10":"enumType","3":2,"4":1,"5":14,"6":".google.protobuf.FeatureSet.EnumType","8":{"17":1,"19":[6,1],"20":[{"2":"CLOSED","3":900},{"2":"OPEN","3":999}],"22":{"1":1000}}},{"1":"repeated_field_encoding","10":"repeatedFieldEncoding","3":3,"4":1,"5":14,"6":".google.protobuf.FeatureSet.RepeatedFieldEncoding","8":{"17":1,"19":[4,1],"20":[{"2":"EXPANDED","3":900},{"2":"PACKED","3":999}],"22":{"1":1000}}},{"1":"utf8_validation","10":"utf8Validation","3":4,"4":1,"5":14,"6":".google.protobuf.FeatureSet.Utf8Validation","8":{"17":1,"19":[4,1],"20":[{"2":"NONE","3":900},{"2":"VERIFY","3":999}],"22":{"1":1000}}},{"1":"message_encoding","10":"messageEncoding","3":5,"4":1,"5":14,"6":".google.protobuf.FeatureSet.MessageEncoding","8":{"17":1,"19":[4,1],"20":[{"2":"LENGTH_PREFIXED","3":900}],"22":{"1":1000}}},{"1":"json_format","10":"jsonFormat","3":6,"4":1,"5":14,"6":".google.protobuf.FeatureSet.JsonFormat","8":{"17":1,"19":[3,6,1],"20":[{"2":"LEGACY_BEST_EFFORT","3":900},{"2":"ALLOW","3":999}],"22":{"1":1000}}},{"1":"enforce_naming_style","10":"enforceNamingStyle","3":7,"4":1,"5":14,"6":".google.protobuf.FeatureSet.EnforceNamingStyle","8":{"17":2,"19":[1,2,3,4,5,6,7,8,9],"20":[{"2":"STYLE_LEGACY","3":900},{"2":"STYLE2024","3":1001}],"22":{"1":1001}}}],"4":[{"1":"FieldPresence","2":[{"1":"FIELD_PRESENCE_UNKNOWN","2":0},{"1":"EXPLICIT","2":1},{"1":"IMPLICIT","2":2},{"1":"LEGACY_REQUIRED","2":3}]},{"1":"EnumType","2":[{"1":"ENUM_TYPE_UNKNOWN","2":0},{"1":"OPEN","2":1},{"1":"CLOSED","2":2}]},{"1":"RepeatedFieldEncoding","2":[{"1":"REPEATED_FIELD_ENCODING_UNKNOWN","2":0},{"1":"PACKED","2":1},{"1":"EXPANDED","2":2}]},{"1":"Utf8Validation","2":[{"1":"UTF8_VALIDATION_UNKNOWN","2":0},{"1":"VERIFY","2":2},{"1":"NONE","2":3}],"4":[{"1":1,"2":1}]},{"1":"MessageEncoding","2":[{"1":"MESSAGE_ENCODING_UNKNOWN","2":0},{"1":"LENGTH_PREFIXED","2":1},{"1":"DELIMITED","2":2}]},{"1":"JsonFormat","2":[{"1":"JSON_FORMAT_UNKNOWN","2":0},{"1":"ALLOW","2":1},{"1":"LEGACY_BEST_EFFORT","2":2}]},{"1":"EnforceNamingStyle","2":[{"1":"ENFORCE_NAMING_STYLE_UNKNOWN","2":0},{"1":"STYLE2024","2":1},{"1":"STYLE_LEGACY","2":2}]}],"5":[{"1":1000,"2":9995},{"1":9995,"2":10000},{"1":10000,"2":10001}],"9":[{"1":999,"2":1000}]},{"1":"FeatureSetDefaults","2":[{"1":"defaults","10":"defaults","3":1,"4":3,"5":11,"6":".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault"},{"1":"minimum_edition","10":"minimumEdition","3":4,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"maximum_edition","10":"maximumEdition","3":5,"4":1,"5":14,"6":".google.protobuf.Edition"}],"3":[{"1":"FeatureSetEditionDefault","10":["features"],"2":[{"1":"edition","10":"edition","3":3,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"overridable_features","10":"overridableFeatures","3":4,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"fixed_features","10":"fixedFeatures","3":5,"4":1,"5":11,"6":".google.protobuf.FeatureSet"}],"9":[{"1":1,"2":2},{"1":2,"2":3}]}]},{"1":"SourceCodeInfo","2":[{"1":"location","10":"location","3":1,"4":3,"5":11,"6":".google.protobuf.SourceCodeInfo.Location"}],"3":[{"1":"Location","2":[{"1":"path","10":"path","3":1,"4":3,"5":5,"8":{"2":true}},{"1":"span","10":"span","3":2,"4":3,"5":5,"8":{"2":true}},{"1":"leading_comments","10":"leadingComments","3":3,"4":1,"5":9},{"1":"trailing_comments","10":"trailingComments","3":4,"4":1,"5":9},{"1":"leading_detached_comments","10":"leadingDetachedComments","3":6,"4":3,"5":9}]}],"5":[{"1":536000000,"2":536000001}]},{"1":"GeneratedCodeInfo","2":[{"1":"annotation","10":"annotation","3":1,"4":3,"5":11,"6":".google.protobuf.GeneratedCodeInfo.Annotation"}],"3":[{"1":"Annotation","2":[{"1":"path","10":"path","3":1,"4":3,"5":5,"8":{"2":true}},{"1":"source_file","10":"sourceFile","3":2,"4":1,"5":9},{"1":"begin","10":"begin","3":3,"4":1,"5":5},{"1":"end","10":"end","3":4,"4":1,"5":5},{"1":"semantic","10":"semantic","3":5,"4":1,"5":14,"6":".google.protobuf.GeneratedCodeInfo.Annotation.Semantic"}],"4":[{"1":"Semantic","2":[{"1":"NONE","2":0},{"1":"SET","2":1},{"1":"ALIAS","2":2}]}]}]}],"5":[{"1":"Edition","2":[{"1":"EDITION_UNKNOWN","2":0},{"1":"EDITION_LEGACY","2":900},{"1":"EDITION_PROTO2","2":998},{"1":"EDITION_PROTO3","2":999},{"1":"EDITION_2023","2":1000},{"1":"EDITION_2024","2":1001},{"1":"EDITION_1_TEST_ONLY","2":1},{"1":"EDITION_2_TEST_ONLY","2":2},{"1":"EDITION_99997_TEST_ONLY","2":99997},{"1":"EDITION_99998_TEST_ONLY","2":99998},{"1":"EDITION_99999_TEST_ONLY","2":99999},{"1":"EDITION_MAX","2":2147483647}]}],"8":{"1":"com.google.protobuf","11":"google.golang.org/protobuf/types/descriptorpb","31":true,"36":"GPB","37":"Google.Protobuf.Reflection","8":"DescriptorProtos","9":1}}]},{".google.protobuf.DescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2]"],".google.protobuf.DescriptorProto.ExtensionRange":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2].\\"3\\"[0]"],".google.protobuf.DescriptorProto.ReservedRange":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2].\\"3\\"[1]"],".google.protobuf.Edition":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"5\\"[0]"],".google.protobuf.EnumDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[6]"],".google.protobuf.EnumDescriptorProto.EnumReservedRange":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[6].\\"3\\"[0]"],".google.protobuf.EnumOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[14]"],".google.protobuf.EnumValueDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[7]"],".google.protobuf.EnumValueOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[15]"],".google.protobuf.ExtensionRangeOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[3]"],".google.protobuf.ExtensionRangeOptions.Declaration":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[3].\\"3\\"[0]"],".google.protobuf.ExtensionRangeOptions.VerificationState":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[3].\\"4\\"[0]"],".google.protobuf.FeatureSet":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19]"],".google.protobuf.FeatureSet.EnforceNamingStyle":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[6]"],".google.protobuf.FeatureSet.EnumType":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[1]"],".google.protobuf.FeatureSet.FieldPresence":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[0]"],".google.protobuf.FeatureSet.JsonFormat":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[5]"],".google.protobuf.FeatureSet.MessageEncoding":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[4]"],".google.protobuf.FeatureSet.RepeatedFieldEncoding":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[2]"],".google.protobuf.FeatureSet.Utf8Validation":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[19].\\"4\\"[3]"],".google.protobuf.FeatureSetDefaults":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[20]"],".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[20].\\"3\\"[0]"],".google.protobuf.FieldDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[4]"],".google.protobuf.FieldDescriptorProto.Label":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[4].\\"4\\"[1]"],".google.protobuf.FieldDescriptorProto.Type":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[4].\\"4\\"[0]"],".google.protobuf.FieldOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12]"],".google.protobuf.FieldOptions.CType":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"4\\"[0]"],".google.protobuf.FieldOptions.EditionDefault":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"3\\"[0]"],".google.protobuf.FieldOptions.FeatureSupport":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"3\\"[1]"],".google.protobuf.FieldOptions.JSType":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"4\\"[1]"],".google.protobuf.FieldOptions.OptionRetention":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"4\\"[2]"],".google.protobuf.FieldOptions.OptionTargetType":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[12].\\"4\\"[3]"],".google.protobuf.FileDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[1]"],".google.protobuf.FileDescriptorSet":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"],".google.protobuf.FileOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[10]"],".google.protobuf.FileOptions.OptimizeMode":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[10].\\"4\\"[0]"],".google.protobuf.GeneratedCodeInfo":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[22]"],".google.protobuf.GeneratedCodeInfo.Annotation":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[22].\\"3\\"[0]"],".google.protobuf.GeneratedCodeInfo.Annotation.Semantic":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[22].\\"3\\"[0].\\"4\\"[0]"],".google.protobuf.MessageOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[11]"],".google.protobuf.MethodDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[9]"],".google.protobuf.MethodOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[17]"],".google.protobuf.MethodOptions.IdempotencyLevel":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[17].\\"4\\"[0]"],".google.protobuf.OneofDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[5]"],".google.protobuf.OneofOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[13]"],".google.protobuf.ServiceDescriptorProto":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[8]"],".google.protobuf.ServiceOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[16]"],".google.protobuf.SourceCodeInfo":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[21]"],".google.protobuf.SourceCodeInfo.Location":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[21].\\"3\\"[0]"],".google.protobuf.UninterpretedOption":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[18]"],".google.protobuf.UninterpretedOption.NamePart":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[18].\\"3\\"[0]"]}]' AS JSON);
+	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/descriptor.proto","2":"google.protobuf","4":[{"1":"FileDescriptorSet","2":[{"1":"file","10":"file","3":1,"4":3,"5":11,"6":".google.protobuf.FileDescriptorProto"}],"5":[{"1":536000000,"2":536000001}]},{"1":"FileDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"package","10":"package","3":2,"4":1,"5":9},{"1":"dependency","10":"dependency","3":3,"4":3,"5":9},{"1":"public_dependency","10":"publicDependency","3":10,"4":3,"5":5},{"1":"weak_dependency","10":"weakDependency","3":11,"4":3,"5":5},{"1":"message_type","10":"messageType","3":4,"4":3,"5":11,"6":".google.protobuf.DescriptorProto"},{"1":"enum_type","10":"enumType","3":5,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto"},{"1":"service","10":"service","3":6,"4":3,"5":11,"6":".google.protobuf.ServiceDescriptorProto"},{"1":"extension","10":"extension","3":7,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"options","10":"options","3":8,"4":1,"5":11,"6":".google.protobuf.FileOptions"},{"1":"source_code_info","10":"sourceCodeInfo","3":9,"4":1,"5":11,"6":".google.protobuf.SourceCodeInfo"},{"1":"syntax","10":"syntax","3":12,"4":1,"5":9},{"1":"edition","10":"edition","3":14,"4":1,"5":14,"6":".google.protobuf.Edition"}]},{"1":"DescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"field","10":"field","3":2,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"extension","10":"extension","3":6,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"nested_type","10":"nestedType","3":3,"4":3,"5":11,"6":".google.protobuf.DescriptorProto"},{"1":"enum_type","10":"enumType","3":4,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto"},{"1":"extension_range","10":"extensionRange","3":5,"4":3,"5":11,"6":".google.protobuf.DescriptorProto.ExtensionRange"},{"1":"oneof_decl","10":"oneofDecl","3":8,"4":3,"5":11,"6":".google.protobuf.OneofDescriptorProto"},{"1":"options","10":"options","3":7,"4":1,"5":11,"6":".google.protobuf.MessageOptions"},{"1":"reserved_range","10":"reservedRange","3":9,"4":3,"5":11,"6":".google.protobuf.DescriptorProto.ReservedRange"},{"1":"reserved_name","10":"reservedName","3":10,"4":3,"5":9}],"3":[{"1":"ExtensionRange","2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.ExtensionRangeOptions"}]},{"1":"ReservedRange","2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5}]}]},{"1":"ExtensionRangeOptions","2":[{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"},{"1":"declaration","10":"declaration","3":2,"4":3,"5":11,"6":".google.protobuf.ExtensionRangeOptions.Declaration","8":{"17":2}},{"1":"features","10":"features","3":50,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"verification","10":"verification","3":3,"4":1,"5":14,"6":".google.protobuf.ExtensionRangeOptions.VerificationState","7":"UNVERIFIED","8":{"17":2}}],"3":[{"1":"Declaration","2":[{"1":"number","10":"number","3":1,"4":1,"5":5},{"1":"full_name","10":"fullName","3":2,"4":1,"5":9},{"1":"type","10":"type","3":3,"4":1,"5":9},{"1":"reserved","10":"reserved","3":5,"4":1,"5":8},{"1":"repeated","10":"repeated","3":6,"4":1,"5":8}],"9":[{"1":4,"2":5}]}],"4":[{"1":"VerificationState","2":[{"1":"DECLARATION","2":0},{"1":"UNVERIFIED","2":1}]}],"5":[{"1":1000,"2":536870912}]},{"1":"FieldDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"number","10":"number","3":3,"4":1,"5":5},{"1":"label","10":"label","3":4,"4":1,"5":14,"6":".google.protobuf.FieldDescriptorProto.Label"},{"1":"type","10":"type","3":5,"4":1,"5":14,"6":".google.protobuf.FieldDescriptorProto.Type"},{"1":"type_name","10":"typeName","3":6,"4":1,"5":9},{"1":"extendee","10":"extendee","3":2,"4":1,"5":9},{"1":"default_value","10":"defaultValue","3":7,"4":1,"5":9},{"1":"oneof_index","10":"oneofIndex","3":9,"4":1,"5":5},{"1":"json_name","10":"jsonName","3":10,"4":1,"5":9},{"1":"options","10":"options","3":8,"4":1,"5":11,"6":".google.protobuf.FieldOptions"},{"1":"proto3_optional","10":"proto3Optional","3":17,"4":1,"5":8}],"4":[{"1":"Type","2":[{"1":"TYPE_DOUBLE","2":1},{"1":"TYPE_FLOAT","2":2},{"1":"TYPE_INT64","2":3},{"1":"TYPE_UINT64","2":4},{"1":"TYPE_INT32","2":5},{"1":"TYPE_FIXED64","2":6},{"1":"TYPE_FIXED32","2":7},{"1":"TYPE_BOOL","2":8},{"1":"TYPE_STRING","2":9},{"1":"TYPE_GROUP","2":10},{"1":"TYPE_MESSAGE","2":11},{"1":"TYPE_BYTES","2":12},{"1":"TYPE_UINT32","2":13},{"1":"TYPE_ENUM","2":14},{"1":"TYPE_SFIXED32","2":15},{"1":"TYPE_SFIXED64","2":16},{"1":"TYPE_SINT32","2":17},{"1":"TYPE_SINT64","2":18}]},{"1":"Label","2":[{"1":"LABEL_OPTIONAL","2":1},{"1":"LABEL_REPEATED","2":3},{"1":"LABEL_REQUIRED","2":2}]}]},{"1":"OneofDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"options","10":"options","3":2,"4":1,"5":11,"6":".google.protobuf.OneofOptions"}]},{"1":"EnumDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":3,"5":11,"6":".google.protobuf.EnumValueDescriptorProto"},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.EnumOptions"},{"1":"reserved_range","10":"reservedRange","3":4,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto.EnumReservedRange"},{"1":"reserved_name","10":"reservedName","3":5,"4":3,"5":9}],"3":[{"1":"EnumReservedRange","2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5}]}]},{"1":"EnumValueDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"number","10":"number","3":2,"4":1,"5":5},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.EnumValueOptions"}]},{"1":"ServiceDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"method","10":"method","3":2,"4":3,"5":11,"6":".google.protobuf.MethodDescriptorProto"},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.ServiceOptions"}]},{"1":"MethodDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"input_type","10":"inputType","3":2,"4":1,"5":9},{"1":"output_type","10":"outputType","3":3,"4":1,"5":9},{"1":"options","10":"options","3":4,"4":1,"5":11,"6":".google.protobuf.MethodOptions"},{"1":"client_streaming","10":"clientStreaming","3":5,"4":1,"5":8,"7":"false"},{"1":"server_streaming","10":"serverStreaming","3":6,"4":1,"5":8,"7":"false"}]},{"1":"FileOptions","10":["php_generic_services"],"2":[{"1":"java_package","10":"javaPackage","3":1,"4":1,"5":9},{"1":"java_outer_classname","10":"javaOuterClassname","3":8,"4":1,"5":9},{"1":"java_multiple_files","10":"javaMultipleFiles","3":10,"4":1,"5":8,"7":"false"},{"1":"java_generate_equals_and_hash","10":"javaGenerateEqualsAndHash","3":20,"4":1,"5":8,"8":{"3":true}},{"1":"java_string_check_utf8","10":"javaStringCheckUtf8","3":27,"4":1,"5":8,"7":"false"},{"1":"optimize_for","10":"optimizeFor","3":9,"4":1,"5":14,"6":".google.protobuf.FileOptions.OptimizeMode","7":"SPEED"},{"1":"go_package","10":"goPackage","3":11,"4":1,"5":9},{"1":"cc_generic_services","10":"ccGenericServices","3":16,"4":1,"5":8,"7":"false"},{"1":"java_generic_services","10":"javaGenericServices","3":17,"4":1,"5":8,"7":"false"},{"1":"py_generic_services","10":"pyGenericServices","3":18,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":23,"4":1,"5":8,"7":"false"},{"1":"cc_enable_arenas","10":"ccEnableArenas","3":31,"4":1,"5":8,"7":"true"},{"1":"objc_class_prefix","10":"objcClassPrefix","3":36,"4":1,"5":9},{"1":"csharp_namespace","10":"csharpNamespace","3":37,"4":1,"5":9},{"1":"swift_prefix","10":"swiftPrefix","3":39,"4":1,"5":9},{"1":"php_class_prefix","10":"phpClassPrefix","3":40,"4":1,"5":9},{"1":"php_namespace","10":"phpNamespace","3":41,"4":1,"5":9},{"1":"php_metadata_namespace","10":"phpMetadataNamespace","3":44,"4":1,"5":9},{"1":"ruby_package","10":"rubyPackage","3":45,"4":1,"5":9},{"1":"features","10":"features","3":50,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"4":[{"1":"OptimizeMode","2":[{"1":"SPEED","2":1},{"1":"CODE_SIZE","2":2},{"1":"LITE_RUNTIME","2":3}]}],"5":[{"1":1000,"2":536870912}],"9":[{"1":42,"2":43},{"1":38,"2":39}]},{"1":"MessageOptions","2":[{"1":"message_set_wire_format","10":"messageSetWireFormat","3":1,"4":1,"5":8,"7":"false"},{"1":"no_standard_descriptor_accessor","10":"noStandardDescriptorAccessor","3":2,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"map_entry","10":"mapEntry","3":7,"4":1,"5":8},{"1":"deprecated_legacy_json_field_conflicts","10":"deprecatedLegacyJsonFieldConflicts","3":11,"4":1,"5":8,"8":{"3":true}},{"1":"features","10":"features","3":12,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}],"9":[{"1":4,"2":5},{"1":5,"2":6},{"1":6,"2":7},{"1":8,"2":9},{"1":9,"2":10}]},{"1":"FieldOptions","2":[{"1":"ctype","10":"ctype","3":1,"4":1,"5":14,"6":".google.protobuf.FieldOptions.CType","7":"STRING"},{"1":"packed","10":"packed","3":2,"4":1,"5":8},{"1":"jstype","10":"jstype","3":6,"4":1,"5":14,"6":".google.protobuf.FieldOptions.JSType","7":"JS_NORMAL"},{"1":"lazy","10":"lazy","3":5,"4":1,"5":8,"7":"false"},{"1":"unverified_lazy","10":"unverifiedLazy","3":15,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"weak","10":"weak","3":10,"4":1,"5":8,"7":"false"},{"1":"debug_redact","10":"debugRedact","3":16,"4":1,"5":8,"7":"false"},{"1":"retention","10":"retention","3":17,"4":1,"5":14,"6":".google.protobuf.FieldOptions.OptionRetention"},{"1":"targets","10":"targets","3":19,"4":3,"5":14,"6":".google.protobuf.FieldOptions.OptionTargetType"},{"1":"edition_defaults","10":"editionDefaults","3":20,"4":3,"5":11,"6":".google.protobuf.FieldOptions.EditionDefault"},{"1":"features","10":"features","3":21,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"feature_support","10":"featureSupport","3":22,"4":1,"5":11,"6":".google.protobuf.FieldOptions.FeatureSupport"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"3":[{"1":"EditionDefault","2":[{"1":"edition","10":"edition","3":3,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"value","10":"value","3":2,"4":1,"5":9}]},{"1":"FeatureSupport","2":[{"1":"edition_introduced","10":"editionIntroduced","3":1,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"edition_deprecated","10":"editionDeprecated","3":2,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"deprecation_warning","10":"deprecationWarning","3":3,"4":1,"5":9},{"1":"edition_removed","10":"editionRemoved","3":4,"4":1,"5":14,"6":".google.protobuf.Edition"}]}],"4":[{"1":"CType","2":[{"1":"STRING","2":0},{"1":"CORD","2":1},{"1":"STRING_PIECE","2":2}]},{"1":"JSType","2":[{"1":"JS_NORMAL","2":0},{"1":"JS_STRING","2":1},{"1":"JS_NUMBER","2":2}]},{"1":"OptionRetention","2":[{"1":"RETENTION_UNKNOWN","2":0},{"1":"RETENTION_RUNTIME","2":1},{"1":"RETENTION_SOURCE","2":2}]},{"1":"OptionTargetType","2":[{"1":"TARGET_TYPE_UNKNOWN","2":0},{"1":"TARGET_TYPE_FILE","2":1},{"1":"TARGET_TYPE_EXTENSION_RANGE","2":2},{"1":"TARGET_TYPE_MESSAGE","2":3},{"1":"TARGET_TYPE_FIELD","2":4},{"1":"TARGET_TYPE_ONEOF","2":5},{"1":"TARGET_TYPE_ENUM","2":6},{"1":"TARGET_TYPE_ENUM_ENTRY","2":7},{"1":"TARGET_TYPE_SERVICE","2":8},{"1":"TARGET_TYPE_METHOD","2":9}]}],"5":[{"1":1000,"2":536870912}],"9":[{"1":4,"2":5},{"1":18,"2":19}]},{"1":"OneofOptions","2":[{"1":"features","10":"features","3":1,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}]},{"1":"EnumOptions","2":[{"1":"allow_alias","10":"allowAlias","3":2,"4":1,"5":8},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"deprecated_legacy_json_field_conflicts","10":"deprecatedLegacyJsonFieldConflicts","3":6,"4":1,"5":8,"8":{"3":true}},{"1":"features","10":"features","3":7,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}],"9":[{"1":5,"2":6}]},{"1":"EnumValueOptions","2":[{"1":"deprecated","10":"deprecated","3":1,"4":1,"5":8,"7":"false"},{"1":"features","10":"features","3":2,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"debug_redact","10":"debugRedact","3":3,"4":1,"5":8,"7":"false"},{"1":"feature_support","10":"featureSupport","3":4,"4":1,"5":11,"6":".google.protobuf.FieldOptions.FeatureSupport"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}]},{"1":"ServiceOptions","2":[{"1":"features","10":"features","3":34,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"deprecated","10":"deprecated","3":33,"4":1,"5":8,"7":"false"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}]},{"1":"MethodOptions","2":[{"1":"deprecated","10":"deprecated","3":33,"4":1,"5":8,"7":"false"},{"1":"idempotency_level","10":"idempotencyLevel","3":34,"4":1,"5":14,"6":".google.protobuf.MethodOptions.IdempotencyLevel","7":"IDEMPOTENCY_UNKNOWN"},{"1":"features","10":"features","3":35,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"4":[{"1":"IdempotencyLevel","2":[{"1":"IDEMPOTENCY_UNKNOWN","2":0},{"1":"NO_SIDE_EFFECTS","2":1},{"1":"IDEMPOTENT","2":2}]}],"5":[{"1":1000,"2":536870912}]},{"1":"UninterpretedOption","2":[{"1":"name","10":"name","3":2,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption.NamePart"},{"1":"identifier_value","10":"identifierValue","3":3,"4":1,"5":9},{"1":"positive_int_value","10":"positiveIntValue","3":4,"4":1,"5":4},{"1":"negative_int_value","10":"negativeIntValue","3":5,"4":1,"5":3},{"1":"double_value","10":"doubleValue","3":6,"4":1,"5":1},{"1":"string_value","10":"stringValue","3":7,"4":1,"5":12},{"1":"aggregate_value","10":"aggregateValue","3":8,"4":1,"5":9}],"3":[{"1":"NamePart","2":[{"1":"name_part","10":"namePart","3":1,"4":2,"5":9},{"1":"is_extension","10":"isExtension","3":2,"4":2,"5":8}]}]},{"1":"FeatureSet","2":[{"1":"field_presence","10":"fieldPresence","3":1,"4":1,"5":14,"6":".google.protobuf.FeatureSet.FieldPresence","8":{"17":1,"19":[4,1],"20":[{"2":"EXPLICIT","3":900},{"2":"IMPLICIT","3":999},{"2":"EXPLICIT","3":1000}],"22":{"1":1000}}},{"1":"enum_type","10":"enumType","3":2,"4":1,"5":14,"6":".google.protobuf.FeatureSet.EnumType","8":{"17":1,"19":[6,1],"20":[{"2":"CLOSED","3":900},{"2":"OPEN","3":999}],"22":{"1":1000}}},{"1":"repeated_field_encoding","10":"repeatedFieldEncoding","3":3,"4":1,"5":14,"6":".google.protobuf.FeatureSet.RepeatedFieldEncoding","8":{"17":1,"19":[4,1],"20":[{"2":"EXPANDED","3":900},{"2":"PACKED","3":999}],"22":{"1":1000}}},{"1":"utf8_validation","10":"utf8Validation","3":4,"4":1,"5":14,"6":".google.protobuf.FeatureSet.Utf8Validation","8":{"17":1,"19":[4,1],"20":[{"2":"NONE","3":900},{"2":"VERIFY","3":999}],"22":{"1":1000}}},{"1":"message_encoding","10":"messageEncoding","3":5,"4":1,"5":14,"6":".google.protobuf.FeatureSet.MessageEncoding","8":{"17":1,"19":[4,1],"20":[{"2":"LENGTH_PREFIXED","3":900}],"22":{"1":1000}}},{"1":"json_format","10":"jsonFormat","3":6,"4":1,"5":14,"6":".google.protobuf.FeatureSet.JsonFormat","8":{"17":1,"19":[3,6,1],"20":[{"2":"LEGACY_BEST_EFFORT","3":900},{"2":"ALLOW","3":999}],"22":{"1":1000}}},{"1":"enforce_naming_style","10":"enforceNamingStyle","3":7,"4":1,"5":14,"6":".google.protobuf.FeatureSet.EnforceNamingStyle","8":{"17":2,"19":[1,2,3,4,5,6,7,8,9],"20":[{"2":"STYLE_LEGACY","3":900},{"2":"STYLE2024","3":1001}],"22":{"1":1001}}}],"4":[{"1":"FieldPresence","2":[{"1":"FIELD_PRESENCE_UNKNOWN","2":0},{"1":"EXPLICIT","2":1},{"1":"IMPLICIT","2":2},{"1":"LEGACY_REQUIRED","2":3}]},{"1":"EnumType","2":[{"1":"ENUM_TYPE_UNKNOWN","2":0},{"1":"OPEN","2":1},{"1":"CLOSED","2":2}]},{"1":"RepeatedFieldEncoding","2":[{"1":"REPEATED_FIELD_ENCODING_UNKNOWN","2":0},{"1":"PACKED","2":1},{"1":"EXPANDED","2":2}]},{"1":"Utf8Validation","2":[{"1":"UTF8_VALIDATION_UNKNOWN","2":0},{"1":"VERIFY","2":2},{"1":"NONE","2":3}],"4":[{"1":1,"2":1}]},{"1":"MessageEncoding","2":[{"1":"MESSAGE_ENCODING_UNKNOWN","2":0},{"1":"LENGTH_PREFIXED","2":1},{"1":"DELIMITED","2":2}]},{"1":"JsonFormat","2":[{"1":"JSON_FORMAT_UNKNOWN","2":0},{"1":"ALLOW","2":1},{"1":"LEGACY_BEST_EFFORT","2":2}]},{"1":"EnforceNamingStyle","2":[{"1":"ENFORCE_NAMING_STYLE_UNKNOWN","2":0},{"1":"STYLE2024","2":1},{"1":"STYLE_LEGACY","2":2}]}],"5":[{"1":1000,"2":9995},{"1":9995,"2":10000},{"1":10000,"2":10001}],"9":[{"1":999,"2":1000}]},{"1":"FeatureSetDefaults","2":[{"1":"defaults","10":"defaults","3":1,"4":3,"5":11,"6":".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault"},{"1":"minimum_edition","10":"minimumEdition","3":4,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"maximum_edition","10":"maximumEdition","3":5,"4":1,"5":14,"6":".google.protobuf.Edition"}],"3":[{"1":"FeatureSetEditionDefault","10":["features"],"2":[{"1":"edition","10":"edition","3":3,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"overridable_features","10":"overridableFeatures","3":4,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"fixed_features","10":"fixedFeatures","3":5,"4":1,"5":11,"6":".google.protobuf.FeatureSet"}],"9":[{"1":1,"2":2},{"1":2,"2":3}]}]},{"1":"SourceCodeInfo","2":[{"1":"location","10":"location","3":1,"4":3,"5":11,"6":".google.protobuf.SourceCodeInfo.Location"}],"3":[{"1":"Location","2":[{"1":"path","10":"path","3":1,"4":3,"5":5,"8":{"2":true}},{"1":"span","10":"span","3":2,"4":3,"5":5,"8":{"2":true}},{"1":"leading_comments","10":"leadingComments","3":3,"4":1,"5":9},{"1":"trailing_comments","10":"trailingComments","3":4,"4":1,"5":9},{"1":"leading_detached_comments","10":"leadingDetachedComments","3":6,"4":3,"5":9}]}],"5":[{"1":536000000,"2":536000001}]},{"1":"GeneratedCodeInfo","2":[{"1":"annotation","10":"annotation","3":1,"4":3,"5":11,"6":".google.protobuf.GeneratedCodeInfo.Annotation"}],"3":[{"1":"Annotation","2":[{"1":"path","10":"path","3":1,"4":3,"5":5,"8":{"2":true}},{"1":"source_file","10":"sourceFile","3":2,"4":1,"5":9},{"1":"begin","10":"begin","3":3,"4":1,"5":5},{"1":"end","10":"end","3":4,"4":1,"5":5},{"1":"semantic","10":"semantic","3":5,"4":1,"5":14,"6":".google.protobuf.GeneratedCodeInfo.Annotation.Semantic"}],"4":[{"1":"Semantic","2":[{"1":"NONE","2":0},{"1":"SET","2":1},{"1":"ALIAS","2":2}]}]}]}],"5":[{"1":"Edition","2":[{"1":"EDITION_UNKNOWN","2":0},{"1":"EDITION_LEGACY","2":900},{"1":"EDITION_PROTO2","2":998},{"1":"EDITION_PROTO3","2":999},{"1":"EDITION_2023","2":1000},{"1":"EDITION_2024","2":1001},{"1":"EDITION_1_TEST_ONLY","2":1},{"1":"EDITION_2_TEST_ONLY","2":2},{"1":"EDITION_99997_TEST_ONLY","2":99997},{"1":"EDITION_99998_TEST_ONLY","2":99998},{"1":"EDITION_99999_TEST_ONLY","2":99999},{"1":"EDITION_MAX","2":2147483647}]}],"8":{"1":"com.google.protobuf","11":"google.golang.org/protobuf/types/descriptorpb","31":true,"36":"GPB","37":"Google.Protobuf.Reflection","8":"DescriptorProtos","9":1}}]},"2":{".google.protobuf.DescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[2]","3":{"enum_type":4,"extension":2,"extension_range":5,"field":1,"name":0,"nested_type":3,"oneof_decl":6,"options":7,"reserved_name":9,"reserved_range":8},"4":{"1":0,"10":9,"2":1,"3":3,"4":4,"5":5,"6":2,"7":7,"8":6,"9":8}},".google.protobuf.DescriptorProto.ExtensionRange":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[2].\\"3\\"[0]","3":{"end":1,"options":2,"start":0},"4":{"1":0,"2":1,"3":2}},".google.protobuf.DescriptorProto.ReservedRange":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[2].\\"3\\"[1]","3":{"end":1,"start":0},"4":{"1":0,"2":1}},".google.protobuf.EnumDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[6]","3":{"name":0,"options":2,"reserved_name":4,"reserved_range":3,"value":1},"4":{"1":0,"2":1,"3":2,"4":3,"5":4}},".google.protobuf.EnumDescriptorProto.EnumReservedRange":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[6].\\"3\\"[0]","3":{"end":1,"start":0},"4":{"1":0,"2":1}},".google.protobuf.EnumOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[14]","3":{"allow_alias":0,"deprecated":1,"deprecated_legacy_json_field_conflicts":2,"features":3,"uninterpreted_option":4},"4":{"2":0,"3":1,"6":2,"7":3,"999":4}},".google.protobuf.EnumValueDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[7]","3":{"name":0,"number":1,"options":2},"4":{"1":0,"2":1,"3":2}},".google.protobuf.EnumValueOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[15]","3":{"debug_redact":2,"deprecated":0,"feature_support":3,"features":1,"uninterpreted_option":4},"4":{"1":0,"2":1,"3":2,"4":3,"999":4}},".google.protobuf.ExtensionRangeOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[3]","3":{"declaration":1,"features":2,"uninterpreted_option":0,"verification":3},"4":{"2":1,"3":3,"50":2,"999":0}},".google.protobuf.ExtensionRangeOptions.Declaration":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[3].\\"3\\"[0]","3":{"full_name":1,"number":0,"repeated":4,"reserved":3,"type":2},"4":{"1":0,"2":1,"3":2,"5":3,"6":4}},".google.protobuf.FeatureSet":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19]","3":{"enforce_naming_style":6,"enum_type":1,"field_presence":0,"json_format":5,"message_encoding":4,"repeated_field_encoding":2,"utf8_validation":3},"4":{"1":0,"2":1,"3":2,"4":3,"5":4,"6":5,"7":6}},".google.protobuf.FeatureSetDefaults":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[20]","3":{"defaults":0,"maximum_edition":2,"minimum_edition":1},"4":{"1":0,"4":1,"5":2}},".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[20].\\"3\\"[0]","3":{"edition":0,"fixed_features":2,"overridable_features":1},"4":{"3":0,"4":1,"5":2}},".google.protobuf.FieldDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[4]","3":{"default_value":6,"extendee":5,"json_name":8,"label":2,"name":0,"number":1,"oneof_index":7,"options":9,"proto3_optional":10,"type":3,"type_name":4},"4":{"1":0,"10":8,"17":10,"2":5,"3":1,"4":2,"5":3,"6":4,"7":6,"8":9,"9":7}},".google.protobuf.FieldOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12]","3":{"ctype":0,"debug_redact":7,"deprecated":5,"edition_defaults":10,"feature_support":12,"features":11,"jstype":2,"lazy":3,"packed":1,"retention":8,"targets":9,"uninterpreted_option":13,"unverified_lazy":4,"weak":6},"4":{"1":0,"10":6,"15":4,"16":7,"17":8,"19":9,"2":1,"20":10,"21":11,"22":12,"3":5,"5":3,"6":2,"999":13}},".google.protobuf.FieldOptions.EditionDefault":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12].\\"3\\"[0]","3":{"edition":0,"value":1},"4":{"2":1,"3":0}},".google.protobuf.FieldOptions.FeatureSupport":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12].\\"3\\"[1]","3":{"deprecation_warning":2,"edition_deprecated":1,"edition_introduced":0,"edition_removed":3},"4":{"1":0,"2":1,"3":2,"4":3}},".google.protobuf.FileDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[1]","3":{"dependency":2,"edition":12,"enum_type":6,"extension":8,"message_type":5,"name":0,"options":9,"package":1,"public_dependency":3,"service":7,"source_code_info":10,"syntax":11,"weak_dependency":4},"4":{"1":0,"10":3,"11":4,"12":11,"14":12,"2":1,"3":2,"4":5,"5":6,"6":7,"7":8,"8":9,"9":10}},".google.protobuf.FileDescriptorSet":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"file":0},"4":{"1":0}},".google.protobuf.FileOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[10]","3":{"cc_enable_arenas":11,"cc_generic_services":7,"csharp_namespace":13,"deprecated":10,"features":19,"go_package":6,"java_generate_equals_and_hash":3,"java_generic_services":8,"java_multiple_files":2,"java_outer_classname":1,"java_package":0,"java_string_check_utf8":4,"objc_class_prefix":12,"optimize_for":5,"php_class_prefix":15,"php_metadata_namespace":17,"php_namespace":16,"py_generic_services":9,"ruby_package":18,"swift_prefix":14,"uninterpreted_option":20},"4":{"1":0,"10":2,"11":6,"16":7,"17":8,"18":9,"20":3,"23":10,"27":4,"31":11,"36":12,"37":13,"39":14,"40":15,"41":16,"44":17,"45":18,"50":19,"8":1,"9":5,"999":20}},".google.protobuf.GeneratedCodeInfo":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[22]","3":{"annotation":0},"4":{"1":0}},".google.protobuf.GeneratedCodeInfo.Annotation":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[22].\\"3\\"[0]","3":{"begin":2,"end":3,"path":0,"semantic":4,"source_file":1},"4":{"1":0,"2":1,"3":2,"4":3,"5":4}},".google.protobuf.MessageOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[11]","3":{"deprecated":2,"deprecated_legacy_json_field_conflicts":4,"features":5,"map_entry":3,"message_set_wire_format":0,"no_standard_descriptor_accessor":1,"uninterpreted_option":6},"4":{"1":0,"11":4,"12":5,"2":1,"3":2,"7":3,"999":6}},".google.protobuf.MethodDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[9]","3":{"client_streaming":4,"input_type":1,"name":0,"options":3,"output_type":2,"server_streaming":5},"4":{"1":0,"2":1,"3":2,"4":3,"5":4,"6":5}},".google.protobuf.MethodOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[17]","3":{"deprecated":0,"features":2,"idempotency_level":1,"uninterpreted_option":3},"4":{"33":0,"34":1,"35":2,"999":3}},".google.protobuf.OneofDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[5]","3":{"name":0,"options":1},"4":{"1":0,"2":1}},".google.protobuf.OneofOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[13]","3":{"features":0,"uninterpreted_option":1},"4":{"1":0,"999":1}},".google.protobuf.ServiceDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[8]","3":{"method":1,"name":0,"options":2},"4":{"1":0,"2":1,"3":2}},".google.protobuf.ServiceOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[16]","3":{"deprecated":1,"features":0,"uninterpreted_option":2},"4":{"33":1,"34":0,"999":2}},".google.protobuf.SourceCodeInfo":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[21]","3":{"location":0},"4":{"1":0}},".google.protobuf.SourceCodeInfo.Location":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[21].\\"3\\"[0]","3":{"leading_comments":2,"leading_detached_comments":4,"path":0,"span":1,"trailing_comments":3},"4":{"1":0,"2":1,"3":2,"4":3,"6":4}},".google.protobuf.UninterpretedOption":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[18]","3":{"aggregate_value":6,"double_value":4,"identifier_value":1,"name":0,"negative_int_value":3,"positive_int_value":2,"string_value":5},"4":{"2":0,"3":1,"4":2,"5":3,"6":4,"7":5,"8":6}},".google.protobuf.UninterpretedOption.NamePart":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[18].\\"3\\"[0]","3":{"is_extension":1,"name_part":0},"4":{"1":0,"2":1}}},"3":{".google.protobuf.Edition":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"5\\"[0]","3":{"EDITION_1_TEST_ONLY":6,"EDITION_2023":4,"EDITION_2024":5,"EDITION_2_TEST_ONLY":7,"EDITION_99997_TEST_ONLY":8,"EDITION_99998_TEST_ONLY":9,"EDITION_99999_TEST_ONLY":10,"EDITION_LEGACY":1,"EDITION_MAX":11,"EDITION_PROTO2":2,"EDITION_PROTO3":3,"EDITION_UNKNOWN":0},"4":{"0":0,"1":6,"1000":4,"1001":5,"2":7,"2147483647":11,"900":1,"998":2,"999":3,"99997":8,"99998":9,"99999":10}},".google.protobuf.ExtensionRangeOptions.VerificationState":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[3].\\"4\\"[0]","3":{"DECLARATION":0,"UNVERIFIED":1},"4":{"0":0,"1":1}},".google.protobuf.FeatureSet.EnforceNamingStyle":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[6]","3":{"ENFORCE_NAMING_STYLE_UNKNOWN":0,"STYLE2024":1,"STYLE_LEGACY":2},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FeatureSet.EnumType":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[1]","3":{"CLOSED":2,"ENUM_TYPE_UNKNOWN":0,"OPEN":1},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FeatureSet.FieldPresence":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[0]","3":{"EXPLICIT":1,"FIELD_PRESENCE_UNKNOWN":0,"IMPLICIT":2,"LEGACY_REQUIRED":3},"4":{"0":0,"1":1,"2":2,"3":3}},".google.protobuf.FeatureSet.JsonFormat":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[5]","3":{"ALLOW":1,"JSON_FORMAT_UNKNOWN":0,"LEGACY_BEST_EFFORT":2},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FeatureSet.MessageEncoding":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[4]","3":{"DELIMITED":2,"LENGTH_PREFIXED":1,"MESSAGE_ENCODING_UNKNOWN":0},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FeatureSet.RepeatedFieldEncoding":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[2]","3":{"EXPANDED":2,"PACKED":1,"REPEATED_FIELD_ENCODING_UNKNOWN":0},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FeatureSet.Utf8Validation":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[3]","3":{"NONE":2,"UTF8_VALIDATION_UNKNOWN":0,"VERIFY":1},"4":{"0":0,"2":1,"3":2}},".google.protobuf.FieldDescriptorProto.Label":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[4].\\"4\\"[1]","3":{"LABEL_OPTIONAL":0,"LABEL_REPEATED":1,"LABEL_REQUIRED":2},"4":{"1":0,"2":2,"3":1}},".google.protobuf.FieldDescriptorProto.Type":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[4].\\"4\\"[0]","3":{"TYPE_BOOL":7,"TYPE_BYTES":11,"TYPE_DOUBLE":0,"TYPE_ENUM":13,"TYPE_FIXED32":6,"TYPE_FIXED64":5,"TYPE_FLOAT":1,"TYPE_GROUP":9,"TYPE_INT32":4,"TYPE_INT64":2,"TYPE_MESSAGE":10,"TYPE_SFIXED32":14,"TYPE_SFIXED64":15,"TYPE_SINT32":16,"TYPE_SINT64":17,"TYPE_STRING":8,"TYPE_UINT32":12,"TYPE_UINT64":3},"4":{"1":0,"10":9,"11":10,"12":11,"13":12,"14":13,"15":14,"16":15,"17":16,"18":17,"2":1,"3":2,"4":3,"5":4,"6":5,"7":6,"8":7,"9":8}},".google.protobuf.FieldOptions.CType":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12].\\"4\\"[0]","3":{"CORD":1,"STRING":0,"STRING_PIECE":2},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FieldOptions.JSType":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12].\\"4\\"[1]","3":{"JS_NORMAL":0,"JS_NUMBER":2,"JS_STRING":1},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FieldOptions.OptionRetention":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12].\\"4\\"[2]","3":{"RETENTION_RUNTIME":1,"RETENTION_SOURCE":2,"RETENTION_UNKNOWN":0},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FieldOptions.OptionTargetType":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12].\\"4\\"[3]","3":{"TARGET_TYPE_ENUM":6,"TARGET_TYPE_ENUM_ENTRY":7,"TARGET_TYPE_EXTENSION_RANGE":2,"TARGET_TYPE_FIELD":4,"TARGET_TYPE_FILE":1,"TARGET_TYPE_MESSAGE":3,"TARGET_TYPE_METHOD":9,"TARGET_TYPE_ONEOF":5,"TARGET_TYPE_SERVICE":8,"TARGET_TYPE_UNKNOWN":0},"4":{"0":0,"1":1,"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9}},".google.protobuf.FileOptions.OptimizeMode":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[10].\\"4\\"[0]","3":{"CODE_SIZE":1,"LITE_RUNTIME":2,"SPEED":0},"4":{"1":0,"2":1,"3":2}},".google.protobuf.GeneratedCodeInfo.Annotation.Semantic":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[22].\\"3\\"[0].\\"4\\"[0]","3":{"ALIAS":2,"NONE":0,"SET":1},"4":{"0":0,"1":1,"2":2}},".google.protobuf.MethodOptions.IdempotencyLevel":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[17].\\"4\\"[0]","3":{"IDEMPOTENCY_UNKNOWN":0,"IDEMPOTENT":2,"NO_SIDE_EFFECTS":1},"4":{"0":0,"1":1,"2":2}}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_proto $$
 CREATE FUNCTION _pb_wkt_struct_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/struct.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Struct","2":[{"1":"fields","10":"fields","3":1,"4":3,"5":11,"6":".google.protobuf.Struct.FieldsEntry"}],"3":[{"1":"FieldsEntry","2":[{"1":"key","10":"key","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":1,"5":11,"6":".google.protobuf.Value"}],"7":{"7":true}}]},{"1":"Value","2":[{"1":"null_value","10":"nullValue","3":1,"4":1,"5":14,"6":".google.protobuf.NullValue","9":0},{"1":"number_value","10":"numberValue","3":2,"4":1,"5":1,"9":0},{"1":"string_value","10":"stringValue","3":3,"4":1,"5":9,"9":0},{"1":"bool_value","10":"boolValue","3":4,"4":1,"5":8,"9":0},{"1":"struct_value","10":"structValue","3":5,"4":1,"5":11,"6":".google.protobuf.Struct","9":0},{"1":"list_value","10":"listValue","3":6,"4":1,"5":11,"6":".google.protobuf.ListValue","9":0}],"8":[{"1":"kind"}]},{"1":"ListValue","2":[{"1":"values","10":"values","3":1,"4":3,"5":11,"6":".google.protobuf.Value"}]}],"5":[{"1":"NullValue","2":[{"1":"NULL_VALUE","2":0}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/structpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"StructProto"}}]},{".google.protobuf.ListValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2]"],".google.protobuf.NullValue":[14,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"5\\"[0]"],".google.protobuf.Struct":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"],".google.protobuf.Struct.FieldsEntry":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0].\\"3\\"[0]"],".google.protobuf.Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[1]"]}]' AS JSON);
+	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/struct.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Struct","2":[{"1":"fields","10":"fields","3":1,"4":3,"5":11,"6":".google.protobuf.Struct.FieldsEntry"}],"3":[{"1":"FieldsEntry","2":[{"1":"key","10":"key","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":1,"5":11,"6":".google.protobuf.Value"}],"7":{"7":true}}]},{"1":"Value","2":[{"1":"null_value","10":"nullValue","3":1,"4":1,"5":14,"6":".google.protobuf.NullValue","9":0},{"1":"number_value","10":"numberValue","3":2,"4":1,"5":1,"9":0},{"1":"string_value","10":"stringValue","3":3,"4":1,"5":9,"9":0},{"1":"bool_value","10":"boolValue","3":4,"4":1,"5":8,"9":0},{"1":"struct_value","10":"structValue","3":5,"4":1,"5":11,"6":".google.protobuf.Struct","9":0},{"1":"list_value","10":"listValue","3":6,"4":1,"5":11,"6":".google.protobuf.ListValue","9":0}],"8":[{"1":"kind"}]},{"1":"ListValue","2":[{"1":"values","10":"values","3":1,"4":3,"5":11,"6":".google.protobuf.Value"}]}],"5":[{"1":"NullValue","2":[{"1":"NULL_VALUE","2":0}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/structpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"StructProto"}}]},"2":{".google.protobuf.ListValue":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[2]","3":{"values":0},"4":{"1":0}},".google.protobuf.Struct":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"fields":0},"4":{"1":0}},".google.protobuf.Struct.FieldsEntry":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0].\\"3\\"[0]","3":{"key":0,"value":1},"4":{"1":0,"2":1}},".google.protobuf.Value":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[1]","3":{"bool_value":3,"list_value":5,"null_value":0,"number_value":1,"string_value":2,"struct_value":4},"4":{"1":0,"2":1,"3":2,"4":3,"5":4,"6":5}}},"3":{".google.protobuf.NullValue":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"5\\"[0]","3":{"NULL_VALUE":0},"4":{"0":0}}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_struct_new $$
@@ -5151,7 +5314,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_field_mask_proto $$
 CREATE FUNCTION _pb_wkt_field_mask_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/field_mask.proto","12":"proto3","2":"google.protobuf","4":[{"1":"FieldMask","2":[{"1":"paths","10":"paths","3":1,"4":3,"5":9}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/fieldmaskpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"FieldMaskProto"}}]},{".google.protobuf.FieldMask":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
+	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/field_mask.proto","12":"proto3","2":"google.protobuf","4":[{"1":"FieldMask","2":[{"1":"paths","10":"paths","3":1,"4":3,"5":9}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/fieldmaskpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"FieldMaskProto"}}]},"2":{".google.protobuf.FieldMask":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"paths":0},"4":{"1":0}}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_field_mask_new $$
@@ -5199,7 +5362,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_wrappers_proto $$
 CREATE FUNCTION _pb_wkt_wrappers_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/wrappers.proto","12":"proto3","2":"google.protobuf","4":[{"1":"DoubleValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":1}]},{"1":"FloatValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":2}]},{"1":"Int64Value","2":[{"1":"value","10":"value","3":1,"4":1,"5":3}]},{"1":"UInt64Value","2":[{"1":"value","10":"value","3":1,"4":1,"5":4}]},{"1":"Int32Value","2":[{"1":"value","10":"value","3":1,"4":1,"5":5}]},{"1":"UInt32Value","2":[{"1":"value","10":"value","3":1,"4":1,"5":13}]},{"1":"BoolValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":8}]},{"1":"StringValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":9}]},{"1":"BytesValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":12}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/wrapperspb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"WrappersProto"}}]},{".google.protobuf.BoolValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[6]"],".google.protobuf.BytesValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[8]"],".google.protobuf.DoubleValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"],".google.protobuf.FloatValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[1]"],".google.protobuf.Int32Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[4]"],".google.protobuf.Int64Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[2]"],".google.protobuf.StringValue":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[7]"],".google.protobuf.UInt32Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[5]"],".google.protobuf.UInt64Value":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[3]"]}]' AS JSON);
+	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/wrappers.proto","12":"proto3","2":"google.protobuf","4":[{"1":"DoubleValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":1}]},{"1":"FloatValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":2}]},{"1":"Int64Value","2":[{"1":"value","10":"value","3":1,"4":1,"5":3}]},{"1":"UInt64Value","2":[{"1":"value","10":"value","3":1,"4":1,"5":4}]},{"1":"Int32Value","2":[{"1":"value","10":"value","3":1,"4":1,"5":5}]},{"1":"UInt32Value","2":[{"1":"value","10":"value","3":1,"4":1,"5":13}]},{"1":"BoolValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":8}]},{"1":"StringValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":9}]},{"1":"BytesValue","2":[{"1":"value","10":"value","3":1,"4":1,"5":12}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/wrapperspb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"WrappersProto"}}]},"2":{".google.protobuf.BoolValue":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[6]","3":{"value":0},"4":{"1":0}},".google.protobuf.BytesValue":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[8]","3":{"value":0},"4":{"1":0}},".google.protobuf.DoubleValue":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"value":0},"4":{"1":0}},".google.protobuf.FloatValue":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[1]","3":{"value":0},"4":{"1":0}},".google.protobuf.Int32Value":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[4]","3":{"value":0},"4":{"1":0}},".google.protobuf.Int64Value":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[2]","3":{"value":0},"4":{"1":0}},".google.protobuf.StringValue":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[7]","3":{"value":0},"4":{"1":0}},".google.protobuf.UInt32Value":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[5]","3":{"value":0},"4":{"1":0}},".google.protobuf.UInt64Value":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[3]","3":{"value":0},"4":{"1":0}}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_double_value_new $$
@@ -5583,7 +5746,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_proto $$
 CREATE FUNCTION _pb_wkt_timestamp_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/timestamp.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Timestamp","2":[{"1":"seconds","10":"seconds","3":1,"4":1,"5":3},{"1":"nanos","10":"nanos","3":2,"4":1,"5":5}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/timestamppb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"TimestampProto"}}]},{".google.protobuf.Timestamp":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
+	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/timestamp.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Timestamp","2":[{"1":"seconds","10":"seconds","3":1,"4":1,"5":3},{"1":"nanos","10":"nanos","3":2,"4":1,"5":5}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/timestamppb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"TimestampProto"}}]},"2":{".google.protobuf.Timestamp":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"nanos":1,"seconds":0},"4":{"1":0,"2":1}}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_new $$
@@ -5643,7 +5806,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_duration_proto $$
 CREATE FUNCTION _pb_wkt_duration_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/duration.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Duration","2":[{"1":"seconds","10":"seconds","3":1,"4":1,"5":3},{"1":"nanos","10":"nanos","3":2,"4":1,"5":5}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/durationpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"DurationProto"}}]},{".google.protobuf.Duration":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
+	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/duration.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Duration","2":[{"1":"seconds","10":"seconds","3":1,"4":1,"5":3},{"1":"nanos","10":"nanos","3":2,"4":1,"5":5}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/durationpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"DurationProto"}}]},"2":{".google.protobuf.Duration":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"nanos":1,"seconds":0},"4":{"1":0,"2":1}}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_duration_new $$
@@ -5703,7 +5866,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_any_proto $$
 CREATE FUNCTION _pb_wkt_any_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/any.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Any","2":[{"1":"type_url","10":"typeUrl","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":1,"5":12}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/anypb","36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"AnyProto"}}]},{".google.protobuf.Any":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
+	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/any.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Any","2":[{"1":"type_url","10":"typeUrl","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":1,"5":12}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/anypb","36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"AnyProto"}}]},"2":{".google.protobuf.Any":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"type_url":0,"value":1},"4":{"1":0,"2":1}}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_any_new $$
@@ -5763,7 +5926,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_empty_proto $$
 CREATE FUNCTION _pb_wkt_empty_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"google/protobuf/empty.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Empty"}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/emptypb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"EmptyProto"}}]},{".google.protobuf.Empty":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
+	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/empty.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Empty"}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/emptypb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"EmptyProto"}}]},"2":{".google.protobuf.Empty":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]"}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_empty_new $$
@@ -5803,7 +5966,7 @@ DELIMITER $$
 DROP FUNCTION IF EXISTS _pb_json_options_proto $$
 CREATE FUNCTION _pb_json_options_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('[1,{"1":[{"1":"json_options.proto","12":"proto3","2":"mysqlprotobuf","4":[{"1":"JsonUnmarshalOptions","2":[{"1":"ignore_unknown_fields","10":"ignoreUnknownFields","3":1,"4":1,"5":8},{"1":"ignore_unknown_enums","10":"ignoreUnknownEnums","3":2,"4":1,"5":8}]},{"1":"JsonMarshalOptions","2":[{"1":"emit_default_values","10":"emitDefaultValues","3":1,"4":1,"5":8}]}]}]},{".mysqlprotobuf.JsonMarshalOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[1]"],".mysqlprotobuf.JsonUnmarshalOptions":[11,"$[1].\\"1\\"[0]","$[1].\\"1\\"[0].\\"4\\"[0]"]}]' AS JSON);
+	RETURN CAST('{"1":{"1":[{"1":"json_options.proto","12":"proto3","2":"mysqlprotobuf","4":[{"1":"JsonUnmarshalOptions","2":[{"1":"ignore_unknown_fields","10":"ignoreUnknownFields","3":1,"4":1,"5":8},{"1":"ignore_unknown_enums","10":"ignoreUnknownEnums","3":2,"4":1,"5":8}]},{"1":"JsonMarshalOptions","2":[{"1":"emit_default_values","10":"emitDefaultValues","3":1,"4":1,"5":8}]}]}]},"2":{".mysqlprotobuf.JsonMarshalOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[1]","3":{"emit_default_values":0},"4":{"1":0}},".mysqlprotobuf.JsonUnmarshalOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"ignore_unknown_enums":1,"ignore_unknown_fields":0},"4":{"1":0,"2":1}}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_new $$

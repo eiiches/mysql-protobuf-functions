@@ -18,7 +18,8 @@ CREATE PROCEDURE _pb_build_nested_types(
 	IN parent_name TEXT,
 	IN parent_path TEXT,
 	IN file_path TEXT,
-	INOUT type_index JSON
+	INOUT message_type_index JSON,
+	INOUT enum_type_index JSON
 )
 proc: BEGIN
 	DECLARE nested_messages JSON;
@@ -36,6 +37,26 @@ proc: BEGIN
 	DECLARE nested_type_name TEXT;
 	DECLARE type_entry JSON;
 
+	-- Enum indexing variables
+	DECLARE enum_name_index JSON;
+	DECLARE enum_number_index JSON;
+	DECLARE enum_values_array JSON;
+	DECLARE enum_value_count INT DEFAULT 0;
+	DECLARE enum_value_idx INT DEFAULT 0;
+	DECLARE enum_value_desc JSON;
+	DECLARE enum_value_name TEXT;
+	DECLARE enum_value_number INT;
+
+	-- Nested field indexing variables
+	DECLARE nested_field_name_index JSON;
+	DECLARE nested_field_number_index JSON;
+	DECLARE nested_field_array JSON;
+	DECLARE nested_field_count INT DEFAULT 0;
+	DECLARE nested_field_idx INT DEFAULT 0;
+	DECLARE nested_field_desc JSON;
+	DECLARE nested_field_name_val TEXT;
+	DECLARE nested_field_number_val INT;
+
 	-- Process nested message types (field 3 in DescriptorProto)
 	SET nested_messages = JSON_EXTRACT(message_descriptor, '$."3"');
 
@@ -49,12 +70,43 @@ proc: BEGIN
 			SET nested_msg_path = CONCAT(parent_path, '."3"[', nested_msg_index, ']');
 			SET nested_type_name = CONCAT(parent_name, '.', nested_msg_name);
 
-			-- Add to type index: [kind=11, file_path, type_path]
-			SET type_entry = JSON_ARRAY(11, file_path, nested_msg_path);
-			SET type_index = JSON_SET(type_index, CONCAT('$."', nested_type_name, '"'), type_entry);
+			-- Build field indexes for nested message
+			SET nested_field_name_index = JSON_OBJECT();
+			SET nested_field_number_index = JSON_OBJECT();
+			SET nested_field_array = JSON_EXTRACT(nested_msg_descriptor, '$."2"'); -- field array
+			IF nested_field_array IS NOT NULL THEN
+				SET nested_field_count = JSON_LENGTH(nested_field_array);
+				SET nested_field_idx = 0;
+				WHILE nested_field_idx < nested_field_count DO
+					SET nested_field_desc = JSON_EXTRACT(nested_field_array, CONCAT('$[', nested_field_idx, ']'));
+					SET nested_field_name_val = JSON_UNQUOTE(JSON_EXTRACT(nested_field_desc, '$."1"')); -- name
+					SET nested_field_number_val = JSON_EXTRACT(nested_field_desc, '$."3"'); -- number
+					IF nested_field_name_val IS NOT NULL THEN
+						SET nested_field_name_index = JSON_SET(nested_field_name_index, CONCAT('$."', nested_field_name_val, '"'), nested_field_idx);
+					END IF;
+					IF nested_field_number_val IS NOT NULL THEN
+						SET nested_field_number_index = JSON_SET(nested_field_number_index, CONCAT('$."', nested_field_number_val, '"'), nested_field_idx);
+					END IF;
+					SET nested_field_idx = nested_field_idx + 1;
+				END WHILE;
+			END IF;
+
+			-- Add to message type index: MessageTypeIndex format
+			SET type_entry = JSON_OBJECT(
+				'1', file_path,
+				'2', nested_msg_path
+			);
+			-- Only include field indexes if they're non-empty
+			IF JSON_LENGTH(JSON_KEYS(nested_field_name_index)) > 0 THEN
+				SET type_entry = JSON_SET(type_entry, '$.\"3\"', nested_field_name_index);
+			END IF;
+			IF JSON_LENGTH(JSON_KEYS(nested_field_number_index)) > 0 THEN
+				SET type_entry = JSON_SET(type_entry, '$.\"4\"', nested_field_number_index);
+			END IF;
+			SET message_type_index = JSON_SET(message_type_index, CONCAT('$."', nested_type_name, '"'), type_entry);
 
 			-- Recursively process further nested types
-			CALL _pb_build_nested_types(nested_msg_descriptor, nested_type_name, nested_msg_path, file_path, type_index);
+			CALL _pb_build_nested_types(nested_msg_descriptor, nested_type_name, nested_msg_path, file_path, message_type_index, enum_type_index);
 
 			SET nested_msg_index = nested_msg_index + 1;
 		END WHILE;
@@ -73,20 +125,49 @@ proc: BEGIN
 			SET nested_enum_path = CONCAT(parent_path, '."4"[', nested_enum_index, ']');
 			SET nested_type_name = CONCAT(parent_name, '.', nested_enum_name);
 
-			-- Add to type index: [kind=14, file_path, type_path]
-			SET type_entry = JSON_ARRAY(14, file_path, nested_enum_path);
-			SET type_index = JSON_SET(type_index, CONCAT('$."', nested_type_name, '"'), type_entry);
+			-- Build enum value indexes
+			SET enum_name_index = JSON_OBJECT();
+			SET enum_number_index = JSON_OBJECT();
+			SET enum_values_array = JSON_EXTRACT(nested_enum_descriptor, '$."2"'); -- value array
+			IF enum_values_array IS NOT NULL THEN
+				SET enum_value_count = JSON_LENGTH(enum_values_array);
+				SET enum_value_idx = 0;
+				WHILE enum_value_idx < enum_value_count DO
+					SET enum_value_desc = JSON_EXTRACT(enum_values_array, CONCAT('$[', enum_value_idx, ']'));
+					SET enum_value_name = JSON_UNQUOTE(JSON_EXTRACT(enum_value_desc, '$."1"')); -- name
+					SET enum_value_number = JSON_EXTRACT(enum_value_desc, '$."2"'); -- number
+					IF enum_value_name IS NOT NULL THEN
+						SET enum_name_index = JSON_SET(enum_name_index, CONCAT('$."', enum_value_name, '"'), enum_value_idx);
+					END IF;
+					IF enum_value_number IS NOT NULL THEN
+						SET enum_number_index = JSON_SET(enum_number_index, CONCAT('$."', enum_value_number, '"'), enum_value_idx);
+					END IF;
+					SET enum_value_idx = enum_value_idx + 1;
+				END WHILE;
+			END IF;
+
+			-- Add to enum type index: EnumTypeIndex format
+			SET type_entry = JSON_OBJECT(
+				'1', file_path,
+				'2', nested_enum_path,
+				'3', enum_name_index,
+				'4', enum_number_index
+			);
+			SET enum_type_index = JSON_SET(enum_type_index, CONCAT('$."', nested_type_name, '"'), type_entry);
 
 			SET nested_enum_index = nested_enum_index + 1;
 		END WHILE;
 	END IF;
 END $$
 
--- Public function to generate type index from FileDescriptorSet in protonumberjson format
-DROP FUNCTION IF EXISTS _pb_build_type_index_from_descriptor_set $$
-CREATE FUNCTION _pb_build_type_index_from_descriptor_set(file_descriptor_set_json JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE type_index JSON DEFAULT JSON_OBJECT();
+-- Public procedure to generate type indexes from FileDescriptorSet in protonumberjson format
+DROP PROCEDURE IF EXISTS _pb_build_type_indexes_from_descriptor_set $$
+CREATE PROCEDURE _pb_build_type_indexes_from_descriptor_set(
+	IN file_descriptor_set_json JSON,
+	OUT message_type_index JSON,
+	OUT enum_type_index JSON
+)
+proc: BEGIN
 	DECLARE files JSON;
 	DECLARE file_count INT DEFAULT 0;
 	DECLARE file_index INT DEFAULT 0;
@@ -108,11 +189,36 @@ BEGIN
 	DECLARE full_type_name TEXT;
 	DECLARE type_entry JSON;
 
+	-- Field indexing variables
+	DECLARE field_name_index JSON;
+	DECLARE field_number_index JSON;
+	DECLARE field_array JSON;
+	DECLARE field_count INT DEFAULT 0;
+	DECLARE field_idx INT DEFAULT 0;
+	DECLARE field_desc JSON;
+	DECLARE field_name_val TEXT;
+	DECLARE field_number_val INT;
+
+	-- Enum indexing variables
+	DECLARE enum_name_index JSON;
+	DECLARE enum_number_index JSON;
+	DECLARE enum_values_array JSON;
+	DECLARE enum_value_count INT DEFAULT 0;
+	DECLARE enum_value_idx INT DEFAULT 0;
+	DECLARE enum_value_desc JSON;
+	DECLARE enum_value_name TEXT;
+	DECLARE enum_value_number INT;
+
+	-- Initialize indexes
+	SET message_type_index = JSON_OBJECT();
+	SET enum_type_index = JSON_OBJECT();
+
 	-- Extract files array (field 1 in FileDescriptorSet)
 	SET files = JSON_EXTRACT(file_descriptor_set_json, '$."1"');
 
 	IF files IS NULL THEN
-		RETURN type_index;
+		-- Return empty indexes (OUT parameters already initialized)
+		LEAVE proc;
 	END IF;
 
 	SET file_count = JSON_LENGTH(files);
@@ -122,7 +228,7 @@ BEGIN
 	WHILE file_index < file_count DO
 		SET file_descriptor = JSON_EXTRACT(files, CONCAT('$[', file_index, ']'));
 		SET file_package = COALESCE(JSON_UNQUOTE(JSON_EXTRACT(file_descriptor, '$."2"')), ''); -- package field
-		SET file_path = CONCAT('$[1]."1"[', file_index, ']');
+		SET file_path = CONCAT('$."1"[', file_index, ']');
 
 		-- Process message types (field 4 in FileDescriptorProto)
 		SET message_types = JSON_EXTRACT(file_descriptor, '$."4"');
@@ -137,12 +243,43 @@ BEGIN
 				SET message_path = CONCAT(file_path, '."4"[', msg_index, ']');
 				SET full_type_name = _pb_build_type_name(file_package, message_name);
 
-				-- Add to type index: [kind=11, file_path, type_path]
-				SET type_entry = JSON_ARRAY(11, file_path, message_path);
-				SET type_index = JSON_SET(type_index, CONCAT('$."', full_type_name, '"'), type_entry);
+				-- Build field indexes for message
+				SET field_name_index = JSON_OBJECT();
+				SET field_number_index = JSON_OBJECT();
+				SET field_array = JSON_EXTRACT(message_descriptor, '$."2"'); -- field array
+				IF field_array IS NOT NULL THEN
+					SET field_count = JSON_LENGTH(field_array);
+					SET field_idx = 0;
+					WHILE field_idx < field_count DO
+						SET field_desc = JSON_EXTRACT(field_array, CONCAT('$[', field_idx, ']'));
+						SET field_name_val = JSON_UNQUOTE(JSON_EXTRACT(field_desc, '$."1"')); -- name
+						SET field_number_val = JSON_EXTRACT(field_desc, '$."3"'); -- number
+						IF field_name_val IS NOT NULL THEN
+							SET field_name_index = JSON_SET(field_name_index, CONCAT('$."', field_name_val, '"'), field_idx);
+						END IF;
+						IF field_number_val IS NOT NULL THEN
+							SET field_number_index = JSON_SET(field_number_index, CONCAT('$."', field_number_val, '"'), field_idx);
+						END IF;
+						SET field_idx = field_idx + 1;
+					END WHILE;
+				END IF;
+
+				-- Add to message type index: MessageTypeIndex format
+				SET type_entry = JSON_OBJECT(
+					'1', file_path,
+					'2', message_path
+				);
+				-- Only include field indexes if they're non-empty
+				IF JSON_LENGTH(JSON_KEYS(field_name_index)) > 0 THEN
+					SET type_entry = JSON_SET(type_entry, '$.\"3\"', field_name_index);
+				END IF;
+				IF JSON_LENGTH(JSON_KEYS(field_number_index)) > 0 THEN
+					SET type_entry = JSON_SET(type_entry, '$.\"4\"', field_number_index);
+				END IF;
+				SET message_type_index = JSON_SET(message_type_index, CONCAT('$."', full_type_name, '"'), type_entry);
 
 				-- Process nested types recursively
-				CALL _pb_build_nested_types(message_descriptor, full_type_name, message_path, file_path, type_index);
+				CALL _pb_build_nested_types(message_descriptor, full_type_name, message_path, file_path, message_type_index, enum_type_index);
 
 				SET msg_index = msg_index + 1;
 			END WHILE;
@@ -161,9 +298,35 @@ BEGIN
 				SET enum_path = CONCAT(file_path, '."5"[', enum_index, ']');
 				SET full_type_name = _pb_build_type_name(file_package, enum_name);
 
-				-- Add to type index: [kind=14, file_path, type_path]
-				SET type_entry = JSON_ARRAY(14, file_path, enum_path);
-				SET type_index = JSON_SET(type_index, CONCAT('$."', full_type_name, '"'), type_entry);
+				-- Build enum value indexes
+				SET enum_name_index = JSON_OBJECT();
+				SET enum_number_index = JSON_OBJECT();
+				SET enum_values_array = JSON_EXTRACT(enum_descriptor, '$."2"'); -- value array
+				IF enum_values_array IS NOT NULL THEN
+					SET enum_value_count = JSON_LENGTH(enum_values_array);
+					SET enum_value_idx = 0;
+					WHILE enum_value_idx < enum_value_count DO
+						SET enum_value_desc = JSON_EXTRACT(enum_values_array, CONCAT('$[', enum_value_idx, ']'));
+						SET enum_value_name = JSON_UNQUOTE(JSON_EXTRACT(enum_value_desc, '$."1"')); -- name
+						SET enum_value_number = JSON_EXTRACT(enum_value_desc, '$."2"'); -- number
+						IF enum_value_name IS NOT NULL THEN
+							SET enum_name_index = JSON_SET(enum_name_index, CONCAT('$."', enum_value_name, '"'), enum_value_idx);
+						END IF;
+						IF enum_value_number IS NOT NULL THEN
+							SET enum_number_index = JSON_SET(enum_number_index, CONCAT('$."', enum_value_number, '"'), enum_value_idx);
+						END IF;
+						SET enum_value_idx = enum_value_idx + 1;
+					END WHILE;
+				END IF;
+
+				-- Add to enum type index: EnumTypeIndex format
+				SET type_entry = JSON_OBJECT(
+					'1', file_path,
+					'2', enum_path,
+					'3', enum_name_index,
+					'4', enum_number_index
+				);
+				SET enum_type_index = JSON_SET(enum_type_index, CONCAT('$."', full_type_name, '"'), type_entry);
 
 				SET enum_index = enum_index + 1;
 			END WHILE;
@@ -171,17 +334,16 @@ BEGIN
 
 		SET file_index = file_index + 1;
 	END WHILE;
-
-	RETURN type_index;
 END $$
 
 -- Public function to convert FileDescriptorSet LONGBLOB to descriptor set JSON
--- Returns a 2-element JSON array: [fileDescriptorSet, typeIndex]
+-- Returns a DescriptorSet message in protonumberjson format
 DROP FUNCTION IF EXISTS pb_build_descriptor_set_json $$
 CREATE FUNCTION pb_build_descriptor_set_json(file_descriptor_set_blob LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE file_descriptor_set_number_json JSON;
-	DECLARE type_index JSON;
+	DECLARE message_type_index JSON;
+	DECLARE enum_type_index JSON;
 	DECLARE result JSON;
 
 	-- Convert FileDescriptorSet LONGBLOB to protonumberjson format
@@ -191,11 +353,22 @@ BEGIN
 		file_descriptor_set_blob
 	);
 
-	-- Build type index from the FileDescriptorSet
-	SET type_index = _pb_build_type_index_from_descriptor_set(file_descriptor_set_number_json);
+	-- Build type indexes from the FileDescriptorSet
+	CALL _pb_build_type_indexes_from_descriptor_set(
+		file_descriptor_set_number_json,
+		message_type_index,
+		enum_type_index
+	);
 
-	-- Return 3-element array: [version, fileDescriptorSet, typeIndex]
-	SET result = JSON_ARRAY(1, file_descriptor_set_number_json, type_index);
+	-- Return DescriptorSet message: {"1": fileDescriptorSet, "2": messageTypeIndex, "3": enumTypeIndex}
+	SET result = JSON_OBJECT(
+		'1', file_descriptor_set_number_json,
+		'2', message_type_index
+	);
+	-- Only include enumTypeIndex if it's non-empty
+	IF JSON_LENGTH(JSON_KEYS(enum_type_index)) > 0 THEN
+		SET result = JSON_SET(result, '$.\"3\"', enum_type_index);
+	END IF;
 
 	RETURN result;
 END $$
