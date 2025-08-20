@@ -1616,6 +1616,7 @@ BEGIN
 END $$
 
 -- Helper procedure to check if a type is a well-known type
+-- TODO: Wrong and deprecated. Don't use this.
 DROP PROCEDURE IF EXISTS _pb_is_well_known_type $$
 CREATE PROCEDURE _pb_is_well_known_type(IN full_type_name TEXT, OUT is_wkt BOOLEAN)
 BEGIN
