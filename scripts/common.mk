@@ -62,6 +62,7 @@ PROTOBUF_JSON_SOURCES := \
 	src/json-wkt.sql \
 	src/util-case-conv.sql \
 	src/util-base64.sql \
+	src/descriptor_set.sql \
 	src/protobuf-descriptor.sql
 
 .PHONY: build/protobuf-json.sql
