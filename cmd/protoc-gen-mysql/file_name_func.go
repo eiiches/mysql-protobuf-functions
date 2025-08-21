@@ -8,16 +8,16 @@ import (
 
 // File naming functions
 
-// flattenFileNameFunc converts "path/to/file.proto" to "path_to_file_methods.sql"
+// flattenFileNameFunc converts "path/to/file.proto" to "path_to_file_methods.pb.sql"
 func flattenFileNameFunc(protoPath string) string {
 	filename := strings.ReplaceAll(protoPath, "/", "_")
-	filename = strings.TrimSuffix(filename, ".proto") + ".sql"
+	filename = strings.TrimSuffix(filename, ".proto") + ".pb.sql"
 	return filename
 }
 
-// preserveFileNameFunc converts "path/to/file.proto" to "path/to/file_methods.sql"
+// preserveFileNameFunc converts "path/to/file.proto" to "path/to/file_methods.pb.sql"
 func preserveFileNameFunc(protoPath string) string {
-	filename := strings.TrimSuffix(protoPath, ".proto") + ".sql"
+	filename := strings.TrimSuffix(protoPath, ".proto") + ".pb.sql"
 	return filename
 }
 

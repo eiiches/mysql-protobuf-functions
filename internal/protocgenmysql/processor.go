@@ -54,7 +54,7 @@ END $$
 	fileFragments := make(map[string][]string)
 
 	// Add descriptor set function fragment
-	descriptorSetFileName := config.FunctionName + ".sql"
+	descriptorSetFileName := config.FunctionName + ".pb.sql"
 	fileFragments[descriptorSetFileName] = append(fileFragments[descriptorSetFileName], descriptorSetContent)
 
 	// Generate method fragments if requested
