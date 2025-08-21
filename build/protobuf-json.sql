@@ -215,54 +215,43 @@ BEGIN
 	RETURN JSON_EXTRACT(JSON_EXTRACT(descriptor_set_json, '$.\"1\"'), type_path);
 END $$
 
--- Helper procedure to convert enum value to JSON using descriptor set
-DROP PROCEDURE IF EXISTS _pb_enum_to_json $$
-CREATE PROCEDURE _pb_enum_to_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN enum_value_number INT, OUT result JSON)
-proc: BEGIN
+-- Helper function to convert enum value to JSON using descriptor set
+DROP FUNCTION IF EXISTS _pb_enum_to_json $$
+CREATE FUNCTION _pb_enum_to_json(descriptor_set_json JSON, full_type_name TEXT, enum_value_number INT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE enum_type_index_entry JSON;
+	DECLARE enum_number_index JSON;
+	DECLARE found_index INT;
 	DECLARE enum_descriptor JSON;
 	DECLARE enum_values JSON;
 	DECLARE enum_value JSON;
-	DECLARE enum_count INT;
-	DECLARE enum_index INT;
-	DECLARE current_number INT;
 	DECLARE current_name TEXT;
 
-	SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_type_name);
+	-- Get EnumTypeIndex entry (field 3 from DescriptorSet) for O(1) lookup
+	SET enum_type_index_entry = JSON_EXTRACT(descriptor_set_json, CONCAT('$.\"3\"."', full_type_name, '"'));
 
-	IF enum_descriptor IS NULL THEN
-		SET result = NULL;
-		LEAVE proc;
-	END IF;
-
-	-- Get enum values array (field 2 in EnumDescriptorProto)
-	SET enum_values = JSON_EXTRACT(enum_descriptor, '$."2"');
-
-	IF enum_values IS NULL THEN
-		SET result = NULL;
-		LEAVE proc;
-	END IF;
-
-	SET enum_count = JSON_LENGTH(enum_values);
-	SET enum_index = 0;
-
-	-- Find enum value by number
-	WHILE enum_index < enum_count DO
-		SET enum_value = JSON_EXTRACT(enum_values, CONCAT('$[', enum_index, ']'));
-		SET current_number = JSON_EXTRACT(enum_value, '$."2"'); -- number field
-
-		IF current_number = enum_value_number THEN
-			SET current_name = JSON_UNQUOTE(JSON_EXTRACT(enum_value, '$."1"')); -- name field
-			SET result = JSON_QUOTE(current_name);
-			LEAVE proc;
+	IF enum_type_index_entry IS NOT NULL THEN
+		-- Use number index for O(1) lookup
+		SET enum_number_index = JSON_EXTRACT(enum_type_index_entry, '$.\"4\"');
+		IF enum_number_index IS NOT NULL THEN
+			SET found_index = JSON_EXTRACT(enum_number_index, CONCAT('$.\"', enum_value_number, '\"'));
+			IF found_index IS NOT NULL THEN
+				-- Get enum descriptor and extract the name
+				SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_type_name);
+				IF enum_descriptor IS NOT NULL THEN
+					SET enum_values = JSON_EXTRACT(enum_descriptor, '$."2"');
+					IF enum_values IS NOT NULL AND found_index < JSON_LENGTH(enum_values) THEN
+						SET enum_value = JSON_EXTRACT(enum_values, CONCAT('$[', found_index, ']'));
+						SET current_name = JSON_UNQUOTE(JSON_EXTRACT(enum_value, '$."1"')); -- name field
+						RETURN JSON_QUOTE(current_name);
+					END IF;
+				END IF;
+			END IF;
 		END IF;
-
-		SET enum_index = enum_index + 1;
-	END WHILE;
+	END IF;
 
 	-- If not found, return the numeric value (Proto3 behavior for unknown enum values)
-	IF result IS NULL THEN
-		SET result = CAST(enum_value_number AS JSON);
-	END IF;
+	RETURN CAST(enum_value_number AS JSON);
 END $$
 
 -- Helper function to get file descriptor for a type
@@ -482,7 +471,7 @@ proc: BEGIN
 							IF as_number_json THEN
 								SET map_value = CAST(pb_wire_json_get_enum_field(element, 2, 0) AS JSON);
 							ELSE
-								CALL _pb_enum_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_enum_field(element, 2, 0), map_value);
+								SET map_value = _pb_enum_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_enum_field(element, 2, 0));
 							END IF;
 						ELSE
 							CALL _pb_wire_json_get_primitive_field_as_json(element, 2, map_value_type, FALSE, FALSE, as_number_json, map_value);
@@ -535,7 +524,7 @@ proc: BEGIN
 						IF as_number_json THEN
 							SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', CAST(element AS JSON));
 						ELSE
-							CALL _pb_enum_to_json(descriptor_set_json, field_type_name, element, nested_json_value);
+							SET nested_json_value = _pb_enum_to_json(descriptor_set_json, field_type_name, element);
 							SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', nested_json_value);
 						END IF;
 						SET element_index = element_index + 1;
@@ -561,7 +550,7 @@ proc: BEGIN
 							IF field_enum_value IS NULL THEN
 								SET field_enum_value = 0;
 							END IF;
-							CALL _pb_enum_to_json(descriptor_set_json, field_type_name, field_enum_value, field_json_value);
+							SET field_json_value = _pb_enum_to_json(descriptor_set_json, field_type_name, field_enum_value);
 						END IF;
 					END IF;
 				END IF;
@@ -725,62 +714,53 @@ BEGIN
 	END IF;
 END $$
 
--- Helper procedure to convert JSON enum value to number using descriptor set
-DROP PROCEDURE IF EXISTS _pb_enum_from_json $$
-CREATE PROCEDURE _pb_enum_from_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN enum_value_json JSON, OUT result INT)
-proc: BEGIN
+-- Helper function to convert JSON enum value to number using descriptor set
+DROP FUNCTION IF EXISTS _pb_enum_from_json $$
+CREATE FUNCTION _pb_enum_from_json(descriptor_set_json JSON, full_type_name TEXT, enum_value_json JSON) RETURNS INT DETERMINISTIC
+BEGIN
+	DECLARE enum_type_index_entry JSON;
+	DECLARE enum_name_index JSON;
+	DECLARE found_index INT;
 	DECLARE enum_descriptor JSON;
 	DECLARE enum_values JSON;
 	DECLARE enum_value JSON;
-	DECLARE enum_count INT;
-	DECLARE enum_index INT;
 	DECLARE current_number INT;
-	DECLARE current_name TEXT;
 	DECLARE input_value TEXT;
-
-	SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_type_name);
-
-	IF enum_descriptor IS NULL THEN
-		SET result = NULL;
-		LEAVE proc;
-	END IF;
-
-	-- Get enum values array (field 2 in EnumDescriptorProto)
-	SET enum_values = JSON_EXTRACT(enum_descriptor, '$."2"');
-
-	IF enum_values IS NULL THEN
-		SET result = NULL;
-		LEAVE proc;
-	END IF;
 
 	-- Handle both string and number inputs
 	IF JSON_TYPE(enum_value_json) = 'STRING' THEN
 		SET input_value = JSON_UNQUOTE(enum_value_json);
 
-		-- Find enum value by name
-		SET enum_count = JSON_LENGTH(enum_values);
-		SET enum_index = 0;
+		-- Get EnumTypeIndex entry (field 3 from DescriptorSet) for O(1) lookup
+		SET enum_type_index_entry = JSON_EXTRACT(descriptor_set_json, CONCAT('$.\"3\"."', full_type_name, '"'));
 
-		WHILE enum_index < enum_count DO
-			SET enum_value = JSON_EXTRACT(enum_values, CONCAT('$[', enum_index, ']'));
-			SET current_name = JSON_UNQUOTE(JSON_EXTRACT(enum_value, '$."1"')); -- name field
-
-			IF current_name = input_value THEN
-				SET current_number = JSON_EXTRACT(enum_value, '$."2"'); -- number field
-				SET result = current_number;
-				LEAVE proc;
+		IF enum_type_index_entry IS NOT NULL THEN
+			-- Use name index for O(1) lookup
+			SET enum_name_index = JSON_EXTRACT(enum_type_index_entry, '$.\"3\"');
+			IF enum_name_index IS NOT NULL THEN
+				SET found_index = JSON_EXTRACT(enum_name_index, CONCAT('$.\"', input_value, '\"'));
+				IF found_index IS NOT NULL THEN
+					-- Get enum descriptor and extract the number
+					SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_type_name);
+					IF enum_descriptor IS NOT NULL THEN
+						SET enum_values = JSON_EXTRACT(enum_descriptor, '$."2"');
+						IF enum_values IS NOT NULL AND found_index < JSON_LENGTH(enum_values) THEN
+							SET enum_value = JSON_EXTRACT(enum_values, CONCAT('$[', found_index, ']'));
+							SET current_number = JSON_EXTRACT(enum_value, '$."2"'); -- number field
+							RETURN current_number;
+						END IF;
+					END IF;
+				END IF;
 			END IF;
-
-			SET enum_index = enum_index + 1;
-		END WHILE;
+		END IF;
 
 		-- If not found by name, return null
-		SET result = NULL;
+		RETURN NULL;
 	ELSEIF JSON_TYPE(enum_value_json) = 'INTEGER' THEN
 		-- Input is a number, use directly
-		SET result = CAST(enum_value_json AS SIGNED);
+		RETURN CAST(enum_value_json AS SIGNED);
 	ELSE
-		SET result = NULL;
+		RETURN NULL;
 	END IF;
 END $$
 
@@ -1225,7 +1205,7 @@ proc: BEGIN
 								CALL _pb_json_to_wire_json_proc(descriptor_set_json, map_value_type_name, map_value_json, from_number_json, map_value_wire_json);
 								SET map_entry_wire_json = pb_wire_json_set_message_field(map_entry_wire_json, 2, pb_wire_json_to_message(map_value_wire_json));
 							ELSEIF map_value_type = 14 THEN -- enum
-								CALL _pb_enum_from_json(descriptor_set_json, map_value_type_name, map_value_json, enum_number);
+								SET enum_number = _pb_enum_from_json(descriptor_set_json, map_value_type_name, map_value_json);
 								SET map_entry_wire_json = pb_wire_json_set_enum_field(map_entry_wire_json, 2, enum_number);
 							ELSE
 								-- Map values also always have presence in map entries
@@ -1263,12 +1243,12 @@ proc: BEGIN
 
 						WHILE element_index < element_count DO
 							SET element = JSON_EXTRACT(field_json_value, CONCAT('$[', element_index, ']'));
-							CALL _pb_enum_from_json(descriptor_set_json, field_type_name, element, enum_number);
+							SET enum_number = _pb_enum_from_json(descriptor_set_json, field_type_name, element);
 							SET result = pb_wire_json_add_repeated_enum_field_element(result, field_number, enum_number, use_packed);
 							SET element_index = element_index + 1;
 						END WHILE;
 					ELSE
-						CALL _pb_enum_from_json(descriptor_set_json, field_type_name, field_json_value, enum_number);
+						SET enum_number = _pb_enum_from_json(descriptor_set_json, field_type_name, field_json_value);
 						-- Skip encoding proto3 default values for fields without explicit presence
 						IF NOT (syntax = 'proto3' AND NOT has_field_presence AND enum_number = 0) THEN
 							SET result = pb_wire_json_set_enum_field(result, field_number, enum_number);
