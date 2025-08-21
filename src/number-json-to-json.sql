@@ -40,7 +40,7 @@ BEGIN
 
 	IF found_index IS NOT NULL THEN
 		-- Get enum descriptor and values array to extract the name
-		SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_enum_type_name);
+		SET enum_descriptor = _pb_descriptor_set_get_enum_descriptor(descriptor_set_json, full_enum_type_name);
 		SET values_array = JSON_EXTRACT(enum_descriptor, '$."2"');
 		SET value_descriptor = JSON_EXTRACT(values_array, CONCAT('$[', found_index, ']'));
 		SET value_name = JSON_UNQUOTE(JSON_EXTRACT(value_descriptor, '$."1"')); -- name field
@@ -126,7 +126,7 @@ BEGIN
 	DECLARE result JSON;
 
 	-- Get the map entry descriptor
-	SET map_entry_descriptor = _pb_get_message_descriptor(descriptor_set_json, map_entry_type_name);
+	SET map_entry_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, map_entry_type_name);
 
 	-- Get key and value field descriptors (map entries always have field 1 = key, field 2 = value)
 	SET key_field_descriptor = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- field 1 (key)
@@ -260,7 +260,7 @@ BEGIN
 	SET result = JSON_OBJECT();
 
 	-- Get message descriptor
-	SET message_descriptor = _pb_get_message_descriptor(descriptor_set_json, full_type_name);
+	SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);
 
 	IF message_descriptor IS NULL THEN
 		SET message_text = CONCAT('_pb_number_json_to_json_proc: message type not found: ', full_type_name);
@@ -292,7 +292,7 @@ BEGIN
 		-- Check if this is a map field
 		SET is_map = FALSE;
 		IF field_type = 11 AND field_type_name IS NOT NULL THEN -- TYPE_MESSAGE
-			SET map_entry_descriptor = _pb_get_message_descriptor(descriptor_set_json, field_type_name);
+			SET map_entry_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, field_type_name);
 			SET is_map = COALESCE(CAST(JSON_EXTRACT(map_entry_descriptor, '$."7"."7"') AS UNSIGNED), FALSE); -- map_entry
 		END IF;
 

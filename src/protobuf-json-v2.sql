@@ -101,7 +101,7 @@ proc: BEGIN
 	END IF;
 
 	-- Get message descriptor
-	SET message_descriptor = _pb_get_message_descriptor(descriptor_set_json, full_type_name);
+	SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);
 
 	IF message_descriptor IS NULL THEN
 		SET message_text = CONCAT('_pb_wire_json_to_json: message type `', full_type_name, '` not found in descriptor set');
@@ -109,7 +109,7 @@ proc: BEGIN
 	END IF;
 
 	-- Get file descriptor to determine syntax
-	SET file_descriptor = _pb_get_file_descriptor(descriptor_set_json, full_type_name);
+	SET file_descriptor = _pb_descriptor_set_get_file_descriptor(descriptor_set_json, full_type_name);
 	IF file_descriptor IS NULL THEN
 		SET message_text = CONCAT('_pb_wire_json_to_json: file descriptor not found for type `', full_type_name, '`');
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
@@ -148,7 +148,7 @@ proc: BEGIN
 			-- Check if this is a map field
 			SET is_map = FALSE;
 			IF field_type = 11 AND field_type_name IS NOT NULL THEN -- TYPE_MESSAGE
-				SET map_entry_descriptor = _pb_get_message_descriptor(descriptor_set_json, field_type_name);
+				SET map_entry_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, field_type_name);
 				SET is_map = COALESCE(CAST(JSON_EXTRACT(map_entry_descriptor, '$."7"."7"') AS UNSIGNED), FALSE); -- map_entry
 			END IF;
 

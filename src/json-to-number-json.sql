@@ -321,7 +321,7 @@ BEGIN
 
 	IF found_index IS NOT NULL THEN
 		-- Get enum descriptor and values array to extract the number
-		SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_enum_type_name);
+		SET enum_descriptor = _pb_descriptor_set_get_enum_descriptor(descriptor_set_json, full_enum_type_name);
 		SET values_array = JSON_EXTRACT(enum_descriptor, '$."2"');
 		SET value_descriptor = JSON_EXTRACT(values_array, CONCAT('$[', found_index, ']'));
 		RETURN JSON_EXTRACT(value_descriptor, '$."2"'); -- number field
@@ -544,7 +544,7 @@ BEGIN
 	SET result = JSON_OBJECT();
 
 	-- Get message descriptor
-	SET message_descriptor = _pb_get_message_descriptor(descriptor_set_json, full_type_name);
+	SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);
 
 	IF message_descriptor IS NULL THEN
 		SET message_text = CONCAT('_pb_json_to_number_json_proc: message type not found: ', full_type_name);
@@ -557,7 +557,7 @@ BEGIN
 	SET field_index = 0;
 
 	-- Get file descriptor to determine syntax
-	SET file_descriptor = _pb_get_file_descriptor(descriptor_set_json, full_type_name);
+	SET file_descriptor = _pb_descriptor_set_get_file_descriptor(descriptor_set_json, full_type_name);
 	SET syntax = COALESCE(JSON_UNQUOTE(JSON_EXTRACT(file_descriptor, '$."12"')), 'proto2');
 
 	-- Process each field in the message descriptor
@@ -587,7 +587,7 @@ BEGIN
 		-- Check if this is a map field
 		SET is_map = FALSE;
 		IF is_repeated AND field_type = 11 AND field_type_name IS NOT NULL THEN -- TYPE_MESSAGE
-			SET map_entry_descriptor = _pb_get_message_descriptor(descriptor_set_json, field_type_name);
+			SET map_entry_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, field_type_name);
 			SET is_map = COALESCE(CAST(JSON_EXTRACT(map_entry_descriptor, '$."7"."7"') AS UNSIGNED), FALSE); -- map_entry
 		END IF;
 

@@ -1,8 +1,8 @@
 DELIMITER $$
 
 -- Helper function to get message descriptor from descriptor set JSON
-DROP FUNCTION IF EXISTS _pb_get_message_descriptor $$
-CREATE FUNCTION _pb_get_message_descriptor(descriptor_set_json JSON, type_name TEXT) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_descriptor_set_get_message_descriptor $$
+CREATE FUNCTION _pb_descriptor_set_get_message_descriptor(descriptor_set_json JSON, type_name TEXT) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE message_type_index JSON;
 	DECLARE type_paths JSON;
@@ -28,8 +28,8 @@ BEGIN
 END $$
 
 -- Helper function to get enum descriptor from descriptor set JSON
-DROP FUNCTION IF EXISTS _pb_get_enum_descriptor $$
-CREATE FUNCTION _pb_get_enum_descriptor(descriptor_set_json JSON, type_name TEXT) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_descriptor_set_get_enum_descriptor $$
+CREATE FUNCTION _pb_descriptor_set_get_enum_descriptor(descriptor_set_json JSON, type_name TEXT) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE enum_type_index JSON;
 	DECLARE type_paths JSON;
@@ -56,8 +56,8 @@ END $$
 
 
 -- Helper function to get file descriptor for a type
-DROP FUNCTION IF EXISTS _pb_get_file_descriptor $$
-CREATE FUNCTION _pb_get_file_descriptor(descriptor_set_json JSON, type_name TEXT) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_descriptor_set_get_file_descriptor $$
+CREATE FUNCTION _pb_descriptor_set_get_file_descriptor(descriptor_set_json JSON, type_name TEXT) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE type_index JSON;
 	DECLARE type_paths JSON;

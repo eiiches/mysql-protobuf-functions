@@ -316,14 +316,14 @@ proc: BEGIN
 	END IF;
 
 	-- Get message descriptor
-	SET message_descriptor = _pb_get_message_descriptor(descriptor_set_json, full_type_name);
+	SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);
 
 	IF message_descriptor IS NULL AND full_type_name LIKE '.google.protobuf.%' THEN
 		-- Try to get well-known type descriptor set
 		SET wkt_descriptor_set = _pb_get_wkt_descriptor_set(full_type_name);
 		IF wkt_descriptor_set IS NOT NULL THEN
 			SET descriptor_set_json = wkt_descriptor_set;
-			SET message_descriptor = _pb_get_message_descriptor(descriptor_set_json, full_type_name);
+			SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);
 		END IF;
 	END IF;
 
@@ -333,7 +333,7 @@ proc: BEGIN
 	END IF;
 
 	-- Get file descriptor to determine syntax
-	SET file_descriptor = _pb_get_file_descriptor(descriptor_set_json, full_type_name);
+	SET file_descriptor = _pb_descriptor_set_get_file_descriptor(descriptor_set_json, full_type_name);
 	SET syntax = JSON_UNQUOTE(JSON_EXTRACT(file_descriptor, '$."12"')); -- syntax field
 	IF syntax IS NULL THEN
 		SET syntax = 'proto2'; -- default
@@ -367,7 +367,7 @@ proc: BEGIN
 			-- Check if this is a map field
 			SET is_map = FALSE;
 			IF field_type = 11 AND field_type_name IS NOT NULL THEN -- TYPE_MESSAGE
-				SET map_entry_descriptor = _pb_get_message_descriptor(descriptor_set_json, field_type_name);
+				SET map_entry_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, field_type_name);
 				SET is_map = COALESCE(CAST(JSON_EXTRACT(map_entry_descriptor, '$."7"."7"') AS UNSIGNED), FALSE); -- map_entry
 			END IF;
 
