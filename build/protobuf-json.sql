@@ -5404,44 +5404,44 @@ BEGIN
     RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_new $$
-CREATE FUNCTION _pb_wkt_u_int64_value_new() RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint64_value_new $$
+CREATE FUNCTION _pb_wkt_uint64_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_OBJECT();
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_from_json $$
-CREATE FUNCTION _pb_wkt_u_int64_value_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint64_value_from_json $$
+CREATE FUNCTION _pb_wkt_uint64_value_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN _pb_json_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', json_data, json_unmarshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_from_message $$
-CREATE FUNCTION _pb_wkt_u_int64_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint64_value_from_message $$
+CREATE FUNCTION _pb_wkt_uint64_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', message_data);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_to_json $$
-CREATE FUNCTION _pb_wkt_u_int64_value_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint64_value_to_json $$
+CREATE FUNCTION _pb_wkt_uint64_value_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN _pb_number_json_to_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', proto_data, json_marshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_to_message $$
-CREATE FUNCTION _pb_wkt_u_int64_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint64_value_to_message $$
+CREATE FUNCTION _pb_wkt_uint64_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', proto_data);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_set_value $$
-CREATE FUNCTION _pb_wkt_u_int64_value_set_value(proto_data JSON, field_value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint64_value_set_value $$
+CREATE FUNCTION _pb_wkt_uint64_value_set_value(proto_data JSON, field_value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int64_value_get_value $$
-CREATE FUNCTION _pb_wkt_u_int64_value_get_value(proto_data JSON) RETURNS BIGINT UNSIGNED DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint64_value_get_value $$
+CREATE FUNCTION _pb_wkt_uint64_value_get_value(proto_data JSON) RETURNS BIGINT UNSIGNED DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
 END $$
@@ -5488,44 +5488,44 @@ BEGIN
     RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_new $$
-CREATE FUNCTION _pb_wkt_u_int32_value_new() RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint32_value_new $$
+CREATE FUNCTION _pb_wkt_uint32_value_new() RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_OBJECT();
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_from_json $$
-CREATE FUNCTION _pb_wkt_u_int32_value_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint32_value_from_json $$
+CREATE FUNCTION _pb_wkt_uint32_value_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN _pb_json_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', json_data, json_unmarshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_from_message $$
-CREATE FUNCTION _pb_wkt_u_int32_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint32_value_from_message $$
+CREATE FUNCTION _pb_wkt_uint32_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', message_data);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_to_json $$
-CREATE FUNCTION _pb_wkt_u_int32_value_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint32_value_to_json $$
+CREATE FUNCTION _pb_wkt_uint32_value_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN _pb_number_json_to_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', proto_data, json_marshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_to_message $$
-CREATE FUNCTION _pb_wkt_u_int32_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint32_value_to_message $$
+CREATE FUNCTION _pb_wkt_uint32_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', proto_data);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_set_value $$
-CREATE FUNCTION _pb_wkt_u_int32_value_set_value(proto_data JSON, field_value INT UNSIGNED) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint32_value_set_value $$
+CREATE FUNCTION _pb_wkt_uint32_value_set_value(proto_data JSON, field_value INT UNSIGNED) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_u_int32_value_get_value $$
-CREATE FUNCTION _pb_wkt_u_int32_value_get_value(proto_data JSON) RETURNS INT UNSIGNED DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_uint32_value_get_value $$
+CREATE FUNCTION _pb_wkt_uint32_value_get_value(proto_data JSON) RETURNS INT UNSIGNED DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
 END $$

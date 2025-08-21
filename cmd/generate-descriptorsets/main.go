@@ -102,6 +102,9 @@ func main() {
 			},
 			TypePrefixFunc: func(packageName protoreflect.FullName, typeName protoreflect.FullName) string {
 				snake := caseconv.LowerCamelToSnake(strings.ReplaceAll(strings.TrimPrefix(string(typeName), string(packageName)+"."), ".", "_"))
+				// Fix specific cases: "UInt64" -> "uint64", "UInt32" -> "uint32"
+				snake = strings.ReplaceAll(snake, "u_int64", "uint64")
+				snake = strings.ReplaceAll(snake, "u_int32", "uint32")
 				return prefix + regexp.MustCompile("_+").ReplaceAllString(snake, "_")
 			},
 		}
