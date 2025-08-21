@@ -1624,18 +1624,16 @@ BEGIN
 	END IF;
 END $$
 
--- Helper procedure to convert enum string name or numeric value to numeric value
--- If enum value is not found when ignore_unknown_enums is set, enum_numeric_value IS SET TO NULL.
-DROP PROCEDURE IF EXISTS _pb_convert_json_enum_to_number $$
-CREATE PROCEDURE _pb_convert_json_enum_to_number(
-	IN descriptor_set_json JSON,
-	IN full_enum_type_name TEXT,
-	IN enum_string_value TEXT,
-	IN ignore_unknown_enums BOOLEAN,
-	OUT enum_numeric_value INT
-)
+-- Helper function to convert JSON enum value to numeric value
+-- Returns NULL for unknown values when ignore_unknown_enums is TRUE
+DROP FUNCTION IF EXISTS _pb_convert_json_enum_to_number $$
+CREATE FUNCTION _pb_convert_json_enum_to_number(
+	descriptor_set_json JSON,
+	full_enum_type_name TEXT,
+	enum_value_json JSON,
+	ignore_unknown_enums BOOLEAN
+) RETURNS INT DETERMINISTIC
 BEGIN
-	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 	DECLARE message_text TEXT;
 	DECLARE enum_type_index JSON;
 	DECLARE type_paths JSON;
@@ -1646,16 +1644,30 @@ BEGIN
 	DECLARE found_index INT;
 	DECLARE value_descriptor JSON;
 	DECLARE input_as_number INT;
+	DECLARE enum_string_value TEXT;
 	DECLARE is_numeric BOOLEAN DEFAULT FALSE;
 
-	-- Get enum type index (field 3 from DescriptorSet)
-	SET enum_type_index = JSON_EXTRACT(descriptor_set_json, '$.\"3\"');
-	IF enum_type_index IS NULL THEN
-		SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum type index not found in descriptor set');
+	-- Handle number inputs directly
+	IF JSON_TYPE(enum_value_json) = 'INTEGER' THEN
+		RETURN CAST(enum_value_json AS SIGNED);
+	END IF;
+
+	-- Handle non-string inputs - this preserves the original TEXT input behavior
+	IF JSON_TYPE(enum_value_json) != 'STRING' THEN
+		SET message_text = CONCAT('_pb_convert_json_enum_to_number: invalid JSON type for enum field: ', JSON_TYPE(enum_value_json));
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
 
-	-- Get paths for the enum type
+	SET enum_string_value = JSON_UNQUOTE(enum_value_json);
+
+	-- Get enum type index (field 3 from DescriptorSet) - always signal error if missing
+	SET enum_type_index = JSON_EXTRACT(descriptor_set_json, '$.\"3\"');
+	IF enum_type_index IS NULL THEN
+		SET message_text = '_pb_convert_json_enum_to_number: enum type index not found in descriptor set';
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	-- Get paths for the enum type - always signal error if missing
 	SET type_paths = JSON_EXTRACT(enum_type_index, CONCAT('$.\"', full_enum_type_name, '\"'));
 	IF type_paths IS NULL THEN
 		SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum type not found: ', full_enum_type_name);
@@ -1682,14 +1694,15 @@ BEGIN
 		SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_enum_type_name);
 		SET values_array = JSON_EXTRACT(enum_descriptor, '$."2"');
 		SET value_descriptor = JSON_EXTRACT(values_array, CONCAT('$[', found_index, ']'));
-		SET enum_numeric_value = JSON_EXTRACT(value_descriptor, '$."2"'); -- number field
+		RETURN JSON_EXTRACT(value_descriptor, '$."2"'); -- number field
 	ELSE
 		-- Not found, handle based on ignore_unknown_enums flag and numeric input
+		-- ignore_unknown_enums only affects unknown VALUES, not missing type definitions
 		IF is_numeric THEN
 			-- For Proto3, unknown numeric enum values should be accepted as-is
-			SET enum_numeric_value = input_as_number;
+			RETURN input_as_number;
 		ELSEIF ignore_unknown_enums THEN
-			SET enum_numeric_value = NULL;  -- Return NULL to indicate unknown value should be ignored
+			RETURN NULL;  -- Return NULL to indicate unknown value should be ignored
 		ELSE
 			SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum value not found: ', enum_string_value, ' in enum ', full_enum_type_name);
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
@@ -1729,8 +1742,7 @@ BEGIN
 	WHEN 14 THEN -- enum
 		SET converted_value = _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value);
 		IF converted_value IS NULL THEN -- Not handled by well-known type parser
-			SET enum_string_value = JSON_UNQUOTE(field_json_value);
-			CALL _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, enum_string_value, ignore_unknown_enums, enum_numeric_value);
+			SET enum_numeric_value = _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, field_json_value, ignore_unknown_enums);
 			SET converted_value = CAST(enum_numeric_value AS JSON);
 			SET is_default = (enum_numeric_value = 0);
 		ELSE
