@@ -9,43 +9,47 @@ CREATE FUNCTION _pb_convert_number_enum_to_json(
 ) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE message_text TEXT;
+	DECLARE enum_type_index JSON;
+	DECLARE type_paths JSON;
+	DECLARE enum_number_index JSON;
 	DECLARE enum_descriptor JSON;
 	DECLARE values_array JSON;
-	DECLARE value_count INT;
-	DECLARE value_index INT;
+	DECLARE found_index INT;
 	DECLARE value_descriptor JSON;
 	DECLARE value_name TEXT;
-	DECLARE value_number INT;
 
-	-- Get enum descriptor
-	SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_enum_type_name);
+	-- Get enum type index (field 3 from DescriptorSet)
+	SET enum_type_index = JSON_EXTRACT(descriptor_set_json, '$.\"3\"');
+	IF enum_type_index IS NULL THEN
+		SET message_text = CONCAT('_pb_convert_number_enum_to_json: enum type index not found in descriptor set');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
 
-	IF enum_descriptor IS NULL THEN
+	-- Get paths for the enum type
+	SET type_paths = JSON_EXTRACT(enum_type_index, CONCAT('$.\"', full_enum_type_name, '\"'));
+	IF type_paths IS NULL THEN
 		SET message_text = CONCAT('_pb_convert_number_enum_to_json: enum type not found: ', full_enum_type_name);
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
 
-	-- Get the values array (field 2 in EnumDescriptor)
-	SET values_array = JSON_EXTRACT(enum_descriptor, '$."2"');
-	SET value_count = JSON_LENGTH(values_array);
-	SET value_index = 0;
+	-- Extract enum number index from EnumTypeIndex message
+	SET enum_number_index = JSON_EXTRACT(type_paths, '$.\"4\"');
 
-	-- Search for the numeric value
-	search_loop: WHILE value_index < value_count DO
-		SET value_descriptor = JSON_EXTRACT(values_array, CONCAT('$[', value_index, ']'));
-		SET value_number = JSON_EXTRACT(value_descriptor, '$."2"'); -- number field
+	-- Use number index for O(1) lookup
+	SET found_index = JSON_EXTRACT(enum_number_index, CONCAT('$.\"', enum_numeric_value, '\"'));
 
-		IF value_number = enum_numeric_value THEN
-			SET value_name = JSON_UNQUOTE(JSON_EXTRACT(value_descriptor, '$."1"')); -- name field
-			RETURN JSON_QUOTE(value_name);
-		END IF;
-
-		SET value_index = value_index + 1;
-	END WHILE search_loop;
-
-	-- If not found, return the numeric value as JSON number for Proto3 unknown enum values
-	-- For Proto3, unknown enum values should be serialized as their numeric values
-	RETURN CAST(enum_numeric_value AS JSON);
+	IF found_index IS NOT NULL THEN
+		-- Get enum descriptor and values array to extract the name
+		SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_enum_type_name);
+		SET values_array = JSON_EXTRACT(enum_descriptor, '$."2"');
+		SET value_descriptor = JSON_EXTRACT(values_array, CONCAT('$[', found_index, ']'));
+		SET value_name = JSON_UNQUOTE(JSON_EXTRACT(value_descriptor, '$."1"')); -- name field
+		RETURN JSON_QUOTE(value_name);
+	ELSE
+		-- If not found, return the numeric value as JSON number for Proto3 unknown enum values
+		-- For Proto3, unknown enum values should be serialized as their numeric values
+		RETURN CAST(enum_numeric_value AS JSON);
+	END IF;
 END $$
 
 -- Helper procedure to convert singular field value from ProtoNumberJSON to ProtoJSON
