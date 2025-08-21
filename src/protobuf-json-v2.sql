@@ -1,31 +1,5 @@
 DELIMITER $$
 
--- Helper function to get the appropriate descriptor set for Google well-known types
-DROP FUNCTION IF EXISTS _pb_get_wkt_descriptor_set $$
-CREATE FUNCTION _pb_get_wkt_descriptor_set(full_type_name TEXT) RETURNS JSON DETERMINISTIC
-BEGIN
-	-- For Google well-known types, use built-in descriptor functions
-	CASE
-	WHEN full_type_name IN ('.google.protobuf.Struct', '.google.protobuf.Value', '.google.protobuf.ListValue', '.google.protobuf.NullValue') THEN
-		RETURN _pb_wkt_struct_proto();
-	WHEN full_type_name = '.google.protobuf.FieldMask' THEN
-		RETURN _pb_wkt_field_mask_proto();
-	WHEN full_type_name IN ('.google.protobuf.DoubleValue', '.google.protobuf.FloatValue', '.google.protobuf.Int64Value', '.google.protobuf.UInt64Value', '.google.protobuf.Int32Value', '.google.protobuf.UInt32Value', '.google.protobuf.BoolValue', '.google.protobuf.StringValue', '.google.protobuf.BytesValue') THEN
-		RETURN _pb_wkt_wrappers_proto();
-	WHEN full_type_name = '.google.protobuf.Empty' THEN
-		RETURN _pb_wkt_empty_proto();
-	WHEN full_type_name = '.google.protobuf.Any' THEN
-		RETURN _pb_wkt_any_proto();
-	WHEN full_type_name = '.google.protobuf.Timestamp' THEN
-		RETURN _pb_wkt_timestamp_proto();
-	WHEN full_type_name = '.google.protobuf.Duration' THEN
-		RETURN _pb_wkt_duration_proto();
-	ELSE
-		-- Return NULL for types that don't match or should use regular WKT handling
-		RETURN NULL;
-	END CASE;
-END $$
-
 -- Main procedure for converting protobuf message to JSON using descriptor set
 DROP PROCEDURE IF EXISTS _pb_wire_json_to_json_proc $$
 CREATE PROCEDURE _pb_wire_json_to_json_proc(IN descriptor_set_json JSON, IN full_type_name TEXT, IN wire_json JSON, IN as_number_json BOOLEAN, IN emit_default_values BOOLEAN, OUT result JSON)
