@@ -229,29 +229,35 @@ BEGIN
 
 	-- Get EnumTypeIndex entry (field 3 from DescriptorSet) for O(1) lookup
 	SET enum_type_index_entry = JSON_EXTRACT(descriptor_set_json, CONCAT('$.\"3\"."', full_type_name, '"'));
-
-	IF enum_type_index_entry IS NOT NULL THEN
-		-- Use number index for O(1) lookup
-		SET enum_number_index = JSON_EXTRACT(enum_type_index_entry, '$.\"4\"');
-		IF enum_number_index IS NOT NULL THEN
-			SET found_index = JSON_EXTRACT(enum_number_index, CONCAT('$.\"', enum_value_number, '\"'));
-			IF found_index IS NOT NULL THEN
-				-- Get enum descriptor and extract the name
-				SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_type_name);
-				IF enum_descriptor IS NOT NULL THEN
-					SET enum_values = JSON_EXTRACT(enum_descriptor, '$."2"');
-					IF enum_values IS NOT NULL AND found_index < JSON_LENGTH(enum_values) THEN
-						SET enum_value = JSON_EXTRACT(enum_values, CONCAT('$[', found_index, ']'));
-						SET current_name = JSON_UNQUOTE(JSON_EXTRACT(enum_value, '$."1"')); -- name field
-						RETURN JSON_QUOTE(current_name);
-					END IF;
-				END IF;
-			END IF;
-		END IF;
+	IF enum_type_index_entry IS NULL THEN
+		RETURN CAST(enum_value_number AS JSON);
 	END IF;
 
-	-- If not found, return the numeric value (Proto3 behavior for unknown enum values)
-	RETURN CAST(enum_value_number AS JSON);
+	-- Use number index for O(1) lookup
+	SET enum_number_index = JSON_EXTRACT(enum_type_index_entry, '$.\"4\"');
+	IF enum_number_index IS NULL THEN
+		RETURN CAST(enum_value_number AS JSON);
+	END IF;
+
+	SET found_index = JSON_EXTRACT(enum_number_index, CONCAT('$.\"', enum_value_number, '\"'));
+	IF found_index IS NULL THEN
+		RETURN CAST(enum_value_number AS JSON);
+	END IF;
+
+	-- Get enum descriptor and extract the name
+	SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_type_name);
+	IF enum_descriptor IS NULL THEN
+		RETURN CAST(enum_value_number AS JSON);
+	END IF;
+
+	SET enum_values = JSON_EXTRACT(enum_descriptor, '$."2"');
+	IF enum_values IS NULL OR found_index >= JSON_LENGTH(enum_values) THEN
+		RETURN CAST(enum_value_number AS JSON);
+	END IF;
+
+	SET enum_value = JSON_EXTRACT(enum_values, CONCAT('$[', found_index, ']'));
+	SET current_name = JSON_UNQUOTE(JSON_EXTRACT(enum_value, '$."1"')); -- name field
+	RETURN JSON_QUOTE(current_name);
 END $$
 
 -- Helper function to get file descriptor for a type
@@ -724,44 +730,50 @@ BEGIN
 	DECLARE enum_descriptor JSON;
 	DECLARE enum_values JSON;
 	DECLARE enum_value JSON;
-	DECLARE current_number INT;
 	DECLARE input_value TEXT;
 
-	-- Handle both string and number inputs
-	IF JSON_TYPE(enum_value_json) = 'STRING' THEN
-		SET input_value = JSON_UNQUOTE(enum_value_json);
-
-		-- Get EnumTypeIndex entry (field 3 from DescriptorSet) for O(1) lookup
-		SET enum_type_index_entry = JSON_EXTRACT(descriptor_set_json, CONCAT('$.\"3\"."', full_type_name, '"'));
-
-		IF enum_type_index_entry IS NOT NULL THEN
-			-- Use name index for O(1) lookup
-			SET enum_name_index = JSON_EXTRACT(enum_type_index_entry, '$.\"3\"');
-			IF enum_name_index IS NOT NULL THEN
-				SET found_index = JSON_EXTRACT(enum_name_index, CONCAT('$.\"', input_value, '\"'));
-				IF found_index IS NOT NULL THEN
-					-- Get enum descriptor and extract the number
-					SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_type_name);
-					IF enum_descriptor IS NOT NULL THEN
-						SET enum_values = JSON_EXTRACT(enum_descriptor, '$."2"');
-						IF enum_values IS NOT NULL AND found_index < JSON_LENGTH(enum_values) THEN
-							SET enum_value = JSON_EXTRACT(enum_values, CONCAT('$[', found_index, ']'));
-							SET current_number = JSON_EXTRACT(enum_value, '$."2"'); -- number field
-							RETURN current_number;
-						END IF;
-					END IF;
-				END IF;
-			END IF;
-		END IF;
-
-		-- If not found by name, return null
-		RETURN NULL;
-	ELSEIF JSON_TYPE(enum_value_json) = 'INTEGER' THEN
-		-- Input is a number, use directly
+	-- Handle number inputs directly
+	IF JSON_TYPE(enum_value_json) = 'INTEGER' THEN
 		RETURN CAST(enum_value_json AS SIGNED);
-	ELSE
+	END IF;
+
+	-- Handle non-string inputs
+	IF JSON_TYPE(enum_value_json) != 'STRING' THEN
 		RETURN NULL;
 	END IF;
+
+	SET input_value = JSON_UNQUOTE(enum_value_json);
+
+	-- Get EnumTypeIndex entry (field 3 from DescriptorSet) for O(1) lookup
+	SET enum_type_index_entry = JSON_EXTRACT(descriptor_set_json, CONCAT('$.\"3\"."', full_type_name, '"'));
+	IF enum_type_index_entry IS NULL THEN
+		RETURN NULL;
+	END IF;
+
+	-- Use name index for O(1) lookup
+	SET enum_name_index = JSON_EXTRACT(enum_type_index_entry, '$.\"3\"');
+	IF enum_name_index IS NULL THEN
+		RETURN NULL;
+	END IF;
+
+	SET found_index = JSON_EXTRACT(enum_name_index, CONCAT('$.\"', input_value, '\"'));
+	IF found_index IS NULL THEN
+		RETURN NULL;
+	END IF;
+
+	-- Get enum descriptor and extract the number
+	SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_type_name);
+	IF enum_descriptor IS NULL THEN
+		RETURN NULL;
+	END IF;
+
+	SET enum_values = JSON_EXTRACT(enum_descriptor, '$."2"');
+	IF enum_values IS NULL OR found_index >= JSON_LENGTH(enum_values) THEN
+		RETURN NULL;
+	END IF;
+
+	SET enum_value = JSON_EXTRACT(enum_values, CONCAT('$[', found_index, ']'));
+	RETURN JSON_EXTRACT(enum_value, '$."2"'); -- number field
 END $$
 
 -- Helper function to check if a value is a proto3 default value
