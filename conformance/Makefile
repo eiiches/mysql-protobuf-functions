@@ -14,7 +14,7 @@ JSON_OPTIONS_PB_GO = ./json_options.pb.go
 
 # Conformance test message descriptor set
 CONFORMANCE_DESCRIPTOR_SET = ./conformance_test_messages.binpb
-CONFORMANCE_SCHEMA_SQL = ./conformance_test_messages_schema.sql
+CONFORMANCE_SCHEMA_SQL = ./conformance_test_messages_schema.pb.sql
 
 # Default target
 .PHONY: all
