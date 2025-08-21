@@ -83,7 +83,7 @@ build/protobuf-json.sql: $(PROTOBUF_JSON_SOURCES) scripts/common.mk
 		--package_prefix_map=mysqlprotobuf=pb_ \
 		--generate_methods \
 		--mysql_out=/tmp
-	cat /tmp/_pb_json_options_proto.sql >> $@.tmp
+	cat /tmp/_pb_json_options_proto.pb.sql >> $@.tmp
 	mv $@.tmp $@
 
 .PHONY: reload
