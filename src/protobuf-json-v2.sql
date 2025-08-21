@@ -54,50 +54,6 @@ BEGIN
 	RETURN JSON_EXTRACT(JSON_EXTRACT(descriptor_set_json, '$.\"1\"'), type_path);
 END $$
 
--- Helper function to convert enum value to JSON using descriptor set
-DROP FUNCTION IF EXISTS _pb_enum_to_json $$
-CREATE FUNCTION _pb_enum_to_json(descriptor_set_json JSON, full_type_name TEXT, enum_value_number INT) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE enum_type_index_entry JSON;
-	DECLARE enum_number_index JSON;
-	DECLARE found_index INT;
-	DECLARE enum_descriptor JSON;
-	DECLARE enum_values JSON;
-	DECLARE enum_value JSON;
-	DECLARE current_name TEXT;
-
-	-- Get EnumTypeIndex entry (field 3 from DescriptorSet) for O(1) lookup
-	SET enum_type_index_entry = JSON_EXTRACT(descriptor_set_json, CONCAT('$.\"3\"."', full_type_name, '"'));
-	IF enum_type_index_entry IS NULL THEN
-		RETURN CAST(enum_value_number AS JSON);
-	END IF;
-
-	-- Use number index for O(1) lookup
-	SET enum_number_index = JSON_EXTRACT(enum_type_index_entry, '$.\"4\"');
-	IF enum_number_index IS NULL THEN
-		RETURN CAST(enum_value_number AS JSON);
-	END IF;
-
-	SET found_index = JSON_EXTRACT(enum_number_index, CONCAT('$.\"', enum_value_number, '\"'));
-	IF found_index IS NULL THEN
-		RETURN CAST(enum_value_number AS JSON);
-	END IF;
-
-	-- Get enum descriptor and extract the name
-	SET enum_descriptor = _pb_get_enum_descriptor(descriptor_set_json, full_type_name);
-	IF enum_descriptor IS NULL THEN
-		RETURN CAST(enum_value_number AS JSON);
-	END IF;
-
-	SET enum_values = JSON_EXTRACT(enum_descriptor, '$."2"');
-	IF enum_values IS NULL OR found_index >= JSON_LENGTH(enum_values) THEN
-		RETURN CAST(enum_value_number AS JSON);
-	END IF;
-
-	SET enum_value = JSON_EXTRACT(enum_values, CONCAT('$[', found_index, ']'));
-	SET current_name = JSON_UNQUOTE(JSON_EXTRACT(enum_value, '$."1"')); -- name field
-	RETURN JSON_QUOTE(current_name);
-END $$
 
 -- Helper function to get file descriptor for a type
 DROP FUNCTION IF EXISTS _pb_get_file_descriptor $$
@@ -316,7 +272,7 @@ proc: BEGIN
 							IF as_number_json THEN
 								SET map_value = CAST(pb_wire_json_get_enum_field(element, 2, 0) AS JSON);
 							ELSE
-								SET map_value = _pb_enum_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_enum_field(element, 2, 0));
+								SET map_value = _pb_convert_number_enum_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_enum_field(element, 2, 0));
 							END IF;
 						ELSE
 							CALL _pb_wire_json_get_primitive_field_as_json(element, 2, map_value_type, FALSE, FALSE, as_number_json, map_value);
@@ -369,7 +325,7 @@ proc: BEGIN
 						IF as_number_json THEN
 							SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', CAST(element AS JSON));
 						ELSE
-							SET nested_json_value = _pb_enum_to_json(descriptor_set_json, field_type_name, element);
+							SET nested_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, element);
 							SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', nested_json_value);
 						END IF;
 						SET element_index = element_index + 1;
@@ -395,7 +351,7 @@ proc: BEGIN
 							IF field_enum_value IS NULL THEN
 								SET field_enum_value = 0;
 							END IF;
-							SET field_json_value = _pb_enum_to_json(descriptor_set_json, field_type_name, field_enum_value);
+							SET field_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, field_enum_value);
 						END IF;
 					END IF;
 				END IF;
