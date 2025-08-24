@@ -5776,12 +5776,6 @@ BEGIN
     RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."2"')), 0);
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wkt_any_proto $$
-CREATE FUNCTION _pb_wkt_any_proto() RETURNS JSON DETERMINISTIC
-BEGIN
-	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/any.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Any","2":[{"1":"type_url","10":"typeUrl","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":1,"5":12}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/anypb","36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"AnyProto"}}]},"2":{".google.protobuf.Any":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"type_url":0,"value":1},"4":{"1":0,"2":1}}}}' AS JSON);
-END $$
-
 DROP FUNCTION IF EXISTS _pb_wkt_any_new $$
 CREATE FUNCTION _pb_wkt_any_new() RETURNS JSON DETERMINISTIC
 BEGIN
@@ -5834,6 +5828,12 @@ DROP FUNCTION IF EXISTS _pb_wkt_any_get_value $$
 CREATE FUNCTION _pb_wkt_any_get_value(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."2"')), X'');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_wkt_any_proto $$
+CREATE FUNCTION _pb_wkt_any_proto() RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/any.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Any","2":[{"1":"type_url","10":"typeUrl","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":1,"5":12}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/anypb","36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"AnyProto"}}]},"2":{".google.protobuf.Any":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"type_url":0,"value":1},"4":{"1":0,"2":1}}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_empty_proto $$

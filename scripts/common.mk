@@ -51,15 +51,15 @@ PROTOBUF_JSON_SOURCES := \
 	src/json-to-protobuf.sql \
 	src/json_to_number_json.sql \
 	src/number_json_to_json.sql \
-	src/json-wkt-timestamp.sql \
-	src/json-wkt-duration.sql \
-	src/json-wkt-struct.sql \
-	src/json-wkt-field-mask.sql \
-	src/json-wkt-time-common.sql \
-	src/json-wkt-any.sql \
-	src/json-wkt-empty.sql \
-	src/json-wkt-wrappers.sql \
-	src/json-wkt.sql \
+	src/wkt_timestamp.sql \
+	src/wkt_duration.sql \
+	src/wkt_struct.sql \
+	src/wkt_field_mask.sql \
+	src/wkt_time_common.sql \
+	src/wkt_any.sql \
+	src/wkt_empty.sql \
+	src/wkt_wrappers.sql \
+	src/wkt.sql \
 	src/util-case-conv.sql \
 	src/util-base64.sql \
 	src/descriptor_set.sql \
