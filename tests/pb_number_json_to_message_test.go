@@ -54,7 +54,7 @@ func testNumberJsonToMessage(t *testing.T, fieldDefinition string, numberJsonInp
 
 	// Test the conversion: number JSON -> protobuf binary
 	// MySQL implementation should produce the same protobuf as Go's protojson
-	RunTestThatExpression(t, "_pb_number_json_to_message(?, ?, ?)", descriptorSetJson, typeName, numberJsonInput).IsEqualToProto(expectedMessage.Interface())
+	RunTestThatExpression(t, "_pb_number_json_to_message(?, ?, ?, NULL)", descriptorSetJson, typeName, numberJsonInput).IsEqualToProto(expectedMessage.Interface())
 }
 
 func TestNumberJsonToMessageSingularFields(t *testing.T) {
@@ -652,5 +652,5 @@ func TestNumberJsonToMessageNullInput(t *testing.T) {
 	g := NewWithT(t)
 	g.Expect(err).NotTo(HaveOccurred())
 
-	RunTestThatExpression(t, "_pb_number_json_to_message(?, ?, ?)", descriptorSetJson, typeName, nil).IsNull()
+	RunTestThatExpression(t, "_pb_number_json_to_message(?, ?, ?, NULL)", descriptorSetJson, typeName, nil).IsNull()
 }

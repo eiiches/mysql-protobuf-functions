@@ -50,7 +50,7 @@ func testMessageToJson(t *testing.T, fieldDefinition string, input string) {
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(expectedJson).To(MatchJSON(input), "Test case is invalid: input should match the output of protojson.Marshal(input).")
 
-	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?)", descriptorSetJson, typeName, serializedBinary).IsEqualToJsonString(string(expectedJson))
+	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?, NULL, NULL)", descriptorSetJson, typeName, serializedBinary).IsEqualToJsonString(string(expectedJson))
 }
 
 func TestMessageToJsonSingularFields(t *testing.T) {
@@ -647,5 +647,5 @@ func TestMessageToJsonNullInput(t *testing.T) {
 	g := NewWithT(t)
 	g.Expect(err).NotTo(HaveOccurred())
 
-	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?)", descriptorSetJson, typeName, nil).IsNull()
+	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?, NULL, NULL)", descriptorSetJson, typeName, nil).IsNull()
 }

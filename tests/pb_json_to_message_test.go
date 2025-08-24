@@ -50,10 +50,10 @@ func testJsonToMessage(t *testing.T, fieldDefinition string, input string) {
 	g.Expect(err).NotTo(HaveOccurred())
 
 	// Test pb_json_to_message: MySQL implementation should produce the same protobuf as Go's protojson
-	RunTestThatExpression(t, "pb_json_to_message(?, ?, ?)", descriptorSetJson, typeName, input).IsEqualToProto(expectedMessage.Interface())
+	RunTestThatExpression(t, "pb_json_to_message(?, ?, ?, NULL, NULL)", descriptorSetJson, typeName, input).IsEqualToProto(expectedMessage.Interface())
 
 	// Field order may differ, but the serialized bytes should match
-	RunTestThatExpression(t, "LENGTH(pb_json_to_message(?, ?, ?))", descriptorSetJson, typeName, input).IsEqualTo(len(expectedMessageBytes))
+	RunTestThatExpression(t, "LENGTH(pb_json_to_message(?, ?, ?, NULL, NULL))", descriptorSetJson, typeName, input).IsEqualTo(len(expectedMessageBytes))
 }
 
 func testJsonToWireJson(t *testing.T, fieldDefinition string, input string) {
@@ -88,7 +88,7 @@ func testJsonToWireJson(t *testing.T, fieldDefinition string, input string) {
 	g.Expect(err).NotTo(HaveOccurred())
 
 	// Test wire_json conversion round-trip: JSON → wire_json → JSON should preserve content
-	RunTestThatExpression(t, "pb_wire_json_to_json(?, ?, pb_json_to_wire_json(?, ?, ?))", descriptorSetJson, typeName, descriptorSetJson, typeName, input).IsEqualToJsonString(input)
+	RunTestThatExpression(t, "pb_wire_json_to_json(?, ?, pb_json_to_wire_json(?, ?, ?, NULL, NULL), NULL, NULL)", descriptorSetJson, typeName, descriptorSetJson, typeName, input).IsEqualToJsonString(input)
 }
 
 // Test function specifically for enum conversions that handles the fact that
@@ -125,7 +125,7 @@ func testEnumConversion(t *testing.T, fieldDefinition string, input string, expe
 	g.Expect(err).NotTo(HaveOccurred())
 
 	// Test enum conversion: JSON → wire_json → JSON produces canonical string format
-	RunTestThatExpression(t, "pb_wire_json_to_json(?, ?, pb_json_to_wire_json(?, ?, ?))", descriptorSetJson, typeName, descriptorSetJson, typeName, input).IsEqualToJsonString(expectedOutput)
+	RunTestThatExpression(t, "pb_wire_json_to_json(?, ?, pb_json_to_wire_json(?, ?, ?, NULL, NULL), NULL, NULL)", descriptorSetJson, typeName, descriptorSetJson, typeName, input).IsEqualToJsonString(expectedOutput)
 }
 
 func TestJsonToMessageSingularFields(t *testing.T) {
@@ -713,7 +713,7 @@ func TestJsonToMessageNullInput(t *testing.T) {
 	g := NewWithT(t)
 	g.Expect(err).NotTo(HaveOccurred())
 
-	RunTestThatExpression(t, "pb_json_to_message(?, ?, ?)", descriptorSetJson, typeName, nil).IsNull()
+	RunTestThatExpression(t, "pb_json_to_message(?, ?, ?, NULL, NULL)", descriptorSetJson, typeName, nil).IsNull()
 }
 
 func TestJsonToMessageNumberJsonFormat(t *testing.T) {
@@ -739,10 +739,10 @@ func TestJsonToMessageNumberJsonFormat(t *testing.T) {
 	expectedJson := `{"int32Field": 42, "stringField": "test"}`
 
 	// Test number JSON to message conversion
-	RunTestThatExpression(t, "pb_message_to_json(?, ?, _pb_number_json_to_message(?, ?, ?))", descriptorSetJson, typeName, descriptorSetJson, typeName, numberJson).IsEqualToJsonString(expectedJson)
+	RunTestThatExpression(t, "pb_message_to_json(?, ?, _pb_number_json_to_message(?, ?, ?, NULL), NULL, NULL)", descriptorSetJson, typeName, descriptorSetJson, typeName, numberJson).IsEqualToJsonString(expectedJson)
 
 	// Test number JSON to wire_json conversion
-	RunTestThatExpression(t, "pb_wire_json_to_json(?, ?, _pb_number_json_to_wire_json(?, ?, ?))", descriptorSetJson, typeName, descriptorSetJson, typeName, numberJson).IsEqualToJsonString(expectedJson)
+	RunTestThatExpression(t, "pb_wire_json_to_json(?, ?, _pb_number_json_to_wire_json(?, ?, ?, NULL), NULL, NULL)", descriptorSetJson, typeName, descriptorSetJson, typeName, numberJson).IsEqualToJsonString(expectedJson)
 }
 
 func TestJsonToMessageEdgeCases(t *testing.T) {

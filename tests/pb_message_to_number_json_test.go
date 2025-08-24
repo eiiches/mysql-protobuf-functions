@@ -53,7 +53,7 @@ func testMessageToNumberJson(t *testing.T, fieldDefinition string, input string,
 	g.Expect(expectedNumberJson).To(gjson.EqualJson(string(generatedExpectation)), "Invalid test case; The expected value does not match the protonumberjson output. Either protonumberjson is incorrect or the expected value is wrong.")
 
 	// Test against explicit expected value
-	RunTestThatExpression(t, "_pb_message_to_number_json(?, ?, ?)", descriptorSetJson, typeName, serializedBinary).IsEqualToJsonString(expectedNumberJson)
+	RunTestThatExpression(t, "_pb_message_to_number_json(?, ?, ?, NULL)", descriptorSetJson, typeName, serializedBinary).IsEqualToJsonString(expectedNumberJson)
 }
 
 func TestMessageToNumberJsonSingularFields(t *testing.T) {
@@ -650,5 +650,5 @@ func TestMessageToNumberJsonNullInput(t *testing.T) {
 	g := NewWithT(t)
 	g.Expect(err).NotTo(HaveOccurred())
 
-	RunTestThatExpression(t, "_pb_message_to_number_json(?, ?, ?)", descriptorSetJson, typeName, nil).IsNull()
+	RunTestThatExpression(t, "_pb_message_to_number_json(?, ?, ?, NULL)", descriptorSetJson, typeName, nil).IsNull()
 }
