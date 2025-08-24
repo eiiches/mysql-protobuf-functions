@@ -2,6 +2,7 @@ package protocgenmysql
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/eiiches/mysql-protobuf-functions/internal/protoreflectutils"
@@ -19,23 +20,28 @@ type TypePrefixFunc func(packageName protoreflect.FullName, typeName protoreflec
 func GenerateMethodFragments(files *protoregistry.Files, fileNameFunc FileNameFunc, typePrefixFunc TypePrefixFunc, schemaFunctionName string) (map[string][]string, error) {
 	fileFragments := make(map[string][]string)
 
-	// Generate fragments for each proto file
-	var generationErr error
+	// Collect all files and sort by path for deterministic ordering
+	var allFiles []protoreflect.FileDescriptor
 	files.RangeFiles(func(fileDesc protoreflect.FileDescriptor) bool {
+		allFiles = append(allFiles, fileDesc)
+		return true // continue iteration
+	})
+
+	// Sort files by path to ensure deterministic ordering
+	slices.SortFunc(allFiles, func(a, b protoreflect.FileDescriptor) int {
+		return strings.Compare(a.Path(), b.Path())
+	})
+
+	// Generate fragments for each proto file in sorted order
+	for _, fileDesc := range allFiles {
 		filename := fileNameFunc(fileDesc.Path())
 		content, err := generateMethodsForFile(fileDesc, typePrefixFunc, schemaFunctionName)
 		if err != nil {
-			generationErr = err
-			return false // stop iteration
+			return nil, err
 		}
 		if content != "" {
 			fileFragments[filename] = append(fileFragments[filename], content)
 		}
-		return true // continue iteration
-	})
-
-	if generationErr != nil {
-		return nil, generationErr
 	}
 
 	return fileFragments, nil
