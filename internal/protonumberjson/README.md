@@ -81,6 +81,7 @@ The package produces JSON where:
 
 - **Field numbers** are used as object keys (as strings) for all message types
 - **32-bit and 64-bit integers** are serialized as JSON numbers
+- **Float and double values** are serialized as IEEE 754 binary representation strings (e.g., `"binary32:0x3f800000"`, `"binary64:0x3ff0000000000000"`) to preserve exact precision and fractional bits of NaN values (sNaN, qNaN, NaN payloads)
 - **Repeated fields** are serialized as JSON arrays
 - **Map fields** are serialized as JSON objects with string keys
 - **Enum fields** are serialized as numbers for robustness against enum value renames
@@ -94,6 +95,9 @@ The package produces JSON where:
 |------------------|-------------|
 | `StringValue{Value: "test"}` | `{"1": "test"}` |
 | `Int64Value{Value: 9223372036854775807}` | `{"1": 9223372036854775807}` |
+| `FloatValue{Value: 1.0}` | `{"1": "binary32:0x3f800000"}` |
+| `DoubleValue{Value: 1.0}` | `{"1": "binary64:0x3ff0000000000000"}` |
+| Regular message with `float nan_value = NaN` | `{"1": "binary32:0x7fc00000"}` |
 | `Timestamp{Seconds: 1000, Nanos: 500}` | `{"1": 1000, "2": 500}` |
 | `Empty{}` | `{}` |
 | `Any{TypeUrl: "type.googleapis.com/...", Value: [...]}` | `{"1": "type.googleapis.com/...", "2": "base64data"}` |
@@ -113,6 +117,26 @@ Enums are serialized as their numeric values rather than string names for the sa
 - **Enum Value Rename Safety**: Enum values can be renamed (e.g., `USER_ACTIVE` → `ACTIVE`) without breaking stored JSON data
 - **Schema Evolution**: Numeric values remain stable while enum value names may change for clarity
 - **Consistency**: Matches the field number approach used for message fields
+
+### IEEE 754 Float and Double Handling
+Float and double values are serialized using IEEE 754 binary representation strings to ensure:
+- **Exact precision preservation**: No loss of precision due to decimal/binary conversion
+- **NaN bit preservation**: Maintains distinction between signaling NaN (sNaN) and quiet NaN (qNaN), including NaN payload bits
+- **Infinity handling**: Preserves positive and negative infinity values exactly
+- **Subnormal values**: Correctly handles subnormal/denormalized numbers
+- **Signed zero**: Distinguishes between +0.0 and -0.0
+
+The format uses lowercase hexadecimal with IEEE 754 standard type names:
+- `binary32:0x3f800000` for 32-bit floats (IEEE 754 binary32)
+- `binary64:0x3ff0000000000000` for 64-bit doubles (IEEE 754 binary64)
+
+This approach extends beyond standard ProtoJSON to maintain exact bit-level representation of IEEE 754 values.
+
+**Input Compatibility**: When parsing JSON input, the format accepts both:
+- IEEE 754 binary strings: `"binary32:0x3f800000"`, `"binary64:0x3ff0000000000000"`
+- Standard ProtoJSON numbers and strings: `1.0`, `"1.0"`, `"Infinity"`, `"-Infinity"`, `"NaN"`
+
+**Output Format**: Always outputs floats and doubles using the IEEE 754 binary string format for maximum precision preservation.
 
 ### 64-bit Integer Handling
 64-bit integers in all message types are serialized as JSON numbers instead of strings. Note that JavaScript and some JSON parsers may have precision limitations with very large integers (beyond 53 bits of precision).

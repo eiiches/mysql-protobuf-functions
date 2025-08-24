@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/eiiches/mysql-protobuf-functions/internal/protoreflectutils"
@@ -155,9 +156,11 @@ func marshalSingularField(value protoreflect.Value, field protoreflect.FieldDesc
 	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
 		return value.Uint(), nil
 	case protoreflect.FloatKind:
-		return float32(value.Float()), nil
+		bits := math.Float32bits(float32(value.Float()))
+		return fmt.Sprintf("binary32:0x%08x", bits), nil
 	case protoreflect.DoubleKind:
-		return value.Float(), nil
+		bits := math.Float64bits(value.Float())
+		return fmt.Sprintf("binary64:0x%016x", bits), nil
 	case protoreflect.StringKind:
 		return value.String(), nil
 	case protoreflect.BytesKind:
