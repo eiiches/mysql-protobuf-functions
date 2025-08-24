@@ -80,7 +80,7 @@ build/protobuf-json.sql: $(PROTOBUF_JSON_SOURCES) scripts/common.mk
 		--descriptor_set_in=./json_options.binpb \
 		--name=_pb_json_options_proto \
 		--file_naming_strategy=single \
-		--package_prefix_map=mysqlprotobuf=pb_ \
+		--prefix_map=mysqlprotobuf=pb_ \
 		--generate_methods \
 		--mysql_out=/tmp
 	cat /tmp/_pb_json_options_proto.pb.sql >> $@.tmp

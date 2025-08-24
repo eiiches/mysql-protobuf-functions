@@ -8,61 +8,46 @@ import (
 )
 
 // createTypePrefixFunc creates a function that maps package and type names to prefixes
-func createTypePrefixFunc(packagePrefixMap map[protoreflect.FullName]string) protocgenmysql.TypePrefixFunc {
+func createTypePrefixFunc(prefixMap map[protoreflect.FullName]string) protocgenmysql.TypePrefixFunc {
 	return func(packageName protoreflect.FullName, fullTypeName protoreflect.FullName) string {
-		packageNameStr := string(packageName)
-		fullTypeNameStr := string(fullTypeName)
-
-		// Extract the type name part after the package name
-		var typeName string
-		if packageNameStr != "" && strings.HasPrefix(fullTypeNameStr, packageNameStr+".") {
-			// Remove package name and leading dot
-			typeName = fullTypeNameStr[len(packageNameStr)+1:]
-		} else {
-			// Use full type name if no package or package doesn't match
-			typeName = fullTypeNameStr
-		}
-
-		// Look up package prefix recursively
-		matchedPrefix, remainingPackage := findPackagePrefix(packageName, packagePrefixMap)
+		// Use the same recursive lookup logic on the full type name
+		// This allows matching both package names and specific type names
+		matchedPrefix, remainingName := findPrefix(fullTypeName, prefixMap)
 
 		// Build the final name
-		var finalName string
-		if remainingPackage != "" {
-			// Include remaining package parts: ${packagePrefix}${remainingPackage}_${type_part}
-			finalName = matchedPrefix + strings.ReplaceAll(strings.ToLower(string(remainingPackage)), ".", "_") + "_" + toSnakeTypeName(typeName)
+		if remainingName != "" {
+			// Include remaining parts: ${prefix}${remaining_parts}
+			return matchedPrefix + toSnakeTypeName(string(remainingName))
 		} else {
-			// Direct match: ${packagePrefix}${type_part}
-			finalName = matchedPrefix + toSnakeTypeName(typeName)
+			// Exact match, just use the prefix
+			return matchedPrefix
 		}
-
-		return finalName
 	}
 }
 
-// findPackagePrefix looks up package prefix recursively
-// Returns the matched prefix and any remaining package parts
-func findPackagePrefix(packageName protoreflect.FullName, packagePrefixMap map[protoreflect.FullName]string) (string, protoreflect.FullName) {
-	currentPackage := packageName
+// findPrefix looks up prefix recursively for both packages and types
+// Returns the matched prefix and any remaining name parts
+func findPrefix(name protoreflect.FullName, prefixMap map[protoreflect.FullName]string) (string, protoreflect.FullName) {
+	currentName := name
 	for {
-		if prefix, exists := packagePrefixMap[currentPackage]; exists {
-			// Found a match, calculate remaining package parts
-			if string(currentPackage) == "" {
-				return prefix, packageName
-			} else if packageName == currentPackage {
+		if prefix, exists := prefixMap[currentName]; exists {
+			// Found a match, calculate remaining name parts
+			if string(currentName) == "" {
+				return prefix, name
+			} else if name == currentName {
 				return prefix, "" // Exact match, no remaining parts
 			} else {
-				return prefix, protoreflect.FullName(strings.TrimPrefix(string(packageName), string(currentPackage)+"."))
+				return prefix, protoreflect.FullName(strings.TrimPrefix(string(name), string(currentName)+"."))
 			}
 		}
-		if currentPackage == "" {
+		if currentName == "" {
 			break
 		}
-		currentPackage = currentPackage.Parent()
+		currentName = currentName.Parent()
 	}
 
 	// No match found, use default behavior
-	return "", packageName
+	return "", name
 }
 
 func toSnakeTypeName(s string) string {

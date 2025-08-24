@@ -16,41 +16,54 @@ type FileNameFunc func(protoPath string) string
 type TypePrefixFunc func(packageName protoreflect.FullName, typeName protoreflect.FullName) string
 
 // GenerateMethodFragments returns individual content fragments for each proto file
-func GenerateMethodFragments(files *protoregistry.Files, fileNameFunc FileNameFunc, typePrefixFunc TypePrefixFunc, schemaFunctionName string) map[string][]string {
+func GenerateMethodFragments(files *protoregistry.Files, fileNameFunc FileNameFunc, typePrefixFunc TypePrefixFunc, schemaFunctionName string) (map[string][]string, error) {
 	fileFragments := make(map[string][]string)
 
 	// Generate fragments for each proto file
+	var generationErr error
 	files.RangeFiles(func(fileDesc protoreflect.FileDescriptor) bool {
 		filename := fileNameFunc(fileDesc.Path())
-		content := generateMethodsForFile(fileDesc, typePrefixFunc, schemaFunctionName)
+		content, err := generateMethodsForFile(fileDesc, typePrefixFunc, schemaFunctionName)
+		if err != nil {
+			generationErr = err
+			return false // stop iteration
+		}
 		if content != "" {
 			fileFragments[filename] = append(fileFragments[filename], content)
 		}
 		return true // continue iteration
 	})
 
-	return fileFragments
+	if generationErr != nil {
+		return nil, generationErr
+	}
+
+	return fileFragments, nil
 }
 
-func generateMethodsForFile(fileDesc protoreflect.FileDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string) string {
+func generateMethodsForFile(fileDesc protoreflect.FileDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string) (string, error) {
 	var content strings.Builder
 
 	// Generate methods for each message type
 	messages := fileDesc.Messages()
 	for messageDesc := range protoreflectutils.Iterate(messages) {
-		generateMessageMethods(&content, messageDesc, typePrefixFunc, schemaFunctionName)
+		if err := generateMessageMethods(&content, messageDesc, typePrefixFunc, schemaFunctionName); err != nil {
+			return "", err
+		}
 	}
 
 	// Generate methods for each enum type
 	enums := fileDesc.Enums()
 	for enumDesc := range protoreflectutils.Iterate(enums) {
-		generateEnumMethods(&content, enumDesc, typePrefixFunc, schemaFunctionName)
+		if err := generateEnumMethods(&content, enumDesc, typePrefixFunc, schemaFunctionName); err != nil {
+			return "", err
+		}
 	}
 
-	return content.String()
+	return content.String(), nil
 }
 
-func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string) {
+func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string) error {
 	// Use FullName from descriptor - no manual string construction needed
 	fullTypeName := messageDesc.FullName()
 	packageName := messageDesc.ParentFile().Package()
@@ -59,36 +72,56 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 	funcPrefix := typePrefixFunc(packageName, fullTypeName)
 
 	// Generate constructor
-	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_new $$\n", funcPrefix))
-	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_new() RETURNS JSON DETERMINISTIC\n", funcPrefix))
+	newFuncName := funcPrefix + "_new"
+	if err := validateFunctionName(newFuncName, fullTypeName); err != nil {
+		return err
+	}
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", newFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s() RETURNS JSON DETERMINISTIC\n", newFuncName))
 	content.WriteString("BEGIN\n")
 	content.WriteString("    RETURN JSON_OBJECT();\n")
 	content.WriteString("END $$\n\n")
 
 	// Generate from_json
-	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_from_json $$\n", funcPrefix))
-	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC\n", funcPrefix))
+	fromJsonFuncName := funcPrefix + "_from_json"
+	if err := validateFunctionName(fromJsonFuncName, fullTypeName); err != nil {
+		return err
+	}
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", fromJsonFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC\n", fromJsonFuncName))
 	content.WriteString("BEGIN\n")
 	content.WriteString(fmt.Sprintf("    RETURN _pb_json_to_number_json(%s(), '.%s', json_data, json_unmarshal_options);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
 
 	// Generate from_message
-	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_from_message $$\n", funcPrefix))
-	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC\n", funcPrefix))
+	fromMessageFuncName := funcPrefix + "_from_message"
+	if err := validateFunctionName(fromMessageFuncName, fullTypeName); err != nil {
+		return err
+	}
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", fromMessageFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(message_data LONGBLOB) RETURNS JSON DETERMINISTIC\n", fromMessageFuncName))
 	content.WriteString("BEGIN\n")
 	content.WriteString(fmt.Sprintf("    RETURN _pb_message_to_number_json(%s(), '.%s', message_data);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
 
 	// Generate to_json
-	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_to_json $$\n", funcPrefix))
-	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC\n", funcPrefix))
+	toJsonFuncName := funcPrefix + "_to_json"
+	if err := validateFunctionName(toJsonFuncName, fullTypeName); err != nil {
+		return err
+	}
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", toJsonFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC\n", toJsonFuncName))
 	content.WriteString("BEGIN\n")
 	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_json(%s(), '.%s', proto_data, json_marshal_options);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
 
 	// Generate to_message
-	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_to_message $$\n", funcPrefix))
-	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC\n", funcPrefix))
+	toMessageFuncName := funcPrefix + "_to_message"
+	if err := validateFunctionName(toMessageFuncName, fullTypeName); err != nil {
+		return err
+	}
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", toMessageFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC\n", toMessageFuncName))
 	content.WriteString("BEGIN\n")
 	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_message(%s(), '.%s', proto_data);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
@@ -104,15 +137,23 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 		setterType, getterType := getMySQLTypesForFieldFromReflection(fieldType, isRepeated)
 
 		// Generate setter
-		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_set_%s $$\n", funcPrefix, fieldName))
-		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_set_%s(proto_data JSON, field_value %s) RETURNS JSON DETERMINISTIC\n", funcPrefix, fieldName, setterType))
+		setterFuncName := fmt.Sprintf("%s_set_%s", funcPrefix, fieldName)
+		if err := validateFunctionName(setterFuncName, fullTypeName); err != nil {
+			return err
+		}
+		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", setterFuncName))
+		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, field_value %s) RETURNS JSON DETERMINISTIC\n", setterFuncName, setterType))
 		content.WriteString("BEGIN\n")
 		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
 		content.WriteString("END $$\n\n")
 
 		// Generate getter
-		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_get_%s $$\n", funcPrefix, fieldName))
-		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_get_%s(proto_data JSON) RETURNS %s DETERMINISTIC\n", funcPrefix, fieldName, getterType))
+		getterFuncName := fmt.Sprintf("%s_get_%s", funcPrefix, fieldName)
+		if err := validateFunctionName(getterFuncName, fullTypeName); err != nil {
+			return err
+		}
+		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", getterFuncName))
+		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS %s DETERMINISTIC\n", getterFuncName, getterType))
 		content.WriteString("BEGIN\n")
 		if isRepeated || fieldType == protoreflect.MessageKind || fieldType == protoreflect.BoolKind {
 			// For repeated fields and messages, return JSON directly
@@ -128,17 +169,23 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 	// Generate methods for nested message types
 	nestedMessages := messageDesc.Messages()
 	for nestedMessageDesc := range protoreflectutils.Iterate(nestedMessages) {
-		generateMessageMethods(content, nestedMessageDesc, typePrefixFunc, schemaFunctionName)
+		if err := generateMessageMethods(content, nestedMessageDesc, typePrefixFunc, schemaFunctionName); err != nil {
+			return err
+		}
 	}
 
 	// Generate methods for nested enum types
 	nestedEnums := messageDesc.Enums()
 	for nestedEnumDesc := range protoreflectutils.Iterate(nestedEnums) {
-		generateEnumMethods(content, nestedEnumDesc, typePrefixFunc, schemaFunctionName)
+		if err := generateEnumMethods(content, nestedEnumDesc, typePrefixFunc, schemaFunctionName); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
-func generateEnumMethods(content *strings.Builder, enumDesc protoreflect.EnumDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string) {
+func generateEnumMethods(content *strings.Builder, enumDesc protoreflect.EnumDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string) error {
 	// Use FullName from descriptor
 	fullTypeName := enumDesc.FullName()
 	packageName := enumDesc.ParentFile().Package()
@@ -147,8 +194,12 @@ func generateEnumMethods(content *strings.Builder, enumDesc protoreflect.EnumDes
 	funcPrefix := typePrefixFunc(packageName, fullTypeName)
 
 	// Generate from_string method
-	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_from_string $$\n", funcPrefix))
-	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC\n", funcPrefix))
+	fromStringFuncName := funcPrefix + "_from_string"
+	if err := validateFunctionName(fromStringFuncName, fullTypeName); err != nil {
+		return err
+	}
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", fromStringFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(enum_name LONGTEXT) RETURNS INT DETERMINISTIC\n", fromStringFuncName))
 	content.WriteString("BEGIN\n")
 	content.WriteString("    CASE enum_name\n")
 
@@ -165,8 +216,12 @@ func generateEnumMethods(content *strings.Builder, enumDesc protoreflect.EnumDes
 	content.WriteString("END $$\n\n")
 
 	// Generate to_string method
-	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s_to_string $$\n", funcPrefix))
-	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC\n", funcPrefix))
+	toStringFuncName := funcPrefix + "_to_string"
+	if err := validateFunctionName(toStringFuncName, fullTypeName); err != nil {
+		return err
+	}
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", toStringFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(enum_value INT) RETURNS LONGTEXT DETERMINISTIC\n", toStringFuncName))
 	content.WriteString("BEGIN\n")
 	content.WriteString("    CASE enum_value\n")
 
@@ -180,6 +235,8 @@ func generateEnumMethods(content *strings.Builder, enumDesc protoreflect.EnumDes
 	content.WriteString("        ELSE RETURN NULL;\n")
 	content.WriteString("    END CASE;\n")
 	content.WriteString("END $$\n\n")
+
+	return nil
 }
 
 // getMySQLTypesForFieldFromReflection returns the appropriate MySQL types for setter parameter and getter return value using protoreflect
@@ -292,4 +349,18 @@ func getFieldDefaultValueFromReflection(field protoreflect.FieldDescriptor) stri
 	default:
 		return "NULL"
 	}
+}
+
+// validateFunctionName validates that a function name doesn't exceed MySQL's 64 character limit
+func validateFunctionName(functionName string, fullTypeName protoreflect.FullName) error {
+	const maxFunctionNameLength = 64
+
+	if len(functionName) > maxFunctionNameLength {
+		return fmt.Errorf("generated function name '%s' exceeds MySQL's %d character limit. "+
+			"Use the prefix_map option to assign shorter prefixes to package '%s' or type '%s'. "+
+			"For example: --mysql_opt=prefix_map='%s=short_prefix_' or --mysql_opt=prefix_map='%s=short_'",
+			functionName, maxFunctionNameLength, fullTypeName.Parent(), fullTypeName, fullTypeName.Parent(), fullTypeName)
+	}
+
+	return nil
 }

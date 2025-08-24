@@ -64,7 +64,10 @@ END $$
 			return nil, fmt.Errorf("failed to create protoregistry.Files from FileDescriptorSet: %w", err)
 		}
 
-		methodFragments := GenerateMethodFragments(files, config.FileNameFunc, config.TypePrefixFunc, config.FunctionName)
+		methodFragments, err := GenerateMethodFragments(files, config.FileNameFunc, config.TypePrefixFunc, config.FunctionName)
+		if err != nil {
+			return nil, err
+		}
 		for filename, fragments := range methodFragments {
 			if filename == "" {
 				filename = descriptorSetFileName

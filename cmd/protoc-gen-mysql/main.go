@@ -60,8 +60,8 @@ func runStandalone() {
 				Value: "single",
 			},
 			&cli.StringFlag{
-				Name:  "package_prefix_map",
-				Usage: "Map proto packages to function prefixes (e.g., 'google.protobuf=pb_,mypackage=mp_')",
+				Name:  "prefix_map",
+				Usage: "Map proto packages or types to function prefixes (e.g., 'google.protobuf=pb_,com.example.MyMessage=msg_')",
 				Value: "",
 			},
 			&cli.BoolFlag{
@@ -81,7 +81,7 @@ func runStandalone() {
 			includeSourceInfo := cmd.Bool("include_source_info")
 			mysqlOut := cmd.String("mysql_out")
 			namingStrategy := cmd.String("file_naming_strategy")
-			packagePrefixMapStr := cmd.String("package_prefix_map")
+			prefixMapStr := cmd.String("prefix_map")
 			generateMethods := cmd.Bool("generate_methods")
 			validate := cmd.Bool("validate")
 
@@ -102,7 +102,7 @@ func runStandalone() {
 				IncludeSourceInfo: includeSourceInfo,
 				GenerateMethods:   generateMethods,
 				FileNameFunc:      getFileNameFunc(namingStrategy),
-				TypePrefixFunc:    createTypePrefixFunc(parsePackagePrefixMap(packagePrefixMapStr)),
+				TypePrefixFunc:    createTypePrefixFunc(parsePrefixMap(prefixMapStr)),
 			}
 
 			if validate {
@@ -157,7 +157,7 @@ func runAsProtocPlugin() {
 	includeSourceInfo := false
 	namingStrategy := "flatten"
 	generateMethods := true
-	packagePrefixMap := make(map[protoreflect.FullName]string)
+	prefixMap := make(map[protoreflect.FullName]string)
 	if req.Parameter != nil && *req.Parameter != "" {
 		params := parseParameters(*req.Parameter)
 		if name, ok := params["name"]; ok {
@@ -172,8 +172,8 @@ func runAsProtocPlugin() {
 		if methods, ok := params["generate_methods"]; ok {
 			generateMethods = methods == "true"
 		}
-		if prefixMap, ok := params["package_prefix_map"]; ok {
-			packagePrefixMap = parsePackagePrefixMap(prefixMap)
+		if prefix, ok := params["prefix_map"]; ok {
+			prefixMap = parsePrefixMap(prefix)
 		}
 	}
 
@@ -193,7 +193,7 @@ func runAsProtocPlugin() {
 		IncludeSourceInfo: includeSourceInfo,
 		GenerateMethods:   generateMethods,
 		FileNameFunc:      getFileNameFunc(namingStrategy),
-		TypePrefixFunc:    createTypePrefixFunc(packagePrefixMap),
+		TypePrefixFunc:    createTypePrefixFunc(prefixMap),
 	}
 
 	// Process and generate files
@@ -241,7 +241,7 @@ func parseParameters(paramStr string) map[string]string {
 	return params
 }
 
-func parsePackagePrefixMap(mapStr string) map[protoreflect.FullName]string {
+func parsePrefixMap(mapStr string) map[protoreflect.FullName]string {
 	result := make(map[protoreflect.FullName]string)
 	if mapStr == "" {
 		return result
