@@ -97,6 +97,7 @@ func main() {
 			FunctionName:      funcName,
 			IncludeSourceInfo: false,
 			GenerateMethods:   generateMethods,
+			IncludeWkt:        true, // Always include WKT in generate-descriptorsets
 			FileNameFunc: func(protoPath string) string {
 				return funcName + ".sql" // Doesn't matter since we concatenate all files later
 			},

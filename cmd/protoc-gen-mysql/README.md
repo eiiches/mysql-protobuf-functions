@@ -38,7 +38,14 @@ This tool can be used in two ways:
 Use with `protoc` to generate schema functions directly from .proto files:
 
 ```bash
+# Basic usage
 protoc --mysql_out=. --mysql_opt=name=my_schema my_schema.proto
+
+# Include well-known types and use custom prefixes
+protoc --mysql_out=. --mysql_opt=name=my_schema,include_wkt=true,prefix_map="google.protobuf=pb_,com.example=ex_" my_schema.proto
+
+# Generate only descriptor set without method functions
+protoc --mysql_out=. --mysql_opt=name=my_schema,generate_methods=false my_schema.proto
 ```
 
 ### 2. As a Standalone Tool
@@ -49,10 +56,18 @@ Use with pre-generated binary FileDescriptorSet files:
 # First, generate binary descriptor set
 protoc --descriptor_set_out=schema.binpb --include_imports my_schema.proto
 
-# Then generate SQL function from binary descriptor set  
+# Basic usage - generate SQL function from binary descriptor set
 protoc-gen-mysql \
   --descriptor_set_in=schema.binpb \
   --name=my_schema \
+  --mysql_out=./output
+
+# Advanced usage with custom options
+protoc-gen-mysql \
+  --descriptor_set_in=schema.binpb \
+  --name=my_schema \
+  --include_wkt \
+  --prefix_map="google.protobuf=pb_,com.example=ex_" \
   --mysql_out=./output
 ```
 
@@ -62,6 +77,10 @@ protoc-gen-mysql \
 |--------|----------|---------------|-------------|
 | `name` | Yes | - | Name of the generated SQL function and file |
 | `include_source_info` | No | `false` | Include source code info in output (increases output size significantly) |
+| `generate_methods` | No | `true` | Generate type method functions (constructors, getters, setters) |
+| `include_wkt` | No | `false` | Include well-known types (google.protobuf.*) in descriptor set and method generation |
+| `file_naming_strategy` | No | `flatten` | Naming strategy for generated method files: `flatten`, `preserve`, or `single` |
+| `prefix_map` | No | - | Map proto packages or types to function prefixes (e.g., `google.protobuf=pb_,com.example.MyMessage=msg_`) |
 
 ## Command Line Options (Standalone Mode)
 
@@ -70,6 +89,11 @@ protoc-gen-mysql \
 | `--descriptor_set_in` | Yes | - | Path to binary FileDescriptorSet file |
 | `--name` | Yes | - | Name of the generated SQL function and file |
 | `--include_source_info` | No | `false` | Include source code info in output (increases output size significantly) |
+| `--generate_methods` | No | `true` | Generate type method functions (constructors, getters, setters) |
+| `--include_wkt` | No | `false` | Include well-known types (google.protobuf.*) in descriptor set and method generation |
+| `--file_naming_strategy` | No | `single` | Naming strategy for generated method files: `flatten`, `preserve`, or `single` |
+| `--prefix_map` | No | - | Map proto packages or types to function prefixes (e.g., `google.protobuf=pb_,com.example.MyMessage=msg_`) |
+| `--validate` | No | `true` | Validate the file descriptor set |
 | `--mysql_out` | No | `.` | Output directory for generated SQL files |
 
 ## Generated Output
@@ -95,6 +119,43 @@ END $$
 The returned JSON is a versioned 3-element array: `[version, fileDescriptorSet, typeIndex]`
 
 For complete details about the format structure, see the [descriptorsetjson documentation](../../internal/descriptorsetjson/README.md).
+
+## Advanced Features
+
+### Method Generation
+
+When `generate_methods=true` (default), the plugin generates additional MySQL stored functions for each protobuf type:
+
+- **Constructor functions**: `{prefix}_new()` - Create new empty messages
+- **Conversion functions**: `{prefix}_from_json()`, `{prefix}_to_json()`, `{prefix}_from_message()`, `{prefix}_to_message()`
+- **Field accessor functions**: `{prefix}_get_{field}()`, `{prefix}_set_{field}()` for each field
+- **Enum functions**: `{prefix}_from_string()`, `{prefix}_to_string()` for enum types
+
+### Well-Known Types (WKT)
+
+By default, well-known types from `google.protobuf.*` are excluded to reduce output size. Use `include_wkt=true` to include them when needed. The excluded types include:
+
+- `google.protobuf.Timestamp`, `google.protobuf.Duration`
+- `google.protobuf.Struct`, `google.protobuf.Value`, `google.protobuf.ListValue`
+- `google.protobuf.FieldMask`, `google.protobuf.Any`, `google.protobuf.Empty`
+- All wrapper types (`StringValue`, `Int32Value`, etc.)
+
+### Function Name Mapping
+
+Use `prefix_map` to control generated function names and avoid MySQL's 64-character function name limit:
+
+```bash
+# Map packages to prefixes
+--mysql_opt=prefix_map="google.protobuf=pb_,com.company.project=proj_"
+
+# Map specific types to prefixes (takes precedence over package mapping)
+--mysql_opt=prefix_map="com.company.VeryLongMessageName=short_"
+```
+
+**Examples:**
+- `google.protobuf.Timestamp` → `pb_timestamp_new()`
+- `com.company.project.User` → `proj_user_get_name()`
+- `com.company.VeryLongMessageName` → `short_new()`
 
 ## Example
 
@@ -132,16 +193,23 @@ message Person {
 Generate the descriptor set function:
 
 ```bash
-# Generate function for person schema
+# Generate function for person schema (basic)
 protoc --mysql_out=. \
        --mysql_opt=name=person_schema \
+       person.proto
+
+# Generate with well-known types and custom prefixes
+protoc --mysql_out=. \
+       --mysql_opt=name=person_schema,include_wkt=true,prefix_map="google.protobuf=pb_" \
        person.proto
 
 # Or using standalone mode
 protoc --descriptor_set_out=person.binpb --include_imports person.proto
 protoc-gen-mysql \
   --descriptor_set_in=person.binpb \
-  --name=person_schema
+  --name=person_schema \
+  --include_wkt \
+  --prefix_map="google.protobuf=pb_"
 ```
 
 ### Generated File

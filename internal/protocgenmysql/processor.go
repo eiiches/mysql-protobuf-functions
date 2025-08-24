@@ -17,12 +17,24 @@ type GenerateConfig struct {
 	FunctionName      string
 	IncludeSourceInfo bool
 	GenerateMethods   bool
+	IncludeWkt        bool
 	FileNameFunc      FileNameFunc
 	TypePrefixFunc    TypePrefixFunc
 }
 
 func Generate(fileDescriptorSet *descriptorpb.FileDescriptorSet, config GenerateConfig) (*pluginpb.CodeGeneratorResponse, error) {
 	fileDescriptorSet = proto.CloneOf(fileDescriptorSet) // Defensive copy to avoid modifying the original
+
+	// Filter out well-known types if not requested
+	if !config.IncludeWkt {
+		var filteredFiles []*descriptorpb.FileDescriptorProto
+		for _, file := range fileDescriptorSet.File {
+			if !isWellKnownType(file.GetName()) {
+				filteredFiles = append(filteredFiles, file)
+			}
+		}
+		fileDescriptorSet.File = filteredFiles
+	}
 
 	// Process the descriptor set
 	if !config.IncludeSourceInfo {
@@ -98,4 +110,23 @@ END $$
 		SupportedFeatures: proto.Uint64(uint64(pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)),
 		File:              allFiles,
 	}, nil
+}
+
+// wellKnownTypes contains the set of well-known type files
+// This list matches the files in cmd/generate-descriptorsets/main.go
+var wellKnownTypes = map[string]struct{}{
+	"google/protobuf/descriptor.proto": {},
+	"google/protobuf/struct.proto":     {},
+	"google/protobuf/field_mask.proto": {},
+	"google/protobuf/wrappers.proto":   {},
+	"google/protobuf/timestamp.proto":  {},
+	"google/protobuf/duration.proto":   {},
+	"google/protobuf/any.proto":        {},
+	"google/protobuf/empty.proto":      {},
+}
+
+// isWellKnownType checks if a proto file is a well-known type
+func isWellKnownType(filename string) bool {
+	_, exists := wellKnownTypes[filename]
+	return exists
 }

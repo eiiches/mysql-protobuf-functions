@@ -70,6 +70,11 @@ func runStandalone() {
 				Value: true,
 			},
 			&cli.BoolFlag{
+				Name:  "include_wkt",
+				Usage: "Include well-known types (google.protobuf.*) in descriptor set and method generation",
+				Value: false,
+			},
+			&cli.BoolFlag{
 				Name:  "validate",
 				Usage: "Validate the file descriptor set",
 				Value: true,
@@ -83,6 +88,7 @@ func runStandalone() {
 			namingStrategy := cmd.String("file_naming_strategy")
 			prefixMapStr := cmd.String("prefix_map")
 			generateMethods := cmd.Bool("generate_methods")
+			includeWkt := cmd.Bool("include_wkt")
 			validate := cmd.Bool("validate")
 
 			// Read binary FileDescriptorSet from file
@@ -101,6 +107,7 @@ func runStandalone() {
 				FunctionName:      name,
 				IncludeSourceInfo: includeSourceInfo,
 				GenerateMethods:   generateMethods,
+				IncludeWkt:        includeWkt,
 				FileNameFunc:      getFileNameFunc(namingStrategy),
 				TypePrefixFunc:    createTypePrefixFunc(parsePrefixMap(prefixMapStr)),
 			}
@@ -157,6 +164,7 @@ func runAsProtocPlugin() {
 	includeSourceInfo := false
 	namingStrategy := "flatten"
 	generateMethods := true
+	includeWkt := false
 	prefixMap := make(map[protoreflect.FullName]string)
 	if req.Parameter != nil && *req.Parameter != "" {
 		params := parseParameters(*req.Parameter)
@@ -171,6 +179,9 @@ func runAsProtocPlugin() {
 		}
 		if methods, ok := params["generate_methods"]; ok {
 			generateMethods = methods == "true"
+		}
+		if wkt, ok := params["include_wkt"]; ok {
+			includeWkt = wkt == "true"
 		}
 		if prefix, ok := params["prefix_map"]; ok {
 			prefixMap = parsePrefixMap(prefix)
@@ -192,6 +203,7 @@ func runAsProtocPlugin() {
 		FunctionName:      functionName,
 		IncludeSourceInfo: includeSourceInfo,
 		GenerateMethods:   generateMethods,
+		IncludeWkt:        includeWkt,
 		FileNameFunc:      getFileNameFunc(namingStrategy),
 		TypePrefixFunc:    createTypePrefixFunc(prefixMap),
 	}
