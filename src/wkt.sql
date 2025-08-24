@@ -1,8 +1,8 @@
 DELIMITER $$
 
 -- Helper function to get the appropriate descriptor set for Google well-known types
-DROP FUNCTION IF EXISTS _pb_get_wkt_descriptor_set $$
-CREATE FUNCTION _pb_get_wkt_descriptor_set(full_type_name TEXT) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_get_descriptor_set $$
+CREATE FUNCTION _pb_wkt_get_descriptor_set(full_type_name TEXT) RETURNS JSON DETERMINISTIC
 BEGIN
 	-- For Google well-known types, use built-in descriptor functions
 	CASE

@@ -320,7 +320,7 @@ proc: BEGIN
 
 	IF message_descriptor IS NULL AND full_type_name LIKE '.google.protobuf.%' THEN
 		-- Try to get well-known type descriptor set
-		SET wkt_descriptor_set = _pb_get_wkt_descriptor_set(full_type_name);
+		SET wkt_descriptor_set = _pb_wkt_get_descriptor_set(full_type_name);
 		IF wkt_descriptor_set IS NOT NULL THEN
 			SET descriptor_set_json = wkt_descriptor_set;
 			SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);

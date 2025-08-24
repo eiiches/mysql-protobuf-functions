@@ -62,7 +62,7 @@ proc: BEGIN
 	-- Handle well-known types first (only for regular JSON, not number JSON)
 	IF full_type_name LIKE '.google.protobuf.%' THEN
 		IF as_number_json THEN -- For ProtoNumberJSON, no special WKT handling is performed.
-			SET wkt_descriptor_set = _pb_get_wkt_descriptor_set(full_type_name);
+			SET wkt_descriptor_set = _pb_wkt_get_descriptor_set(full_type_name);
 			IF wkt_descriptor_set IS NOT NULL THEN
 				SET descriptor_set_json = wkt_descriptor_set;
 			END IF;
