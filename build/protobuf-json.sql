@@ -2404,7 +2404,7 @@ BEGIN
 	SET datetime_part = TIMESTAMPADD(SECOND, seconds, '1970-01-01 00:00:00');
 
 	-- Format as RFC 3339: replace space with T, add fractional seconds, add Z
-	RETURN CONCAT(REPLACE(datetime_part, " ", "T"), _pb_json_wkt_time_common_format_fractional_seconds(nanos), "Z");
+	RETURN CONCAT(REPLACE(datetime_part, " ", "T"), _pb_wkt_time_common_format_fractional_seconds(nanos), "Z");
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_timestamp_as_json $$
@@ -2662,9 +2662,9 @@ BEGIN
 
 	-- Handle case where seconds=0 but nanos<0 (e.g., -0.5s)
 	IF seconds = 0 AND nanos < 0 THEN
-		RETURN CONCAT('-0', _pb_json_wkt_time_common_format_fractional_seconds(ABS(nanos)), 's');
+		RETURN CONCAT('-0', _pb_wkt_time_common_format_fractional_seconds(ABS(nanos)), 's');
 	ELSE
-		RETURN CONCAT(CAST(seconds AS CHAR), _pb_json_wkt_time_common_format_fractional_seconds(ABS(nanos)), 's');
+		RETURN CONCAT(CAST(seconds AS CHAR), _pb_wkt_time_common_format_fractional_seconds(ABS(nanos)), 's');
 	END IF;
 END $$
 
@@ -3612,13 +3612,13 @@ END $$
 
 DELIMITER $$
 
-DROP FUNCTION IF EXISTS _pb_json_wkt_time_common_format_fractional_seconds $$
-CREATE FUNCTION _pb_json_wkt_time_common_format_fractional_seconds(nanos INT) RETURNS TEXT DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_wkt_time_common_format_fractional_seconds $$
+CREATE FUNCTION _pb_wkt_time_common_format_fractional_seconds(nanos INT) RETURNS TEXT DETERMINISTIC
 BEGIN
 	-- Validate that nanos is within [0, 999999999] range
 	-- Caller must ensure proper normalization before calling this function
 	IF nanos < 0 OR nanos > 999999999 THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '_pb_json_wkt_time_common_format_fractional_seconds: nanos must be in range [0, 999999999]';
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '_pb_wkt_time_common_format_fractional_seconds: nanos must be in range [0, 999999999]';
 	END IF;
 
 	IF nanos = 0 THEN
@@ -5776,6 +5776,12 @@ BEGIN
     RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."2"')), 0);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_wkt_any_proto $$
+CREATE FUNCTION _pb_wkt_any_proto() RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/any.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Any","2":[{"1":"type_url","10":"typeUrl","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":1,"5":12}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/anypb","36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"AnyProto"}}]},"2":{".google.protobuf.Any":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"type_url":0,"value":1},"4":{"1":0,"2":1}}}}' AS JSON);
+END $$
+
 DROP FUNCTION IF EXISTS _pb_wkt_any_new $$
 CREATE FUNCTION _pb_wkt_any_new() RETURNS JSON DETERMINISTIC
 BEGIN
@@ -5828,12 +5834,6 @@ DROP FUNCTION IF EXISTS _pb_wkt_any_get_value $$
 CREATE FUNCTION _pb_wkt_any_get_value(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."2"')), X'');
-END $$
-
-DROP FUNCTION IF EXISTS _pb_wkt_any_proto $$
-CREATE FUNCTION _pb_wkt_any_proto() RETURNS JSON DETERMINISTIC
-BEGIN
-	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/any.proto","12":"proto3","2":"google.protobuf","4":[{"1":"Any","2":[{"1":"type_url","10":"typeUrl","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":1,"5":12}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/anypb","36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"AnyProto"}}]},"2":{".google.protobuf.Any":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"type_url":0,"value":1},"4":{"1":0,"2":1}}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_empty_proto $$

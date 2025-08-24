@@ -66,9 +66,9 @@ BEGIN
 
 	-- Handle case where seconds=0 but nanos<0 (e.g., -0.5s)
 	IF seconds = 0 AND nanos < 0 THEN
-		RETURN CONCAT('-0', _pb_json_wkt_time_common_format_fractional_seconds(ABS(nanos)), 's');
+		RETURN CONCAT('-0', _pb_wkt_time_common_format_fractional_seconds(ABS(nanos)), 's');
 	ELSE
-		RETURN CONCAT(CAST(seconds AS CHAR), _pb_json_wkt_time_common_format_fractional_seconds(ABS(nanos)), 's');
+		RETURN CONCAT(CAST(seconds AS CHAR), _pb_wkt_time_common_format_fractional_seconds(ABS(nanos)), 's');
 	END IF;
 END $$
 

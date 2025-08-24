@@ -68,7 +68,7 @@ BEGIN
 	SET datetime_part = TIMESTAMPADD(SECOND, seconds, '1970-01-01 00:00:00');
 
 	-- Format as RFC 3339: replace space with T, add fractional seconds, add Z
-	RETURN CONCAT(REPLACE(datetime_part, " ", "T"), _pb_json_wkt_time_common_format_fractional_seconds(nanos), "Z");
+	RETURN CONCAT(REPLACE(datetime_part, " ", "T"), _pb_wkt_time_common_format_fractional_seconds(nanos), "Z");
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_timestamp_as_json $$
