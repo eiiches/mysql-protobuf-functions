@@ -1663,7 +1663,7 @@ CREATE PROCEDURE _pb_json_to_number_json_proc(
 	IN ignore_unknown_enums BOOLEAN,
 	OUT result JSON
 )
-BEGIN
+proc: BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 	DECLARE message_text TEXT;
 	DECLARE message_descriptor JSON;
@@ -1709,9 +1709,18 @@ BEGIN
 	DECLARE map_key_name TEXT;
 	DECLARE map_value_json JSON;
 	DECLARE converted_map JSON;
+	-- WKT handling
+	DECLARE wkt_result JSON;
 
 	-- Set recursion limit for nested message processing
 	SET @@SESSION.max_sp_recursion_depth = 255;
+
+	-- Check if this is a well-known type and handle it specially
+	SET wkt_result = _pb_convert_json_wkt_to_number_json(11, full_type_name, proto_json);
+	IF wkt_result IS NOT NULL THEN
+		SET result = wkt_result;
+		LEAVE proc;
+	END IF;
 
 	-- Initialize result as empty object
 	SET result = JSON_OBJECT();
