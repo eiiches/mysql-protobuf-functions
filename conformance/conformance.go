@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"database/sql"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -42,7 +43,7 @@ func (h *ConformanceHandler) RunProtocol() error {
 		// Read length (4 bytes, little endian)
 		lengthBytes := make([]byte, 4)
 		_, err := io.ReadFull(reader, lengthBytes)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			// Normal termination
 			if h.debug {
 				log.Println("Protocol terminated normally")
@@ -72,7 +73,7 @@ func (h *ConformanceHandler) RunProtocol() error {
 		}
 
 		// Write response length (4 bytes, little endian)
-		responseLength := uint32(len(responseData))
+		responseLength := uint32(len(responseData)) // #nosec G115 - response data length is bounded by protobuf message size
 		responseLengthBytes := make([]byte, 4)
 		binary.LittleEndian.PutUint32(responseLengthBytes, responseLength)
 
@@ -270,6 +271,20 @@ func (h *ConformanceHandler) HandleConvertedMessageLegacy(request *ConformanceRe
 			},
 		}
 
+	case WireFormat_UNSPECIFIED:
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_RuntimeError{
+				RuntimeError: "Unspecified output format",
+			},
+		}
+
+	case WireFormat_JSPB:
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_Skipped{
+				Skipped: "JSPB output not supported",
+			},
+		}
+
 	default:
 		return &ConformanceResponse{
 			Result: &ConformanceResponse_RuntimeError{
@@ -368,6 +383,20 @@ func (h *ConformanceHandler) HandleBinaryProtobufLegacy(request *ConformanceRequ
 		return &ConformanceResponse{
 			Result: &ConformanceResponse_Skipped{
 				Skipped: "TEXT_FORMAT output not supported",
+			},
+		}
+
+	case WireFormat_UNSPECIFIED:
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_RuntimeError{
+				RuntimeError: "Unspecified output format",
+			},
+		}
+
+	case WireFormat_JSPB:
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_Skipped{
+				Skipped: "JSPB output not supported",
 			},
 		}
 
@@ -567,6 +596,20 @@ func (h *ConformanceHandler) generateOutputFromProtoNumberJSON(request *Conforma
 		return &ConformanceResponse{
 			Result: &ConformanceResponse_Skipped{
 				Skipped: "TEXT_FORMAT output not supported",
+			},
+		}
+
+	case WireFormat_UNSPECIFIED:
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_RuntimeError{
+				RuntimeError: "Unspecified output format",
+			},
+		}
+
+	case WireFormat_JSPB:
+		return &ConformanceResponse{
+			Result: &ConformanceResponse_Skipped{
+				Skipped: "JSPB output not supported",
 			},
 		}
 
