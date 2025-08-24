@@ -216,7 +216,7 @@ CREATE PROCEDURE _pb_number_json_to_json_proc(
 	IN emit_default_values BOOLEAN,
 	OUT result JSON
 )
-BEGIN
+proc: BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 	DECLARE message_text TEXT;
 	DECLARE message_descriptor JSON;
@@ -252,9 +252,18 @@ BEGIN
 	-- Map handling
 	DECLARE is_map BOOLEAN;
 	DECLARE map_entry_descriptor JSON;
+	-- WKT handling
+	DECLARE wkt_result JSON;
 
 	-- Set recursion limit for nested message processing
 	SET @@SESSION.max_sp_recursion_depth = 255;
+
+	-- Check if this is a well-known type and handle it specially
+	SET wkt_result = _pb_convert_number_json_to_wkt(11, full_type_name, number_json);
+	IF wkt_result IS NOT NULL THEN
+		SET result = wkt_result;
+		LEAVE proc;
+	END IF;
 
 	-- Initialize result as empty object
 	SET result = JSON_OBJECT();
