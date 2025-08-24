@@ -5224,6 +5224,12 @@ BEGIN
     END CASE;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_wkt_field_mask_proto $$
+CREATE FUNCTION _pb_wkt_field_mask_proto() RETURNS JSON DETERMINISTIC
+BEGIN
+	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/field_mask.proto","12":"proto3","2":"google.protobuf","4":[{"1":"FieldMask","2":[{"1":"paths","10":"paths","3":1,"4":3,"5":9}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/fieldmaskpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"FieldMaskProto"}}]},"2":{".google.protobuf.FieldMask":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"paths":0},"4":{"1":0}}}}' AS JSON);
+END $$
+
 DROP FUNCTION IF EXISTS _pb_wkt_field_mask_new $$
 CREATE FUNCTION _pb_wkt_field_mask_new() RETURNS JSON DETERMINISTIC
 BEGIN
@@ -5264,12 +5270,6 @@ DROP FUNCTION IF EXISTS _pb_wkt_field_mask_get_paths $$
 CREATE FUNCTION _pb_wkt_field_mask_get_paths(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_EXTRACT(proto_data, '$."1"');
-END $$
-
-DROP FUNCTION IF EXISTS _pb_wkt_field_mask_proto $$
-CREATE FUNCTION _pb_wkt_field_mask_proto() RETURNS JSON DETERMINISTIC
-BEGIN
-	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/field_mask.proto","12":"proto3","2":"google.protobuf","4":[{"1":"FieldMask","2":[{"1":"paths","10":"paths","3":1,"4":3,"5":9}]}],"8":{"1":"com.google.protobuf","10":true,"11":"google.golang.org/protobuf/types/known/fieldmaskpb","31":true,"36":"GPB","37":"Google.Protobuf.WellKnownTypes","8":"FieldMaskProto"}}]},"2":{".google.protobuf.FieldMask":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"paths":0},"4":{"1":0}}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_wrappers_proto $$
