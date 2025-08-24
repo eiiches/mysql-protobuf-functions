@@ -19,4 +19,16 @@ message JsonMarshalOptions {
   // and empty maps. This option doesn't affect if the field has
   // a field presence.
   bool emit_default_values = 1;
+
+  // Emits enum values as numbers, instead of their names.
+  bool use_enum_numbers = 2;
+
+  // ONLY FOR INTERNAL USE.
+  // Emits 64bit integer types (int64, uint64, fixed64, sfixed64, sint64) as numbers, instead of strings.
+  bool emit_int64s_as_numbers = 3;
+
+  // ONLY FOR INTERNAL USE.
+  // Don't treat Well-known Types as special.
+  // E.g. Timestamp becomes {"seconds": 61, "nanos": 123000000} instead of "1970-01-01T00:01:01.123Z".
+  bool treat_wkt_as_normal_types = 4;
 }
