@@ -104,7 +104,7 @@ func runStandalone() {
 
 			// Create generation config
 			config := protocgenmysql.GenerateConfig{
-				FunctionName:      name,
+				DescriptorSetName: name,
 				IncludeSourceInfo: includeSourceInfo,
 				GenerateMethods:   generateMethods,
 				IncludeWkt:        includeWkt,
@@ -160,7 +160,7 @@ func runAsProtocPlugin() {
 	}
 
 	// Parse plugin options
-	var functionName string
+	var descriptorSetName string
 	includeSourceInfo := false
 	namingStrategy := "flatten"
 	generateMethods := true
@@ -169,7 +169,7 @@ func runAsProtocPlugin() {
 	if req.Parameter != nil && *req.Parameter != "" {
 		params := parseParameters(*req.Parameter)
 		if name, ok := params["name"]; ok {
-			functionName = name
+			descriptorSetName = name
 		}
 		if include, ok := params["include_source_info"]; ok {
 			includeSourceInfo = include == "true"
@@ -188,7 +188,7 @@ func runAsProtocPlugin() {
 		}
 	}
 
-	if functionName == "" {
+	if descriptorSetName == "" {
 		sendError("name parameter is required. Use --mysql_opt=name=your_function_name")
 		return
 	}
@@ -200,7 +200,7 @@ func runAsProtocPlugin() {
 
 	// Create generation config
 	config := protocgenmysql.GenerateConfig{
-		FunctionName:      functionName,
+		DescriptorSetName: descriptorSetName,
 		IncludeSourceInfo: includeSourceInfo,
 		GenerateMethods:   generateMethods,
 		IncludeWkt:        includeWkt,

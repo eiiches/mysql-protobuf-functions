@@ -14,7 +14,7 @@ import (
 )
 
 type GenerateConfig struct {
-	FunctionName      string
+	DescriptorSetName string
 	IncludeSourceInfo bool
 	GenerateMethods   bool
 	IncludeWkt        bool
@@ -61,13 +61,13 @@ BEGIN
 	RETURN CAST('%s' AS JSON);
 END $$
 
-`, config.FunctionName, config.FunctionName, EscapeSQLString(jsonStr))
+`, config.DescriptorSetName, config.DescriptorSetName, EscapeSQLString(jsonStr))
 
 	// Collect all content fragments by filename
 	fileFragments := make(map[string][]string)
 
 	// Add descriptor set function fragment
-	descriptorSetFileName := config.FunctionName + ".pb.sql"
+	descriptorSetFileName := config.DescriptorSetName + ".pb.sql"
 	fileFragments[descriptorSetFileName] = append(fileFragments[descriptorSetFileName], descriptorSetContent)
 
 	// Generate method fragments if requested
@@ -77,7 +77,7 @@ END $$
 			return nil, fmt.Errorf("failed to create protoregistry.Files from FileDescriptorSet: %w", err)
 		}
 
-		methodFragments, err := GenerateMethodFragments(files, config.FileNameFunc, config.TypePrefixFunc, config.FunctionName)
+		methodFragments, err := GenerateMethodFragments(files, config.FileNameFunc, config.TypePrefixFunc, config.DescriptorSetName)
 		if err != nil {
 			return nil, err
 		}

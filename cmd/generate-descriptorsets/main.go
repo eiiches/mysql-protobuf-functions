@@ -79,34 +79,37 @@ func main() {
 			fileDescriptor,
 		)
 
-		var prefix string
+		var methodNamePrefix string
+		var descriptorSetNamePrefix string
 		var generateMethods bool
 		if fileDescriptor.Path() == "google/protobuf/descriptor.proto" {
-			prefix = "_pb_"
+			methodNamePrefix = "_pb_"
+			descriptorSetNamePrefix = "_pb_"
 			generateMethods = false
 		} else {
-			prefix = "_pb_wkt_"
+			methodNamePrefix = "pb_wkt_"
+			descriptorSetNamePrefix = "_pb_wkt_"
 			generateMethods = true
 		}
 
 		// E.g. _pb_wkt_timestamp_proto, _pb_descriptor_proto
-		funcName := fmt.Sprintf("%s%s", prefix, strings.ReplaceAll(filepath.Base(fileDescriptor.Path()), ".", "_"))
+		descriptorSetName := fmt.Sprintf("%s%s", descriptorSetNamePrefix, strings.ReplaceAll(filepath.Base(fileDescriptor.Path()), ".", "_"))
 
 		// Use protocgenmysql.Generate to create the function
 		config := protocgenmysql.GenerateConfig{
-			FunctionName:      funcName,
+			DescriptorSetName: descriptorSetName,
 			IncludeSourceInfo: false,
 			GenerateMethods:   generateMethods,
 			IncludeWkt:        true, // Always include WKT in generate-descriptorsets
 			FileNameFunc: func(protoPath string) string {
-				return funcName + ".sql" // Doesn't matter since we concatenate all files later
+				return descriptorSetName + ".pb.sql" // Doesn't matter since we concatenate all files later
 			},
 			TypePrefixFunc: func(packageName protoreflect.FullName, typeName protoreflect.FullName) string {
 				snake := caseconv.LowerCamelToSnake(strings.ReplaceAll(strings.TrimPrefix(string(typeName), string(packageName)+"."), ".", "_"))
 				// Fix specific cases: "UInt64" -> "uint64", "UInt32" -> "uint32"
 				snake = strings.ReplaceAll(snake, "u_int64", "uint64")
 				snake = strings.ReplaceAll(snake, "u_int32", "uint32")
-				return prefix + regexp.MustCompile("_+").ReplaceAllString(snake, "_")
+				return methodNamePrefix + regexp.MustCompile("_+").ReplaceAllString(snake, "_")
 			},
 		}
 
