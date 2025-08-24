@@ -407,6 +407,7 @@ BEGIN
 	DECLARE bits BIGINT UNSIGNED;
 	DECLARE sign_bit BIGINT UNSIGNED;
 	DECLARE exponent BIGINT;
+	DECLARE biased_exponent BIGINT;
 	DECLARE fraction BIGINT UNSIGNED;
 
 	IF value IS NULL THEN
@@ -433,28 +434,43 @@ BEGIN
 		RETURN (sign_bit << 31) | 0x7F800000;
 	END IF;
 
-	IF value < 1.1754944e-38 THEN -- subnormal threshold
-		SET exponent = 0;
+	IF value < 1.17549435082228751e-38 THEN -- subnormal threshold
+		SET exponent = -127;
+		SET biased_exponent = 0;
 		SET fraction = ROUND(value / 1.4012985e-45); -- 2^-149
 		IF fraction > 0x7FFFFF THEN
 			SET fraction = 0x7FFFFF;
 		END IF;
 	ELSE -- normal number
-		SET exponent = FLOOR(LOG(2, value)) + 127;
-		IF exponent < 0 THEN
-			SET exponent = 0;
+		SET exponent = FLOOR(LOG(2, value));
+		SET biased_exponent = exponent + 127;
+
+		-- Unfortunately, LOG(2, value) is not always correct. E.g. LOG(2, 1.1754943508222875e-38) may return incorrect result.
+		-- We already know the unbiased exponent should be >= -126 for normal numbers.
+		-- Exponent is adjusted so that 1 <= ABS(value)/POW(2, exponent) < 2.
+		IF exponent >= 128 OR POW(2, exponent) > value THEN
+			SET exponent = exponent - 1;
+			SET biased_exponent = biased_exponent - 1;
+		END IF;
+		IF value / POW(2, exponent) >= 2 THEN
+			SET exponent = exponent + 1;
+			SET biased_exponent = biased_exponent + 1;
+		END IF;
+
+		IF biased_exponent < 0 THEN
+			SET biased_exponent = 0;
 			SET fraction = 0;
-		ELSEIF exponent >= 255 THEN
+		ELSEIF biased_exponent >= 255 THEN
 			RETURN (sign_bit << 31) | 0x7F800000; -- infinity
 		ELSE
-			SET fraction = ROUND((value / POW(2, exponent - 127) - 1) * POW(2, 23));
+			SET fraction = ROUND((value / POW(2, exponent) - 1) * POW(2, 23));
 			IF fraction > 0x7FFFFF THEN
 				SET fraction = 0x7FFFFF;
 			END IF;
 		END IF;
 	END IF;
 
-	RETURN (sign_bit << 31) | (CAST(exponent AS UNSIGNED) << 23) | (fraction & 0x7FFFFF);
+	RETURN (sign_bit << 31) | (CAST(biased_exponent AS UNSIGNED) << 23) | (fraction & 0x7FFFFF);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_util_reinterpret_sint64_as_uint64 $$
@@ -469,6 +485,7 @@ BEGIN
 	DECLARE bits BIGINT UNSIGNED;
 	DECLARE sign_bit BIGINT UNSIGNED;
 	DECLARE exponent BIGINT;
+	DECLARE biased_exponent BIGINT;
 	DECLARE fraction BIGINT UNSIGNED;
 
 	IF value IS NULL THEN
@@ -496,33 +513,43 @@ BEGIN
 		RETURN (sign_bit << 63) | 0x7FF0000000000000;
 	END IF;
 
-	IF value < 2.2250738585072014e-308 THEN -- subnormal threshold
-		SET exponent = 0;
+	IF value < 2.2250738585072014e-308 THEN -- subnormal threshold  
+		SET exponent = -1023;
+		SET biased_exponent = 0;
 		SET fraction = ROUND(value / 4.9406564584124654e-324); -- 2^-1074
 		IF fraction > 0xFFFFFFFFFFFFF THEN
 			SET fraction = 0xFFFFFFFFFFFFF;
 		END IF;
 	ELSE -- normal number
-		SET exponent = FLOOR(LOG(2, value)) + 1023;
-		-- Unfortunately, LOG(2, value) is not always correct. E.g. LOG(2, 1.7976931348623157e+308) returns 1024 (even though it should be 1023.9999999999999998...).
-		-- We already know the unbiased exponent is less than 1024.
-		IF exponent >= 2047 OR POW(2, exponent - 1023) > value THEN
+		SET exponent = FLOOR(LOG(2, value));
+		SET biased_exponent = exponent + 1023;
+
+		-- Unfortunately, LOG(2, value) is not always correct. E.g. LOG(2, 1.7976931348623157e+308) may return incorrect result.
+		-- We already know the unbiased exponent should be >= -1022 for normal numbers.
+		-- Exponent is adjusted so that 1 <= ABS(value)/POW(2, exponent) < 2.
+		IF exponent >= 1024 OR POW(2, exponent) > value THEN
 			SET exponent = exponent - 1;
+			SET biased_exponent = biased_exponent - 1;
 		END IF;
-		IF exponent < 0 THEN
-			SET exponent = 0;
+		IF value / POW(2, exponent) >= 2 THEN
+			SET exponent = exponent + 1;
+			SET biased_exponent = biased_exponent + 1;
+		END IF;
+
+		IF biased_exponent < 0 THEN
+			SET biased_exponent = 0;
 			SET fraction = 0;
-		ELSEIF exponent >= 2047 THEN
+		ELSEIF biased_exponent >= 2047 THEN
 			RETURN (sign_bit << 63) | 0x7FF0000000000000; -- infinity
 		ELSE
-			SET fraction = ROUND((value / POW(2, exponent - 1023) - 1) * POW(2, 52));
+			SET fraction = ROUND((value / POW(2, exponent) - 1) * POW(2, 52));
 			IF fraction > 0xFFFFFFFFFFFFF THEN
 				SET fraction = 0xFFFFFFFFFFFFF;
 			END IF;
 		END IF;
 	END IF;
 
-	RETURN (sign_bit << 63) | (CAST(exponent AS UNSIGNED) << 52) | (fraction & 0xFFFFFFFFFFFFF);
+	RETURN (sign_bit << 63) | (CAST(biased_exponent AS UNSIGNED) << 52) | (fraction & 0xFFFFFFFFFFFFF);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wire_get_field_number_from_tag $$
