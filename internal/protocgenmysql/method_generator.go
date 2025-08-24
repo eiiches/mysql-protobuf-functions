@@ -99,9 +99,9 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 		return err
 	}
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", fromMessageFuncName))
-	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(message_data LONGBLOB) RETURNS JSON DETERMINISTIC\n", fromMessageFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC\n", fromMessageFuncName))
 	content.WriteString("BEGIN\n")
-	content.WriteString(fmt.Sprintf("    RETURN _pb_message_to_number_json(%s(), '.%s', message_data);\n", schemaFunctionName, fullTypeName))
+	content.WriteString(fmt.Sprintf("    RETURN _pb_message_to_number_json(%s(), '.%s', message_data, unmarshal_options);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
 
 	// Generate to_json
@@ -121,9 +121,9 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 		return err
 	}
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", toMessageFuncName))
-	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC\n", toMessageFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC\n", toMessageFuncName))
 	content.WriteString("BEGIN\n")
-	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_message(%s(), '.%s', proto_data);\n", schemaFunctionName, fullTypeName))
+	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_message(%s(), '.%s', proto_data, marshal_options);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
 
 	// Generate setter and getter methods for each field

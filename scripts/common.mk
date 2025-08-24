@@ -8,6 +8,16 @@ internal/jsonoptionspb/json_options.pb.go: src/json_options.proto
 		--go_opt=Mjson_options.proto='github.com/eiiches/mysql-protobuf-functions/internal/jsonoptionspb' \
 		src/json_options.proto
 
+# Generate Go code for marshal_options.proto in internal/marshaloptionspb
+internal/marshaloptionspb/marshal_options.pb.go: src/marshal_options.proto
+	@echo "Generating Go protobuf code for marshal_options.proto..."
+	mkdir -p internal/marshaloptionspb
+	protoc --proto_path=src \
+		--go_out=internal/marshaloptionspb \
+		--go_opt=paths=source_relative \
+		--go_opt=Mmarshal_options.proto='github.com/eiiches/mysql-protobuf-functions/internal/marshaloptionspb' \
+		src/marshal_options.proto
+
 # Generate Go code for descriptor_set.proto in internal/descriptorsetpb
 internal/descriptorsetpb/descriptor_set.pb.go: src/descriptor_set.proto
 	@echo "Generating Go protobuf code for descriptor_set.proto..."
@@ -19,7 +29,7 @@ internal/descriptorsetpb/descriptor_set.pb.go: src/descriptor_set.proto
 		src/descriptor_set.proto
 
 .PHONY: test
-test: purge reload ensure-test-database internal/jsonoptionspb/json_options.pb.go internal/descriptorsetpb/descriptor_set.pb.go
+test: purge reload ensure-test-database internal/jsonoptionspb/json_options.pb.go internal/marshaloptionspb/marshal_options.pb.go internal/descriptorsetpb/descriptor_set.pb.go
 	go test ./internal/...
 	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" -fuzz-iterations 20 $${GO_TEST_FLAGS:-}
 
@@ -72,18 +82,19 @@ build/protobuf-json.sql: $(PROTOBUF_JSON_SOURCES) scripts/common.mk
 	$(foreach file,$(PROTOBUF_JSON_SOURCES),echo >> $@.tmp && cat $(file) >> $@.tmp;)
 	echo >> $@.tmp
 	go run cmd/generate-descriptorsets/main.go >> $@.tmp
-	protoc --descriptor_set_out=./json_options.binpb \
+	protoc --descriptor_set_out=./options.binpb \
 		--include_imports \
 		--proto_path=src/ \
-		src/json_options.proto
+		src/json_options.proto \
+		src/marshal_options.proto
 	go run ./cmd/protoc-gen-mysql \
-		--descriptor_set_in=./json_options.binpb \
-		--name=_pb_json_options_proto \
+		--descriptor_set_in=./options.binpb \
+		--name=_pb_options_proto \
 		--file_naming_strategy=single \
 		--prefix_map=mysqlprotobuf=pb_ \
 		--generate_methods \
 		--mysql_out=/tmp
-	cat /tmp/_pb_json_options_proto.pb.sql >> $@.tmp
+	cat /tmp/_pb_options_proto.pb.sql >> $@.tmp
 	mv $@.tmp $@
 
 .PHONY: reload

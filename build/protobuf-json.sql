@@ -521,9 +521,10 @@ END $$
 
 -- Private function interface for protonumberjson format
 DROP FUNCTION IF EXISTS _pb_message_to_number_json $$
-CREATE FUNCTION _pb_message_to_number_json(descriptor_set_json JSON, type_name TEXT, message LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION _pb_message_to_number_json(descriptor_set_json JSON, type_name TEXT, message LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE result JSON;
+	-- For now, unmarshal_options is accepted but not yet used - keeping current behavior
 	CALL _pb_message_to_json(descriptor_set_json, type_name, message, TRUE, FALSE, result);
 	RETURN result;
 END $$
@@ -1156,9 +1157,10 @@ END $$
 
 -- Private function interface for number JSON to message conversion
 DROP FUNCTION IF EXISTS _pb_number_json_to_message $$
-CREATE FUNCTION _pb_number_json_to_message(descriptor_set_json JSON, type_name TEXT, json_value JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION _pb_number_json_to_message(descriptor_set_json JSON, type_name TEXT, json_value JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	DECLARE result LONGBLOB;
+	-- For now, marshal_options is accepted but not yet used - keeping current behavior
 	CALL _pb_number_json_to_message(descriptor_set_json, type_name, json_value, result);
 	RETURN result;
 END $$
@@ -4896,7 +4898,8 @@ BEGIN
 	SET file_descriptor_set_number_json = _pb_message_to_number_json(
 		_pb_descriptor_proto(),
 		'.google.protobuf.FileDescriptorSet',
-		file_descriptor_set_blob
+		file_descriptor_set_blob,
+		NULL  -- unmarshal_options: use default behavior
 	);
 
 	-- Build type indexes from the FileDescriptorSet
@@ -4979,9 +4982,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_from_message $$
-CREATE FUNCTION pb_wkt_struct_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_struct_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.Struct', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.Struct', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_to_json $$
@@ -4991,9 +4994,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_to_message $$
-CREATE FUNCTION pb_wkt_struct_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_struct_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Struct', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Struct', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_set_fields $$
@@ -5021,9 +5024,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_from_message $$
-CREATE FUNCTION pb_wkt_struct_fields_entry_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_struct_fields_entry_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.Struct.FieldsEntry', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.Struct.FieldsEntry', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_to_json $$
@@ -5033,9 +5036,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_to_message $$
-CREATE FUNCTION pb_wkt_struct_fields_entry_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_struct_fields_entry_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Struct.FieldsEntry', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Struct.FieldsEntry', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_set_key $$
@@ -5075,9 +5078,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_from_message $$
-CREATE FUNCTION pb_wkt_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_value_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.Value', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.Value', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_to_json $$
@@ -5087,9 +5090,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_to_message $$
-CREATE FUNCTION pb_wkt_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_value_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Value', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Value', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_null_value $$
@@ -5177,9 +5180,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_list_value_from_message $$
-CREATE FUNCTION pb_wkt_list_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_list_value_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.ListValue', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_struct_proto(), '.google.protobuf.ListValue', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_list_value_to_json $$
@@ -5189,9 +5192,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_list_value_to_message $$
-CREATE FUNCTION pb_wkt_list_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_list_value_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.ListValue', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.ListValue', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_list_value_set_values $$
@@ -5243,9 +5246,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_field_mask_from_message $$
-CREATE FUNCTION pb_wkt_field_mask_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_field_mask_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_field_mask_proto(), '.google.protobuf.FieldMask', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_field_mask_proto(), '.google.protobuf.FieldMask', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_field_mask_to_json $$
@@ -5255,9 +5258,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_field_mask_to_message $$
-CREATE FUNCTION pb_wkt_field_mask_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_field_mask_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_field_mask_proto(), '.google.protobuf.FieldMask', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_field_mask_proto(), '.google.protobuf.FieldMask', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_field_mask_set_paths $$
@@ -5291,9 +5294,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_double_value_from_message $$
-CREATE FUNCTION pb_wkt_double_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_double_value_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.DoubleValue', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.DoubleValue', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_double_value_to_json $$
@@ -5303,9 +5306,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_double_value_to_message $$
-CREATE FUNCTION pb_wkt_double_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_double_value_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.DoubleValue', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.DoubleValue', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_double_value_set_value $$
@@ -5333,9 +5336,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_float_value_from_message $$
-CREATE FUNCTION pb_wkt_float_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_float_value_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.FloatValue', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.FloatValue', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_float_value_to_json $$
@@ -5345,9 +5348,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_float_value_to_message $$
-CREATE FUNCTION pb_wkt_float_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_float_value_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.FloatValue', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.FloatValue', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_float_value_set_value $$
@@ -5375,9 +5378,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_int64_value_from_message $$
-CREATE FUNCTION pb_wkt_int64_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_int64_value_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.Int64Value', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.Int64Value', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_int64_value_to_json $$
@@ -5387,9 +5390,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_int64_value_to_message $$
-CREATE FUNCTION pb_wkt_int64_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_int64_value_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.Int64Value', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.Int64Value', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_int64_value_set_value $$
@@ -5417,9 +5420,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_uint64_value_from_message $$
-CREATE FUNCTION pb_wkt_uint64_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_uint64_value_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_uint64_value_to_json $$
@@ -5429,9 +5432,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_uint64_value_to_message $$
-CREATE FUNCTION pb_wkt_uint64_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_uint64_value_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_uint64_value_set_value $$
@@ -5459,9 +5462,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_int32_value_from_message $$
-CREATE FUNCTION pb_wkt_int32_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_int32_value_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.Int32Value', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.Int32Value', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_int32_value_to_json $$
@@ -5471,9 +5474,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_int32_value_to_message $$
-CREATE FUNCTION pb_wkt_int32_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_int32_value_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.Int32Value', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.Int32Value', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_int32_value_set_value $$
@@ -5501,9 +5504,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_uint32_value_from_message $$
-CREATE FUNCTION pb_wkt_uint32_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_uint32_value_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_uint32_value_to_json $$
@@ -5513,9 +5516,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_uint32_value_to_message $$
-CREATE FUNCTION pb_wkt_uint32_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_uint32_value_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_uint32_value_set_value $$
@@ -5543,9 +5546,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_bool_value_from_message $$
-CREATE FUNCTION pb_wkt_bool_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_bool_value_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.BoolValue', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.BoolValue', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_bool_value_to_json $$
@@ -5555,9 +5558,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_bool_value_to_message $$
-CREATE FUNCTION pb_wkt_bool_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_bool_value_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.BoolValue', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.BoolValue', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_bool_value_set_value $$
@@ -5585,9 +5588,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_string_value_from_message $$
-CREATE FUNCTION pb_wkt_string_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_string_value_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.StringValue', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.StringValue', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_string_value_to_json $$
@@ -5597,9 +5600,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_string_value_to_message $$
-CREATE FUNCTION pb_wkt_string_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_string_value_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.StringValue', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.StringValue', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_string_value_set_value $$
@@ -5627,9 +5630,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_bytes_value_from_message $$
-CREATE FUNCTION pb_wkt_bytes_value_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_bytes_value_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.BytesValue', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_wrappers_proto(), '.google.protobuf.BytesValue', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_bytes_value_to_json $$
@@ -5639,9 +5642,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_bytes_value_to_message $$
-CREATE FUNCTION pb_wkt_bytes_value_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_bytes_value_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.BytesValue', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.BytesValue', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_bytes_value_set_value $$
@@ -5675,9 +5678,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_timestamp_from_message $$
-CREATE FUNCTION pb_wkt_timestamp_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_timestamp_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_timestamp_proto(), '.google.protobuf.Timestamp', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_timestamp_proto(), '.google.protobuf.Timestamp', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_timestamp_to_json $$
@@ -5687,9 +5690,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_timestamp_to_message $$
-CREATE FUNCTION pb_wkt_timestamp_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_timestamp_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_timestamp_proto(), '.google.protobuf.Timestamp', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_timestamp_proto(), '.google.protobuf.Timestamp', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_timestamp_set_seconds $$
@@ -5735,9 +5738,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_duration_from_message $$
-CREATE FUNCTION pb_wkt_duration_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_duration_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_duration_proto(), '.google.protobuf.Duration', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_duration_proto(), '.google.protobuf.Duration', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_duration_to_json $$
@@ -5747,9 +5750,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_duration_to_message $$
-CREATE FUNCTION pb_wkt_duration_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_duration_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_duration_proto(), '.google.protobuf.Duration', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_duration_proto(), '.google.protobuf.Duration', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_duration_set_seconds $$
@@ -5795,9 +5798,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_any_from_message $$
-CREATE FUNCTION pb_wkt_any_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_any_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_any_proto(), '.google.protobuf.Any', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_any_proto(), '.google.protobuf.Any', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_any_to_json $$
@@ -5807,9 +5810,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_any_to_message $$
-CREATE FUNCTION pb_wkt_any_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_any_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_any_proto(), '.google.protobuf.Any', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_any_proto(), '.google.protobuf.Any', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_any_set_type_url $$
@@ -5855,9 +5858,9 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_empty_from_message $$
-CREATE FUNCTION pb_wkt_empty_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_wkt_empty_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_wkt_empty_proto(), '.google.protobuf.Empty', message_data);
+    RETURN _pb_message_to_number_json(_pb_wkt_empty_proto(), '.google.protobuf.Empty', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_empty_to_json $$
@@ -5867,19 +5870,19 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_empty_to_message $$
-CREATE FUNCTION pb_wkt_empty_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_wkt_empty_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_wkt_empty_proto(), '.google.protobuf.Empty', proto_data);
+    RETURN _pb_number_json_to_message(_pb_wkt_empty_proto(), '.google.protobuf.Empty', proto_data, marshal_options);
 END $$
 
 -- Code generated by protoc-gen-mysql. DO NOT EDIT.
 
 DELIMITER $$
 
-DROP FUNCTION IF EXISTS _pb_json_options_proto $$
-CREATE FUNCTION _pb_json_options_proto() RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_options_proto $$
+CREATE FUNCTION _pb_options_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('{"1":{"1":[{"1":"json_options.proto","12":"proto3","2":"mysqlprotobuf","4":[{"1":"JsonUnmarshalOptions","2":[{"1":"ignore_unknown_fields","10":"ignoreUnknownFields","3":1,"4":1,"5":8},{"1":"ignore_unknown_enums","10":"ignoreUnknownEnums","3":2,"4":1,"5":8}]},{"1":"JsonMarshalOptions","2":[{"1":"emit_default_values","10":"emitDefaultValues","3":1,"4":1,"5":8},{"1":"use_enum_numbers","10":"useEnumNumbers","3":2,"4":1,"5":8},{"1":"emit_int64s_as_numbers","10":"emitInt64sAsNumbers","3":3,"4":1,"5":8},{"1":"treat_wkt_as_normal_types","10":"treatWktAsNormalTypes","3":4,"4":1,"5":8}]}]}]},"2":{".mysqlprotobuf.JsonMarshalOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[1]","3":{"emit_default_values":0,"emit_int64s_as_numbers":2,"treat_wkt_as_normal_types":3,"use_enum_numbers":1},"4":{"1":0,"2":1,"3":2,"4":3}},".mysqlprotobuf.JsonUnmarshalOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"ignore_unknown_enums":1,"ignore_unknown_fields":0},"4":{"1":0,"2":1}}}}' AS JSON);
+	RETURN CAST('{"1":{"1":[{"1":"json_options.proto","12":"proto3","2":"mysqlprotobuf","4":[{"1":"JsonUnmarshalOptions","2":[{"1":"ignore_unknown_fields","10":"ignoreUnknownFields","3":1,"4":1,"5":8},{"1":"ignore_unknown_enums","10":"ignoreUnknownEnums","3":2,"4":1,"5":8}]},{"1":"JsonMarshalOptions","2":[{"1":"emit_default_values","10":"emitDefaultValues","3":1,"4":1,"5":8},{"1":"use_enum_numbers","10":"useEnumNumbers","3":2,"4":1,"5":8},{"1":"emit_int64s_as_numbers","10":"emitInt64sAsNumbers","3":3,"4":1,"5":8},{"1":"treat_wkt_as_normal_types","10":"treatWktAsNormalTypes","3":4,"4":1,"5":8}]}]},{"1":"marshal_options.proto","12":"proto3","2":"mysqlprotobuf","4":[{"1":"MarshalOptions"},{"1":"UnmarshalOptions"}]}]},"2":{".mysqlprotobuf.JsonMarshalOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[1]","3":{"emit_default_values":0,"emit_int64s_as_numbers":2,"treat_wkt_as_normal_types":3,"use_enum_numbers":1},"4":{"1":0,"2":1,"3":2,"4":3}},".mysqlprotobuf.JsonUnmarshalOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"ignore_unknown_enums":1,"ignore_unknown_fields":0},"4":{"1":0,"2":1}},".mysqlprotobuf.MarshalOptions":{"1":"$.\\"1\\"[1]","2":"$.\\"1\\"[1].\\"4\\"[0]"},".mysqlprotobuf.UnmarshalOptions":{"1":"$.\\"1\\"[1]","2":"$.\\"1\\"[1].\\"4\\"[1]"}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_new $$
@@ -5891,25 +5894,25 @@ END $$
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_from_json $$
 CREATE FUNCTION pb_json_unmarshal_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_json_to_number_json(_pb_json_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', json_data, json_unmarshal_options);
+    RETURN _pb_json_to_number_json(_pb_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', json_data, json_unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_from_message $$
-CREATE FUNCTION pb_json_unmarshal_options_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_json_unmarshal_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_json_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', message_data);
+    RETURN _pb_message_to_number_json(_pb_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_to_json $$
 CREATE FUNCTION pb_json_unmarshal_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_json(_pb_json_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', proto_data, json_marshal_options);
+    RETURN _pb_number_json_to_json(_pb_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', proto_data, json_marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_to_message $$
-CREATE FUNCTION pb_json_unmarshal_options_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_json_unmarshal_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_json_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', proto_data);
+    RETURN _pb_number_json_to_message(_pb_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_set_ignore_unknown_fields $$
@@ -5945,25 +5948,25 @@ END $$
 DROP FUNCTION IF EXISTS pb_json_marshal_options_from_json $$
 CREATE FUNCTION pb_json_marshal_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_json_to_number_json(_pb_json_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', json_data, json_unmarshal_options);
+    RETURN _pb_json_to_number_json(_pb_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', json_data, json_unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_marshal_options_from_message $$
-CREATE FUNCTION pb_json_marshal_options_from_message(message_data LONGBLOB) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_json_marshal_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_message_to_number_json(_pb_json_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', message_data);
+    RETURN _pb_message_to_number_json(_pb_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', message_data, unmarshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_marshal_options_to_json $$
 CREATE FUNCTION pb_json_marshal_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_json(_pb_json_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', proto_data, json_marshal_options);
+    RETURN _pb_number_json_to_json(_pb_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', proto_data, json_marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_marshal_options_to_message $$
-CREATE FUNCTION pb_json_marshal_options_to_message(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_json_marshal_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
-    RETURN _pb_number_json_to_message(_pb_json_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', proto_data);
+    RETURN _pb_number_json_to_message(_pb_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', proto_data, marshal_options);
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_marshal_options_set_emit_default_values $$
@@ -6012,5 +6015,65 @@ DROP FUNCTION IF EXISTS pb_json_marshal_options_get_treat_wkt_as_normal_types $$
 CREATE FUNCTION pb_json_marshal_options_get_treat_wkt_as_normal_types(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     RETURN JSON_EXTRACT(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_marshal_options_new $$
+CREATE FUNCTION pb_marshal_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS pb_marshal_options_from_json $$
+CREATE FUNCTION pb_marshal_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_options_proto(), '.mysqlprotobuf.MarshalOptions', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS pb_marshal_options_from_message $$
+CREATE FUNCTION pb_marshal_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_options_proto(), '.mysqlprotobuf.MarshalOptions', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS pb_marshal_options_to_json $$
+CREATE FUNCTION pb_marshal_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_options_proto(), '.mysqlprotobuf.MarshalOptions', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS pb_marshal_options_to_message $$
+CREATE FUNCTION pb_marshal_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_options_proto(), '.mysqlprotobuf.MarshalOptions', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS pb_unmarshal_options_new $$
+CREATE FUNCTION pb_unmarshal_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS pb_unmarshal_options_from_json $$
+CREATE FUNCTION pb_unmarshal_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_options_proto(), '.mysqlprotobuf.UnmarshalOptions', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS pb_unmarshal_options_from_message $$
+CREATE FUNCTION pb_unmarshal_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_options_proto(), '.mysqlprotobuf.UnmarshalOptions', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS pb_unmarshal_options_to_json $$
+CREATE FUNCTION pb_unmarshal_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_options_proto(), '.mysqlprotobuf.UnmarshalOptions', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS pb_unmarshal_options_to_message $$
+CREATE FUNCTION pb_unmarshal_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_options_proto(), '.mysqlprotobuf.UnmarshalOptions', proto_data, marshal_options);
 END $$
 

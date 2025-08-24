@@ -350,7 +350,8 @@ BEGIN
 	SET file_descriptor_set_number_json = _pb_message_to_number_json(
 		_pb_descriptor_proto(),
 		'.google.protobuf.FileDescriptorSet',
-		file_descriptor_set_blob
+		file_descriptor_set_blob,
+		NULL  -- unmarshal_options: use default behavior
 	);
 
 	-- Build type indexes from the FileDescriptorSet
