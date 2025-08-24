@@ -237,7 +237,7 @@ func (h *ConformanceHandler) HandleConvertedMessageLegacy(request *ConformanceRe
 	case WireFormat_JSON:
 		// Convert binary protobuf to JSON using MySQL function
 		var jsonOutput string
-		query := "SELECT pb_message_to_json(conformance_test_messages_schema(), ?, ?)"
+		query := "SELECT pb_message_to_json(conformance_test_messages_schema(), ?, ?, NULL, NULL)"
 		err := h.db.QueryRow(query, messageType, binaryData).Scan(&jsonOutput)
 		if err != nil {
 			// Check if this is a GROUP field error (unsupported feature)
@@ -309,7 +309,7 @@ func (h *ConformanceHandler) HandleBinaryProtobufLegacy(request *ConformanceRequ
 	}
 
 	var jsonOutput string
-	query := "SELECT pb_message_to_json(conformance_test_messages_schema(), ?, ?)"
+	query := "SELECT pb_message_to_json(conformance_test_messages_schema(), ?, ?, NULL, NULL)"
 	err := h.db.QueryRow(query, messageType, binaryData).Scan(&jsonOutput)
 	if err != nil {
 		// Check if this is a GROUP field error (unsupported feature)
@@ -403,7 +403,7 @@ func (h *ConformanceHandler) HandleBinaryProtobufWithProtoNumberJSON(request *Co
 
 	// Convert binary protobuf to ProtoNumberJSON using MySQL function
 	var protoNumberJSON string
-	query := "SELECT _pb_message_to_number_json(conformance_test_messages_schema(), ?, ?)"
+	query := "SELECT _pb_message_to_number_json(conformance_test_messages_schema(), ?, ?, NULL)"
 	err := h.db.QueryRow(query, messageType, binaryData).Scan(&protoNumberJSON)
 	if err != nil {
 		// Check if this is a GROUP field error (unsupported feature)
@@ -506,7 +506,7 @@ func (h *ConformanceHandler) generateOutputFromProtoNumberJSON(request *Conforma
 	case WireFormat_PROTOBUF:
 		// Convert ProtoNumberJSON to binary protobuf
 		var binaryData []byte
-		query := "SELECT _pb_number_json_to_message(conformance_test_messages_schema(), ?, ?)"
+		query := "SELECT _pb_number_json_to_message(conformance_test_messages_schema(), ?, ?, NULL)"
 		err := h.db.QueryRow(query, messageType, protoNumberJSON).Scan(&binaryData)
 		if err != nil {
 			return &ConformanceResponse{
