@@ -564,9 +564,7 @@ func (i *ASTInstrumenter) extractReturnValue(returnText string) string {
 	if strings.HasPrefix(strings.ToUpper(text), "RETURN ") {
 		text = strings.TrimSpace(text[7:]) // Remove "RETURN "
 	}
-	if strings.HasSuffix(text, ";") {
-		text = text[:len(text)-1] // Remove ";"
-	}
+	text = strings.TrimSuffix(text, ";")
 
 	if text == "" {
 		return "NULL"
@@ -628,7 +626,7 @@ func (i *ASTInstrumenter) buildFullVariableReference(assignment sqlflowparser.Va
 }
 
 func (i *ASTInstrumenter) getStatementType(astStmt sqlflowparser.StatementAST) string {
-	switch astStmt.(type) {
+	switch stmt := astStmt.(type) {
 	case *sqlflowparser.IfStmt:
 		return "IF"
 	case *sqlflowparser.WhileStmt:
@@ -647,7 +645,7 @@ func (i *ASTInstrumenter) getStatementType(astStmt sqlflowparser.StatementAST) s
 		return "ITERATE"
 	case *sqlflowparser.GenericStmt:
 		// Try to extract statement type from text
-		text := strings.TrimSpace(strings.ToUpper(astStmt.(*sqlflowparser.GenericStmt).Text))
+		text := strings.TrimSpace(strings.ToUpper(stmt.Text))
 		parts := strings.Fields(text)
 		if len(parts) > 0 {
 			return parts[0]
@@ -691,18 +689,6 @@ func (i *ASTInstrumenter) getStatementText(astStmt sqlflowparser.StatementAST) s
 func (i *ASTInstrumenter) createStatementTracingCall(functionName string, lineNumber int, stmtType string, stmtText string) sqlflowparser.StatementAST {
 	callText := fmt.Sprintf("CALL __record_ftrace_statement('%s', '%s', %d, '%s', %s)",
 		i.filename, functionName, lineNumber, stmtType, i.escapeSQL(stmtText))
-
-	return &sqlflowparser.GenericStmt{
-		BaseStatement: sqlflowparser.BaseStatement{
-			Pos:  sqlflowparser.Position{Line: lineNumber, Column: 1},
-			Text: callText,
-		},
-	}
-}
-
-func (i *ASTInstrumenter) createSetTracingCall(functionName string, lineNumber int, variableName string, variableRef string) sqlflowparser.StatementAST {
-	callText := fmt.Sprintf("CALL __record_ftrace_set('%s', '%s', %d, '%s', %s)",
-		i.filename, functionName, lineNumber, variableName, variableRef)
 
 	return &sqlflowparser.GenericStmt{
 		BaseStatement: sqlflowparser.BaseStatement{

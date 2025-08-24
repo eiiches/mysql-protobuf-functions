@@ -13,6 +13,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v3"
 
 	"github.com/eiiches/mysql-protobuf-functions/internal/mysql/sqlftrace"
@@ -63,7 +64,7 @@ func main() {
 					},
 					&cli.StringFlag{
 						Name:  "format",
-						Usage: "Output format: text, json, flamegraph",
+						Usage: "Output format: text, json",
 						Value: "text",
 					},
 					&cli.IntFlag{
@@ -330,10 +331,8 @@ func reportAction(ctx context.Context, command *cli.Command) error {
 		return generateTextReport(db, output, connectionID)
 	case "json":
 		return generateJSONReport(db, output, connectionID)
-	case "flamegraph":
-		return generateFlamegraphReport(db, output, connectionID)
 	default:
-		return fmt.Errorf("unsupported format: %s (supported: text, json, flamegraph)", format)
+		return fmt.Errorf("unsupported format: %s (supported: text, json)", format)
 	}
 }
 
@@ -385,8 +384,8 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 	writer := bufio.NewWriter(output)
 	defer writer.Flush()
 
-	writer.WriteString("MySQL Function Call Trace Report\n")
-	writer.WriteString("================================\n\n")
+	lo.Must(writer.WriteString("MySQL Function Call Trace Report\n"))
+	lo.Must(writer.WriteString("================================\n\n"))
 
 	var currentConnectionID int = -1
 	var pendingStatement *FtraceEvent
@@ -442,8 +441,8 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 			// Statements are indented more than ENTER/EXIT
 			stmtIndent := indent + "    "
 
-			writer.WriteString(fmt.Sprintf("[%s] %s%s%s\n",
-				timestampDisplay, stmtIndent, lineDisplay, pendingStatement.ReturnValue))
+			lo.Must(writer.WriteString(fmt.Sprintf("[%s] %s%s%s\n",
+				timestampDisplay, stmtIndent, lineDisplay, pendingStatement.ReturnValue)))
 			pendingStatement = nil
 		}
 	}
@@ -469,9 +468,9 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 		if connectionID == 0 && event.ConnectionID != currentConnectionID {
 			flushPendingStatement() // Flush any pending statement before connection change
 			if currentConnectionID != -1 {
-				writer.WriteString("\n")
+				lo.Must(writer.WriteString("\n"))
 			}
-			writer.WriteString(fmt.Sprintf("=== Connection ID: %d ===\n", event.ConnectionID))
+			lo.Must(writer.WriteString(fmt.Sprintf("=== Connection ID: %d ===\n", event.ConnectionID)))
 			currentConnectionID = event.ConnectionID
 		}
 
@@ -491,13 +490,13 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 		switch event.CallType {
 		case "entry":
 			flushPendingStatement() // Flush any pending statement before function entry
-			writer.WriteString(fmt.Sprintf("[%s] %sENTER %s(%s)\n",
-				timestampDisplay, indent, event.FunctionName, formatArgs(event.Arguments)))
+			lo.Must(writer.WriteString(fmt.Sprintf("[%s] %sENTER %s(%s)\n",
+				timestampDisplay, indent, event.FunctionName, formatArgs(event.Arguments))))
 
 		case "exit":
 			flushPendingStatement() // Flush any pending statement before function exit
-			writer.WriteString(fmt.Sprintf("[%s] %sRETURN %s\n",
-				timestampDisplay, indent, event.ReturnValue))
+			lo.Must(writer.WriteString(fmt.Sprintf("[%s] %sRETURN %s\n",
+				timestampDisplay, indent, event.ReturnValue)))
 
 		case "statement":
 			// Check if this is a SET statement that will have a corresponding set_variable event
@@ -516,13 +515,8 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 				stmtIndent := indent + "    "
 
 				// For control flow statements, show the condition result
-				if event.StatementType == "IF" || event.StatementType == "WHILE" || event.StatementType == "CASE" {
-					writer.WriteString(fmt.Sprintf("[%s] %s%s%s\n",
-						timestampDisplay, stmtIndent, lineDisplay, event.ReturnValue))
-				} else {
-					writer.WriteString(fmt.Sprintf("[%s] %s%s%s\n",
-						timestampDisplay, stmtIndent, lineDisplay, event.ReturnValue))
-				}
+				lo.Must(writer.WriteString(fmt.Sprintf("[%s] %s%s%s\n",
+					timestampDisplay, stmtIndent, lineDisplay, event.ReturnValue)))
 			}
 
 		case "set_variable":
@@ -536,9 +530,9 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 				// Statements are indented more than ENTER/EXIT
 				stmtIndent := indent + "    "
 
-				writer.WriteString(fmt.Sprintf("[%s] %s%s%-30s → %s=%s\n",
+				lo.Must(writer.WriteString(fmt.Sprintf("[%s] %s%s%-30s → %s=%s\n",
 					timestampDisplay, stmtIndent, lineDisplay, pendingStatement.ReturnValue,
-					event.VariableAssignments, event.ReturnValue))
+					event.VariableAssignments, event.ReturnValue)))
 				pendingStatement = nil
 			} else {
 				// Standalone set_variable event (shouldn't normally happen)
@@ -548,8 +542,8 @@ func generateTextReport(db *sql.DB, output io.Writer, connectionID int) error {
 					lineDisplay = fmt.Sprintf("L%d: ", event.LineNumber)
 				}
 				stmtIndent := indent + "    "
-				writer.WriteString(fmt.Sprintf("[%s] %s%sSET %s = %s\n",
-					timestampDisplay, stmtIndent, lineDisplay, event.VariableAssignments, event.ReturnValue))
+				lo.Must(writer.WriteString(fmt.Sprintf("[%s] %s%sSET %s = %s\n",
+					timestampDisplay, stmtIndent, lineDisplay, event.VariableAssignments, event.ReturnValue)))
 			}
 		}
 	}
@@ -590,7 +584,7 @@ func generateJSONReport(db *sql.DB, output io.Writer, connectionID int) error {
 	writer := bufio.NewWriter(output)
 	defer writer.Flush()
 
-	writer.WriteString("[\n")
+	lo.Must(writer.WriteString("[\n"))
 	first := true
 
 	for rows.Next() {
@@ -611,11 +605,11 @@ func generateJSONReport(db *sql.DB, output io.Writer, connectionID int) error {
 		event.VariableAssignments = varName.String
 
 		if !first {
-			writer.WriteString(",\n")
+			lo.Must(writer.WriteString(",\n"))
 		}
 		first = false
 
-		writer.WriteString(fmt.Sprintf(`  {
+		lo.Must(writer.WriteString(fmt.Sprintf(`  {
     "id": %d,
     "connection_id": %d,
     "filename": "%s",
@@ -632,24 +626,9 @@ func generateJSONReport(db *sql.DB, output io.Writer, connectionID int) error {
   }`, event.ID, event.ConnectionID, event.Filename, event.FunctionName, event.ObjectType, event.CallType,
 			strings.ReplaceAll(event.Arguments, `"`, `\"`),
 			strings.ReplaceAll(event.ReturnValue, `"`, `\"`),
-			event.CallDepth, event.LineNumber, event.StatementType, event.VariableAssignments, event.Timestamp))
+			event.CallDepth, event.LineNumber, event.StatementType, event.VariableAssignments, event.Timestamp)))
 	}
 
-	writer.WriteString("\n]\n")
+	lo.Must(writer.WriteString("\n]\n"))
 	return rows.Err()
-}
-
-func generateFlamegraphReport(db *sql.DB, output io.Writer, connectionID int) error {
-	// TODO: Implement flamegraph generation
-	// This would generate data suitable for brendangregg/FlameGraph tools
-	writer := bufio.NewWriter(output)
-	defer writer.Flush()
-
-	writer.WriteString("# Flamegraph generation not yet implemented\n")
-	writer.WriteString("# This would generate stack traces suitable for flamegraph tools\n")
-	if connectionID > 0 {
-		writer.WriteString(fmt.Sprintf("# Would filter by connection_id = %d\n", connectionID))
-	}
-
-	return nil
 }
