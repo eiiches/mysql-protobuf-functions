@@ -581,9 +581,10 @@ END $$
 
 -- Public function interface for JSON to wire_json conversion
 DROP FUNCTION IF EXISTS pb_json_to_wire_json $$
-CREATE FUNCTION pb_json_to_wire_json(descriptor_set_json JSON, type_name TEXT, json_value JSON) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION pb_json_to_wire_json(descriptor_set_json JSON, type_name TEXT, json_value JSON, json_unmarshal_options JSON, marshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE result JSON;
+	-- For now, options are accepted but not yet used - keeping current behavior
 	CALL _pb_json_to_wire_json(descriptor_set_json, type_name, json_value, FALSE, result);
 	RETURN result;
 END $$
@@ -600,9 +601,10 @@ END $$
 
 -- Public function interface for JSON to message conversion
 DROP FUNCTION IF EXISTS pb_json_to_message $$
-CREATE FUNCTION pb_json_to_message(descriptor_set_json JSON, type_name TEXT, json_value JSON) RETURNS LONGBLOB DETERMINISTIC
+CREATE FUNCTION pb_json_to_message(descriptor_set_json JSON, type_name TEXT, json_value JSON, json_unmarshal_options JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
 	DECLARE result LONGBLOB;
+	-- For now, options are accepted but not yet used - keeping current behavior
 	CALL _pb_json_to_message(descriptor_set_json, type_name, json_value, FALSE, result);
 	RETURN result;
 END $$
