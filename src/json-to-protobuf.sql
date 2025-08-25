@@ -25,14 +25,14 @@ END $$
 
 -- Helper function to check if a value is a proto3 default value
 DROP FUNCTION IF EXISTS _pb_is_proto3_default_value $$
-CREATE FUNCTION _pb_is_proto3_default_value(field_type INT, json_value JSON) RETURNS BOOLEAN DETERMINISTIC
+CREATE FUNCTION _pb_is_proto3_default_value(field_type INT, json_value JSON, is_number_json BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
 	DECLARE message_text TEXT;
 	CASE field_type
 	WHEN 1 THEN -- TYPE_DOUBLE
-		RETURN CAST(json_value AS DOUBLE) = 0.0;
+		RETURN _pb_json_parse_double_as_uint64(json_value, is_number_json) = 0;
 	WHEN 2 THEN -- TYPE_FLOAT
-		RETURN CAST(json_value AS FLOAT) = 0.0;
+		RETURN _pb_json_parse_float_as_uint32(json_value, is_number_json) = 0;
 	WHEN 3 THEN -- TYPE_INT64
 		RETURN _pb_json_to_signed_int(json_value) = 0;
 	WHEN 4 THEN -- TYPE_UINT64
@@ -154,7 +154,7 @@ proc: BEGIN
 	SET result = wire_json;
 
 	-- Skip encoding proto3 default values for fields without explicit presence
-	IF NOT is_repeated AND syntax = 'proto3' AND NOT has_field_presence AND _pb_is_proto3_default_value(field_type, json_value) THEN
+	IF NOT is_repeated AND syntax = 'proto3' AND NOT has_field_presence AND _pb_is_proto3_default_value(field_type, json_value, from_number_json) THEN
 		-- Do not encode default values in proto3 for fields without explicit presence
 		LEAVE proc;
 	END IF;
@@ -314,8 +314,8 @@ proc: BEGIN
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
 	-- Handle well-known types first
-	IF full_type_name LIKE '.google.protobuf.%' THEN
-		SET result = _pb_json_encode_wkt_as_wire_json(json_value, full_type_name, from_number_json);
+	IF NOT from_number_json THEN
+		SET result = _pb_json_encode_wkt_as_wire_json(json_value, full_type_name);
 		IF result IS NOT NULL THEN
 			LEAVE proc;
 		END IF;

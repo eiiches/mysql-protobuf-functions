@@ -135,7 +135,7 @@ END $$
 
 -- Helper procedure to convert JSON object to Struct wire_json (allows recursion)
 DROP PROCEDURE IF EXISTS _pb_json_encode_wkt_struct_as_wire_json $$
-CREATE PROCEDURE _pb_json_encode_wkt_struct_as_wire_json(IN json_value JSON, IN from_number_json BOOLEAN, OUT result JSON)
+CREATE PROCEDURE _pb_json_encode_wkt_struct_as_wire_json(IN json_value JSON, OUT result JSON)
 BEGIN
 	DECLARE struct_keys JSON;
 	DECLARE struct_key_count INT;
@@ -162,7 +162,7 @@ BEGIN
 			SET struct_entry_wire_json = pb_wire_json_set_string_field(struct_entry_wire_json, 1, struct_key_name);
 
 			-- Convert value to Value type (recursive call)
-			CALL _pb_json_encode_wkt_value_as_wire_json(struct_value_json, from_number_json, struct_value_wire_json);
+			CALL _pb_json_encode_wkt_value_as_wire_json(struct_value_json, struct_value_wire_json);
 			IF struct_value_wire_json IS NOT NULL THEN
 				SET struct_entry_wire_json = pb_wire_json_set_message_field(struct_entry_wire_json, 2, pb_wire_json_to_message(struct_value_wire_json));
 				SET result = pb_wire_json_add_repeated_message_field_element(result, 1, pb_wire_json_to_message(struct_entry_wire_json));
@@ -175,7 +175,7 @@ END $$
 
 -- Helper procedure to convert JSON array to ListValue wire_json (allows recursion)
 DROP PROCEDURE IF EXISTS _pb_json_encode_wkt_list_value_as_wire_json $$
-CREATE PROCEDURE _pb_json_encode_wkt_list_value_as_wire_json(IN json_value JSON, IN from_number_json BOOLEAN, OUT result JSON)
+CREATE PROCEDURE _pb_json_encode_wkt_list_value_as_wire_json(IN json_value JSON, OUT result JSON)
 BEGIN
 	DECLARE list_element_count INT;
 	DECLARE list_element_index INT;
@@ -193,7 +193,7 @@ BEGIN
 			SET list_element = JSON_EXTRACT(json_value, CONCAT('$[', list_element_index, ']'));
 
 			-- Convert element to Value type (recursive call)
-			CALL _pb_json_encode_wkt_value_as_wire_json(list_element, from_number_json, list_value_wire_json);
+			CALL _pb_json_encode_wkt_value_as_wire_json(list_element, list_value_wire_json);
 			IF list_value_wire_json IS NOT NULL THEN
 				SET result = pb_wire_json_add_repeated_message_field_element(result, 1, pb_wire_json_to_message(list_value_wire_json));
 			END IF;
@@ -205,7 +205,7 @@ END $$
 
 -- Helper procedure to convert JSON to google.protobuf.Value wire_json (allows recursion)
 DROP PROCEDURE IF EXISTS _pb_json_encode_wkt_value_as_wire_json $$
-CREATE PROCEDURE _pb_json_encode_wkt_value_as_wire_json(IN json_value JSON, IN from_number_json BOOLEAN, OUT result JSON)
+CREATE PROCEDURE _pb_json_encode_wkt_value_as_wire_json(IN json_value JSON, OUT result JSON)
 BEGIN
 	DECLARE struct_wire_json JSON;
 	DECLARE list_wire_json JSON;
@@ -223,31 +223,13 @@ BEGIN
 		SET result = pb_wire_json_set_bool_field(result, 4, IF(json_value, TRUE, FALSE));
 	WHEN 'INTEGER' THEN
 		-- number_value (field 2)
-		IF from_number_json THEN
-			SET uint64_bits = _pb_json_parse_double_as_uint64(json_value, TRUE);
-			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
-			SET result = pb_wire_json_set_fixed64_field(result, 2, uint64_bits);
-		ELSE
-			SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
-		END IF;
+		SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
 	WHEN 'DECIMAL' THEN
 		-- number_value (field 2)
-		IF from_number_json THEN
-			SET uint64_bits = _pb_json_parse_double_as_uint64(json_value, TRUE);
-			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
-			SET result = pb_wire_json_set_fixed64_field(result, 2, uint64_bits);
-		ELSE
-			SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
-		END IF;
+		SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
 	WHEN 'DOUBLE' THEN
 		-- number_value (field 2)
-		IF from_number_json THEN
-			SET uint64_bits = _pb_json_parse_double_as_uint64(json_value, TRUE);
-			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
-			SET result = pb_wire_json_set_fixed64_field(result, 2, uint64_bits);
-		ELSE
-			SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
-		END IF;
+		SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
 	WHEN 'STRING' THEN
 		-- string_value (field 3)
 		SET result = pb_wire_json_set_string_field(result, 3, JSON_UNQUOTE(json_value));
@@ -262,13 +244,13 @@ BEGIN
 		SET result = pb_wire_json_set_string_field(result, 3, JSON_UNQUOTE(json_value));
 	WHEN 'OBJECT' THEN
 		-- struct_value (field 5) - convert to Struct
-		CALL _pb_json_encode_wkt_struct_as_wire_json(json_value, from_number_json, struct_wire_json);
+		CALL _pb_json_encode_wkt_struct_as_wire_json(json_value, struct_wire_json);
 		IF struct_wire_json IS NOT NULL THEN
 			SET result = pb_wire_json_set_message_field(result, 5, pb_wire_json_to_message(struct_wire_json));
 		END IF;
 	WHEN 'ARRAY' THEN
 		-- list_value (field 6) - convert to ListValue
-		CALL _pb_json_encode_wkt_list_value_as_wire_json(json_value, from_number_json, list_wire_json);
+		CALL _pb_json_encode_wkt_list_value_as_wire_json(json_value, list_wire_json);
 		IF list_wire_json IS NOT NULL THEN
 			SET result = pb_wire_json_set_message_field(result, 6, pb_wire_json_to_message(list_wire_json));
 		END IF;

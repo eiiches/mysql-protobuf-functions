@@ -175,9 +175,9 @@ BEGIN
 	END CASE;
 END $$
 
--- Helper function to encode well-known types from JSON to wire_json
+-- Helper function to encode well-known types from ProtoJSON to wire_json
 DROP FUNCTION IF EXISTS _pb_json_encode_wkt_as_wire_json $$
-CREATE FUNCTION _pb_json_encode_wkt_as_wire_json(json_value JSON, full_type_name TEXT, from_number_json BOOLEAN) RETURNS JSON DETERMINISTIC
+CREATE FUNCTION _pb_json_encode_wkt_as_wire_json(json_value JSON, full_type_name TEXT) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE result JSON;
 	DECLARE float_value FLOAT;
@@ -215,34 +215,22 @@ BEGIN
 		RETURN JSON_OBJECT();
 
 	WHEN '.google.protobuf.Struct' THEN
-		-- For number JSON format, use regular descriptor-based processing
-		IF from_number_json THEN
-			RETURN NULL;
-		END IF;
 		-- Convert JSON object to Struct with repeated fields map
-		CALL _pb_json_encode_wkt_struct_as_wire_json(json_value, from_number_json, result);
+		CALL _pb_json_encode_wkt_struct_as_wire_json(json_value, result);
 		IF result IS NOT NULL THEN
 			RETURN result;
 		END IF;
 
 	WHEN '.google.protobuf.Value' THEN
-		-- For number JSON format, use regular descriptor-based processing
-		IF from_number_json THEN
-			RETURN NULL;
-		END IF;
 		-- Handle different JSON value types
-		CALL _pb_json_encode_wkt_value_as_wire_json(json_value, from_number_json, result);
+		CALL _pb_json_encode_wkt_value_as_wire_json(json_value, result);
 		IF result IS NOT NULL THEN
 			RETURN result;
 		END IF;
 
 	WHEN '.google.protobuf.ListValue' THEN
-		-- For number JSON format, use regular descriptor-based processing
-		IF from_number_json THEN
-			RETURN NULL;
-		END IF;
 		-- Convert JSON array to ListValue with repeated Value fields
-		CALL _pb_json_encode_wkt_list_value_as_wire_json(json_value, from_number_json, result);
+		CALL _pb_json_encode_wkt_list_value_as_wire_json(json_value, result);
 		IF result IS NOT NULL THEN
 			RETURN result;
 		END IF;
@@ -292,7 +280,7 @@ BEGIN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'DOUBLE', 'STRING') THEN
 			SET result = JSON_OBJECT();
 			-- Use parsing function with appropriate hex string support
-			SET uint32_value = _pb_json_parse_float_as_uint32(json_value, from_number_json);
+			SET uint32_value = _pb_json_parse_float_as_uint32(json_value, FALSE);
 			-- Only encode non-default values (proto3 behavior)
 			IF uint32_value <> 0 THEN
 				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
@@ -305,7 +293,7 @@ BEGIN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'DOUBLE', 'STRING') THEN
 			SET result = JSON_OBJECT();
 			-- Use parsing function with appropriate hex string support
-			SET uint64_value = _pb_json_parse_double_as_uint64(json_value, from_number_json);
+			SET uint64_value = _pb_json_parse_double_as_uint64(json_value, FALSE);
 			-- Only encode non-default values (proto3 behavior)
 			IF uint64_value <> 0 THEN
 				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
@@ -343,8 +331,8 @@ BEGIN
 			END IF;
 			RETURN result;
 		END IF;
+	ELSE
+		-- Return NULL to fall back to normal message handling
+		RETURN NULL;
 	END CASE;
-
-	-- Return NULL to fall back to normal message handling
-	RETURN NULL;
 END $$

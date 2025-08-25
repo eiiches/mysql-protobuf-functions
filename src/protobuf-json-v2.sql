@@ -258,7 +258,7 @@ proc: BEGIN
 					END IF;
 				ELSE
 					IF NOT has_field_presence THEN
-						IF syntax = 'proto3' AND _pb_is_proto3_default_value(field_type, field_json_value) THEN
+						IF syntax = 'proto3' AND _pb_is_proto3_default_value(field_type, field_json_value, as_number_json) THEN
 							SET field_json_value = NULL;
 						END IF;
 						IF emit_default_values AND field_json_value IS NULL THEN
