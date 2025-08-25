@@ -11,11 +11,23 @@ BEGIN
 	DECLARE boolean_value BOOLEAN;
 	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE int_value BIGINT;
+	DECLARE element_count INT;
+	DECLARE element_index INT;
 
 	CASE field_type
 	WHEN 1 THEN -- double
 		IF is_repeated THEN
-			SET field_json_value = pb_wire_json_get_repeated_double_field_as_json_array(wire_json, field_number);
+			-- Handle repeated double fields with binary64 format (emit_floats_as_hex_strings is always TRUE)
+			-- TODO: This should be replaced with generated code by @cmd/protobuf-accessors/ that directly returns binary64 format
+			SET field_json_value = pb_wire_json_get_repeated_fixed64_field_as_json_array(wire_json, field_number);
+			SET element_count = JSON_LENGTH(field_json_value);
+			SET element_index = 0;
+
+			WHILE element_index < element_count DO
+				SET uint_value = CAST(JSON_EXTRACT(field_json_value, CONCAT('$[', element_index, ']')) AS UNSIGNED);
+				SET field_json_value = JSON_SET(field_json_value, CONCAT('$[', element_index, ']'), _pb_convert_double_uint64_to_number_json(uint_value));
+				SET element_index = element_index + 1;
+			END WHILE;
 		ELSE
 			-- IEEE 754 binary format (emit_floats_as_hex_strings is always TRUE)
 			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
@@ -28,7 +40,17 @@ BEGIN
 		END IF;
 	WHEN 2 THEN -- float
 		IF is_repeated THEN
-			SET field_json_value = pb_wire_json_get_repeated_float_field_as_json_array(wire_json, field_number);
+			-- Handle repeated float fields with binary32 format (emit_floats_as_hex_strings is always TRUE)
+			-- TODO: This should be replaced with generated code by @cmd/protobuf-accessors/ that directly returns binary32 format
+			SET field_json_value = pb_wire_json_get_repeated_fixed32_field_as_json_array(wire_json, field_number);
+			SET element_count = JSON_LENGTH(field_json_value);
+			SET element_index = 0;
+
+			WHILE element_index < element_count DO
+				SET uint_value = CAST(JSON_EXTRACT(field_json_value, CONCAT('$[', element_index, ']')) AS UNSIGNED);
+				SET field_json_value = JSON_SET(field_json_value, CONCAT('$[', element_index, ']'), _pb_convert_float_uint32_to_number_json(uint_value));
+				SET element_index = element_index + 1;
+			END WHILE;
 		ELSE
 			-- IEEE 754 binary format (emit_floats_as_hex_strings is always TRUE)
 			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
