@@ -1727,44 +1727,6 @@ END $$
 
 DELIMITER $$
 
--- Helper function to convert IEEE 754 binary64 format to ProtoJSON
-DROP FUNCTION IF EXISTS _pb_convert_binary64_to_json $$
-CREATE FUNCTION _pb_convert_binary64_to_json(binary_string TEXT) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE hex_value TEXT;
-	DECLARE uint64_bits BIGINT UNSIGNED;
-
-	-- Extract hex value from "binary64:0x..." format
-	IF binary_string REGEXP '^binary64:0x[0-9a-fA-F]{16}$' THEN
-		SET hex_value = SUBSTRING(binary_string, 12); -- Skip "binary64:0x"
-		SET uint64_bits = CONV(hex_value, 16, 10);
-		-- Use the consolidated conversion function
-		RETURN _pb_convert_double_uint64_to_json(uint64_bits);
-	ELSE
-		-- Invalid format, return as-is (shouldn't happen)
-		RETURN JSON_QUOTE(binary_string);
-	END IF;
-END $$
-
--- Helper function to convert IEEE 754 binary32 format to ProtoJSON
-DROP FUNCTION IF EXISTS _pb_convert_binary32_to_json $$
-CREATE FUNCTION _pb_convert_binary32_to_json(binary_string TEXT) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE hex_value TEXT;
-	DECLARE uint32_bits INT UNSIGNED;
-
-	-- Extract hex value from "binary32:0x..." format
-	IF binary_string REGEXP '^binary32:0x[0-9a-fA-F]{8}$' THEN
-		SET hex_value = SUBSTRING(binary_string, 12); -- Skip "binary32:0x"
-		SET uint32_bits = CONV(hex_value, 16, 10);
-		-- Use the consolidated conversion function
-		RETURN _pb_convert_float_uint32_to_json(uint32_bits);
-	ELSE
-		-- Invalid format, return as-is (shouldn't happen)
-		RETURN JSON_QUOTE(binary_string);
-	END IF;
-END $$
-
 -- Helper function to convert enum numeric value to JSON (string name for known values, number for unknown values)
 DROP FUNCTION IF EXISTS _pb_convert_number_enum_to_json $$
 CREATE FUNCTION _pb_convert_number_enum_to_json(
@@ -1863,31 +1825,9 @@ BEGIN
 	WHEN 18 THEN -- sint64 (convert number to string)
 		SET converted_value = JSON_QUOTE(CAST(field_number_json_value AS CHAR));
 	WHEN 1 THEN -- double (check for IEEE 754 binary format)
-		IF JSON_TYPE(field_number_json_value) = 'STRING' THEN
-			SET str_value = JSON_UNQUOTE(field_number_json_value);
-			IF str_value REGEXP '^binary64:0x[0-9a-fA-F]{16}$' THEN
-				SET converted_value = _pb_convert_binary64_to_json(str_value);
-			ELSE
-				-- Fallback to original value
-				SET converted_value = field_number_json_value;
-			END IF;
-		ELSE
-			-- Not a string, use original value
-			SET converted_value = field_number_json_value;
-		END IF;
+		SET converted_value = _pb_convert_double_uint64_to_json(_pb_json_parse_double_as_uint64(field_number_json_value, TRUE));
 	WHEN 2 THEN -- float (check for IEEE 754 binary format)
-		IF JSON_TYPE(field_number_json_value) = 'STRING' THEN
-			SET str_value = JSON_UNQUOTE(field_number_json_value);
-			IF str_value REGEXP '^binary32:0x[0-9a-fA-F]{8}$' THEN
-				SET converted_value = _pb_convert_binary32_to_json(str_value);
-			ELSE
-				-- Fallback to original value
-				SET converted_value = field_number_json_value;
-			END IF;
-		ELSE
-			-- Not a string, use original value
-			SET converted_value = field_number_json_value;
-		END IF;
+		SET converted_value = _pb_convert_float_uint32_to_json(_pb_json_parse_float_as_uint32(field_number_json_value, TRUE));
 	ELSE
 		-- Other primitive types stay the same
 		SET converted_value = field_number_json_value;
