@@ -2495,6 +2495,13 @@ BEGIN
 	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."2"') THEN
 		-- number_value
 		SET uint64_value = _pb_json_parse_double_as_uint64(JSON_EXTRACT(number_json_value, '$."2"'), TRUE);
+
+		-- Check for special values and reject them as per google.protobuf.Value specification
+		IF (uint64_value & 0x7FF0000000000000) = 0x7FF0000000000000 THEN
+			-- Exponent is all 1s - this is NaN or Infinity, which google.protobuf.Value cannot represent
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'google.protobuf.Value cannot represent NaN or Infinity values';
+		END IF;
+
 		SET result = _pb_convert_double_uint64_to_json(uint64_value);
 	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."3"') THEN
 		-- string_value
