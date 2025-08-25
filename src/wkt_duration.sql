@@ -72,48 +72,6 @@ BEGIN
 	END IF;
 END $$
 
-DROP FUNCTION IF EXISTS _pb_wire_json_decode_wkt_duration_as_json $$
-CREATE FUNCTION _pb_wire_json_decode_wkt_duration_as_json(wire_json JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE seconds BIGINT;
-	DECLARE nanos INT;
-
-	DECLARE elements JSON;
-	DECLARE element JSON;
-	DECLARE element_count INT;
-	DECLARE element_index INT;
-	DECLARE wire_type INT;
-	DECLARE field_number INT;
-	DECLARE uint_value BIGINT UNSIGNED;
-
-	SET seconds = 0;
-	SET nanos = 0;
-
-	SET elements = JSON_EXTRACT(wire_json, '$.*[*]');
-	SET element_index = 0;
-	SET element_count = JSON_LENGTH(elements);
-	WHILE element_index < element_count DO
-		SET element = JSON_EXTRACT(elements, CONCAT('$[', element_index, ']'));
-		SET wire_type = JSON_EXTRACT(element, '$.t');
-		SET field_number = JSON_EXTRACT(element, '$.n');
-
-		CASE wire_type
-		WHEN 0 THEN
-			SET uint_value = CAST(JSON_EXTRACT(element, '$.v') AS UNSIGNED);
-			CASE field_number
-			WHEN 1 THEN
-				SET seconds = _pb_util_reinterpret_uint64_as_int64(uint_value);
-			WHEN 2 THEN
-				SET nanos = _pb_util_reinterpret_uint64_as_int64(uint_value);
-			END CASE;
-		END CASE;
-
-		SET element_index = element_index + 1;
-	END WHILE;
-
-	RETURN JSON_QUOTE(_pb_wkt_duration_format_string(seconds, nanos));
-END $$
-
 -- Helper procedure to parse duration string into seconds and nanos
 DROP PROCEDURE IF EXISTS _pb_wkt_duration_parse_string $$
 CREATE PROCEDURE _pb_wkt_duration_parse_string(
@@ -170,36 +128,6 @@ BEGIN
 	IF seconds < -315576000000 OR seconds > 315576000000 THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Duration out of range';
 	END IF;
-END $$
-
--- Helper function to convert Duration string to wire_json
-DROP FUNCTION IF EXISTS _pb_json_encode_wkt_duration_as_wire_json $$
-CREATE FUNCTION _pb_json_encode_wkt_duration_as_wire_json(duration_str TEXT) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE result JSON;
-	DECLARE seconds BIGINT;
-	DECLARE nanos INT;
-
-	SET result = JSON_OBJECT();
-
-	-- Parse duration string using helper procedure
-	CALL _pb_wkt_duration_parse_string(duration_str, seconds, nanos);
-
-	-- For proto3 semantics, omit default values (seconds=0 and nanos=0)
-	IF seconds = 0 AND nanos = 0 THEN
-		RETURN result; -- Return empty wire_json
-	END IF;
-
-	-- Add non-default values
-	IF seconds <> 0 THEN
-		SET result = pb_wire_json_set_int64_field(result, 1, seconds);
-	END IF;
-
-	IF nanos <> 0 THEN
-		SET result = pb_wire_json_set_int32_field(result, 2, nanos);
-	END IF;
-
-	RETURN result;
 END $$
 
 -- Helper function to convert Duration from ProtoJSON to ProtoNumberJSON

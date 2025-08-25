@@ -61,16 +61,9 @@ proc: BEGIN
 
 	-- Handle well-known types first (only for regular JSON, not number JSON)
 	IF full_type_name LIKE '.google.protobuf.%' THEN
-		IF as_number_json THEN -- For ProtoNumberJSON, no special WKT handling is performed.
-			SET wkt_descriptor_set = _pb_wkt_get_descriptor_set(full_type_name);
-			IF wkt_descriptor_set IS NOT NULL THEN
-				SET descriptor_set_json = wkt_descriptor_set;
-			END IF;
-		ELSE -- For ProtoJSON, we use special WKT decoders.
-			SET result = _pb_wire_json_decode_wkt_as_json(wire_json, full_type_name);
-			IF result IS NOT NULL THEN
-				LEAVE proc;
-			END IF;
+		SET wkt_descriptor_set = _pb_wkt_get_descriptor_set(full_type_name);
+		IF wkt_descriptor_set IS NOT NULL THEN
+			SET descriptor_set_json = wkt_descriptor_set;
 		END IF;
 	END IF;
 
@@ -161,13 +154,9 @@ proc: BEGIN
 						CALL _pb_wire_json_get_primitive_field_as_json(element, 1, map_key_type, FALSE, FALSE, as_number_json, as_number_json, map_key);
 
 						IF map_value_type = 11 THEN -- message
-							CALL _pb_message_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_message_field(element, 2, NULL), as_number_json, emit_default_values, map_value);
+							CALL _pb_message_to_number_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_message_field(element, 2, NULL), as_number_json, emit_default_values, map_value);
 						ELSEIF map_value_type = 14 THEN -- enum
-							IF as_number_json THEN
-								SET map_value = CAST(pb_wire_json_get_enum_field(element, 2, 0) AS JSON);
-							ELSE
-								SET map_value = _pb_convert_number_enum_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_enum_field(element, 2, 0));
-							END IF;
+							SET map_value = CAST(pb_wire_json_get_enum_field(element, 2, 0) AS JSON);
 						ELSE
 							CALL _pb_wire_json_get_primitive_field_as_json(element, 2, map_value_type, FALSE, FALSE, as_number_json, as_number_json, map_value);
 						END IF;
@@ -193,7 +182,7 @@ proc: BEGIN
 
 					WHILE element_index < element_count DO
 						SET bytes_value = pb_wire_json_get_repeated_message_field_element(wire_json, field_number, element_index);
-						CALL _pb_message_to_json(descriptor_set_json, field_type_name, bytes_value, as_number_json, emit_default_values, nested_json_value);
+						CALL _pb_message_to_number_json(descriptor_set_json, field_type_name, bytes_value, as_number_json, emit_default_values, nested_json_value);
 						SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', nested_json_value);
 						SET element_index = element_index + 1;
 					END WHILE;
@@ -204,7 +193,7 @@ proc: BEGIN
 				ELSE
 					-- Handle singular message fields
 					SET bytes_value = pb_wire_json_get_message_field(wire_json, field_number, NULL);
-					CALL _pb_message_to_json(descriptor_set_json, field_type_name, bytes_value, as_number_json, emit_default_values, field_json_value);
+					CALL _pb_message_to_number_json(descriptor_set_json, field_type_name, bytes_value, as_number_json, emit_default_values, field_json_value);
 				END IF;
 
 			WHEN 14 THEN -- TYPE_ENUM
@@ -216,12 +205,7 @@ proc: BEGIN
 
 					WHILE element_index < element_count DO
 						SET element = JSON_EXTRACT(elements, CONCAT('$[', element_index, ']'));
-						IF as_number_json THEN
-							SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', CAST(element AS JSON));
-						ELSE
-							SET nested_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, element);
-							SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', nested_json_value);
-						END IF;
+						SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', CAST(element AS JSON));
 						SET element_index = element_index + 1;
 					END WHILE;
 
@@ -236,17 +220,8 @@ proc: BEGIN
 					END IF;
 
 					SET field_json_value = NULL;
-					IF as_number_json THEN -- ProtoNumberJSON: always omit default values
-						IF field_enum_value IS NOT NULL THEN
-							SET field_json_value = CAST(field_enum_value AS JSON);
-						END IF;
-					ELSE -- ProtoJSON:
-						IF field_enum_value IS NOT NULL OR (emit_default_values AND NOT has_field_presence) THEN
-							IF field_enum_value IS NULL THEN
-								SET field_enum_value = 0;
-							END IF;
-							SET field_json_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, field_enum_value);
-						END IF;
+					IF field_enum_value IS NOT NULL THEN
+						SET field_json_value = CAST(field_enum_value AS JSON);
 					END IF;
 				END IF;
 			ELSE
@@ -270,11 +245,7 @@ proc: BEGIN
 
 			-- Add field to result if it has a value
 			IF field_json_value IS NOT NULL THEN
-				IF as_number_json THEN
-					SET json_field_name = CAST(field_number AS CHAR);
-				ELSE
-					SET json_field_name = IF(json_name IS NOT NULL, json_name, _pb_util_snake_to_camel(field_name));
-				END IF;
+				SET json_field_name = CAST(field_number AS CHAR);
 
 				IF oneof_index IS NOT NULL AND NOT proto3_optional THEN
 					-- Handle oneof fields
@@ -286,13 +257,8 @@ proc: BEGIN
 						SET oneofs = JSON_SET(oneofs, CONCAT('$."', oneof_index, '"'), JSON_OBJECT('i', oneof_priority, 'v', JSON_OBJECT(json_field_name, field_json_value)));
 					END IF;
 				ELSE
-					-- Regular field
-					IF as_number_json THEN
-						-- For number JSON format, field names are numeric and need to be quoted in JSON paths
-						SET result = JSON_SET(result, CONCAT('$."', json_field_name, '"'), field_json_value);
-					ELSE
-						SET result = JSON_SET(result, CONCAT('$.', json_field_name), field_json_value);
-					END IF;
+					-- For number JSON format, field names are numeric and need to be quoted in JSON paths
+					SET result = JSON_SET(result, CONCAT('$."', json_field_name, '"'), field_json_value);
 				END IF;
 			END IF;
 
@@ -313,14 +279,14 @@ proc: BEGIN
 END $$
 
 -- Wrapper procedure that converts LONGBLOB to wire_json and delegates
-DROP PROCEDURE IF EXISTS _pb_message_to_json $$
-CREATE PROCEDURE _pb_message_to_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN message LONGBLOB, IN as_number_json BOOLEAN, IN emit_default_values BOOLEAN, OUT result JSON)
+DROP PROCEDURE IF EXISTS _pb_message_to_number_json $$
+CREATE PROCEDURE _pb_message_to_number_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN message LONGBLOB, IN as_number_json BOOLEAN, IN emit_default_values BOOLEAN, OUT result JSON)
 BEGIN
 	DECLARE message_text TEXT;
 
 	-- Validate type name starts with dot
 	IF full_type_name NOT LIKE '.%' THEN
-		SET message_text = CONCAT('_pb_message_to_json: type name `', full_type_name, '` must start with a dot');
+		SET message_text = CONCAT('_pb_message_to_number_json: type name `', full_type_name, '` must start with a dot');
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
 
@@ -353,10 +319,7 @@ END $$
 DROP FUNCTION IF EXISTS pb_message_to_json $$
 CREATE FUNCTION pb_message_to_json(descriptor_set_json JSON, type_name TEXT, message LONGBLOB, unmarshal_options JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE result JSON;
-	-- For now, options are accepted but not yet used - keeping current behavior
-	CALL _pb_message_to_json(descriptor_set_json, type_name, message, FALSE, TRUE, result);
-	RETURN result;
+	RETURN _pb_number_json_to_json(descriptor_set_json, type_name, _pb_message_to_number_json(descriptor_set_json, type_name, message, unmarshal_options), json_marshal_options);
 END $$
 
 -- Private function interface for protonumberjson format
@@ -365,7 +328,7 @@ CREATE FUNCTION _pb_message_to_number_json(descriptor_set_json JSON, type_name T
 BEGIN
 	DECLARE result JSON;
 	-- For now, unmarshal_options is accepted but not yet used - keeping current behavior
-	CALL _pb_message_to_json(descriptor_set_json, type_name, message, TRUE, FALSE, result);
+	CALL _pb_message_to_number_json(descriptor_set_json, type_name, message, TRUE, FALSE, result);
 	RETURN result;
 END $$
 
@@ -373,10 +336,7 @@ END $$
 DROP FUNCTION IF EXISTS pb_wire_json_to_json $$
 CREATE FUNCTION pb_wire_json_to_json(descriptor_set_json JSON, type_name TEXT, wire_json JSON, unmarshal_options JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE result JSON;
-	-- For now, options are accepted but not yet used - keeping current behavior
-	CALL _pb_wire_json_to_json(descriptor_set_json, type_name, wire_json, FALSE, TRUE, result);
-	RETURN result;
+	RETURN _pb_number_json_to_json(descriptor_set_json, type_name, _pb_wire_json_to_number_json(descriptor_set_json, type_name, message, unmarshal_options), json_marshal_options);
 END $$
 
 -- Private function interface for wire_json input with number JSON format
