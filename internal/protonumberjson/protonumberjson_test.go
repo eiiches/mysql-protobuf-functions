@@ -154,7 +154,7 @@ func TestMarshalValue(t *testing.T) {
 			name:          "number value",
 			value:         structpb.NewNumberValue(3.14),
 			expectedField: "2", // number_value is field 2
-			expectedValue: 3.14,
+			expectedValue: "binary64:0x40091eb851eb851f",
 		},
 		{
 			name:          "string value",

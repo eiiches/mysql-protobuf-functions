@@ -56,41 +56,6 @@ func testJsonToMessage(t *testing.T, fieldDefinition string, input string) {
 	RunTestThatExpression(t, "LENGTH(pb_json_to_message(?, ?, ?, NULL, NULL))", descriptorSetJson, typeName, input).IsEqualTo(len(expectedMessageBytes))
 }
 
-func testJsonToWireJson(t *testing.T, fieldDefinition string, input string) {
-	g := NewWithT(t)
-
-	p := testutils.NewProtoTestSupport(t, map[string]string{
-		"main.proto": fmt.Sprintf(dedent.Pipe(`
-			|syntax = "proto3";
-			|import "google/protobuf/timestamp.proto";
-			|import "google/protobuf/duration.proto";
-			|import "google/protobuf/struct.proto";
-			|import "google/protobuf/empty.proto";
-			|import "google/protobuf/wrappers.proto";
-			|import "google/protobuf/field_mask.proto";
-			|message Test {
-			|    %s
-			|}
-			|message MessageType {
-			|    int32 value = 1;
-			|}
-			|enum EnumType {
-			|    ENUM_TYPE_UNSPECIFIED = 0;
-			|    ENUM_TYPE_ONE = 1;
-			|}
-		`), fieldDefinition),
-	})
-
-	typeName := protoreflect.FullName(".Test")
-
-	// Generate descriptor set JSON using descriptorsetjson package
-	descriptorSetJson, err := descriptorsetjson.ToJson(p.GetFileDescriptorSet())
-	g.Expect(err).NotTo(HaveOccurred())
-
-	// Test wire_json conversion round-trip: JSON → wire_json → JSON should preserve content
-	RunTestThatExpression(t, "pb_wire_json_to_json(?, ?, pb_json_to_wire_json(?, ?, ?, NULL, NULL), NULL, NULL)", descriptorSetJson, typeName, descriptorSetJson, typeName, input).IsEqualToJsonString(input)
-}
-
 // Test function specifically for enum conversions that handles the fact that
 // numeric enum inputs are canonically converted to string outputs
 func testEnumConversion(t *testing.T, fieldDefinition string, input string, expectedOutput string) {

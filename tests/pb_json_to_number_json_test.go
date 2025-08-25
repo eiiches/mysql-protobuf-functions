@@ -127,12 +127,12 @@ func TestJsonToNumberJsonSingularFields(t *testing.T) {
 
 	t.Run("float", func(t *testing.T) {
 		testJsonToNumberJson(t, "float float_field = 1;", `{"floatField": 0}`, `{}`)
-		testJsonToNumberJson(t, "float float_field = 1;", `{"floatField": 3.5}`, `{"1": 3.5}`)
+		testJsonToNumberJson(t, "float float_field = 1;", `{"floatField": 3.5}`, `{"1": "binary32:0x40600000"}`)
 	})
 
 	t.Run("double", func(t *testing.T) {
 		testJsonToNumberJson(t, "double double_field = 1;", `{"doubleField": 0}`, `{}`)
-		testJsonToNumberJson(t, "double double_field = 1;", `{"doubleField": 3.141592653589793}`, `{"1": 3.141592653589793}`)
+		testJsonToNumberJson(t, "double double_field = 1;", `{"doubleField": 3.141592653589793}`, `{"1": "binary64:0x400921fb54442d18"}`)
 	})
 
 	t.Run("sint32", func(t *testing.T) {
@@ -228,14 +228,14 @@ func TestJsonToNumberJsonRepeatedFields(t *testing.T) {
 
 	t.Run("repeated float", func(t *testing.T) {
 		testJsonToNumberJson(t, "repeated float repeated_float_field = 1;", `{"repeatedFloatField": []}`, `{}`)
-		testJsonToNumberJson(t, "repeated float repeated_float_field = 1;", `{"repeatedFloatField": [0]}`, `{"1": [0]}`)
-		testJsonToNumberJson(t, "repeated float repeated_float_field = 1;", `{"repeatedFloatField": [3.5, 0]}`, `{"1": [3.5, 0]}`)
+		testJsonToNumberJson(t, "repeated float repeated_float_field = 1;", `{"repeatedFloatField": [0]}`, `{"1": ["binary32:0x00000000"]}`)
+		testJsonToNumberJson(t, "repeated float repeated_float_field = 1;", `{"repeatedFloatField": [3.5, 0]}`, `{"1": ["binary32:0x40600000", "binary32:0x00000000"]}`)
 	})
 
 	t.Run("repeated double", func(t *testing.T) {
 		testJsonToNumberJson(t, "repeated double repeated_double_field = 1;", `{"repeatedDoubleField": []}`, `{}`)
-		testJsonToNumberJson(t, "repeated double repeated_double_field = 1;", `{"repeatedDoubleField": [0]}`, `{"1": [0]}`)
-		testJsonToNumberJson(t, "repeated double repeated_double_field = 1;", `{"repeatedDoubleField": [-1.7976931348623157e+308, 0, 1.7976931348623157e+308]}`, `{"1": [-1.7976931348623157e+308, 0, 1.7976931348623157e+308]}`)
+		testJsonToNumberJson(t, "repeated double repeated_double_field = 1;", `{"repeatedDoubleField": [0]}`, `{"1": ["binary64:0x0000000000000000"]}`)
+		testJsonToNumberJson(t, "repeated double repeated_double_field = 1;", `{"repeatedDoubleField": [-1.7976931348623157e+308, 0, 1.7976931348623157e+308]}`, `{"1": ["binary64:0xffefffffffffffff", "binary64:0x0000000000000000", "binary64:0x7fefffffffffffff"]}`)
 	})
 
 	t.Run("repeated sint32", func(t *testing.T) {
@@ -336,14 +336,14 @@ func TestJsonToNumberJsonOptionalFields(t *testing.T) {
 
 	t.Run("optional float", func(t *testing.T) {
 		testJsonToNumberJson(t, "optional float optional_float_field = 1;", `{}`, `{}`)
-		testJsonToNumberJson(t, "optional float optional_float_field = 1;", `{"optionalFloatField": 0}`, `{"1": 0}`)
-		testJsonToNumberJson(t, "optional float optional_float_field = 1;", `{"optionalFloatField": 3.5}`, `{"1": 3.5}`)
+		testJsonToNumberJson(t, "optional float optional_float_field = 1;", `{"optionalFloatField": 0}`, `{"1": "binary32:0x00000000"}`)
+		testJsonToNumberJson(t, "optional float optional_float_field = 1;", `{"optionalFloatField": 3.5}`, `{"1": "binary32:0x40600000"}`)
 	})
 
 	t.Run("optional double", func(t *testing.T) {
 		testJsonToNumberJson(t, "optional double optional_double_field = 1;", `{}`, `{}`)
-		testJsonToNumberJson(t, "optional double optional_double_field = 1;", `{"optionalDoubleField": 0}`, `{"1": 0}`)
-		testJsonToNumberJson(t, "optional double optional_double_field = 1;", `{"optionalDoubleField": 3.141592653589793}`, `{"1": 3.141592653589793}`)
+		testJsonToNumberJson(t, "optional double optional_double_field = 1;", `{"optionalDoubleField": 0}`, `{"1": "binary64:0x0000000000000000"}`)
+		testJsonToNumberJson(t, "optional double optional_double_field = 1;", `{"optionalDoubleField": 3.141592653589793}`, `{"1": "binary64:0x400921fb54442d18"}`)
 	})
 
 	t.Run("optional sint32", func(t *testing.T) {
@@ -495,12 +495,12 @@ func TestJsonToNumberJsonMapValue(t *testing.T) {
 
 	t.Run("map<*, float>", func(t *testing.T) {
 		testJsonToNumberJson(t, "map<string, float> float_value_map_field = 1;", `{"floatValueMapField": {}}`, `{}`)
-		testJsonToNumberJson(t, "map<string, float> float_value_map_field = 1;", `{"floatValueMapField": {"a": 0, "b": 3.5}}`, `{"1": {"a": 0, "b": 3.5}}`)
+		testJsonToNumberJson(t, "map<string, float> float_value_map_field = 1;", `{"floatValueMapField": {"a": 0, "b": 3.5}}`, `{"1": {"a": "binary32:0x00000000", "b": "binary32:0x40600000"}}`)
 	})
 
 	t.Run("map<*, double>", func(t *testing.T) {
 		testJsonToNumberJson(t, "map<string, double> double_value_map_field = 1;", `{"doubleValueMapField": {}}`, `{}`)
-		testJsonToNumberJson(t, "map<string, double> double_value_map_field = 1;", `{"doubleValueMapField": {"a": 0, "b": 3.141592653589793}}`, `{"1": {"a": 0, "b": 3.141592653589793}}`)
+		testJsonToNumberJson(t, "map<string, double> double_value_map_field = 1;", `{"doubleValueMapField": {"a": 0, "b": 3.141592653589793}}`, `{"1": {"a": "binary64:0x0000000000000000", "b": "binary64:0x400921fb54442d18"}}`)
 	})
 
 	t.Run("map<*, sint32>", func(t *testing.T) {
@@ -559,18 +559,18 @@ func TestJsonToNumberJsonWellKnownTypes(t *testing.T) {
 	t.Run("Struct", func(t *testing.T) {
 		testJsonToNumberJson(t, "google.protobuf.Struct struct_field = 1;", `{"structField": {}}`, `{"1": {}}`)
 		testJsonToNumberJson(t, "google.protobuf.Struct struct_field = 1;", `{"structField": {"key": "value"}}`, `{"1": {"1": {"key": {"3": "value"}}}}`)
-		testJsonToNumberJson(t, "google.protobuf.Struct struct_field = 1;", `{"structField": {"number": 123, "boolean": true}}`, `{"1": {"1": {"number": {"2": 123}, "boolean": {"4": true}}}}`)
+		testJsonToNumberJson(t, "google.protobuf.Struct struct_field = 1;", `{"structField": {"number": 123, "boolean": true}}`, `{"1": {"1": {"number": {"2": "binary64:0x405ec00000000000"}, "boolean": {"4": true}}}}`)
 	})
 
 	t.Run("ListValue", func(t *testing.T) {
 		testJsonToNumberJson(t, "google.protobuf.ListValue list_value_field = 1;", `{"listValueField": []}`, `{"1": {}}`)
-		testJsonToNumberJson(t, "google.protobuf.ListValue list_value_field = 1;", `{"listValueField": ["string", 123, true]}`, `{"1": {"1": [{"3": "string"}, {"2": 123}, {"4": true}]}}`)
+		testJsonToNumberJson(t, "google.protobuf.ListValue list_value_field = 1;", `{"listValueField": ["string", 123, true]}`, `{"1": {"1": [{"3": "string"}, {"2": "binary64:0x405ec00000000000"}, {"4": true}]}}`)
 	})
 
 	t.Run("Value", func(t *testing.T) {
 		testJsonToNumberJson(t, "google.protobuf.Value value_field = 1;", `{"valueField": {}}`, `{"1": {"5": {}}}`)
 		testJsonToNumberJson(t, "google.protobuf.Value value_field = 1;", `{"valueField": "string"}`, `{"1": {"3": "string"}}`)
-		testJsonToNumberJson(t, "google.protobuf.Value value_field = 1;", `{"valueField": 123}`, `{"1": {"2": 123}}`)
+		testJsonToNumberJson(t, "google.protobuf.Value value_field = 1;", `{"valueField": 123}`, `{"1": {"2": "binary64:0x405ec00000000000"}}`)
 		testJsonToNumberJson(t, "google.protobuf.Value value_field = 1;", `{"valueField": true}`, `{"1": {"4": true}}`)
 	})
 
@@ -582,13 +582,13 @@ func TestJsonToNumberJsonWellKnownTypes(t *testing.T) {
 	t.Run("DoubleValue", func(t *testing.T) {
 		testJsonToNumberJson(t, "google.protobuf.DoubleValue double_value_field = 1;", `{}`, `{}`)
 		testJsonToNumberJson(t, "google.protobuf.DoubleValue double_value_field = 1;", `{"doubleValueField": 0}`, `{"1": {}}`)
-		testJsonToNumberJson(t, "google.protobuf.DoubleValue double_value_field = 1;", `{"doubleValueField": 1.7976931348623157e+308}`, `{"1": {"1": 1.7976931348623157e+308}}`)
+		testJsonToNumberJson(t, "google.protobuf.DoubleValue double_value_field = 1;", `{"doubleValueField": 1.7976931348623157e+308}`, `{"1": {"1": "binary64:0x7fefffffffffffff"}}`)
 	})
 
 	t.Run("FloatValue", func(t *testing.T) {
 		testJsonToNumberJson(t, "google.protobuf.FloatValue float_value_field = 1;", `{}`, `{}`)
 		testJsonToNumberJson(t, "google.protobuf.FloatValue float_value_field = 1;", `{"floatValueField": 0}`, `{"1": {}}`)
-		testJsonToNumberJson(t, "google.protobuf.FloatValue float_value_field = 1;", `{"floatValueField": 3.5}`, `{"1": {"1": 3.5}}`)
+		testJsonToNumberJson(t, "google.protobuf.FloatValue float_value_field = 1;", `{"floatValueField": 3.5}`, `{"1": {"1": "binary32:0x40600000"}}`)
 	})
 
 	t.Run("Int64Value", func(t *testing.T) {
