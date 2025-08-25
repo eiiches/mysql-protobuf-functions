@@ -572,29 +572,6 @@ END $$
 
 DELIMITER $$
 
--- Helper function to convert JSON value to BIGINT SIGNED, handling both numbers and strings
-DROP FUNCTION IF EXISTS _pb_json_to_signed_int $$
-CREATE FUNCTION _pb_json_to_signed_int(json_value JSON) RETURNS BIGINT DETERMINISTIC
-BEGIN
-	IF JSON_TYPE(json_value) = 'STRING' THEN
-		RETURN CAST(JSON_UNQUOTE(json_value) AS SIGNED);
-	ELSE
-		RETURN CAST(json_value AS SIGNED);
-	END IF;
-END $$
-
--- Helper function to convert JSON value to BIGINT UNSIGNED, handling both numbers and strings
-DROP FUNCTION IF EXISTS _pb_json_to_unsigned_int $$
-CREATE FUNCTION _pb_json_to_unsigned_int(json_value JSON) RETURNS BIGINT UNSIGNED DETERMINISTIC
-BEGIN
-	IF JSON_TYPE(json_value) = 'STRING' THEN
-		RETURN CAST(JSON_UNQUOTE(json_value) AS UNSIGNED);
-	ELSE
-		RETURN CAST(json_value AS UNSIGNED);
-	END IF;
-END $$
-
-
 -- Helper function to check if a value is a proto3 default value
 DROP FUNCTION IF EXISTS _pb_is_proto3_default_value $$
 CREATE FUNCTION _pb_is_proto3_default_value(field_type INT, json_value JSON, is_number_json BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
@@ -606,15 +583,15 @@ BEGIN
 	WHEN 2 THEN -- TYPE_FLOAT
 		RETURN _pb_json_parse_float_as_uint32(json_value, is_number_json) = 0;
 	WHEN 3 THEN -- TYPE_INT64
-		RETURN _pb_json_to_signed_int(json_value) = 0;
+		RETURN _pb_json_parse_signed_int(json_value) = 0;
 	WHEN 4 THEN -- TYPE_UINT64
-		RETURN _pb_json_to_unsigned_int(json_value) = 0;
+		RETURN _pb_json_parse_unsigned_int(json_value) = 0;
 	WHEN 5 THEN -- TYPE_INT32
-		RETURN _pb_json_to_signed_int(json_value) = 0;
+		RETURN _pb_json_parse_signed_int(json_value) = 0;
 	WHEN 6 THEN -- TYPE_FIXED64
-		RETURN _pb_json_to_unsigned_int(json_value) = 0;
+		RETURN _pb_json_parse_unsigned_int(json_value) = 0;
 	WHEN 7 THEN -- TYPE_FIXED32
-		RETURN _pb_json_to_unsigned_int(json_value) = 0;
+		RETURN _pb_json_parse_unsigned_int(json_value) = 0;
 	WHEN 8 THEN -- TYPE_BOOL
 		RETURN json_value = CAST(false AS JSON);
 	WHEN 9 THEN -- TYPE_STRING
@@ -624,15 +601,15 @@ BEGIN
 	WHEN 12 THEN -- TYPE_BYTES
 		RETURN JSON_UNQUOTE(json_value) = '';
 	WHEN 13 THEN -- TYPE_UINT32
-		RETURN _pb_json_to_unsigned_int(json_value) = 0;
+		RETURN _pb_json_parse_unsigned_int(json_value) = 0;
 	WHEN 15 THEN -- TYPE_SFIXED32
-		RETURN _pb_json_to_signed_int(json_value) = 0;
+		RETURN _pb_json_parse_signed_int(json_value) = 0;
 	WHEN 16 THEN -- TYPE_SFIXED64
-		RETURN _pb_json_to_signed_int(json_value) = 0;
+		RETURN _pb_json_parse_signed_int(json_value) = 0;
 	WHEN 17 THEN -- TYPE_SINT32
-		RETURN _pb_json_to_signed_int(json_value) = 0;
+		RETURN _pb_json_parse_signed_int(json_value) = 0;
 	WHEN 18 THEN -- TYPE_SINT64
-		RETURN _pb_json_to_signed_int(json_value) = 0;
+		RETURN _pb_json_parse_signed_int(json_value) = 0;
 	WHEN 14 THEN -- TYPE_ENUM
 		-- Expects numeric enum value (conversion should be done elsewhere)
 		RETURN CAST(json_value AS SIGNED) = 0;
@@ -749,35 +726,35 @@ proc: BEGIN
 				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
 				SET result = pb_wire_json_add_repeated_fixed32_field_element(result, field_number, uint32_bits, use_packed);
 			WHEN 3 THEN -- TYPE_INT64
-				SET result = pb_wire_json_add_repeated_int64_field_element(result, field_number, _pb_json_to_signed_int(element), use_packed);
+				SET result = pb_wire_json_add_repeated_int64_field_element(result, field_number, _pb_json_parse_signed_int(element), use_packed);
 			WHEN 4 THEN -- TYPE_UINT64
-				SET result = pb_wire_json_add_repeated_uint64_field_element(result, field_number, _pb_json_to_unsigned_int(element), use_packed);
+				SET result = pb_wire_json_add_repeated_uint64_field_element(result, field_number, _pb_json_parse_unsigned_int(element), use_packed);
 			WHEN 5 THEN -- TYPE_INT32
-				SET result = pb_wire_json_add_repeated_int32_field_element(result, field_number, _pb_json_to_signed_int(element), use_packed);
+				SET result = pb_wire_json_add_repeated_int32_field_element(result, field_number, _pb_json_parse_signed_int(element), use_packed);
 			WHEN 6 THEN -- TYPE_FIXED64
-				SET result = pb_wire_json_add_repeated_fixed64_field_element(result, field_number, _pb_json_to_unsigned_int(element), use_packed);
+				SET result = pb_wire_json_add_repeated_fixed64_field_element(result, field_number, _pb_json_parse_unsigned_int(element), use_packed);
 			WHEN 7 THEN -- TYPE_FIXED32
-				SET result = pb_wire_json_add_repeated_fixed32_field_element(result, field_number, _pb_json_to_unsigned_int(element), use_packed);
+				SET result = pb_wire_json_add_repeated_fixed32_field_element(result, field_number, _pb_json_parse_unsigned_int(element), use_packed);
 			WHEN 8 THEN -- TYPE_BOOL
 				SET result = pb_wire_json_add_repeated_bool_field_element(result, field_number, IF(element, TRUE, FALSE), use_packed);
 			WHEN 9 THEN -- TYPE_STRING
 				SET result = pb_wire_json_add_repeated_string_field_element(result, field_number, JSON_UNQUOTE(element));
 			WHEN 10 THEN -- TYPE_SFIXED64
-				SET result = pb_wire_json_add_repeated_sfixed64_field_element(result, field_number, _pb_json_to_signed_int(element), use_packed);
+				SET result = pb_wire_json_add_repeated_sfixed64_field_element(result, field_number, _pb_json_parse_signed_int(element), use_packed);
 			WHEN 11 THEN -- TYPE_SFIXED32
-				SET result = pb_wire_json_add_repeated_sfixed32_field_element(result, field_number, _pb_json_to_signed_int(element), use_packed);
+				SET result = pb_wire_json_add_repeated_sfixed32_field_element(result, field_number, _pb_json_parse_signed_int(element), use_packed);
 			WHEN 12 THEN -- TYPE_BYTES
 				SET result = pb_wire_json_add_repeated_bytes_field_element(result, field_number, _pb_util_from_base64_url(JSON_UNQUOTE(element)));
 			WHEN 13 THEN -- TYPE_UINT32
-				SET result = pb_wire_json_add_repeated_uint32_field_element(result, field_number, _pb_json_to_unsigned_int(element), use_packed);
+				SET result = pb_wire_json_add_repeated_uint32_field_element(result, field_number, _pb_json_parse_unsigned_int(element), use_packed);
 			WHEN 15 THEN -- TYPE_SFIXED32 (duplicate, but keeping for completeness)
-				SET result = pb_wire_json_add_repeated_sfixed32_field_element(result, field_number, _pb_json_to_signed_int(element), use_packed);
+				SET result = pb_wire_json_add_repeated_sfixed32_field_element(result, field_number, _pb_json_parse_signed_int(element), use_packed);
 			WHEN 16 THEN -- TYPE_SFIXED64 (duplicate, but keeping for completeness)
-				SET result = pb_wire_json_add_repeated_sfixed64_field_element(result, field_number, _pb_json_to_signed_int(element), use_packed);
+				SET result = pb_wire_json_add_repeated_sfixed64_field_element(result, field_number, _pb_json_parse_signed_int(element), use_packed);
 			WHEN 17 THEN -- TYPE_SINT32
-				SET result = pb_wire_json_add_repeated_sint32_field_element(result, field_number, _pb_json_to_signed_int(element), use_packed);
+				SET result = pb_wire_json_add_repeated_sint32_field_element(result, field_number, _pb_json_parse_signed_int(element), use_packed);
 			WHEN 18 THEN -- TYPE_SINT64
-				SET result = pb_wire_json_add_repeated_sint64_field_element(result, field_number, _pb_json_to_signed_int(element), use_packed);
+				SET result = pb_wire_json_add_repeated_sint64_field_element(result, field_number, _pb_json_parse_signed_int(element), use_packed);
 			END CASE;
 
 			SET element_index = element_index + 1;
@@ -794,35 +771,35 @@ proc: BEGIN
 			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
 			SET result = pb_wire_json_set_fixed32_field(result, field_number, uint32_bits);
 		WHEN 3 THEN -- TYPE_INT64
-			SET result = pb_wire_json_set_int64_field(result, field_number, _pb_json_to_signed_int(json_value));
+			SET result = pb_wire_json_set_int64_field(result, field_number, _pb_json_parse_signed_int(json_value));
 		WHEN 4 THEN -- TYPE_UINT64
-			SET result = pb_wire_json_set_uint64_field(result, field_number, _pb_json_to_unsigned_int(json_value));
+			SET result = pb_wire_json_set_uint64_field(result, field_number, _pb_json_parse_unsigned_int(json_value));
 		WHEN 5 THEN -- TYPE_INT32
-			SET result = pb_wire_json_set_int32_field(result, field_number, _pb_json_to_signed_int(json_value));
+			SET result = pb_wire_json_set_int32_field(result, field_number, _pb_json_parse_signed_int(json_value));
 		WHEN 6 THEN -- TYPE_FIXED64
-			SET result = pb_wire_json_set_fixed64_field(result, field_number, _pb_json_to_unsigned_int(json_value));
+			SET result = pb_wire_json_set_fixed64_field(result, field_number, _pb_json_parse_unsigned_int(json_value));
 		WHEN 7 THEN -- TYPE_FIXED32
-			SET result = pb_wire_json_set_fixed32_field(result, field_number, _pb_json_to_unsigned_int(json_value));
+			SET result = pb_wire_json_set_fixed32_field(result, field_number, _pb_json_parse_unsigned_int(json_value));
 		WHEN 8 THEN -- TYPE_BOOL
 			SET result = pb_wire_json_set_bool_field(result, field_number, IF(json_value, TRUE, FALSE));
 		WHEN 9 THEN -- TYPE_STRING
 			SET result = pb_wire_json_set_string_field(result, field_number, JSON_UNQUOTE(json_value));
 		WHEN 10 THEN -- TYPE_SFIXED64
-			SET result = pb_wire_json_set_sfixed64_field(result, field_number, _pb_json_to_signed_int(json_value));
+			SET result = pb_wire_json_set_sfixed64_field(result, field_number, _pb_json_parse_signed_int(json_value));
 		WHEN 11 THEN -- TYPE_SFIXED32
-			SET result = pb_wire_json_set_sfixed32_field(result, field_number, _pb_json_to_signed_int(json_value));
+			SET result = pb_wire_json_set_sfixed32_field(result, field_number, _pb_json_parse_signed_int(json_value));
 		WHEN 12 THEN -- TYPE_BYTES
 			SET result = pb_wire_json_set_bytes_field(result, field_number, _pb_util_from_base64_url(JSON_UNQUOTE(json_value)));
 		WHEN 13 THEN -- TYPE_UINT32
-			SET result = pb_wire_json_set_uint32_field(result, field_number, _pb_json_to_unsigned_int(json_value));
+			SET result = pb_wire_json_set_uint32_field(result, field_number, _pb_json_parse_unsigned_int(json_value));
 		WHEN 15 THEN -- TYPE_SFIXED32 (duplicate, but keeping for completeness)
-			SET result = pb_wire_json_set_sfixed32_field(result, field_number, _pb_json_to_signed_int(json_value));
+			SET result = pb_wire_json_set_sfixed32_field(result, field_number, _pb_json_parse_signed_int(json_value));
 		WHEN 16 THEN -- TYPE_SFIXED64 (duplicate, but keeping for completeness)
-			SET result = pb_wire_json_set_sfixed64_field(result, field_number, _pb_json_to_signed_int(json_value));
+			SET result = pb_wire_json_set_sfixed64_field(result, field_number, _pb_json_parse_signed_int(json_value));
 		WHEN 17 THEN -- TYPE_SINT32
-			SET result = pb_wire_json_set_sint32_field(result, field_number, _pb_json_to_signed_int(json_value));
+			SET result = pb_wire_json_set_sint32_field(result, field_number, _pb_json_parse_signed_int(json_value));
 		WHEN 18 THEN -- TYPE_SINT64
-			SET result = pb_wire_json_set_sint64_field(result, field_number, _pb_json_to_signed_int(json_value));
+			SET result = pb_wire_json_set_sint64_field(result, field_number, _pb_json_parse_signed_int(json_value));
 		END CASE;
 	END IF;
 END $$
@@ -4041,8 +4018,8 @@ BEGIN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'STRING') THEN
 			SET result = JSON_OBJECT();
 			-- Only encode non-default values (proto3 behavior)
-			IF _pb_json_to_signed_int(json_value) <> 0 THEN
-				SET result = pb_wire_json_set_int32_field(result, 1, _pb_json_to_signed_int(json_value));
+			IF _pb_json_parse_signed_int(json_value) <> 0 THEN
+				SET result = pb_wire_json_set_int32_field(result, 1, _pb_json_parse_signed_int(json_value));
 			END IF;
 			RETURN result;
 		END IF;
@@ -4051,8 +4028,8 @@ BEGIN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'STRING') THEN
 			SET result = JSON_OBJECT();
 			-- Only encode non-default values (proto3 behavior)
-			IF _pb_json_to_unsigned_int(json_value) <> 0 THEN
-				SET result = pb_wire_json_set_uint32_field(result, 1, _pb_json_to_unsigned_int(json_value));
+			IF _pb_json_parse_unsigned_int(json_value) <> 0 THEN
+				SET result = pb_wire_json_set_uint32_field(result, 1, _pb_json_parse_unsigned_int(json_value));
 			END IF;
 			RETURN result;
 		END IF;
@@ -4061,8 +4038,8 @@ BEGIN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'STRING') THEN
 			SET result = JSON_OBJECT();
 			-- Only encode non-default values (proto3 behavior)
-			IF _pb_json_to_signed_int(json_value) <> 0 THEN
-				SET result = pb_wire_json_set_int64_field(result, 1, _pb_json_to_signed_int(json_value));
+			IF _pb_json_parse_signed_int(json_value) <> 0 THEN
+				SET result = pb_wire_json_set_int64_field(result, 1, _pb_json_parse_signed_int(json_value));
 			END IF;
 			RETURN result;
 		END IF;
@@ -4071,8 +4048,8 @@ BEGIN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'STRING') THEN
 			SET result = JSON_OBJECT();
 			-- Only encode non-default values (proto3 behavior)
-			IF _pb_json_to_unsigned_int(json_value) <> 0 THEN
-				SET result = pb_wire_json_set_uint64_field(result, 1, _pb_json_to_unsigned_int(json_value));
+			IF _pb_json_parse_unsigned_int(json_value) <> 0 THEN
+				SET result = pb_wire_json_set_uint64_field(result, 1, _pb_json_parse_unsigned_int(json_value));
 			END IF;
 			RETURN result;
 		END IF;

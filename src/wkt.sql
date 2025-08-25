@@ -240,8 +240,8 @@ BEGIN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'STRING') THEN
 			SET result = JSON_OBJECT();
 			-- Only encode non-default values (proto3 behavior)
-			IF _pb_json_to_signed_int(json_value) <> 0 THEN
-				SET result = pb_wire_json_set_int32_field(result, 1, _pb_json_to_signed_int(json_value));
+			IF _pb_json_parse_signed_int(json_value) <> 0 THEN
+				SET result = pb_wire_json_set_int32_field(result, 1, _pb_json_parse_signed_int(json_value));
 			END IF;
 			RETURN result;
 		END IF;
@@ -250,8 +250,8 @@ BEGIN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'STRING') THEN
 			SET result = JSON_OBJECT();
 			-- Only encode non-default values (proto3 behavior)
-			IF _pb_json_to_unsigned_int(json_value) <> 0 THEN
-				SET result = pb_wire_json_set_uint32_field(result, 1, _pb_json_to_unsigned_int(json_value));
+			IF _pb_json_parse_unsigned_int(json_value) <> 0 THEN
+				SET result = pb_wire_json_set_uint32_field(result, 1, _pb_json_parse_unsigned_int(json_value));
 			END IF;
 			RETURN result;
 		END IF;
@@ -260,8 +260,8 @@ BEGIN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'STRING') THEN
 			SET result = JSON_OBJECT();
 			-- Only encode non-default values (proto3 behavior)
-			IF _pb_json_to_signed_int(json_value) <> 0 THEN
-				SET result = pb_wire_json_set_int64_field(result, 1, _pb_json_to_signed_int(json_value));
+			IF _pb_json_parse_signed_int(json_value) <> 0 THEN
+				SET result = pb_wire_json_set_int64_field(result, 1, _pb_json_parse_signed_int(json_value));
 			END IF;
 			RETURN result;
 		END IF;
@@ -270,8 +270,8 @@ BEGIN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'STRING') THEN
 			SET result = JSON_OBJECT();
 			-- Only encode non-default values (proto3 behavior)
-			IF _pb_json_to_unsigned_int(json_value) <> 0 THEN
-				SET result = pb_wire_json_set_uint64_field(result, 1, _pb_json_to_unsigned_int(json_value));
+			IF _pb_json_parse_unsigned_int(json_value) <> 0 THEN
+				SET result = pb_wire_json_set_uint64_field(result, 1, _pb_json_parse_unsigned_int(json_value));
 			END IF;
 			RETURN result;
 		END IF;
