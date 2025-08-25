@@ -182,6 +182,8 @@ BEGIN
 	DECLARE result JSON;
 	DECLARE float_value FLOAT;
 	DECLARE double_value DOUBLE;
+	DECLARE uint32_value INT UNSIGNED;
+	DECLARE uint64_value BIGINT UNSIGNED;
 
 	CASE full_type_name
 	WHEN '.google.protobuf.Timestamp' THEN
@@ -289,14 +291,12 @@ BEGIN
 	WHEN '.google.protobuf.FloatValue' THEN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'DOUBLE', 'STRING') THEN
 			SET result = JSON_OBJECT();
-			IF JSON_TYPE(json_value) = 'STRING' THEN
-				SET float_value = CAST(JSON_UNQUOTE(json_value) AS FLOAT);
-			ELSE
-				SET float_value = CAST(json_value AS FLOAT);
-			END IF;
+			-- Use parsing function with appropriate hex string support
+			SET uint32_value = _pb_json_parse_float_as_uint32(json_value, from_number_json);
 			-- Only encode non-default values (proto3 behavior)
-			IF float_value <> 0.0 THEN
-				SET result = pb_wire_json_set_float_field(result, 1, float_value);
+			IF uint32_value <> 0 THEN
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET result = pb_wire_json_set_fixed32_field(result, 1, uint32_value);
 			END IF;
 			RETURN result;
 		END IF;
@@ -304,14 +304,12 @@ BEGIN
 	WHEN '.google.protobuf.DoubleValue' THEN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'DOUBLE', 'STRING') THEN
 			SET result = JSON_OBJECT();
-			IF JSON_TYPE(json_value) = 'STRING' THEN
-				SET double_value = CAST(JSON_UNQUOTE(json_value) AS DOUBLE);
-			ELSE
-				SET double_value = CAST(json_value AS DOUBLE);
-			END IF;
+			-- Use parsing function with appropriate hex string support
+			SET uint64_value = _pb_json_parse_double_as_uint64(json_value, from_number_json);
 			-- Only encode non-default values (proto3 behavior)
-			IF double_value <> 0.0 THEN
-				SET result = pb_wire_json_set_double_field(result, 1, double_value);
+			IF uint64_value <> 0 THEN
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET result = pb_wire_json_set_fixed64_field(result, 1, uint64_value);
 			END IF;
 			RETURN result;
 		END IF;

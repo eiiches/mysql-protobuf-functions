@@ -158,7 +158,7 @@ proc: BEGIN
 
 					WHILE element_index < element_count DO
 						SET element = pb_message_to_wire_json(FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(elements, CONCAT('$[', element_index, ']')))));
-						CALL _pb_wire_json_get_primitive_field_as_json(element, 1, map_key_type, FALSE, FALSE, as_number_json, map_key);
+						CALL _pb_wire_json_get_primitive_field_as_json(element, 1, map_key_type, FALSE, FALSE, as_number_json, as_number_json, map_key);
 
 						IF map_value_type = 11 THEN -- message
 							CALL _pb_message_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_message_field(element, 2, NULL), as_number_json, emit_default_values, map_value);
@@ -169,7 +169,7 @@ proc: BEGIN
 								SET map_value = _pb_convert_number_enum_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_enum_field(element, 2, 0));
 							END IF;
 						ELSE
-							CALL _pb_wire_json_get_primitive_field_as_json(element, 2, map_value_type, FALSE, FALSE, as_number_json, map_value);
+							CALL _pb_wire_json_get_primitive_field_as_json(element, 2, map_value_type, FALSE, FALSE, as_number_json, as_number_json, map_value);
 						END IF;
 
 						IF JSON_TYPE(map_key) = 'STRING' THEN
@@ -251,7 +251,7 @@ proc: BEGIN
 				END IF;
 			ELSE
 				-- Handle primitive types using existing function
-				CALL _pb_wire_json_get_primitive_field_as_json(wire_json, field_number, field_type, is_repeated, has_field_presence, as_number_json, field_json_value);
+				CALL _pb_wire_json_get_primitive_field_as_json(wire_json, field_number, field_type, is_repeated, has_field_presence, as_number_json, as_number_json, field_json_value);
 				IF is_repeated THEN
 					IF NOT emit_default_values AND JSON_LENGTH(field_json_value) = 0 THEN
 						SET field_json_value = NULL;

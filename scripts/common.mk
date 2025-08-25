@@ -73,7 +73,9 @@ PROTOBUF_JSON_SOURCES := \
 	src/util-case-conv.sql \
 	src/util-base64.sql \
 	src/descriptor_set.sql \
-	src/protobuf-descriptor.sql
+	src/protobuf-descriptor.sql \
+	src/json.sql \
+	src/number_json.sql
 
 .PHONY: build/protobuf-json.sql
 build/protobuf-json.sql: $(PROTOBUF_JSON_SOURCES) scripts/common.mk

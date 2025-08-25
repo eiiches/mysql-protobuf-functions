@@ -515,7 +515,7 @@ BEGIN
 		RETURN (sign_bit << 63) | 0x7FF0000000000000;
 	END IF;
 
-	IF value < 2.2250738585072014e-308 THEN -- subnormal threshold  
+	IF value < 2.2250738585072014e-308 THEN -- subnormal threshold
 		SET exponent = -1023;
 		SET biased_exponent = 0;
 		SET fraction = ROUND(value / 4.9406564584124654e-324); -- 2^-1074

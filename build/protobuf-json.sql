@@ -4,7 +4,7 @@ DELIMITER $$
 
 
 DROP PROCEDURE IF EXISTS _pb_wire_json_get_primitive_field_as_json $$
-CREATE PROCEDURE _pb_wire_json_get_primitive_field_as_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN has_field_presence BOOLEAN, IN emit_64bit_integers_as_numbers BOOLEAN, OUT field_json_value JSON)
+CREATE PROCEDURE _pb_wire_json_get_primitive_field_as_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN has_field_presence BOOLEAN, IN emit_64bit_integers_as_numbers BOOLEAN, IN emit_floats_as_hex_strings BOOLEAN, OUT field_json_value JSON)
 BEGIN
 	DECLARE message_text TEXT;
 	DECLARE boolean_value BOOLEAN;
@@ -16,13 +16,33 @@ BEGIN
 		IF is_repeated THEN
 			SET field_json_value = pb_wire_json_get_repeated_double_field_as_json_array(wire_json, field_number);
 		ELSE
-			SET field_json_value = CAST(pb_wire_json_get_double_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			IF emit_floats_as_hex_strings THEN -- IEEE 754 binary format
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET uint_value = pb_wire_json_get_fixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+				IF uint_value IS NULL THEN
+					SET field_json_value = NULL;
+				ELSE
+					SET field_json_value = _pb_convert_double_uint64_to_number_json(uint_value);
+				END IF;
+			ELSE -- Standard JSON format
+				SET field_json_value = CAST(pb_wire_json_get_double_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			END IF;
 		END IF;
 	WHEN 2 THEN -- float
 		IF is_repeated THEN
 			SET field_json_value = pb_wire_json_get_repeated_float_field_as_json_array(wire_json, field_number);
 		ELSE
-			SET field_json_value = CAST(pb_wire_json_get_float_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			IF emit_floats_as_hex_strings THEN -- IEEE 754 binary format
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET uint_value = pb_wire_json_get_fixed32_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+				IF uint_value IS NULL THEN
+					SET field_json_value = NULL;
+				ELSE
+					SET field_json_value = _pb_convert_float_uint32_to_number_json(uint_value);
+				END IF;
+			ELSE -- Standard JSON format
+				SET field_json_value = CAST(pb_wire_json_get_float_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			END IF;
 		END IF;
 	WHEN 3 THEN -- int64
 		IF is_repeated THEN
@@ -319,7 +339,7 @@ proc: BEGIN
 
 					WHILE element_index < element_count DO
 						SET element = pb_message_to_wire_json(FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(elements, CONCAT('$[', element_index, ']')))));
-						CALL _pb_wire_json_get_primitive_field_as_json(element, 1, map_key_type, FALSE, FALSE, as_number_json, map_key);
+						CALL _pb_wire_json_get_primitive_field_as_json(element, 1, map_key_type, FALSE, FALSE, as_number_json, as_number_json, map_key);
 
 						IF map_value_type = 11 THEN -- message
 							CALL _pb_message_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_message_field(element, 2, NULL), as_number_json, emit_default_values, map_value);
@@ -330,7 +350,7 @@ proc: BEGIN
 								SET map_value = _pb_convert_number_enum_to_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_enum_field(element, 2, 0));
 							END IF;
 						ELSE
-							CALL _pb_wire_json_get_primitive_field_as_json(element, 2, map_value_type, FALSE, FALSE, as_number_json, map_value);
+							CALL _pb_wire_json_get_primitive_field_as_json(element, 2, map_value_type, FALSE, FALSE, as_number_json, as_number_json, map_value);
 						END IF;
 
 						IF JSON_TYPE(map_key) = 'STRING' THEN
@@ -412,7 +432,7 @@ proc: BEGIN
 				END IF;
 			ELSE
 				-- Handle primitive types using existing function
-				CALL _pb_wire_json_get_primitive_field_as_json(wire_json, field_number, field_type, is_repeated, has_field_presence, as_number_json, field_json_value);
+				CALL _pb_wire_json_get_primitive_field_as_json(wire_json, field_number, field_type, is_repeated, has_field_presence, as_number_json, as_number_json, field_json_value);
 				IF is_repeated THEN
 					IF NOT emit_default_values AND JSON_LENGTH(field_json_value) = 0 THEN
 						SET field_json_value = NULL;
@@ -692,12 +712,16 @@ END $$
 
 -- Helper procedure to set primitive field values in wire_json format
 DROP PROCEDURE IF EXISTS _pb_json_set_primitive_field_as_wire_json $$
-CREATE PROCEDURE _pb_json_set_primitive_field_as_wire_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN json_value JSON, IN use_packed BOOLEAN, IN syntax TEXT, IN has_field_presence BOOLEAN, OUT result JSON)
+CREATE PROCEDURE _pb_json_set_primitive_field_as_wire_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN json_value JSON, IN use_packed BOOLEAN, IN syntax TEXT, IN has_field_presence BOOLEAN, IN from_number_json BOOLEAN, OUT result JSON)
 proc: BEGIN
 	DECLARE element_count INT;
 	DECLARE element_index INT;
 	DECLARE element JSON;
 	DECLARE temp_wire_json JSON;
+	DECLARE str_value TEXT;
+	DECLARE hex_value TEXT;
+	DECLARE uint32_bits INT UNSIGNED;
+	DECLARE uint64_bits BIGINT UNSIGNED;
 
 	SET result = wire_json;
 
@@ -717,9 +741,13 @@ proc: BEGIN
 
 			CASE field_type
 			WHEN 1 THEN -- TYPE_DOUBLE
-				SET result = pb_wire_json_add_repeated_double_field_element(result, field_number, CAST(element AS DOUBLE), use_packed);
+				SET uint64_bits = _pb_json_parse_double_as_uint64(element, from_number_json);
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET result = pb_wire_json_add_repeated_fixed64_field_element(result, field_number, uint64_bits, use_packed);
 			WHEN 2 THEN -- TYPE_FLOAT
-				SET result = pb_wire_json_add_repeated_float_field_element(result, field_number, CAST(element AS FLOAT), use_packed);
+				SET uint32_bits = _pb_json_parse_float_as_uint32(element, from_number_json);
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET result = pb_wire_json_add_repeated_fixed32_field_element(result, field_number, uint32_bits, use_packed);
 			WHEN 3 THEN -- TYPE_INT64
 				SET result = pb_wire_json_add_repeated_int64_field_element(result, field_number, _pb_json_to_signed_int(element), use_packed);
 			WHEN 4 THEN -- TYPE_UINT64
@@ -758,9 +786,13 @@ proc: BEGIN
 		-- Handle singular primitive fields
 		CASE field_type
 		WHEN 1 THEN -- TYPE_DOUBLE
-			SET result = pb_wire_json_set_double_field(result, field_number, CAST(json_value AS DOUBLE));
+			SET uint64_bits = _pb_json_parse_double_as_uint64(json_value, from_number_json);
+			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+			SET result = pb_wire_json_set_fixed64_field(result, field_number, uint64_bits);
 		WHEN 2 THEN -- TYPE_FLOAT
-			SET result = pb_wire_json_set_float_field(result, field_number, CAST(json_value AS FLOAT));
+			SET uint32_bits = _pb_json_parse_float_as_uint32(json_value, from_number_json);
+			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+			SET result = pb_wire_json_set_fixed32_field(result, field_number, uint32_bits);
 		WHEN 3 THEN -- TYPE_INT64
 			SET result = pb_wire_json_set_int64_field(result, field_number, _pb_json_to_signed_int(json_value));
 		WHEN 4 THEN -- TYPE_UINT64
@@ -1006,9 +1038,9 @@ proc: BEGIN
 							-- Map keys always have presence and should always be encoded
 							CASE map_key_type
 							WHEN 8 THEN -- bool
-								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 1, map_key_type, FALSE, CAST((map_key_name = 'true') AS JSON), FALSE, syntax, TRUE, map_entry_wire_json);
+								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 1, map_key_type, FALSE, CAST((map_key_name = 'true') AS JSON), FALSE, syntax, TRUE, from_number_json, map_entry_wire_json);
 							ELSE
-								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 1, map_key_type, FALSE, JSON_QUOTE(map_key_name), FALSE, syntax, TRUE, map_entry_wire_json);
+								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 1, map_key_type, FALSE, JSON_QUOTE(map_key_name), FALSE, syntax, TRUE, from_number_json, map_entry_wire_json);
 							END CASE;
 
 							-- Add value field (always field 2)
@@ -1020,7 +1052,7 @@ proc: BEGIN
 								SET map_entry_wire_json = pb_wire_json_set_enum_field(map_entry_wire_json, 2, enum_number);
 							ELSE
 								-- Map values also always have presence in map entries
-								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 2, map_value_type, FALSE, map_value_json, FALSE, syntax, TRUE, map_entry_wire_json);
+								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 2, map_value_type, FALSE, map_value_json, FALSE, syntax, TRUE, from_number_json, map_entry_wire_json);
 							END IF;
 
 							-- Add map entry to result
@@ -1068,7 +1100,7 @@ proc: BEGIN
 
 				ELSE
 					-- Handle primitive types
-					CALL _pb_json_set_primitive_field_as_wire_json(result, field_number, field_type, is_repeated, field_json_value, use_packed, syntax, has_field_presence, result);
+					CALL _pb_json_set_primitive_field_as_wire_json(result, field_number, field_type, is_repeated, field_json_value, use_packed, syntax, has_field_presence, from_number_json, result);
 				END CASE;
 			END IF;
 
@@ -1172,248 +1204,6 @@ BEGIN
 END $$
 
 DELIMITER $$
-
--- Helper function to parse JSON value as BIGINT with validation
-DROP FUNCTION IF EXISTS _pb_json_parse_signed_int $$
-CREATE FUNCTION _pb_json_parse_signed_int(json_value JSON) RETURNS BIGINT DETERMINISTIC
-BEGIN
-	DECLARE str_value TEXT;
-	DECLARE message_text TEXT;
-	DECLARE double_value DOUBLE;
-	DECLARE uint_value BIGINT UNSIGNED;
-
-	IF JSON_TYPE(json_value) = 'STRING' THEN
-		SET str_value = JSON_UNQUOTE(json_value);
-
-		-- Early return for invalid inputs
-		IF str_value = '' OR NOT (str_value REGEXP '^-?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$') THEN
-			SET message_text = CONCAT('Invalid number format for signed integer: ', str_value);
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-		END IF;
-
-		SET json_value = CAST(str_value AS JSON);
-	END IF;
-
-	CASE JSON_TYPE(json_value)
-	WHEN 'UNSIGNED INTEGER' THEN
-		-- Cast to unsigned first, then check range for signed integer
-		SET uint_value = CAST(json_value AS UNSIGNED);
-		IF uint_value > 9223372036854775807 THEN
-			SET message_text = CONCAT('Value too large for signed integer field: ', CAST(uint_value AS CHAR));
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-		END IF;
-		RETURN CAST(uint_value AS SIGNED);
-	WHEN 'INTEGER' THEN
-		-- JSON INTEGER type should be safe for signed integers
-		RETURN CAST(json_value AS SIGNED);
-	WHEN 'DOUBLE' THEN
-		-- Handle JSON numbers with exponential notation (e.g., 1e5)
-		-- But reject non-integer values (e.g., 0.5)
-		SET double_value = CAST(json_value AS DOUBLE);
-		IF double_value != FLOOR(double_value) THEN
-			SET message_text = CONCAT('Non-integer value for signed integer field: ', CAST(double_value AS CHAR));
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-		END IF;
-		RETURN CAST(double_value AS SIGNED);
-	ELSE
-		RETURN CAST(json_value AS SIGNED);
-	END CASE;
-END $$
-
--- Helper function to parse JSON value as BIGINT UNSIGNED with validation
-DROP FUNCTION IF EXISTS _pb_json_parse_unsigned_int $$
-CREATE FUNCTION _pb_json_parse_unsigned_int(json_value JSON) RETURNS BIGINT UNSIGNED DETERMINISTIC
-BEGIN
-	DECLARE str_value TEXT;
-	DECLARE message_text TEXT;
-	DECLARE double_value DOUBLE;
-
-	IF JSON_TYPE(json_value) = 'STRING' THEN
-		SET str_value = JSON_UNQUOTE(json_value);
-
-		-- Early return for invalid inputs
-		IF str_value = '' OR NOT (str_value REGEXP '^-?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$') THEN
-			SET message_text = CONCAT('Invalid number format for signed integer: ', str_value);
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-		END IF;
-
-		SET json_value = CAST(str_value AS JSON);
-	END IF;
-
-	CASE JSON_TYPE(json_value)
-	WHEN 'INTEGER' THEN
-		-- Check if the INTEGER value is negative (invalid for unsigned)
-		IF CAST(json_value AS SIGNED) < 0 THEN
-			SET message_text = CONCAT('Negative value for unsigned integer field: ', CAST(json_value AS CHAR));
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-		END IF;
-		RETURN CAST(json_value AS UNSIGNED);
-	WHEN 'UNSIGNED INTEGER' THEN
-		-- UNSIGNED INTEGER values are always valid for unsigned fields
-		RETURN CAST(json_value AS UNSIGNED);
-	WHEN 'DOUBLE' THEN
-		-- Handle JSON numbers with exponential notation (e.g., 1e5)
-		-- But reject non-integer values (e.g., 0.5)
-		SET double_value = CAST(json_value AS DOUBLE);
-		IF double_value != FLOOR(double_value) THEN
-			SET message_text = CONCAT('Non-integer value for unsigned integer field: ', CAST(double_value AS CHAR));
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-		END IF;
-		RETURN CAST(double_value AS UNSIGNED);
-	ELSE
-		RETURN CAST(json_value AS UNSIGNED);
-	END CASE;
-END $$
-
--- Helper function to parse JSON value as DOUBLE with validation
-DROP FUNCTION IF EXISTS _pb_json_parse_double $$
-CREATE FUNCTION _pb_json_parse_double(json_value JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE str_value TEXT;
-	DECLARE message_text TEXT;
-
-	IF JSON_TYPE(json_value) = 'STRING' THEN
-		SET str_value = JSON_UNQUOTE(json_value);
-
-		-- Reject empty strings
-		IF str_value = '' THEN
-			SET message_text = 'Empty string is not a valid number for double field';
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-		END IF;
-
-		-- Reject non-numeric strings
-		IF NOT (str_value REGEXP '^[+-]?([0-9]*\\.?[0-9]+([eE][+-]?[0-9]+)?|Infinity|-Infinity|NaN)$') THEN
-			SET message_text = CONCAT('Invalid number format for double field: ', str_value);
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-		END IF;
-
-		-- Handle special values that can't be cast to JSON
-		IF str_value IN ('Infinity', '-Infinity', 'NaN') THEN
-			-- Return the special value as JSON string
-			RETURN JSON_QUOTE(str_value);
-		END IF;
-
-		-- Convert string to JSON for further processing
-		SET json_value = CAST(str_value AS JSON);
-	END IF;
-
-	CASE JSON_TYPE(json_value)
-	WHEN 'INTEGER' THEN
-		RETURN CAST(CAST(json_value AS DOUBLE) AS JSON);
-	WHEN 'UNSIGNED INTEGER' THEN
-		RETURN CAST(CAST(json_value AS DOUBLE) AS JSON);
-	WHEN 'DECIMAL' THEN
-		RETURN CAST(CAST(json_value AS DOUBLE) AS JSON);
-	WHEN 'DOUBLE' THEN
-		RETURN CAST(CAST(json_value AS DOUBLE) AS JSON);
-	ELSE
-		SET message_text = CONCAT('Invalid JSON type for double field: ', JSON_TYPE(json_value));
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-	END CASE;
-END $$
-
--- Helper function to parse JSON value as FLOAT with validation
-DROP FUNCTION IF EXISTS _pb_json_parse_float $$
-CREATE FUNCTION _pb_json_parse_float(json_value JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE str_value TEXT;
-	DECLARE message_text TEXT;
-	DECLARE double_value DOUBLE;
-
-	IF JSON_TYPE(json_value) = 'STRING' THEN
-		SET str_value = JSON_UNQUOTE(json_value);
-
-		-- Reject empty strings
-		IF str_value = '' THEN
-			SET message_text = 'Empty string is not a valid number for float field';
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-		END IF;
-
-		-- Reject non-numeric strings
-		IF NOT (str_value REGEXP '^[+-]?([0-9]*\\.?[0-9]+([eE][+-]?[0-9]+)?|Infinity|-Infinity|NaN)$') THEN
-			SET message_text = CONCAT('Invalid number format for float field: ', str_value);
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-		END IF;
-
-		-- Handle special values that can't be cast to JSON
-		IF str_value IN ('Infinity', '-Infinity', 'NaN') THEN
-			-- Return the special value as JSON string
-			RETURN JSON_QUOTE(str_value);
-		END IF;
-
-		-- Convert string to JSON for further processing
-		SET json_value = CAST(str_value AS JSON);
-	END IF;
-
-	CASE JSON_TYPE(json_value)
-	WHEN 'INTEGER' THEN
-		SET double_value = CAST(json_value AS DOUBLE);
-	WHEN 'UNSIGNED INTEGER' THEN
-		SET double_value = CAST(json_value AS DOUBLE);
-	WHEN 'DECIMAL' THEN
-		SET double_value = CAST(json_value AS DOUBLE);
-	WHEN 'DOUBLE' THEN
-		SET double_value = CAST(json_value AS DOUBLE);
-	ELSE
-		SET message_text = CONCAT('Invalid JSON type for float field: ', JSON_TYPE(json_value));
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-	END CASE;
-
-	-- Convert through float to get proper precision, then back to JSON
-	RETURN CAST(CAST(double_value AS FLOAT) AS JSON);
-END $$
-
--- Helper function to parse JSON value as bytes with Base64 decoding
-DROP FUNCTION IF EXISTS _pb_json_parse_bytes $$
-CREATE FUNCTION _pb_json_parse_bytes(json_value JSON) RETURNS LONGBLOB DETERMINISTIC
-BEGIN
-	DECLARE str_value TEXT;
-	DECLARE message_text TEXT;
-
-	-- Bytes must be a JSON string
-	IF JSON_TYPE(json_value) != 'STRING' THEN
-		SET message_text = CONCAT('Invalid JSON type for bytes field: expected STRING, got ', JSON_TYPE(json_value));
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-	END IF;
-
-	-- Unquote the JSON string
-	SET str_value = JSON_UNQUOTE(json_value);
-
-	-- Decode from Base64/Base64URL and return as binary data
-	RETURN _pb_util_from_base64_url(str_value);
-END $$
-
--- Helper function to parse JSON value as Protobuf string type
-DROP FUNCTION IF EXISTS _pb_json_parse_string $$
-CREATE FUNCTION _pb_json_parse_string(json_value JSON) RETURNS LONGTEXT DETERMINISTIC
-BEGIN
-	DECLARE message_text TEXT;
-
-	-- String fields must receive JSON string values
-	IF JSON_TYPE(json_value) != 'STRING' THEN
-		SET message_text = CONCAT('Invalid JSON type for string field: expected STRING, got ', JSON_TYPE(json_value));
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-	END IF;
-
-	RETURN JSON_UNQUOTE(json_value);
-END $$
-
--- Helper function to parse JSON value as Protobuf bool type
-DROP FUNCTION IF EXISTS _pb_json_parse_bool $$
-CREATE FUNCTION _pb_json_parse_bool(json_value JSON) RETURNS BOOLEAN DETERMINISTIC
-BEGIN
-	DECLARE bool_value BOOLEAN;
-	DECLARE message_text TEXT;
-
-	IF JSON_TYPE(json_value) <> 'BOOLEAN' THEN
-		SET message_text = CONCAT('Invalid JSON type for bool field: expected BOOLEAN, got ', JSON_TYPE(json_value));
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-	END IF;
-
-	SET bool_value = json_value;
-
-	RETURN bool_value;
-END $$
 
 -- Helper procedure to check if a type is a well-known type
 -- TODO: Wrong and deprecated. Don't use this.
@@ -1621,14 +1411,14 @@ BEGIN
 		SET is_default = (int32_value = 0);
 
 	WHEN 1 THEN -- double (handle with validation)
-		SET double_json_value = _pb_json_parse_double(field_json_value);
-		SET converted_value = double_json_value;
-		SET is_default = (double_json_value = CAST(0.0 AS JSON));
+		SET uint64_value = _pb_json_parse_double_as_uint64(field_json_value, FALSE);
+		SET converted_value = _pb_convert_double_uint64_to_number_json(uint64_value);
+		SET is_default = (uint64_value = 0);
 
 	WHEN 2 THEN -- float (handle with validation)
-		SET float_json_value = _pb_json_parse_float(field_json_value);
-		SET converted_value = float_json_value;
-		SET is_default = (float_json_value = CAST(0.0 AS JSON));
+		SET uint32_value = _pb_json_parse_float_as_uint32(field_json_value, FALSE);
+		SET converted_value = _pb_convert_float_uint32_to_number_json(uint32_value);
+		SET is_default = (uint32_value = 0);
 
 	WHEN 12 THEN -- bytes
 		-- Decode from JSON Base64/Base64URL and re-encode as standard Base64
@@ -1937,6 +1727,44 @@ END $$
 
 DELIMITER $$
 
+-- Helper function to convert IEEE 754 binary64 format to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_convert_binary64_to_json $$
+CREATE FUNCTION _pb_convert_binary64_to_json(binary_string TEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE hex_value TEXT;
+	DECLARE uint64_bits BIGINT UNSIGNED;
+
+	-- Extract hex value from "binary64:0x..." format
+	IF binary_string REGEXP '^binary64:0x[0-9a-fA-F]{16}$' THEN
+		SET hex_value = SUBSTRING(binary_string, 12); -- Skip "binary64:0x"
+		SET uint64_bits = CONV(hex_value, 16, 10);
+		-- Use the consolidated conversion function
+		RETURN _pb_convert_double_uint64_to_json(uint64_bits);
+	ELSE
+		-- Invalid format, return as-is (shouldn't happen)
+		RETURN JSON_QUOTE(binary_string);
+	END IF;
+END $$
+
+-- Helper function to convert IEEE 754 binary32 format to ProtoJSON
+DROP FUNCTION IF EXISTS _pb_convert_binary32_to_json $$
+CREATE FUNCTION _pb_convert_binary32_to_json(binary_string TEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE hex_value TEXT;
+	DECLARE uint32_bits INT UNSIGNED;
+
+	-- Extract hex value from "binary32:0x..." format
+	IF binary_string REGEXP '^binary32:0x[0-9a-fA-F]{8}$' THEN
+		SET hex_value = SUBSTRING(binary_string, 12); -- Skip "binary32:0x"
+		SET uint32_bits = CONV(hex_value, 16, 10);
+		-- Use the consolidated conversion function
+		RETURN _pb_convert_float_uint32_to_json(uint32_bits);
+	ELSE
+		-- Invalid format, return as-is (shouldn't happen)
+		RETURN JSON_QUOTE(binary_string);
+	END IF;
+END $$
+
 -- Helper function to convert enum numeric value to JSON (string name for known values, number for unknown values)
 DROP FUNCTION IF EXISTS _pb_convert_number_enum_to_json $$
 CREATE FUNCTION _pb_convert_number_enum_to_json(
@@ -2002,6 +1830,7 @@ CREATE PROCEDURE _pb_convert_singular_field_from_number_json(
 BEGIN
 	DECLARE enum_numeric_value INT;
 	DECLARE nested_json JSON;
+	DECLARE str_value TEXT;
 
 	CASE field_type
 	WHEN 14 THEN -- enum
@@ -2033,6 +1862,32 @@ BEGIN
 		SET converted_value = JSON_QUOTE(CAST(field_number_json_value AS CHAR));
 	WHEN 18 THEN -- sint64 (convert number to string)
 		SET converted_value = JSON_QUOTE(CAST(field_number_json_value AS CHAR));
+	WHEN 1 THEN -- double (check for IEEE 754 binary format)
+		IF JSON_TYPE(field_number_json_value) = 'STRING' THEN
+			SET str_value = JSON_UNQUOTE(field_number_json_value);
+			IF str_value REGEXP '^binary64:0x[0-9a-fA-F]{16}$' THEN
+				SET converted_value = _pb_convert_binary64_to_json(str_value);
+			ELSE
+				-- Fallback to original value
+				SET converted_value = field_number_json_value;
+			END IF;
+		ELSE
+			-- Not a string, use original value
+			SET converted_value = field_number_json_value;
+		END IF;
+	WHEN 2 THEN -- float (check for IEEE 754 binary format)
+		IF JSON_TYPE(field_number_json_value) = 'STRING' THEN
+			SET str_value = JSON_UNQUOTE(field_number_json_value);
+			IF str_value REGEXP '^binary32:0x[0-9a-fA-F]{8}$' THEN
+				SET converted_value = _pb_convert_binary32_to_json(str_value);
+			ELSE
+				-- Fallback to original value
+				SET converted_value = field_number_json_value;
+			END IF;
+		ELSE
+			-- Not a string, use original value
+			SET converted_value = field_number_json_value;
+		END IF;
 	ELSE
 		-- Other primitive types stay the same
 		SET converted_value = field_number_json_value;
@@ -3085,6 +2940,7 @@ CREATE PROCEDURE _pb_json_encode_wkt_value_as_wire_json(IN json_value JSON, IN f
 BEGIN
 	DECLARE struct_wire_json JSON;
 	DECLARE list_wire_json JSON;
+	DECLARE uint64_bits BIGINT UNSIGNED;
 
 	SET @@SESSION.max_sp_recursion_depth = 255;
 	SET result = JSON_OBJECT();
@@ -3098,13 +2954,31 @@ BEGIN
 		SET result = pb_wire_json_set_bool_field(result, 4, IF(json_value, TRUE, FALSE));
 	WHEN 'INTEGER' THEN
 		-- number_value (field 2)
-		SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+		IF from_number_json THEN
+			SET uint64_bits = _pb_json_parse_double_as_uint64(json_value, TRUE);
+			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+			SET result = pb_wire_json_set_fixed64_field(result, 2, uint64_bits);
+		ELSE
+			SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+		END IF;
 	WHEN 'DECIMAL' THEN
 		-- number_value (field 2)
-		SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+		IF from_number_json THEN
+			SET uint64_bits = _pb_json_parse_double_as_uint64(json_value, TRUE);
+			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+			SET result = pb_wire_json_set_fixed64_field(result, 2, uint64_bits);
+		ELSE
+			SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+		END IF;
 	WHEN 'DOUBLE' THEN
 		-- number_value (field 2)
-		SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+		IF from_number_json THEN
+			SET uint64_bits = _pb_json_parse_double_as_uint64(json_value, TRUE);
+			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+			SET result = pb_wire_json_set_fixed64_field(result, 2, uint64_bits);
+		ELSE
+			SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+		END IF;
 	WHEN 'STRING' THEN
 		-- string_value (field 3)
 		SET result = pb_wire_json_set_string_field(result, 3, JSON_UNQUOTE(json_value));
@@ -3241,13 +3115,13 @@ BEGIN
 		SET result = JSON_OBJECT('1', 0);
 	WHEN 'INTEGER' THEN
 		-- number_value (field 2)
-		SET result = JSON_OBJECT('2', CAST(proto_json_value AS DOUBLE));
+		SET result = JSON_OBJECT('2', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(CAST(proto_json_value AS DOUBLE))));
 	WHEN 'UNSIGNED INTEGER' THEN
 		-- number_value (field 2)
-		SET result = JSON_OBJECT('2', CAST(proto_json_value AS DOUBLE));
+		SET result = JSON_OBJECT('2', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(CAST(proto_json_value AS DOUBLE))));
 	WHEN 'DOUBLE' THEN
 		-- number_value (field 2)
-		SET result = JSON_OBJECT('2', CAST(proto_json_value AS DOUBLE));
+		SET result = JSON_OBJECT('2', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(CAST(proto_json_value AS DOUBLE))));
 	WHEN 'STRING' THEN
 		-- string_value (field 3)
 		SET result = JSON_OBJECT('3', proto_json_value);
@@ -3345,6 +3219,7 @@ CREATE PROCEDURE _pb_wkt_value_number_json_to_json(IN number_json_value JSON, OU
 BEGIN
 	DECLARE struct_converted_value JSON;
 	DECLARE list_converted_value JSON;
+	DECLARE uint64_value BIGINT UNSIGNED;
 
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
@@ -3357,7 +3232,8 @@ BEGIN
 		SET result = CAST(NULL AS JSON);
 	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."2"') THEN
 		-- number_value
-		SET result = JSON_EXTRACT(number_json_value, '$."2"');
+		SET uint64_value = _pb_json_parse_double_as_uint64(JSON_EXTRACT(number_json_value, '$."2"'), TRUE);
+		SET result = _pb_convert_double_uint64_to_json(uint64_value);
 	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."3"') THEN
 		-- string_value
 		SET result = JSON_EXTRACT(number_json_value, '$."3"');
@@ -3785,16 +3661,16 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_float_value_json_to_number_json $$
 CREATE FUNCTION _pb_wkt_float_value_json_to_number_json(proto_json_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE float_val JSON;
+	DECLARE uint32_value INT UNSIGNED;
 
 	IF proto_json_value IS NULL THEN
-		SET float_val = CAST(0.0 AS JSON);
+		SET uint32_value = 0;
 	ELSE
-		SET float_val = _pb_json_parse_float(proto_json_value);
+		SET uint32_value = _pb_json_parse_float_as_uint32(proto_json_value, FALSE);
 	END IF;
 
-	IF float_val != CAST(0.0 AS JSON) THEN
-		RETURN JSON_OBJECT('1', float_val);
+	IF uint32_value <> 0 THEN
+		RETURN JSON_OBJECT('1', _pb_convert_float_uint32_to_number_json(uint32_value));
 	ELSE
 		RETURN JSON_OBJECT();
 	END IF;
@@ -3803,16 +3679,16 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_double_value_json_to_number_json $$
 CREATE FUNCTION _pb_wkt_double_value_json_to_number_json(proto_json_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE double_val JSON;
+	DECLARE uint64_value BIGINT UNSIGNED;
 
 	IF proto_json_value IS NULL THEN
-		SET double_val = CAST(0.0 AS JSON);
+		SET uint64_value = 0;
 	ELSE
-		SET double_val = _pb_json_parse_double(proto_json_value);
+		SET uint64_value = _pb_json_parse_double_as_uint64(proto_json_value, FALSE);
 	END IF;
 
-	IF double_val != CAST(0.0 AS JSON) THEN
-		RETURN JSON_OBJECT('1', double_val);
+	IF uint64_value <> 0 THEN
+		RETURN JSON_OBJECT('1', _pb_convert_double_uint64_to_number_json(uint64_value));
 	ELSE
 		RETURN JSON_OBJECT();
 	END IF;
@@ -3955,11 +3831,18 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_float_value_number_json_to_json $$
 CREATE FUNCTION _pb_wkt_float_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
+	DECLARE field_value JSON;
+	DECLARE uint32_value INT UNSIGNED;
+
 	-- {"1": value} becomes unwrapped value, {} becomes 0.0
 	IF JSON_LENGTH(number_json_value) = 0 THEN
 		RETURN CAST(0.0 AS JSON);
 	ELSE
-		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+		SET field_value = JSON_EXTRACT(number_json_value, '$."1"');
+		-- Parse the field value (which may be in binary32 format) and convert to uint32
+		SET uint32_value = _pb_json_parse_float_as_uint32(field_value, TRUE);
+		-- Convert uint32 to proper JSON representation
+		RETURN _pb_convert_float_uint32_to_json(uint32_value);
 	END IF;
 END $$
 
@@ -3967,11 +3850,18 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wkt_double_value_number_json_to_json $$
 CREATE FUNCTION _pb_wkt_double_value_number_json_to_json(number_json_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
+	DECLARE field_value JSON;
+	DECLARE uint64_value BIGINT UNSIGNED;
+
 	-- {"1": value} becomes unwrapped value, {} becomes 0.0
 	IF JSON_LENGTH(number_json_value) = 0 THEN
 		RETURN CAST(0.0 AS JSON);
 	ELSE
-		RETURN JSON_EXTRACT(number_json_value, '$."1"');
+		SET field_value = JSON_EXTRACT(number_json_value, '$."1"');
+		-- Parse the field value (which may be in binary64 format) and convert to uint64
+		SET uint64_value = _pb_json_parse_double_as_uint64(field_value, TRUE);
+		-- Convert uint64 to proper JSON representation
+		RETURN _pb_convert_double_uint64_to_json(uint64_value);
 	END IF;
 END $$
 
@@ -4171,6 +4061,8 @@ BEGIN
 	DECLARE result JSON;
 	DECLARE float_value FLOAT;
 	DECLARE double_value DOUBLE;
+	DECLARE uint32_value INT UNSIGNED;
+	DECLARE uint64_value BIGINT UNSIGNED;
 
 	CASE full_type_name
 	WHEN '.google.protobuf.Timestamp' THEN
@@ -4278,14 +4170,12 @@ BEGIN
 	WHEN '.google.protobuf.FloatValue' THEN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'DOUBLE', 'STRING') THEN
 			SET result = JSON_OBJECT();
-			IF JSON_TYPE(json_value) = 'STRING' THEN
-				SET float_value = CAST(JSON_UNQUOTE(json_value) AS FLOAT);
-			ELSE
-				SET float_value = CAST(json_value AS FLOAT);
-			END IF;
+			-- Use parsing function with appropriate hex string support
+			SET uint32_value = _pb_json_parse_float_as_uint32(json_value, from_number_json);
 			-- Only encode non-default values (proto3 behavior)
-			IF float_value <> 0.0 THEN
-				SET result = pb_wire_json_set_float_field(result, 1, float_value);
+			IF uint32_value <> 0 THEN
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET result = pb_wire_json_set_fixed32_field(result, 1, uint32_value);
 			END IF;
 			RETURN result;
 		END IF;
@@ -4293,14 +4183,12 @@ BEGIN
 	WHEN '.google.protobuf.DoubleValue' THEN
 		IF JSON_TYPE(json_value) IN ('INTEGER', 'DECIMAL', 'DOUBLE', 'STRING') THEN
 			SET result = JSON_OBJECT();
-			IF JSON_TYPE(json_value) = 'STRING' THEN
-				SET double_value = CAST(JSON_UNQUOTE(json_value) AS DOUBLE);
-			ELSE
-				SET double_value = CAST(json_value AS DOUBLE);
-			END IF;
+			-- Use parsing function with appropriate hex string support
+			SET uint64_value = _pb_json_parse_double_as_uint64(json_value, from_number_json);
 			-- Only encode non-default values (proto3 behavior)
-			IF double_value <> 0.0 THEN
-				SET result = pb_wire_json_set_double_field(result, 1, double_value);
+			IF uint64_value <> 0 THEN
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET result = pb_wire_json_set_fixed64_field(result, 1, uint64_value);
 			END IF;
 			RETURN result;
 		END IF;
@@ -4944,6 +4832,348 @@ BEGIN
 	END IF;
 
 	RETURN result;
+END $$
+
+DELIMITER $$
+
+-- Helper function to convert uint32 IEEE 754 bits to JSON float value
+DROP FUNCTION IF EXISTS _pb_convert_float_uint32_to_json $$
+CREATE FUNCTION _pb_convert_float_uint32_to_json(uint32_bits INT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- Check for special values first
+	IF (uint32_bits & 0x7F800000) = 0x7F800000 THEN
+		-- Exponent is all 1s (255)
+		IF (uint32_bits & 0x007FFFFF) = 0 THEN
+			-- Mantissa is zero - this is infinity
+			IF (uint32_bits & 0x80000000) = 0 THEN
+				RETURN JSON_QUOTE('Infinity');
+			ELSE
+				RETURN JSON_QUOTE('-Infinity');
+			END IF;
+		ELSE
+			-- Mantissa is non-zero - this is NaN
+			RETURN JSON_QUOTE('NaN');
+		END IF;
+	END IF;
+
+	-- For regular numbers, convert back to float and cast to JSON
+	RETURN CAST(_pb_util_reinterpret_uint32_as_float(uint32_bits) AS JSON);
+END $$
+
+-- Helper function to convert uint64 IEEE 754 bits to JSON double value
+DROP FUNCTION IF EXISTS _pb_convert_double_uint64_to_json $$
+CREATE FUNCTION _pb_convert_double_uint64_to_json(uint64_bits BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- Check for special values first
+	IF (uint64_bits & 0x7FF0000000000000) = 0x7FF0000000000000 THEN
+		-- Exponent is all 1s (2047)
+		IF (uint64_bits & 0x000FFFFFFFFFFFFF) = 0 THEN
+			-- Mantissa is zero - this is infinity
+			IF (uint64_bits & 0x8000000000000000) = 0 THEN
+				RETURN JSON_QUOTE('Infinity');
+			ELSE
+				RETURN JSON_QUOTE('-Infinity');
+			END IF;
+		ELSE
+			-- Mantissa is non-zero - this is NaN
+			RETURN JSON_QUOTE('NaN');
+		END IF;
+	END IF;
+
+	-- For regular numbers, convert back to double and cast to JSON
+	RETURN CAST(_pb_util_reinterpret_uint64_as_double(uint64_bits) AS JSON);
+END $$
+
+-- Helper function to parse JSON value as BIGINT with validation
+DROP FUNCTION IF EXISTS _pb_json_parse_signed_int $$
+CREATE FUNCTION _pb_json_parse_signed_int(json_value JSON) RETURNS BIGINT DETERMINISTIC
+BEGIN
+	DECLARE str_value TEXT;
+	DECLARE message_text TEXT;
+	DECLARE double_value DOUBLE;
+	DECLARE uint_value BIGINT UNSIGNED;
+
+	IF JSON_TYPE(json_value) = 'STRING' THEN
+		SET str_value = JSON_UNQUOTE(json_value);
+
+		-- Early return for invalid inputs
+		IF str_value = '' OR NOT (str_value REGEXP '^-?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$') THEN
+			SET message_text = CONCAT('Invalid number format for signed integer: ', str_value);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		SET json_value = CAST(str_value AS JSON);
+	END IF;
+
+	CASE JSON_TYPE(json_value)
+	WHEN 'UNSIGNED INTEGER' THEN
+		-- Cast to unsigned first, then check range for signed integer
+		SET uint_value = CAST(json_value AS UNSIGNED);
+		IF uint_value > 9223372036854775807 THEN
+			SET message_text = CONCAT('Value too large for signed integer field: ', CAST(uint_value AS CHAR));
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+		RETURN CAST(uint_value AS SIGNED);
+	WHEN 'INTEGER' THEN
+		-- JSON INTEGER type should be safe for signed integers
+		RETURN CAST(json_value AS SIGNED);
+	WHEN 'DOUBLE' THEN
+		-- Handle JSON numbers with exponential notation (e.g., 1e5)
+		-- But reject non-integer values (e.g., 0.5)
+		SET double_value = CAST(json_value AS DOUBLE);
+		IF double_value != FLOOR(double_value) THEN
+			SET message_text = CONCAT('Non-integer value for signed integer field: ', CAST(double_value AS CHAR));
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+		RETURN CAST(double_value AS SIGNED);
+	ELSE
+		RETURN CAST(json_value AS SIGNED);
+	END CASE;
+END $$
+
+-- Helper function to parse JSON value as BIGINT UNSIGNED with validation
+DROP FUNCTION IF EXISTS _pb_json_parse_unsigned_int $$
+CREATE FUNCTION _pb_json_parse_unsigned_int(json_value JSON) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+	DECLARE str_value TEXT;
+	DECLARE message_text TEXT;
+	DECLARE double_value DOUBLE;
+
+	IF JSON_TYPE(json_value) = 'STRING' THEN
+		SET str_value = JSON_UNQUOTE(json_value);
+
+		-- Early return for invalid inputs
+		IF str_value = '' OR NOT (str_value REGEXP '^-?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$') THEN
+			SET message_text = CONCAT('Invalid number format for signed integer: ', str_value);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		SET json_value = CAST(str_value AS JSON);
+	END IF;
+
+	CASE JSON_TYPE(json_value)
+	WHEN 'INTEGER' THEN
+		-- Check if the INTEGER value is negative (invalid for unsigned)
+		IF CAST(json_value AS SIGNED) < 0 THEN
+			SET message_text = CONCAT('Negative value for unsigned integer field: ', CAST(json_value AS CHAR));
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+		RETURN CAST(json_value AS UNSIGNED);
+	WHEN 'UNSIGNED INTEGER' THEN
+		-- UNSIGNED INTEGER values are always valid for unsigned fields
+		RETURN CAST(json_value AS UNSIGNED);
+	WHEN 'DOUBLE' THEN
+		-- Handle JSON numbers with exponential notation (e.g., 1e5)
+		-- But reject non-integer values (e.g., 0.5)
+		SET double_value = CAST(json_value AS DOUBLE);
+		IF double_value != FLOOR(double_value) THEN
+			SET message_text = CONCAT('Non-integer value for unsigned integer field: ', CAST(double_value AS CHAR));
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+		RETURN CAST(double_value AS UNSIGNED);
+	ELSE
+		RETURN CAST(json_value AS UNSIGNED);
+	END CASE;
+END $$
+
+-- Helper function to parse JSON value as DOUBLE with validation
+DROP FUNCTION IF EXISTS _pb_json_parse_double_as_uint64 $$
+CREATE FUNCTION _pb_json_parse_double_as_uint64(json_value JSON, allow_hex_strings BOOLEAN) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+	DECLARE str_value TEXT;
+	DECLARE message_text TEXT;
+	DECLARE double_value DOUBLE;
+	DECLARE hex_value TEXT;
+
+	IF JSON_TYPE(json_value) = 'STRING' THEN
+		SET str_value = JSON_UNQUOTE(json_value);
+
+		-- Reject empty strings
+		IF str_value = '' THEN
+			SET message_text = 'Empty string is not a valid number for double field';
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		-- Handle binary64 hex format if allowed
+		IF allow_hex_strings AND str_value REGEXP '^binary64:0x[0-9a-fA-F]{16}$' THEN
+			SET hex_value = SUBSTRING(str_value, 12); -- Skip "binary64:0x"
+			RETURN CONV(hex_value, 16, 10);
+		END IF;
+
+		-- Handle special values
+		IF str_value IN ('Infinity', '-Infinity', 'NaN') THEN
+			CASE str_value
+			WHEN 'Infinity' THEN
+				RETURN 0x7FF0000000000000;
+			WHEN '-Infinity' THEN
+				RETURN 0xFFF0000000000000;
+			WHEN 'NaN' THEN
+				RETURN 0x7FF8000000000000;
+			END CASE;
+		END IF;
+
+		-- Reject non-numeric strings (but allow binary64 format)
+		IF NOT (str_value REGEXP '^[+-]?([0-9]*\\.?[0-9]+([eE][+-]?[0-9]+)?|Infinity|-Infinity|NaN|binary64:0x[0-9a-fA-F]{16})$') THEN
+			SET message_text = CONCAT('Invalid number format for double field: ', str_value);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		-- Convert string to JSON for further processing
+		SET json_value = CAST(str_value AS JSON);
+	END IF;
+
+	-- Convert JSON value to double
+	CASE JSON_TYPE(json_value)
+	WHEN 'INTEGER' THEN
+		SET double_value = CAST(json_value AS DOUBLE);
+	WHEN 'UNSIGNED INTEGER' THEN
+		SET double_value = CAST(json_value AS DOUBLE);
+	WHEN 'DECIMAL' THEN
+		SET double_value = CAST(json_value AS DOUBLE);
+	WHEN 'DOUBLE' THEN
+		SET double_value = CAST(json_value AS DOUBLE);
+	ELSE
+		SET message_text = CONCAT('Invalid JSON type for double field: ', JSON_TYPE(json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END CASE;
+
+	-- Convert to IEEE 754 binary representation
+	RETURN _pb_util_reinterpret_double_as_uint64(double_value);
+END $$
+
+-- Helper function to parse JSON value as FLOAT with validation
+DROP FUNCTION IF EXISTS _pb_json_parse_float_as_uint32 $$
+CREATE FUNCTION _pb_json_parse_float_as_uint32(json_value JSON, allow_hex_strings BOOLEAN) RETURNS INT UNSIGNED DETERMINISTIC
+BEGIN
+	DECLARE str_value TEXT;
+	DECLARE message_text TEXT;
+	DECLARE float_value FLOAT;
+	DECLARE hex_value TEXT;
+
+	IF JSON_TYPE(json_value) = 'STRING' THEN
+		SET str_value = JSON_UNQUOTE(json_value);
+
+		-- Reject empty strings
+		IF str_value = '' THEN
+			SET message_text = 'Empty string is not a valid number for float field';
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		-- Handle binary32 hex format if allowed
+		IF allow_hex_strings AND str_value REGEXP '^binary32:0x[0-9a-fA-F]{8}$' THEN
+			SET hex_value = SUBSTRING(str_value, 12); -- Skip "binary32:0x"
+			RETURN CONV(hex_value, 16, 10);
+		END IF;
+
+		-- Handle special values
+		IF str_value IN ('Infinity', '-Infinity', 'NaN') THEN
+			CASE str_value
+			WHEN 'Infinity' THEN
+				RETURN 0x7F800000;
+			WHEN '-Infinity' THEN
+				RETURN 0xFF800000;
+			WHEN 'NaN' THEN
+				RETURN 0x7FC00000;
+			END CASE;
+		END IF;
+
+		-- Reject non-numeric strings (but allow binary32 format)
+		IF NOT (str_value REGEXP '^[+-]?([0-9]*\\.?[0-9]+([eE][+-]?[0-9]+)?|Infinity|-Infinity|NaN|binary32:0x[0-9a-fA-F]{8})$') THEN
+			SET message_text = CONCAT('Invalid number format for float field: ', str_value);
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+		END IF;
+
+		-- Convert string to JSON for further processing
+		SET json_value = CAST(str_value AS JSON);
+	END IF;
+
+	-- Convert JSON value to float
+	CASE JSON_TYPE(json_value)
+	WHEN 'INTEGER' THEN
+		SET float_value = CAST(json_value AS FLOAT);
+	WHEN 'UNSIGNED INTEGER' THEN
+		SET float_value = CAST(json_value AS FLOAT);
+	WHEN 'DECIMAL' THEN
+		SET float_value = CAST(json_value AS FLOAT);
+	WHEN 'DOUBLE' THEN
+		SET float_value = CAST(json_value AS FLOAT);
+	ELSE
+		SET message_text = CONCAT('Invalid JSON type for float field: ', JSON_TYPE(json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END CASE;
+
+	-- Convert to IEEE 754 binary representation
+	RETURN _pb_util_reinterpret_float_as_uint32(float_value);
+END $$
+
+-- Helper function to parse JSON value as bytes with Base64 decoding
+DROP FUNCTION IF EXISTS _pb_json_parse_bytes $$
+CREATE FUNCTION _pb_json_parse_bytes(json_value JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+	DECLARE str_value TEXT;
+	DECLARE message_text TEXT;
+
+	-- Bytes must be a JSON string
+	IF JSON_TYPE(json_value) != 'STRING' THEN
+		SET message_text = CONCAT('Invalid JSON type for bytes field: expected STRING, got ', JSON_TYPE(json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	-- Unquote the JSON string
+	SET str_value = JSON_UNQUOTE(json_value);
+
+	-- Decode from Base64/Base64URL and return as binary data
+	RETURN _pb_util_from_base64_url(str_value);
+END $$
+
+-- Helper function to parse JSON value as Protobuf string type
+DROP FUNCTION IF EXISTS _pb_json_parse_string $$
+CREATE FUNCTION _pb_json_parse_string(json_value JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+	DECLARE message_text TEXT;
+
+	-- String fields must receive JSON string values
+	IF JSON_TYPE(json_value) != 'STRING' THEN
+		SET message_text = CONCAT('Invalid JSON type for string field: expected STRING, got ', JSON_TYPE(json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	RETURN JSON_UNQUOTE(json_value);
+END $$
+
+-- Helper function to parse JSON value as Protobuf bool type
+DROP FUNCTION IF EXISTS _pb_json_parse_bool $$
+CREATE FUNCTION _pb_json_parse_bool(json_value JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+	DECLARE bool_value BOOLEAN;
+	DECLARE message_text TEXT;
+
+	IF JSON_TYPE(json_value) <> 'BOOLEAN' THEN
+		SET message_text = CONCAT('Invalid JSON type for bool field: expected BOOLEAN, got ', JSON_TYPE(json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	SET bool_value = json_value;
+
+	RETURN bool_value;
+END $$
+
+DELIMITER $$
+
+-- Helper function to convert uint32 IEEE 754 bits to binary32 number JSON format
+DROP FUNCTION IF EXISTS _pb_convert_float_uint32_to_number_json $$
+CREATE FUNCTION _pb_convert_float_uint32_to_number_json(uint32_bits INT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- Always produce binary32 format for number JSON
+	RETURN JSON_QUOTE(CONCAT('binary32:0x', LPAD(LOWER(HEX(uint32_bits)), 8, '0')));
+END $$
+
+-- Helper function to convert uint64 IEEE 754 bits to binary64 number JSON format
+DROP FUNCTION IF EXISTS _pb_convert_double_uint64_to_number_json $$
+CREATE FUNCTION _pb_convert_double_uint64_to_number_json(uint64_bits BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+	-- Always produce binary64 format for number JSON
+	RETURN JSON_QUOTE(CONCAT('binary64:0x', LPAD(LOWER(HEX(uint64_bits)), 16, '0')));
 END $$
 
 -- Generated by cmd/protoc-gen-mysql; DO NOT EDIT

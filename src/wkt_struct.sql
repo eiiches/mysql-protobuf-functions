@@ -209,6 +209,7 @@ CREATE PROCEDURE _pb_json_encode_wkt_value_as_wire_json(IN json_value JSON, IN f
 BEGIN
 	DECLARE struct_wire_json JSON;
 	DECLARE list_wire_json JSON;
+	DECLARE uint64_bits BIGINT UNSIGNED;
 
 	SET @@SESSION.max_sp_recursion_depth = 255;
 	SET result = JSON_OBJECT();
@@ -222,13 +223,31 @@ BEGIN
 		SET result = pb_wire_json_set_bool_field(result, 4, IF(json_value, TRUE, FALSE));
 	WHEN 'INTEGER' THEN
 		-- number_value (field 2)
-		SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+		IF from_number_json THEN
+			SET uint64_bits = _pb_json_parse_double_as_uint64(json_value, TRUE);
+			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+			SET result = pb_wire_json_set_fixed64_field(result, 2, uint64_bits);
+		ELSE
+			SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+		END IF;
 	WHEN 'DECIMAL' THEN
 		-- number_value (field 2)
-		SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+		IF from_number_json THEN
+			SET uint64_bits = _pb_json_parse_double_as_uint64(json_value, TRUE);
+			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+			SET result = pb_wire_json_set_fixed64_field(result, 2, uint64_bits);
+		ELSE
+			SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+		END IF;
 	WHEN 'DOUBLE' THEN
 		-- number_value (field 2)
-		SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+		IF from_number_json THEN
+			SET uint64_bits = _pb_json_parse_double_as_uint64(json_value, TRUE);
+			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+			SET result = pb_wire_json_set_fixed64_field(result, 2, uint64_bits);
+		ELSE
+			SET result = pb_wire_json_set_double_field(result, 2, CAST(json_value AS DOUBLE));
+		END IF;
 	WHEN 'STRING' THEN
 		-- string_value (field 3)
 		SET result = pb_wire_json_set_string_field(result, 3, JSON_UNQUOTE(json_value));
@@ -365,13 +384,13 @@ BEGIN
 		SET result = JSON_OBJECT('1', 0);
 	WHEN 'INTEGER' THEN
 		-- number_value (field 2)
-		SET result = JSON_OBJECT('2', CAST(proto_json_value AS DOUBLE));
+		SET result = JSON_OBJECT('2', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(CAST(proto_json_value AS DOUBLE))));
 	WHEN 'UNSIGNED INTEGER' THEN
 		-- number_value (field 2)
-		SET result = JSON_OBJECT('2', CAST(proto_json_value AS DOUBLE));
+		SET result = JSON_OBJECT('2', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(CAST(proto_json_value AS DOUBLE))));
 	WHEN 'DOUBLE' THEN
 		-- number_value (field 2)
-		SET result = JSON_OBJECT('2', CAST(proto_json_value AS DOUBLE));
+		SET result = JSON_OBJECT('2', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(CAST(proto_json_value AS DOUBLE))));
 	WHEN 'STRING' THEN
 		-- string_value (field 3)
 		SET result = JSON_OBJECT('3', proto_json_value);
@@ -469,6 +488,7 @@ CREATE PROCEDURE _pb_wkt_value_number_json_to_json(IN number_json_value JSON, OU
 BEGIN
 	DECLARE struct_converted_value JSON;
 	DECLARE list_converted_value JSON;
+	DECLARE uint64_value BIGINT UNSIGNED;
 
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
@@ -481,7 +501,8 @@ BEGIN
 		SET result = CAST(NULL AS JSON);
 	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."2"') THEN
 		-- number_value
-		SET result = JSON_EXTRACT(number_json_value, '$."2"');
+		SET uint64_value = _pb_json_parse_double_as_uint64(JSON_EXTRACT(number_json_value, '$."2"'), TRUE);
+		SET result = _pb_convert_double_uint64_to_json(uint64_value);
 	ELSEIF JSON_CONTAINS_PATH(number_json_value, 'one', '$."3"') THEN
 		-- string_value
 		SET result = JSON_EXTRACT(number_json_value, '$."3"');

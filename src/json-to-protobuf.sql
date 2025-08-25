@@ -140,12 +140,16 @@ END $$
 
 -- Helper procedure to set primitive field values in wire_json format
 DROP PROCEDURE IF EXISTS _pb_json_set_primitive_field_as_wire_json $$
-CREATE PROCEDURE _pb_json_set_primitive_field_as_wire_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN json_value JSON, IN use_packed BOOLEAN, IN syntax TEXT, IN has_field_presence BOOLEAN, OUT result JSON)
+CREATE PROCEDURE _pb_json_set_primitive_field_as_wire_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN json_value JSON, IN use_packed BOOLEAN, IN syntax TEXT, IN has_field_presence BOOLEAN, IN from_number_json BOOLEAN, OUT result JSON)
 proc: BEGIN
 	DECLARE element_count INT;
 	DECLARE element_index INT;
 	DECLARE element JSON;
 	DECLARE temp_wire_json JSON;
+	DECLARE str_value TEXT;
+	DECLARE hex_value TEXT;
+	DECLARE uint32_bits INT UNSIGNED;
+	DECLARE uint64_bits BIGINT UNSIGNED;
 
 	SET result = wire_json;
 
@@ -165,9 +169,13 @@ proc: BEGIN
 
 			CASE field_type
 			WHEN 1 THEN -- TYPE_DOUBLE
-				SET result = pb_wire_json_add_repeated_double_field_element(result, field_number, CAST(element AS DOUBLE), use_packed);
+				SET uint64_bits = _pb_json_parse_double_as_uint64(element, from_number_json);
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET result = pb_wire_json_add_repeated_fixed64_field_element(result, field_number, uint64_bits, use_packed);
 			WHEN 2 THEN -- TYPE_FLOAT
-				SET result = pb_wire_json_add_repeated_float_field_element(result, field_number, CAST(element AS FLOAT), use_packed);
+				SET uint32_bits = _pb_json_parse_float_as_uint32(element, from_number_json);
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET result = pb_wire_json_add_repeated_fixed32_field_element(result, field_number, uint32_bits, use_packed);
 			WHEN 3 THEN -- TYPE_INT64
 				SET result = pb_wire_json_add_repeated_int64_field_element(result, field_number, _pb_json_to_signed_int(element), use_packed);
 			WHEN 4 THEN -- TYPE_UINT64
@@ -206,9 +214,13 @@ proc: BEGIN
 		-- Handle singular primitive fields
 		CASE field_type
 		WHEN 1 THEN -- TYPE_DOUBLE
-			SET result = pb_wire_json_set_double_field(result, field_number, CAST(json_value AS DOUBLE));
+			SET uint64_bits = _pb_json_parse_double_as_uint64(json_value, from_number_json);
+			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+			SET result = pb_wire_json_set_fixed64_field(result, field_number, uint64_bits);
 		WHEN 2 THEN -- TYPE_FLOAT
-			SET result = pb_wire_json_set_float_field(result, field_number, CAST(json_value AS FLOAT));
+			SET uint32_bits = _pb_json_parse_float_as_uint32(json_value, from_number_json);
+			-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+			SET result = pb_wire_json_set_fixed32_field(result, field_number, uint32_bits);
 		WHEN 3 THEN -- TYPE_INT64
 			SET result = pb_wire_json_set_int64_field(result, field_number, _pb_json_to_signed_int(json_value));
 		WHEN 4 THEN -- TYPE_UINT64
@@ -454,9 +466,9 @@ proc: BEGIN
 							-- Map keys always have presence and should always be encoded
 							CASE map_key_type
 							WHEN 8 THEN -- bool
-								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 1, map_key_type, FALSE, CAST((map_key_name = 'true') AS JSON), FALSE, syntax, TRUE, map_entry_wire_json);
+								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 1, map_key_type, FALSE, CAST((map_key_name = 'true') AS JSON), FALSE, syntax, TRUE, from_number_json, map_entry_wire_json);
 							ELSE
-								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 1, map_key_type, FALSE, JSON_QUOTE(map_key_name), FALSE, syntax, TRUE, map_entry_wire_json);
+								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 1, map_key_type, FALSE, JSON_QUOTE(map_key_name), FALSE, syntax, TRUE, from_number_json, map_entry_wire_json);
 							END CASE;
 
 							-- Add value field (always field 2)
@@ -468,7 +480,7 @@ proc: BEGIN
 								SET map_entry_wire_json = pb_wire_json_set_enum_field(map_entry_wire_json, 2, enum_number);
 							ELSE
 								-- Map values also always have presence in map entries
-								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 2, map_value_type, FALSE, map_value_json, FALSE, syntax, TRUE, map_entry_wire_json);
+								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 2, map_value_type, FALSE, map_value_json, FALSE, syntax, TRUE, from_number_json, map_entry_wire_json);
 							END IF;
 
 							-- Add map entry to result
@@ -516,7 +528,7 @@ proc: BEGIN
 
 				ELSE
 					-- Handle primitive types
-					CALL _pb_json_set_primitive_field_as_wire_json(result, field_number, field_type, is_repeated, field_json_value, use_packed, syntax, has_field_presence, result);
+					CALL _pb_json_set_primitive_field_as_wire_json(result, field_number, field_type, is_repeated, field_json_value, use_packed, syntax, has_field_presence, from_number_json, result);
 				END CASE;
 			END IF;
 

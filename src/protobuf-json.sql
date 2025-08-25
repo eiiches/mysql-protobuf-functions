@@ -2,7 +2,7 @@ DELIMITER $$
 
 
 DROP PROCEDURE IF EXISTS _pb_wire_json_get_primitive_field_as_json $$
-CREATE PROCEDURE _pb_wire_json_get_primitive_field_as_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN has_field_presence BOOLEAN, IN emit_64bit_integers_as_numbers BOOLEAN, OUT field_json_value JSON)
+CREATE PROCEDURE _pb_wire_json_get_primitive_field_as_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN has_field_presence BOOLEAN, IN emit_64bit_integers_as_numbers BOOLEAN, IN emit_floats_as_hex_strings BOOLEAN, OUT field_json_value JSON)
 BEGIN
 	DECLARE message_text TEXT;
 	DECLARE boolean_value BOOLEAN;
@@ -14,13 +14,33 @@ BEGIN
 		IF is_repeated THEN
 			SET field_json_value = pb_wire_json_get_repeated_double_field_as_json_array(wire_json, field_number);
 		ELSE
-			SET field_json_value = CAST(pb_wire_json_get_double_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			IF emit_floats_as_hex_strings THEN -- IEEE 754 binary format
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET uint_value = pb_wire_json_get_fixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+				IF uint_value IS NULL THEN
+					SET field_json_value = NULL;
+				ELSE
+					SET field_json_value = _pb_convert_double_uint64_to_number_json(uint_value);
+				END IF;
+			ELSE -- Standard JSON format
+				SET field_json_value = CAST(pb_wire_json_get_double_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			END IF;
 		END IF;
 	WHEN 2 THEN -- float
 		IF is_repeated THEN
 			SET field_json_value = pb_wire_json_get_repeated_float_field_as_json_array(wire_json, field_number);
 		ELSE
-			SET field_json_value = CAST(pb_wire_json_get_float_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			IF emit_floats_as_hex_strings THEN -- IEEE 754 binary format
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET uint_value = pb_wire_json_get_fixed32_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+				IF uint_value IS NULL THEN
+					SET field_json_value = NULL;
+				ELSE
+					SET field_json_value = _pb_convert_float_uint32_to_number_json(uint_value);
+				END IF;
+			ELSE -- Standard JSON format
+				SET field_json_value = CAST(pb_wire_json_get_float_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			END IF;
 		END IF;
 	WHEN 3 THEN -- int64
 		IF is_repeated THEN
