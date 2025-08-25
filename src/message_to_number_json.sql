@@ -1,10 +1,190 @@
 DELIMITER $$
 
--- Main procedure for converting protobuf message to JSON using descriptor set
-DROP PROCEDURE IF EXISTS _pb_wire_json_to_json_proc $$
-CREATE PROCEDURE _pb_wire_json_to_json_proc(IN descriptor_set_json JSON, IN full_type_name TEXT, IN wire_json JSON, IN as_number_json BOOLEAN, IN emit_default_values BOOLEAN, OUT result JSON)
+DROP PROCEDURE IF EXISTS _pb_wire_json_get_primitive_field_as_json $$
+CREATE PROCEDURE _pb_wire_json_get_primitive_field_as_json(IN wire_json JSON, IN field_number INT, IN field_type INT, IN is_repeated BOOLEAN, IN has_field_presence BOOLEAN, IN emit_64bit_integers_as_numbers BOOLEAN, IN emit_floats_as_hex_strings BOOLEAN, OUT field_json_value JSON)
+BEGIN
+	DECLARE message_text TEXT;
+	DECLARE boolean_value BOOLEAN;
+	DECLARE uint_value BIGINT UNSIGNED;
+	DECLARE int_value BIGINT;
+
+	CASE field_type
+	WHEN 1 THEN -- double
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_double_field_as_json_array(wire_json, field_number);
+		ELSE
+			IF emit_floats_as_hex_strings THEN -- IEEE 754 binary format
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET uint_value = pb_wire_json_get_fixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+				IF uint_value IS NULL THEN
+					SET field_json_value = NULL;
+				ELSE
+					SET field_json_value = _pb_convert_double_uint64_to_number_json(uint_value);
+				END IF;
+			ELSE -- Standard JSON format
+				SET field_json_value = CAST(pb_wire_json_get_double_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			END IF;
+		END IF;
+	WHEN 2 THEN -- float
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_float_field_as_json_array(wire_json, field_number);
+		ELSE
+			IF emit_floats_as_hex_strings THEN -- IEEE 754 binary format
+				-- TODO: This is a workaround and should be replaced with generated code by @cmd/protobuf-accessors/
+				SET uint_value = pb_wire_json_get_fixed32_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+				IF uint_value IS NULL THEN
+					SET field_json_value = NULL;
+				ELSE
+					SET field_json_value = _pb_convert_float_uint32_to_number_json(uint_value);
+				END IF;
+			ELSE -- Standard JSON format
+				SET field_json_value = CAST(pb_wire_json_get_float_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+			END IF;
+		END IF;
+	WHEN 3 THEN -- int64
+		IF is_repeated THEN
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = pb_wire_json_get_repeated_int64_field_as_json_array(wire_json, field_number);
+			ELSE
+				SET field_json_value = pb_wire_json_get_repeated_int64_field_as_json_string_array(wire_json, field_number);
+			END IF;
+		ELSE
+			SET int_value = pb_wire_json_get_int64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(int_value AS JSON);
+			ELSE
+				SET field_json_value = JSON_QUOTE(CAST(int_value AS CHAR));
+			END IF;
+		END IF;
+	WHEN 4 THEN -- uint64
+		IF is_repeated THEN
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = pb_wire_json_get_repeated_uint64_field_as_json_array(wire_json, field_number);
+			ELSE
+				SET field_json_value = pb_wire_json_get_repeated_uint64_field_as_json_string_array(wire_json, field_number);
+			END IF;
+		ELSE
+			SET uint_value = pb_wire_json_get_uint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(uint_value AS JSON);
+			ELSE
+				SET field_json_value = JSON_QUOTE(CAST(uint_value AS CHAR));
+			END IF;
+		END IF;
+	WHEN 5 THEN -- int32
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_int32_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = CAST(pb_wire_json_get_int32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+		END IF;
+	WHEN 6 THEN -- fixed64
+		IF is_repeated THEN
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = pb_wire_json_get_repeated_fixed64_field_as_json_array(wire_json, field_number);
+			ELSE
+				SET field_json_value = pb_wire_json_get_repeated_fixed64_field_as_json_string_array(wire_json, field_number);
+			END IF;
+		ELSE
+			SET uint_value = pb_wire_json_get_fixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(uint_value AS JSON);
+			ELSE
+				SET field_json_value = JSON_QUOTE(CAST(uint_value AS CHAR));
+			END IF;
+		END IF;
+	WHEN 7 THEN -- fixed32
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_fixed32_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = CAST(pb_wire_json_get_fixed32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+		END IF;
+	WHEN 8 THEN -- bool
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_bool_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET boolean_value = pb_wire_json_get_bool_field(wire_json, field_number, IF(has_field_presence, NULL, FALSE));
+			IF boolean_value IS NULL THEN
+				SET field_json_value = NULL;
+			ELSE
+				-- See https://bugs.mysql.com/bug.php?id=79813
+				SET field_json_value = CAST((boolean_value IS TRUE) AS JSON);
+			END IF;
+		END IF;
+	WHEN 9 THEN -- string
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_string_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = JSON_QUOTE(pb_wire_json_get_string_field(wire_json, field_number, IF(has_field_presence, NULL, '')));
+		END IF;
+	WHEN 12 THEN -- bytes
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_bytes_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = JSON_QUOTE(TO_BASE64(pb_wire_json_get_bytes_field(wire_json, field_number, IF(has_field_presence, NULL, _binary X''))));
+		END IF;
+	WHEN 13 THEN -- uint32
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_uint32_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = CAST(pb_wire_json_get_uint32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+		END IF;
+	WHEN 15 THEN -- sfixed32
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_sfixed32_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = CAST(pb_wire_json_get_sfixed32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+		END IF;
+	WHEN 16 THEN -- sfixed64
+		IF is_repeated THEN
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = pb_wire_json_get_repeated_sfixed64_field_as_json_array(wire_json, field_number);
+			ELSE
+				SET field_json_value = pb_wire_json_get_repeated_sfixed64_field_as_json_string_array(wire_json, field_number);
+			END IF;
+		ELSE
+			SET int_value = pb_wire_json_get_sfixed64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(int_value AS JSON);
+			ELSE
+				SET field_json_value = JSON_QUOTE(CAST(int_value AS CHAR));
+			END IF;
+		END IF;
+	WHEN 17 THEN -- sint32
+		IF is_repeated THEN
+			SET field_json_value = pb_wire_json_get_repeated_sint32_field_as_json_array(wire_json, field_number);
+		ELSE
+			SET field_json_value = CAST(pb_wire_json_get_sint32_field(wire_json, field_number, IF(has_field_presence, NULL, 0)) AS JSON);
+		END IF;
+	WHEN 18 THEN -- sint64
+		IF is_repeated THEN
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = pb_wire_json_get_repeated_sint64_field_as_json_array(wire_json, field_number);
+			ELSE
+				SET field_json_value = pb_wire_json_get_repeated_sint64_field_as_json_string_array(wire_json, field_number);
+			END IF;
+		ELSE
+			SET int_value = pb_wire_json_get_sint64_field(wire_json, field_number, IF(has_field_presence, NULL, 0));
+			IF emit_64bit_integers_as_numbers THEN
+				SET field_json_value = CAST(int_value AS JSON);
+			ELSE
+				SET field_json_value = JSON_QUOTE(CAST(int_value AS CHAR));
+			END IF;
+		END IF;
+	ELSE
+		SET message_text = CONCAT('_pb_message_to_json: unknown field_type `', field_type, '` for field `', field_name, '` (', field_number, ').');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END CASE;
+END $$
+
+-- Main procedure for converting protobuf message to number JSON using descriptor set
+DROP PROCEDURE IF EXISTS _pb_wire_json_to_number_json_proc $$
+CREATE PROCEDURE _pb_wire_json_to_number_json_proc(IN descriptor_set_json JSON, IN full_type_name TEXT, IN wire_json JSON, OUT result JSON)
 proc: BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
+
+	-- Fixed parameters for number JSON format
+	DECLARE as_number_json BOOLEAN DEFAULT TRUE;
+	DECLARE emit_default_values BOOLEAN DEFAULT FALSE;
 
 	DECLARE message_text TEXT;
 	DECLARE message_descriptor JSON;
@@ -59,12 +239,15 @@ proc: BEGIN
 
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
+	IF wire_json IS NULL THEN
+		SET result = NULL;
+		LEAVE proc;
+	END IF;
+
 	-- Handle well-known types first (only for regular JSON, not number JSON)
-	IF full_type_name LIKE '.google.protobuf.%' THEN
-		SET wkt_descriptor_set = _pb_wkt_get_descriptor_set(full_type_name);
-		IF wkt_descriptor_set IS NOT NULL THEN
-			SET descriptor_set_json = wkt_descriptor_set;
-		END IF;
+	SET wkt_descriptor_set = _pb_wkt_get_descriptor_set(full_type_name);
+	IF wkt_descriptor_set IS NOT NULL THEN
+		SET descriptor_set_json = wkt_descriptor_set;
 	END IF;
 
 	-- Get message descriptor
@@ -154,7 +337,7 @@ proc: BEGIN
 						CALL _pb_wire_json_get_primitive_field_as_json(element, 1, map_key_type, FALSE, FALSE, as_number_json, as_number_json, map_key);
 
 						IF map_value_type = 11 THEN -- message
-							CALL _pb_message_to_number_json(descriptor_set_json, map_value_type_name, pb_wire_json_get_message_field(element, 2, NULL), as_number_json, emit_default_values, map_value);
+							CALL _pb_wire_json_to_number_json_proc(descriptor_set_json, map_value_type_name, pb_message_to_wire_json(pb_wire_json_get_message_field(element, 2, NULL)), map_value);
 						ELSEIF map_value_type = 14 THEN -- enum
 							SET map_value = CAST(pb_wire_json_get_enum_field(element, 2, 0) AS JSON);
 						ELSE
@@ -182,7 +365,7 @@ proc: BEGIN
 
 					WHILE element_index < element_count DO
 						SET bytes_value = pb_wire_json_get_repeated_message_field_element(wire_json, field_number, element_index);
-						CALL _pb_message_to_number_json(descriptor_set_json, field_type_name, bytes_value, as_number_json, emit_default_values, nested_json_value);
+						CALL _pb_wire_json_to_number_json_proc(descriptor_set_json, field_type_name, pb_message_to_wire_json(bytes_value), nested_json_value);
 						SET field_json_value = JSON_ARRAY_APPEND(field_json_value, '$', nested_json_value);
 						SET element_index = element_index + 1;
 					END WHILE;
@@ -193,7 +376,7 @@ proc: BEGIN
 				ELSE
 					-- Handle singular message fields
 					SET bytes_value = pb_wire_json_get_message_field(wire_json, field_number, NULL);
-					CALL _pb_message_to_number_json(descriptor_set_json, field_type_name, bytes_value, as_number_json, emit_default_values, field_json_value);
+					CALL _pb_wire_json_to_number_json_proc(descriptor_set_json, field_type_name, pb_message_to_wire_json(bytes_value), field_json_value);
 				END IF;
 
 			WHEN 14 THEN -- TYPE_ENUM
@@ -278,65 +461,26 @@ proc: BEGIN
 	END WHILE;
 END $$
 
--- Wrapper procedure that converts LONGBLOB to wire_json and delegates
-DROP PROCEDURE IF EXISTS _pb_message_to_number_json $$
-CREATE PROCEDURE _pb_message_to_number_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN message LONGBLOB, IN as_number_json BOOLEAN, IN emit_default_values BOOLEAN, OUT result JSON)
-BEGIN
-	DECLARE message_text TEXT;
-
-	-- Validate type name starts with dot
-	IF full_type_name NOT LIKE '.%' THEN
-		SET message_text = CONCAT('_pb_message_to_number_json: type name `', full_type_name, '` must start with a dot');
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-	END IF;
-
-	IF message IS NULL THEN
-		SET result = NULL;
-	ELSE
-		CALL _pb_wire_json_to_json_proc(descriptor_set_json, full_type_name, pb_message_to_wire_json(message), as_number_json, emit_default_values, result);
-	END IF;
-END $$
-
-DROP PROCEDURE IF EXISTS _pb_wire_json_to_json $$
-CREATE PROCEDURE _pb_wire_json_to_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN wire_json JSON, IN as_number_json BOOLEAN, IN emit_default_values BOOLEAN, OUT result JSON)
-BEGIN
-	DECLARE message_text TEXT;
-
-	-- Validate type name starts with dot
-	IF full_type_name NOT LIKE '.%' THEN
-		SET message_text = CONCAT('_pb_wire_json_to_json: type name `', full_type_name, '` must start with a dot');
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
-	END IF;
-
-	IF wire_json IS NULL THEN
-		SET result = NULL;
-	ELSE
-		CALL _pb_wire_json_to_json_proc(descriptor_set_json, full_type_name, wire_json, as_number_json, emit_default_values, result);
-	END IF;
-END $$
-
--- Public function interface
-DROP FUNCTION IF EXISTS pb_message_to_json $$
-CREATE FUNCTION pb_message_to_json(descriptor_set_json JSON, type_name TEXT, message LONGBLOB, unmarshal_options JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	RETURN _pb_number_json_to_json(descriptor_set_json, type_name, _pb_message_to_number_json(descriptor_set_json, type_name, message, unmarshal_options), json_marshal_options);
-END $$
-
 -- Private function interface for protonumberjson format
 DROP FUNCTION IF EXISTS _pb_message_to_number_json $$
 CREATE FUNCTION _pb_message_to_number_json(descriptor_set_json JSON, type_name TEXT, message LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE result JSON;
-	-- For now, unmarshal_options is accepted but not yet used - keeping current behavior
-	CALL _pb_message_to_number_json(descriptor_set_json, type_name, message, TRUE, FALSE, result);
-	RETURN result;
-END $$
+	DECLARE message_text TEXT;
 
--- Public function interface for wire_json input
-DROP FUNCTION IF EXISTS pb_wire_json_to_json $$
-CREATE FUNCTION pb_wire_json_to_json(descriptor_set_json JSON, type_name TEXT, wire_json JSON, unmarshal_options JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	RETURN _pb_number_json_to_json(descriptor_set_json, type_name, _pb_wire_json_to_number_json(descriptor_set_json, type_name, message, unmarshal_options), json_marshal_options);
+	-- Validate type name starts with dot
+	IF type_name NOT LIKE '.%' THEN
+		SET message_text = CONCAT('_pb_message_to_number_json: type name `', type_name, '` must start with a dot');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	IF message IS NULL THEN
+		RETURN NULL;
+	END IF;
+
+	-- Embedded logic from _pb_message_to_number_json procedure
+	CALL _pb_wire_json_to_number_json_proc(descriptor_set_json, type_name, pb_message_to_wire_json(message), result);
+	RETURN result;
 END $$
 
 -- Private function interface for wire_json input with number JSON format
@@ -344,7 +488,19 @@ DROP FUNCTION IF EXISTS _pb_wire_json_to_number_json $$
 CREATE FUNCTION _pb_wire_json_to_number_json(descriptor_set_json JSON, type_name TEXT, wire_json JSON, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE result JSON;
-	-- For now, unmarshal_options is accepted but not yet used - keeping current behavior
-	CALL _pb_wire_json_to_json(descriptor_set_json, type_name, wire_json, TRUE, FALSE, result);
+	DECLARE message_text TEXT;
+
+	-- Validate type name starts with dot
+	IF type_name NOT LIKE '.%' THEN
+		SET message_text = CONCAT('_pb_wire_json_to_number_json: type name `', type_name, '` must start with a dot');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	IF wire_json IS NULL THEN
+		RETURN NULL;
+	END IF;
+
+	-- Embedded logic from _pb_wire_json_to_json
+	CALL _pb_wire_json_to_number_json_proc(descriptor_set_json, type_name, wire_json, result);
 	RETURN result;
 END $$

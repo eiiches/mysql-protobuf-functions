@@ -878,6 +878,9 @@ DROP FUNCTION IF EXISTS pb_message_to_wire_json $$
 CREATE FUNCTION pb_message_to_wire_json(buf LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE wire_json JSON;
+	IF buf IS NULL THEN
+		RETURN NULL;
+	END IF;
 	CALL _pb_message_to_wire_json(buf, wire_json);
 	RETURN wire_json;
 END $$

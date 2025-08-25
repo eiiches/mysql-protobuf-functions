@@ -478,15 +478,16 @@ proc: BEGIN
 	END IF;
 END $$
 
--- Wrapper procedure for JSON to wire_json conversion
-DROP PROCEDURE IF EXISTS _pb_json_to_wire_json $$
-CREATE PROCEDURE _pb_json_to_wire_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN json_value JSON, IN from_number_json BOOLEAN, OUT result JSON)
+-- Wrapper procedure for number JSON to wire_json conversion
+DROP PROCEDURE IF EXISTS _pb_number_json_to_wire_json $$
+CREATE PROCEDURE _pb_number_json_to_wire_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN json_value JSON, OUT result JSON)
 BEGIN
 	DECLARE message_text TEXT;
+	DECLARE from_number_json BOOLEAN DEFAULT TRUE;
 
 	-- Validate type name starts with dot
 	IF full_type_name NOT LIKE '.%' THEN
-		SET message_text = CONCAT('_pb_json_to_wire_json: type name `', full_type_name, '` must start with a dot');
+		SET message_text = CONCAT('_pb_number_json_to_wire_json: type name `', full_type_name, '` must start with a dot');
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
 
@@ -497,23 +498,17 @@ BEGIN
 	END IF;
 END $$
 
--- Wrapper procedure for number JSON to wire_json conversion
-DROP PROCEDURE IF EXISTS _pb_number_json_to_wire_json $$
-CREATE PROCEDURE _pb_number_json_to_wire_json(IN descriptor_set_json JSON, IN full_type_name TEXT, IN json_value JSON, OUT result JSON)
-BEGIN
-	CALL _pb_json_to_wire_json(descriptor_set_json, full_type_name, json_value, TRUE, result);
-END $$
-
 -- Wrapper procedure for JSON to message conversion
-DROP PROCEDURE IF EXISTS _pb_json_to_message $$
-CREATE PROCEDURE _pb_json_to_message(IN descriptor_set_json JSON, IN full_type_name TEXT, IN json_value JSON, IN from_number_json BOOLEAN, OUT result LONGBLOB)
+DROP PROCEDURE IF EXISTS _pb_number_json_to_message $$
+CREATE PROCEDURE _pb_number_json_to_message(IN descriptor_set_json JSON, IN full_type_name TEXT, IN json_value JSON, OUT result LONGBLOB)
 BEGIN
 	DECLARE message_text TEXT;
 	DECLARE wire_json JSON;
+	DECLARE from_number_json BOOLEAN DEFAULT TRUE;
 
 	-- Validate type name starts with dot
 	IF full_type_name NOT LIKE '.%' THEN
-		SET message_text = CONCAT('_pb_json_to_message: type name `', full_type_name, '` must start with a dot');
+		SET message_text = CONCAT('_pb_number_json_to_message: type name `', full_type_name, '` must start with a dot');
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
 
@@ -525,23 +520,6 @@ BEGIN
 	END IF;
 END $$
 
--- Wrapper procedure for number JSON to message conversion
-DROP PROCEDURE IF EXISTS _pb_number_json_to_message $$
-CREATE PROCEDURE _pb_number_json_to_message(IN descriptor_set_json JSON, IN full_type_name TEXT, IN json_value JSON, OUT result LONGBLOB)
-BEGIN
-	CALL _pb_json_to_message(descriptor_set_json, full_type_name, json_value, TRUE, result);
-END $$
-
--- Public function interface for JSON to wire_json conversion
-DROP FUNCTION IF EXISTS pb_json_to_wire_json $$
-CREATE FUNCTION pb_json_to_wire_json(descriptor_set_json JSON, type_name TEXT, json_value JSON, json_unmarshal_options JSON, marshal_options JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE result JSON;
-	-- For now, options are accepted but not yet used - keeping current behavior
-	CALL _pb_json_to_wire_json(descriptor_set_json, type_name, json_value, FALSE, result);
-	RETURN result;
-END $$
-
 -- Private function interface for number JSON to wire_json conversion
 DROP FUNCTION IF EXISTS _pb_number_json_to_wire_json $$
 CREATE FUNCTION _pb_number_json_to_wire_json(descriptor_set_json JSON, type_name TEXT, json_value JSON, marshal_options JSON) RETURNS JSON DETERMINISTIC
@@ -549,16 +527,6 @@ BEGIN
 	DECLARE result JSON;
 	-- For now, marshal_options is accepted but not yet used - keeping current behavior
 	CALL _pb_number_json_to_wire_json(descriptor_set_json, type_name, json_value, result);
-	RETURN result;
-END $$
-
--- Public function interface for JSON to message conversion
-DROP FUNCTION IF EXISTS pb_json_to_message $$
-CREATE FUNCTION pb_json_to_message(descriptor_set_json JSON, type_name TEXT, json_value JSON, json_unmarshal_options JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
-BEGIN
-	DECLARE result LONGBLOB;
-	-- For now, options are accepted but not yet used - keeping current behavior
-	CALL _pb_json_to_message(descriptor_set_json, type_name, json_value, FALSE, result);
 	RETURN result;
 END $$
 

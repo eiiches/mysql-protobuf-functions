@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/eiiches/mysql-protobuf-functions/internal/jsonoptionspb"
+	"github.com/eiiches/mysql-protobuf-functions/internal/protonumberjson"
+
 	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
 	"github.com/eiiches/mysql-protobuf-functions/internal/descriptorsetjson"
 	"github.com/eiiches/mysql-protobuf-functions/internal/testutils"
@@ -46,11 +49,28 @@ func testMessageToJson(t *testing.T, fieldDefinition string, input string) {
 	dynamicMessage := p.JsonToDynamicMessage(typeName, input)
 	serializedBinary := p.JsonToProtobuf(typeName, input)
 
-	expectedJson, err := (&protojson.MarshalOptions{EmitDefaultValues: true}).Marshal(dynamicMessage.Interface())
+	// Create JsonMarshalOptions with emit_default_values = true
+	marshalOptionsWithDefaultsJSON, err := protonumberjson.Marshal(&jsonoptionspb.JsonMarshalOptions{
+		EmitDefaultValues: true,
+	})
 	g.Expect(err).NotTo(HaveOccurred())
-	g.Expect(expectedJson).To(MatchJSON(input), "Test case is invalid: input should match the output of protojson.Marshal(input).")
 
-	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?, NULL, NULL)", descriptorSetJson, typeName, serializedBinary).IsEqualToJsonString(string(expectedJson))
+	// Create JsonMarshalOptions with emit_default_values = false
+	marshalOptionsWithoutDefaultsJSON, err := protonumberjson.Marshal(&jsonoptionspb.JsonMarshalOptions{
+		EmitDefaultValues: false,
+	})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	expectedJsonWithEmitDefault, err := (&protojson.MarshalOptions{EmitDefaultValues: true}).Marshal(dynamicMessage.Interface())
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(expectedJsonWithEmitDefault).To(MatchJSON(input), "Test case is invalid: input should match the output of protojson.Marshal(input).")
+
+	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?, NULL, ?)", descriptorSetJson, typeName, serializedBinary, string(marshalOptionsWithDefaultsJSON)).IsEqualToJsonString(string(expectedJsonWithEmitDefault))
+
+	expectedJsonWithoutDefault, err := (&protojson.MarshalOptions{EmitDefaultValues: false}).Marshal(dynamicMessage.Interface())
+	g.Expect(err).NotTo(HaveOccurred())
+
+	RunTestThatExpression(t, "pb_message_to_json(?, ?, ?, NULL, ?)", descriptorSetJson, typeName, serializedBinary, string(marshalOptionsWithoutDefaultsJSON)).IsEqualToJsonString(string(expectedJsonWithoutDefault))
 }
 
 func TestMessageToJsonSingularFields(t *testing.T) {

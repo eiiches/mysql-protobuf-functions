@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/eiiches/mysql-protobuf-functions/internal/jsonoptionspb"
+	"github.com/eiiches/mysql-protobuf-functions/internal/protonumberjson"
+
 	"google.golang.org/protobuf/proto"
 
 	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
@@ -89,8 +92,14 @@ func testEnumConversion(t *testing.T, fieldDefinition string, input string, expe
 	descriptorSetJson, err := descriptorsetjson.ToJson(p.GetFileDescriptorSet())
 	g.Expect(err).NotTo(HaveOccurred())
 
+	// Create JsonMarshalOptions with emit_default_values = true
+	marshalOptionsWithDefaultsJSON, err := protonumberjson.Marshal(&jsonoptionspb.JsonMarshalOptions{
+		EmitDefaultValues: true,
+	})
+	g.Expect(err).NotTo(HaveOccurred())
+
 	// Test enum conversion: JSON → wire_json → JSON produces canonical string format
-	RunTestThatExpression(t, "pb_wire_json_to_json(?, ?, pb_json_to_wire_json(?, ?, ?, NULL, NULL), NULL, NULL)", descriptorSetJson, typeName, descriptorSetJson, typeName, input).IsEqualToJsonString(expectedOutput)
+	RunTestThatExpression(t, "pb_wire_json_to_json(?, ?, pb_json_to_wire_json(?, ?, ?, NULL, NULL), NULL, ?)", descriptorSetJson, typeName, descriptorSetJson, typeName, input, string(marshalOptionsWithDefaultsJSON)).IsEqualToJsonString(expectedOutput)
 }
 
 func TestJsonToMessageSingularFields(t *testing.T) {

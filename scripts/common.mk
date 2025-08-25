@@ -56,11 +56,12 @@ build/protobuf.sql: src/protobuf.sql cmd/protobuf-accessors/main.go scripts/comm
 
 # Define the ordered list of JSON-related source files
 PROTOBUF_JSON_SOURCES := \
-	src/protobuf-json.sql \
-	src/protobuf-json-v2.sql \
-	src/json-to-protobuf.sql \
+	src/message_to_number_json.sql \
 	src/json_to_number_json.sql \
+	src/number_json_to_message.sql \
 	src/number_json_to_json.sql \
+	src/message_to_json.sql \
+	src/json_to_message.sql \
 	src/wkt_timestamp.sql \
 	src/wkt_duration.sql \
 	src/wkt_struct.sql \
