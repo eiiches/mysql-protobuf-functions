@@ -389,7 +389,7 @@ proc: BEGIN
 							END IF;
 						ELSE
 							-- Use the existing function for primitive types (false = don't emit 64bit as numbers, use strings)
-							SET converted_value = _pb_get_proto3_default_value(field_type, false);
+							SET converted_value = _pb_json_get_proto3_default_value(field_type, false);
 							SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_value);
 						END CASE;
 					END IF;

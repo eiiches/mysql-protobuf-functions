@@ -321,3 +321,70 @@ BEGIN
 
 	RETURN bool_value;
 END $$
+
+-- Helper function to get proto3 default value for a field type
+DROP FUNCTION IF EXISTS _pb_json_get_proto3_default_value $$
+CREATE FUNCTION _pb_json_get_proto3_default_value(field_type INT, emit_64bit_integers_as_numbers BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+	DECLARE message_text TEXT;
+	CASE field_type
+	WHEN 1 THEN -- TYPE_DOUBLE
+		RETURN CAST(0.0 AS JSON);
+	WHEN 2 THEN -- TYPE_FLOAT
+		RETURN CAST(0.0 AS JSON);
+	WHEN 3 THEN -- TYPE_INT64
+		IF emit_64bit_integers_as_numbers THEN
+			RETURN CAST(0 AS JSON);
+		ELSE
+			RETURN JSON_QUOTE('0');
+		END IF;
+	WHEN 4 THEN -- TYPE_UINT64
+		IF emit_64bit_integers_as_numbers THEN
+			RETURN CAST(0 AS JSON);
+		ELSE
+			RETURN JSON_QUOTE('0');
+		END IF;
+	WHEN 5 THEN -- TYPE_INT32
+		RETURN CAST(0 AS JSON);
+	WHEN 6 THEN -- TYPE_FIXED64
+		IF emit_64bit_integers_as_numbers THEN
+			RETURN CAST(0 AS JSON);
+		ELSE
+			RETURN JSON_QUOTE('0');
+		END IF;
+	WHEN 7 THEN -- TYPE_FIXED32
+		RETURN CAST(0 AS JSON);
+	WHEN 8 THEN -- TYPE_BOOL
+		RETURN CAST(false AS JSON);
+	WHEN 9 THEN -- TYPE_STRING
+		RETURN JSON_QUOTE('');
+	WHEN 11 THEN -- TYPE_MESSAGE
+		RETURN JSON_OBJECT();
+	WHEN 12 THEN -- TYPE_BYTES
+		RETURN JSON_QUOTE('');
+	WHEN 13 THEN -- TYPE_UINT32
+		RETURN CAST(0 AS JSON);
+	WHEN 15 THEN -- TYPE_SFIXED32
+		RETURN CAST(0 AS JSON);
+	WHEN 16 THEN -- TYPE_SFIXED64
+		IF emit_64bit_integers_as_numbers THEN
+			RETURN CAST(0 AS JSON);
+		ELSE
+			RETURN JSON_QUOTE('0');
+		END IF;
+	WHEN 17 THEN -- TYPE_SINT32
+		RETURN CAST(0 AS JSON);
+	WHEN 18 THEN -- TYPE_SINT64
+		IF emit_64bit_integers_as_numbers THEN
+			RETURN CAST(0 AS JSON);
+		ELSE
+			RETURN JSON_QUOTE('0');
+		END IF;
+	WHEN 14 THEN -- TYPE_ENUM
+		RETURN CAST(0 AS JSON);
+	ELSE
+		-- For unknown types, raise error
+		SET message_text = CONCAT('_pb_json_get_proto3_default_value: unsupported field_type ', field_type);
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END CASE;
+END $$
