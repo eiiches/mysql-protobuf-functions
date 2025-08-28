@@ -72,7 +72,7 @@ BEGIN
 		-- Check if it's a well-known type
 		CALL _pb_is_well_known_type(field_type_name, @is_wkt);
 		IF @is_wkt THEN
-			SET converted_value = _pb_convert_number_json_to_wkt(field_type, field_type_name, field_number_json_value);
+			CALL _pb_convert_number_json_to_wkt(field_type, field_type_name, field_number_json_value, JSON_ARRAY(descriptor_set_json), converted_value);
 		ELSE
 			SET enum_numeric_value = JSON_EXTRACT(field_number_json_value, '$');
 			SET converted_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value);
@@ -81,7 +81,7 @@ BEGIN
 		-- Check if it's a well-known type
 		CALL _pb_is_well_known_type(field_type_name, @is_wkt);
 		IF @is_wkt THEN
-			SET converted_value = _pb_convert_number_json_to_wkt(field_type, field_type_name, field_number_json_value);
+			CALL _pb_convert_number_json_to_wkt(field_type, field_type_name, field_number_json_value, JSON_ARRAY(descriptor_set_json), converted_value);
 		ELSE
 			-- Recursively convert nested message
 			CALL _pb_number_json_to_json_proc(descriptor_set_json, field_type_name, field_number_json_value, emit_default_values, nested_json);
@@ -264,7 +264,7 @@ proc: BEGIN
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
 	-- Check if this is a well-known type and handle it specially
-	SET wkt_result = _pb_convert_number_json_to_wkt(11, full_type_name, number_json);
+	CALL _pb_convert_number_json_to_wkt(11, full_type_name, number_json, JSON_ARRAY(descriptor_set_json), wkt_result);
 	IF wkt_result IS NOT NULL THEN
 		SET result = wkt_result;
 		LEAVE proc;

@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 func testNumberJsonToJson(t *testing.T, fieldDefinition string, numberJsonInput string, expectedJson string) {
@@ -27,6 +28,7 @@ func testNumberJsonToJson(t *testing.T, fieldDefinition string, numberJsonInput 
 			|import "google/protobuf/empty.proto";
 			|import "google/protobuf/wrappers.proto";
 			|import "google/protobuf/field_mask.proto";
+			|import "google/protobuf/any.proto";
 			|message Test {
 			|    %s
 			|}
@@ -48,11 +50,18 @@ func testNumberJsonToJson(t *testing.T, fieldDefinition string, numberJsonInput 
 
 	// Parse expected JSON with Go protojson to get expected result
 	expectedMessage := p.JsonToDynamicMessage(typeName, expectedJson)
-	expectedJsonRemarshalled, err := protojson.MarshalOptions{EmitDefaultValues: true}.Marshal(expectedMessage.Interface())
+
+	// Create composite resolver for marshaling
+	compositeResolver := &testutils.CompositeResolver{
+		Local:  p.Files.AsResolver(),
+		Global: protoregistry.GlobalTypes,
+	}
+
+	expectedJsonRemarshalled, err := protojson.MarshalOptions{EmitDefaultValues: true, Resolver: compositeResolver}.Marshal(expectedMessage.Interface())
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(expectedJson).To(gjson.EqualJson(string(expectedJsonRemarshalled)), "Invalid test case; The expected JSON does not match the Go protojson output. Expected JSON is incorrect.")
 
-	expectedJsonWithoutDefaults, err := protojson.MarshalOptions{EmitDefaultValues: false}.Marshal(expectedMessage.Interface())
+	expectedJsonWithoutDefaults, err := protojson.MarshalOptions{EmitDefaultValues: false, Resolver: compositeResolver}.Marshal(expectedMessage.Interface())
 	g.Expect(err).NotTo(HaveOccurred())
 
 	// Validate that the expected JSON matches the protonumberjson output
@@ -655,6 +664,29 @@ func TestNumberJsonToJsonWellKnownTypes(t *testing.T) {
 		testNumberJsonToJson(t, "google.protobuf.FieldMask field_mask_field = 1;", `{}`, `{}`)
 		testNumberJsonToJson(t, "google.protobuf.FieldMask field_mask_field = 1;", `{"1": {}}`, `{"fieldMaskField": ""}`)
 		testNumberJsonToJson(t, "google.protobuf.FieldMask field_mask_field = 1;", `{"1": {"1": ["path1", "path2"]}}`, `{"fieldMaskField": "path1,path2"}`)
+	})
+
+	t.Run("Any", func(t *testing.T) {
+		// Empty Any message
+		testNumberJsonToJson(t, "google.protobuf.Any any_field = 1;", `{}`, `{}`)
+
+		// Any with type_url but no value
+		testNumberJsonToJson(t, "google.protobuf.Any any_field = 1;", `{"1": {"1": "type.googleapis.com/MessageType"}}`, `{"anyField": {"@type": "type.googleapis.com/MessageType", "value": 0}}`)
+
+		// Any with MessageType containing an int32 value
+		testNumberJsonToJson(t, "google.protobuf.Any any_field = 1;", `{"1": {"1": "type.googleapis.com/MessageType", "2": "CLlg"}}`, `{"anyField": {"@type": "type.googleapis.com/MessageType", "value": 12345}}`)
+
+		// Any with well-known type (StringValue)
+		testNumberJsonToJson(t, "google.protobuf.Any any_field = 1;", `{"1": {"1": "type.googleapis.com/google.protobuf.StringValue", "2": "CgVoZWxsbw=="}}`, `{"anyField": {"@type": "type.googleapis.com/google.protobuf.StringValue", "value": "hello"}}`)
+
+		// Any with well-known type (Int32Value)
+		testNumberJsonToJson(t, "google.protobuf.Any any_field = 1;", `{"1": {"1": "type.googleapis.com/google.protobuf.Int32Value", "2": "CAo="}}`, `{"anyField": {"@type": "type.googleapis.com/google.protobuf.Int32Value", "value": 10}}`)
+
+		// Any with well-known type (Timestamp)
+		testNumberJsonToJson(t, "google.protobuf.Any any_field = 1;", `{"1": {"1": "type.googleapis.com/google.protobuf.Timestamp", "2": "CICaw50G"}}`, `{"anyField": {"@type": "type.googleapis.com/google.protobuf.Timestamp", "value": "2023-01-01T00:00:00Z"}}`)
+
+		// Any with well-known type (Duration)
+		testNumberJsonToJson(t, "google.protobuf.Any any_field = 1;", `{"1": {"1": "type.googleapis.com/google.protobuf.Duration", "2": "CKwC"}}`, `{"anyField": {"@type": "type.googleapis.com/google.protobuf.Duration", "value": "300s"}}`)
 	})
 }
 

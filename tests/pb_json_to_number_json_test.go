@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 func testJsonToNumberJson(t *testing.T, fieldDefinition string, inputJson string, expectedNumberJson string) {
@@ -26,6 +27,7 @@ func testJsonToNumberJson(t *testing.T, fieldDefinition string, inputJson string
 			|import "google/protobuf/empty.proto";
 			|import "google/protobuf/wrappers.proto";
 			|import "google/protobuf/field_mask.proto";
+			|import "google/protobuf/any.proto";
 			|message Test {
 			|    %s
 			|}
@@ -47,11 +49,18 @@ func testJsonToNumberJson(t *testing.T, fieldDefinition string, inputJson string
 
 	// Parse input JSON with Go protojson to get expected result
 	expectedMessage := p.JsonToDynamicMessage(typeName, inputJson)
-	inputJsonRemarshalled, err := protojson.MarshalOptions{EmitDefaultValues: true}.Marshal(expectedMessage.Interface())
+
+	// Create composite resolver for marshaling
+	compositeResolver := &testutils.CompositeResolver{
+		Local:  p.Files.AsResolver(),
+		Global: protoregistry.GlobalTypes,
+	}
+
+	inputJsonRemarshalled, err := protojson.MarshalOptions{EmitDefaultValues: true, Resolver: compositeResolver}.Marshal(expectedMessage.Interface())
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(inputJson).To(gjson.EqualJson(string(inputJsonRemarshalled)), "Invalid test case; The input JSON does not match the Go protojson output. Input JSON is incorrect.")
 
-	inputJsonWithoutDefaults, err := protojson.MarshalOptions{EmitDefaultValues: false}.Marshal(expectedMessage.Interface())
+	inputJsonWithoutDefaults, err := protojson.MarshalOptions{EmitDefaultValues: false, Resolver: compositeResolver}.Marshal(expectedMessage.Interface())
 	g.Expect(err).NotTo(HaveOccurred())
 
 	// Validate that the expected number JSON matches the protonumberjson output
@@ -639,6 +648,32 @@ func TestJsonToNumberJsonWellKnownTypes(t *testing.T) {
 		testJsonToNumberJson(t, "google.protobuf.FieldMask field_mask_field = 1;", `{}`, `{}`)
 		testJsonToNumberJson(t, "google.protobuf.FieldMask field_mask_field = 1;", `{"fieldMaskField": ""}`, `{"1": {}}`)
 		testJsonToNumberJson(t, "google.protobuf.FieldMask field_mask_field = 1;", `{"fieldMaskField": "path1,path2"}`, `{"1": {"1": ["path1", "path2"]}}`)
+	})
+
+	t.Run("Any", func(t *testing.T) {
+		// Empty Any message
+		testJsonToNumberJson(t, "google.protobuf.Any any_field = 1;", `{}`, `{}`)
+
+		// Any with type_url but no value
+		testJsonToNumberJson(t, "google.protobuf.Any any_field = 1;", `{"anyField": {"@type": "type.googleapis.com/MessageType"}}`, `{"1": {"1": "type.googleapis.com/MessageType"}}`)
+
+		// Any with MessageType containing an int32 value
+		testJsonToNumberJson(t, "google.protobuf.Any any_field = 1;", `{"anyField": {"@type": "type.googleapis.com/MessageType", "value": 12345}}`, `{"1": {"1": "type.googleapis.com/MessageType", "2": "CLlg"}}`)
+
+		// Any with empty MessageType
+		testJsonToNumberJson(t, "google.protobuf.Any any_field = 1;", `{"anyField": {"@type": "type.googleapis.com/MessageType", "value": 0}}`, `{"1": {"1": "type.googleapis.com/MessageType"}}`)
+
+		// Any with well-known type (StringValue)
+		testJsonToNumberJson(t, "google.protobuf.Any any_field = 1;", `{"anyField": {"@type": "type.googleapis.com/google.protobuf.StringValue", "value": "hello"}}`, `{"1": {"1": "type.googleapis.com/google.protobuf.StringValue", "2": "CgVoZWxsbw=="}}`)
+
+		// Any with well-known type (Int32Value)
+		testJsonToNumberJson(t, "google.protobuf.Any any_field = 1;", `{"anyField": {"@type": "type.googleapis.com/google.protobuf.Int32Value", "value": 10}}`, `{"1": {"1": "type.googleapis.com/google.protobuf.Int32Value", "2": "CAo="}}`)
+
+		// Any with well-known type (Timestamp)
+		testJsonToNumberJson(t, "google.protobuf.Any any_field = 1;", `{"anyField": {"@type": "type.googleapis.com/google.protobuf.Timestamp", "value": "2023-01-01T00:00:00Z"}}`, `{"1": {"1": "type.googleapis.com/google.protobuf.Timestamp", "2": "CICaw50G"}}`)
+
+		// Any with well-known type (Duration)
+		testJsonToNumberJson(t, "google.protobuf.Any any_field = 1;", `{"anyField": {"@type": "type.googleapis.com/google.protobuf.Duration", "value": "300s"}}`, `{"1": {"1": "type.googleapis.com/google.protobuf.Duration", "2": "CKwC"}}`)
 	})
 }
 

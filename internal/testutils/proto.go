@@ -14,8 +14,61 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
+
+// CompositeResolver combines a local resolver with the global registry
+type CompositeResolver struct {
+	Local interface {
+		FindMessageByName(name protoreflect.FullName) (protoreflect.MessageType, error)
+		FindMessageByURL(url string) (protoreflect.MessageType, error)
+		FindExtensionByName(name protoreflect.FullName) (protoreflect.ExtensionType, error)
+		FindExtensionByNumber(message protoreflect.FullName, field protoreflect.FieldNumber) (protoreflect.ExtensionType, error)
+	}
+	Global interface {
+		FindMessageByName(name protoreflect.FullName) (protoreflect.MessageType, error)
+		FindMessageByURL(url string) (protoreflect.MessageType, error)
+		FindExtensionByName(name protoreflect.FullName) (protoreflect.ExtensionType, error)
+		FindExtensionByNumber(message protoreflect.FullName, field protoreflect.FieldNumber) (protoreflect.ExtensionType, error)
+	}
+}
+
+func (r *CompositeResolver) FindMessageByName(name protoreflect.FullName) (protoreflect.MessageType, error) {
+	// Try local resolver first
+	if msgType, err := r.Local.FindMessageByName(name); err == nil {
+		return msgType, nil
+	}
+	// Fall back to global registry
+	return r.Global.FindMessageByName(name)
+}
+
+func (r *CompositeResolver) FindMessageByURL(url string) (protoreflect.MessageType, error) {
+	// Try local resolver first
+	if msgType, err := r.Local.FindMessageByURL(url); err == nil {
+		return msgType, nil
+	}
+	// Fall back to global registry
+	return r.Global.FindMessageByURL(url)
+}
+
+func (r *CompositeResolver) FindExtensionByName(name protoreflect.FullName) (protoreflect.ExtensionType, error) {
+	// Try local resolver first
+	if extType, err := r.Local.FindExtensionByName(name); err == nil {
+		return extType, nil
+	}
+	// Fall back to global registry
+	return r.Global.FindExtensionByName(name)
+}
+
+func (r *CompositeResolver) FindExtensionByNumber(message protoreflect.FullName, field protoreflect.FieldNumber) (protoreflect.ExtensionType, error) {
+	// Try local resolver first
+	if extType, err := r.Local.FindExtensionByNumber(message, field); err == nil {
+		return extType, nil
+	}
+	// Fall back to global registry
+	return r.Global.FindExtensionByNumber(message, field)
+}
 
 type ProtoTestSupport struct {
 	T     *testing.T
@@ -66,7 +119,16 @@ func (this *ProtoTestSupport) JsonToDynamicMessage(name protoreflect.FullName, j
 	this.G.Expect(err).NotTo(HaveOccurred())
 
 	dynamicMessage := messageType.New()
-	this.G.Expect(protojson.Unmarshal([]byte(json), dynamicMessage.Interface())).To(Succeed())
+
+	// Use UnmarshalOptions with a composite resolver that includes both local types and well-known types
+	opts := protojson.UnmarshalOptions{
+		Resolver: &CompositeResolver{
+			Local:  this.Files.AsResolver(),
+			Global: protoregistry.GlobalTypes,
+		},
+	}
+
+	this.G.Expect(opts.Unmarshal([]byte(json), dynamicMessage.Interface())).To(Succeed())
 
 	return dynamicMessage
 }
