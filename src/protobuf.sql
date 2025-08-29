@@ -1408,6 +1408,12 @@ BEGIN
 	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
 	DECLARE next_index INT;
 	DECLARE new_element JSON;
+	DECLARE message_text TEXT;
+
+	IF value IS NULL OR field_number IS NULL OR wire_type IS NULL THEN
+		SET message_text = CONCAT('_pb_wire_json_set_field: invalid null parameter');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
 
 	-- Get the next available index
 	SET next_index = _pb_wire_json_get_next_index(wire_json);
