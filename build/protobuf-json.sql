@@ -122,7 +122,7 @@ BEGIN
 		IF is_repeated THEN
 			SET field_json_value = pb_wire_json_get_repeated_bytes_field_as_json_array(wire_json, field_number);
 		ELSE
-			SET field_json_value = JSON_QUOTE(TO_BASE64(pb_wire_json_get_bytes_field(wire_json, field_number, IF(has_field_presence, NULL, _binary X''))));
+			SET field_json_value = JSON_QUOTE(_pb_to_base64(pb_wire_json_get_bytes_field(wire_json, field_number, IF(has_field_presence, NULL, _binary X''))));
 		END IF;
 	WHEN 13 THEN -- uint32
 		IF is_repeated THEN
@@ -619,7 +619,7 @@ BEGIN
 
 	CASE field_type
 	WHEN 14 THEN -- enum
-		SET converted_value = _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value, JSON_ARRAY(descriptor_set_json));
+		CALL _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value, JSON_ARRAY(descriptor_set_json), converted_value);
 		IF converted_value IS NULL THEN -- Not handled by well-known type parser
 			SET enum_numeric_value = _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, field_json_value, ignore_unknown_enums);
 			SET converted_value = CAST(enum_numeric_value AS JSON);
@@ -635,7 +635,7 @@ BEGIN
 			SET converted_value = NULL;
 		ELSE
 			SET is_default = FALSE;
-			SET converted_value = _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value, JSON_ARRAY(descriptor_set_json));
+			CALL _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value, JSON_ARRAY(descriptor_set_json), converted_value);
 			IF converted_value IS NULL THEN -- Not handled by well-known type parser
 				-- For regular (non-WKT) messages, validate that the JSON value is an object
 				IF JSON_TYPE(field_json_value) != 'OBJECT' THEN
@@ -709,7 +709,7 @@ BEGIN
 	WHEN 12 THEN -- bytes
 		-- Decode from JSON Base64/Base64URL and re-encode as standard Base64
 		SET str_value = JSON_UNQUOTE(field_json_value);
-		SET converted_value = JSON_QUOTE(TO_BASE64(_pb_json_parse_bytes(field_json_value)));
+		SET converted_value = JSON_QUOTE(_pb_to_base64(_pb_json_parse_bytes(field_json_value)));
 		SET is_default = (str_value = '');
 
 	WHEN 8 THEN -- bool
@@ -792,7 +792,7 @@ proc: BEGIN
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
 	-- Check if this is a well-known type and handle it specially
-	SET wkt_result = _pb_convert_json_wkt_to_number_json(11, full_type_name, proto_json, JSON_ARRAY(descriptor_set_json));
+	CALL _pb_convert_json_wkt_to_number_json(11, full_type_name, proto_json, JSON_ARRAY(descriptor_set_json), wkt_result);
 	IF wkt_result IS NOT NULL THEN
 		SET result = wkt_result;
 		LEAVE proc;
@@ -2780,9 +2780,9 @@ BEGIN
 END $$
 
 -- Convert google.protobuf.Any from ProtoNumberJSON to ProtoJSON
-DROP FUNCTION IF EXISTS _pb_wkt_any_number_json_to_json $$
-CREATE FUNCTION _pb_wkt_any_number_json_to_json(number_json_value JSON, descriptor_set_jsons JSON) RETURNS JSON DETERMINISTIC
-BEGIN
+DROP PROCEDURE IF EXISTS _pb_wkt_any_number_json_to_json $$
+CREATE PROCEDURE _pb_wkt_any_number_json_to_json(IN number_json_value JSON, IN descriptor_set_jsons JSON, OUT result JSON)
+proc_label: BEGIN
 	DECLARE type_url TEXT;
 	DECLARE value_base64 TEXT;
 	DECLARE type_name TEXT;
@@ -2790,7 +2790,6 @@ BEGIN
 	DECLARE decoded_message LONGBLOB;
 	DECLARE inner_json JSON;
 	DECLARE inner_number_json JSON;
-	DECLARE result JSON;
 	DECLARE i INT DEFAULT 0;
 	DECLARE descriptor_count INT;
 	DECLARE current_descriptor_set JSON;
@@ -2805,7 +2804,8 @@ BEGIN
 
 	-- If no value, return just the type
 	IF message IS NULL THEN
-		RETURN JSON_OBJECT('@type', type_url);
+		SET result = JSON_OBJECT('@type', type_url);
+		LEAVE proc_label;
 	END IF;
 
 	-- Extract type name from type_url
@@ -2816,7 +2816,7 @@ BEGIN
 		-- TODO: set json_marshal_option
 		SET inner_number_json = _pb_message_to_number_json(descriptor_set_json, type_name, message, NULL);
 		CALL _pb_convert_number_json_to_wkt(11, type_name, inner_number_json, descriptor_set_jsons, inner_json);
-		RETURN JSON_OBJECT('@type', type_url, 'value', inner_json);
+		SET result = JSON_OBJECT('@type', type_url, 'value', inner_json);
 	ELSE -- non-wkt
 		-- Find the descriptor set that contains this message type
 		SET descriptor_set_json = _pb_wkt_any_find_descriptor_set(type_name, descriptor_set_jsons);
@@ -2827,13 +2827,13 @@ BEGIN
 		SET inner_number_json = _pb_message_to_number_json(descriptor_set_json, type_name, message, NULL);
 		-- TODO: set json_marshal_option
 		CALL _pb_number_json_to_json_proc(descriptor_set_json, type_name, inner_number_json, FALSE, inner_json);
-		RETURN JSON_SET(inner_json, '$."@type"', type_url);
+		SET result = JSON_SET(inner_json, '$."@type"', type_url);
 	END IF;
 END $$
 
 -- Convert google.protobuf.Any from ProtoJSON to ProtoNumberJSON
-DROP FUNCTION IF EXISTS _pb_wkt_any_json_to_number_json $$
-CREATE FUNCTION _pb_wkt_any_json_to_number_json(proto_json_value JSON, descriptor_set_jsons JSON) RETURNS JSON DETERMINISTIC
+DROP PROCEDURE IF EXISTS _pb_wkt_any_json_to_number_json $$
+CREATE PROCEDURE _pb_wkt_any_json_to_number_json(IN proto_json_value JSON, IN descriptor_set_jsons JSON, OUT result JSON)
 BEGIN
 	DECLARE type_url TEXT;
 	DECLARE type_name TEXT;
@@ -2858,14 +2858,15 @@ BEGIN
 
 	-- If no content besides @type, return just type_url
 	-- IF value_json IS NULL OR JSON_LENGTH(value_json) = 0 THEN
-	-- 	RETURN JSON_OBJECT('1', COALESCE(type_url, ''));
+	-- 	SET result = JSON_OBJECT('1', COALESCE(type_url, ''));
+	-- 	LEAVE _pb_wkt_any_json_to_number_json;
 	-- END IF;
 
 	-- Find the descriptor set that contains this message type
 	SET descriptor_set_json = _pb_wkt_get_descriptor_set(type_name);
 	IF descriptor_set_json IS NOT NULL THEN -- wkt
 		-- TODO: support enum?
-		CALL _pb_convert_json_wkt_to_number_json(11, type_name, JSON_EXTRACT(proto_json_value, '$.value'), descriptor_set_json, inner_number_json);
+		CALL _pb_convert_json_wkt_to_number_json(11, type_name, JSON_EXTRACT(proto_json_value, '$.value'), descriptor_set_jsons, inner_number_json);
 		SET message = _pb_number_json_to_message(descriptor_set_json, type_name, inner_number_json, NULL);
 	ELSE -- non-wkt
 		SET descriptor_set_json = _pb_wkt_any_find_descriptor_set(type_name, descriptor_set_jsons);
@@ -2874,14 +2875,14 @@ BEGIN
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 		END IF;
 
-		SET inner_number_json = _pb_json_to_number_json(descriptor_set_json, type_name, JSON_REMOVE(proto_json_value, '$.\"@type\"'), NULL);
+		CALL _pb_json_to_number_json_proc(descriptor_set_json, type_name, JSON_REMOVE(proto_json_value, '$.\"@type\"'), FALSE, FALSE, inner_number_json);
 		SET message = _pb_number_json_to_message(descriptor_set_json, type_name, inner_number_json, NULL);
 	END IF;
 
 	-- Return ProtoNumberJSON format: field 1 = type_url, field 2 = base64 value
-	RETURN JSON_OBJECT(
+	SET result = JSON_OBJECT(
 		'1', type_url,
-		'2', TO_BASE64(message)
+		'2', _pb_to_base64(message)
 	);
 END $$
 
@@ -2961,7 +2962,7 @@ BEGIN
 
 	-- Return base64 encoded value
 	IF encoded_message IS NOT NULL THEN
-		RETURN TO_BASE64(encoded_message);
+		RETURN _pb_to_base64(encoded_message);
 	ELSE
 		RETURN '';
 	END IF;
@@ -3110,7 +3111,7 @@ BEGIN
 	IF str_value != '' THEN
 		-- Use the parsing function to decode and get standard Base64
 		SET bytes_val = _pb_json_parse_bytes(proto_json_value);
-		RETURN JSON_OBJECT('1', TO_BASE64(bytes_val));
+		RETURN JSON_OBJECT('1', _pb_to_base64(bytes_val));
 	ELSE
 		RETURN JSON_OBJECT();
 	END IF;
@@ -3353,20 +3354,11 @@ BEGIN
 		WHEN '.google.protobuf.Empty' THEN
 			SET result = _pb_wkt_empty_json_to_number_json(proto_json_value);
 		WHEN '.google.protobuf.Any' THEN
-			SET result = _pb_wkt_any_json_to_number_json(proto_json_value, descriptor_set_jsons);
+			CALL _pb_wkt_any_json_to_number_json(proto_json_value, descriptor_set_jsons, result);
 		ELSE
 			SET result = NULL;
 		END CASE;
 	END CASE;
-END $$
-
--- Helper function to convert well-known type from ProtoJSON to ProtoNumberJSON
-DROP FUNCTION IF EXISTS _pb_convert_json_wkt_to_number_json $$
-CREATE FUNCTION _pb_convert_json_wkt_to_number_json(field_type INT, full_type_name TEXT, proto_json_value JSON, descriptor_set_jsons JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE result JSON;
-	CALL _pb_convert_json_wkt_to_number_json(field_type, full_type_name, proto_json_value, descriptor_set_jsons, result);
-	RETURN result;
 END $$
 
 -- Helper procedure to convert well-known type from ProtoNumberJSON to ProtoJSON
@@ -3416,20 +3408,11 @@ BEGIN
 		WHEN '.google.protobuf.FieldMask' THEN
 			SET result = _pb_wkt_field_mask_number_json_to_json(number_json_value);
 		WHEN '.google.protobuf.Any' THEN
-			SET result = _pb_wkt_any_number_json_to_json(number_json_value, descriptor_set_jsons);
+			CALL _pb_wkt_any_number_json_to_json(number_json_value, descriptor_set_jsons, result);
 		ELSE
 			SET result = NULL;
 		END CASE;
 	END CASE;
-END $$
-
--- Helper function to convert well-known type from ProtoNumberJSON to ProtoJSON
-DROP FUNCTION IF EXISTS _pb_convert_number_json_to_wkt $$
-CREATE FUNCTION _pb_convert_number_json_to_wkt(field_type INT, full_type_name TEXT, number_json_value JSON, descriptor_set_jsons JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE result JSON;
-	CALL _pb_convert_number_json_to_wkt(field_type, full_type_name, number_json_value, descriptor_set_jsons, result);
-	RETURN result;
 END $$
 
 DELIMITER $$
@@ -3550,36 +3533,6 @@ BEGIN
 	RETURN input_name REGEXP '^[a-zA-Z0-9]+$';
 END $$
 
-DELIMITER $$
-
--- Decode Base64 encoded string to bytes
--- Supports both standard Base64 (+/) and Base64 URL (-_) encoding
--- Handles input with or without padding as per protobuf JSON spec
-DROP FUNCTION IF EXISTS _pb_util_from_base64_url $$
-CREATE FUNCTION _pb_util_from_base64_url(encoded_value LONGTEXT) RETURNS LONGBLOB DETERMINISTIC
-BEGIN
-	DECLARE standard_base64 LONGTEXT;
-
-	-- Handle null/empty input
-	IF encoded_value IS NULL OR LENGTH(encoded_value) = 0 THEN
-		RETURN encoded_value;
-	END IF;
-
-	-- Convert Base64 URL encoding to standard Base64 if needed:
-	-- Replace - with + and _ with / (no-op for standard Base64)
-	SET standard_base64 = REPLACE(REPLACE(encoded_value, '-', '+'), '_', '/');
-
-	-- Add padding if needed (handles both Base64 URL without padding and standard Base64 without padding)
-	-- Base64 strings must be multiples of 4 characters
-	WHILE LENGTH(standard_base64) % 4 != 0 DO
-		SET standard_base64 = CONCAT(standard_base64, '=');
-	END WHILE;
-
-	-- Decode using MySQL's standard FROM_BASE64 function
-	RETURN FROM_BASE64(standard_base64);
-END $$
-
-DELIMITER ;
 DELIMITER $$
 
 -- Helper function to get message descriptor from descriptor set JSON

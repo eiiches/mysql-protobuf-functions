@@ -152,7 +152,7 @@ BEGIN
 	-- Return ProtoNumberJSON format: field 1 = type_url, field 2 = base64 value
 	SET result = JSON_OBJECT(
 		'1', type_url,
-		'2', TO_BASE64(message)
+		'2', _pb_to_base64(message)
 	);
 END $$
 
@@ -232,7 +232,7 @@ BEGIN
 
 	-- Return base64 encoded value
 	IF encoded_message IS NOT NULL THEN
-		RETURN TO_BASE64(encoded_message);
+		RETURN _pb_to_base64(encoded_message);
 	ELSE
 		RETURN '';
 	END IF;

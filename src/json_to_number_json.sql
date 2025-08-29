@@ -218,7 +218,7 @@ BEGIN
 	WHEN 12 THEN -- bytes
 		-- Decode from JSON Base64/Base64URL and re-encode as standard Base64
 		SET str_value = JSON_UNQUOTE(field_json_value);
-		SET converted_value = JSON_QUOTE(TO_BASE64(_pb_json_parse_bytes(field_json_value)));
+		SET converted_value = JSON_QUOTE(_pb_to_base64(_pb_json_parse_bytes(field_json_value)));
 		SET is_default = (str_value = '');
 
 	WHEN 8 THEN -- bool

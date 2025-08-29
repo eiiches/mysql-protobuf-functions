@@ -1,5 +1,19 @@
 DELIMITER $$
 
+-- Encode bytes to Base64 string without newlines
+-- MySQL's TO_BASE64 adds newlines every 76 characters, this function removes them
+DROP FUNCTION IF EXISTS _pb_to_base64 $$
+CREATE FUNCTION _pb_to_base64(data LONGBLOB) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+	-- Handle null/empty input
+	IF data IS NULL THEN
+		RETURN NULL;
+	END IF;
+	
+	-- Use TO_BASE64 and remove all newline characters
+	RETURN REPLACE(TO_BASE64(data), '\n', '');
+END $$
+
 -- Decode Base64 encoded string to bytes
 -- Supports both standard Base64 (+/) and Base64 URL (-_) encoding
 -- Handles input with or without padding as per protobuf JSON spec

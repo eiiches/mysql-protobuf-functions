@@ -123,7 +123,7 @@ BEGIN
 	IF str_value != '' THEN
 		-- Use the parsing function to decode and get standard Base64
 		SET bytes_val = _pb_json_parse_bytes(proto_json_value);
-		RETURN JSON_OBJECT('1', TO_BASE64(bytes_val));
+		RETURN JSON_OBJECT('1', _pb_to_base64(bytes_val));
 	ELSE
 		RETURN JSON_OBJECT();
 	END IF;

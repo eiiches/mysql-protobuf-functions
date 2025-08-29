@@ -51,6 +51,8 @@ build/protobuf.sql: src/protobuf.sql cmd/protobuf-accessors/main.go scripts/comm
 	echo >> $@.tmp
 	cat src/protobuf.sql >> $@.tmp
 	echo >> $@.tmp
+	cat src/util-base64.sql >> $@.tmp
+	echo >> $@.tmp
 	go run cmd/protobuf-accessors/main.go >> $@.tmp
 	mv $@.tmp $@
 
@@ -72,7 +74,6 @@ PROTOBUF_JSON_SOURCES := \
 	src/wkt_wrappers.sql \
 	src/wkt.sql \
 	src/util-case-conv.sql \
-	src/util-base64.sql \
 	src/descriptor_set.sql \
 	src/protobuf-descriptor.sql \
 	src/json.sql \

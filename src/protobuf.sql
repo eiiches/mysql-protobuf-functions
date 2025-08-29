@@ -847,7 +847,7 @@ BEGIN
 			SET wire_element = JSON_OBJECT('i', i, 'n', field_number, 't', wire_type, 'v', uint_value);
 		WHEN 2 THEN -- LEN
 			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
-			SET wire_element = JSON_OBJECT('i', i, 'n', field_number, 't', wire_type, 'v', TO_BASE64(bytes_value));
+			SET wire_element = JSON_OBJECT('i', i, 'n', field_number, 't', wire_type, 'v', _pb_to_base64(bytes_value));
 		WHEN 5 THEN -- I32
 			CALL _pb_wire_read_i32_as_uint32(tail, uint_value, tail);
 			SET wire_element = JSON_OBJECT('i', i, 'n', field_number, 't', wire_type, 'v', uint_value);
@@ -1521,7 +1521,7 @@ BEGIN
 			-- If we found the target, update and return
 			IF found_target THEN
 				SET original_index = JSON_EXTRACT(element, '$.i');
-				SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', TO_BASE64(new_packed_data));
+				SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(new_packed_data));
 				SET element_path = CONCAT(field_path, '[', array_index, ']');
 				RETURN JSON_SET(wire_json, element_path, new_element);
 			END IF;
@@ -1608,7 +1608,7 @@ BEGIN
 			-- If we found the target, update and return
 			IF found_target THEN
 				SET original_index = JSON_EXTRACT(element, '$.i');
-				SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', TO_BASE64(new_packed_data));
+				SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(new_packed_data));
 				SET element_path = CONCAT(field_path, '[', array_index, ']');
 				RETURN JSON_SET(wire_json, element_path, new_element);
 			END IF;
@@ -1695,7 +1695,7 @@ BEGIN
 			-- If we found the target, update and return
 			IF found_target THEN
 				SET original_index = JSON_EXTRACT(element, '$.i');
-				SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', TO_BASE64(new_packed_data));
+				SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(new_packed_data));
 				SET element_path = CONCAT(field_path, '[', array_index, ']');
 				RETURN JSON_SET(wire_json, element_path, new_element);
 			END IF;
@@ -1755,7 +1755,7 @@ BEGIN
 			IF current_index = repeated_index THEN
 				-- Found the target index - preserve original index and replace value
 				SET original_index = JSON_EXTRACT(element, '$.i');
-				SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', TO_BASE64(value));
+				SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(value));
 				SET element_path = CONCAT(field_path, '[', array_index, ']');
 				RETURN JSON_SET(wire_json, element_path, new_element);
 			END IF;
@@ -1846,7 +1846,7 @@ BEGIN
 						RETURN JSON_REMOVE(wire_json, element_path);
 					END IF;
 				ELSE
-					SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', TO_BASE64(new_packed_data));
+					SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(new_packed_data));
 					SET element_path = CONCAT(field_path, '[', array_index, ']');
 					RETURN JSON_SET(wire_json, element_path, new_element);
 				END IF;
@@ -1949,7 +1949,7 @@ BEGIN
 						RETURN JSON_REMOVE(wire_json, element_path);
 					END IF;
 				ELSE
-					SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', TO_BASE64(new_packed_data));
+					SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(new_packed_data));
 					SET element_path = CONCAT(field_path, '[', array_index, ']');
 					RETURN JSON_SET(wire_json, element_path, new_element);
 				END IF;
@@ -2052,7 +2052,7 @@ BEGIN
 						RETURN JSON_REMOVE(wire_json, element_path);
 					END IF;
 				ELSE
-					SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', TO_BASE64(new_packed_data));
+					SET new_element = JSON_OBJECT('i', original_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(new_packed_data));
 					SET element_path = CONCAT(field_path, '[', array_index, ']');
 					RETURN JSON_SET(wire_json, element_path, new_element);
 				END IF;
@@ -2161,13 +2161,13 @@ BEGIN
 			-- Append to existing packed data
 			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(last_element, '$.v')));
 			SET packed_data = CONCAT(packed_data, new_varint);
-			RETURN JSON_SET(wire_json, CONCAT(field_path, '[', last_index, '].v'), TO_BASE64(packed_data));
+			RETURN JSON_SET(wire_json, CONCAT(field_path, '[', last_index, '].v'), _pb_to_base64(packed_data));
 		END IF;
 	END IF;
 
 	-- Create new packed element
 	SET next_index = _pb_wire_json_get_next_index(wire_json);
-	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(new_varint));
+	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(new_varint));
 
 	IF field_array IS NULL THEN
 		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
@@ -2203,13 +2203,13 @@ BEGIN
 			-- Append to existing packed data
 			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(last_element, '$.v')));
 			SET packed_data = CONCAT(packed_data, new_i64);
-			RETURN JSON_SET(wire_json, CONCAT(field_path, '[', last_index, '].v'), TO_BASE64(packed_data));
+			RETURN JSON_SET(wire_json, CONCAT(field_path, '[', last_index, '].v'), _pb_to_base64(packed_data));
 		END IF;
 	END IF;
 
 	-- Create new packed element
 	SET next_index = _pb_wire_json_get_next_index(wire_json);
-	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(new_i64));
+	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(new_i64));
 
 	IF field_array IS NULL THEN
 		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
@@ -2245,13 +2245,13 @@ BEGIN
 			-- Append to existing packed data
 			SET packed_data = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(last_element, '$.v')));
 			SET packed_data = CONCAT(packed_data, new_i32);
-			RETURN JSON_SET(wire_json, CONCAT(field_path, '[', last_index, '].v'), TO_BASE64(packed_data));
+			RETURN JSON_SET(wire_json, CONCAT(field_path, '[', last_index, '].v'), _pb_to_base64(packed_data));
 		END IF;
 	END IF;
 
 	-- Create new packed element
 	SET next_index = _pb_wire_json_get_next_index(wire_json);
-	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(new_i32));
+	SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(new_i32));
 
 	IF field_array IS NULL THEN
 		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
@@ -2285,7 +2285,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wire_json_set_len_field $$
 CREATE FUNCTION _pb_wire_json_set_len_field(wire_json JSON, field_number INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN _pb_wire_json_set_field(wire_json, field_number, 2, JSON_QUOTE(TO_BASE64(value)));
+	RETURN _pb_wire_json_set_field(wire_json, field_number, 2, JSON_QUOTE(_pb_to_base64(value)));
 END $$
 
 -- Private: Add to repeated VARINT field
@@ -2325,7 +2325,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wire_json_add_repeated_len_field_element $$
 CREATE FUNCTION _pb_wire_json_add_repeated_len_field_element(wire_json JSON, field_number INT, value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN _pb_wire_json_add_repeated_field_element(wire_json, field_number, 2, JSON_QUOTE(TO_BASE64(value)));
+	RETURN _pb_wire_json_add_repeated_field_element(wire_json, field_number, 2, JSON_QUOTE(_pb_to_base64(value)));
 END $$
 
 -- Private: Insert into repeated VARINT field
@@ -2365,7 +2365,7 @@ BEGIN
 		IF repeated_index = 0 THEN
 			IF use_packed THEN
 				CALL _pb_wire_write_varint(value, temp_encoded);
-				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', TO_BASE64(temp_encoded));
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(temp_encoded));
 				SET next_wire_index = next_wire_index + 1;
 			ELSE
 				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 0, 'v', CAST(value AS JSON));
@@ -2463,7 +2463,7 @@ BEGIN
 
 	-- Return result based on format
 	IF use_packed THEN
-		SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', TO_BASE64(result_packed_data));
+		SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(result_packed_data));
 		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
 	ELSE
 		RETURN JSON_SET(wire_json, field_path, new_field_array);
@@ -2507,7 +2507,7 @@ BEGIN
 		IF repeated_index = 0 THEN
 			IF use_packed THEN
 				CALL _pb_wire_write_i64(value, temp_encoded);
-				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', TO_BASE64(temp_encoded));
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(temp_encoded));
 				SET next_wire_index = next_wire_index + 1;
 			ELSE
 				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 1, 'v', CAST(value AS JSON));
@@ -2605,7 +2605,7 @@ BEGIN
 
 	-- Return result based on format
 	IF use_packed THEN
-		SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', TO_BASE64(result_packed_data));
+		SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(result_packed_data));
 		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
 	ELSE
 		RETURN JSON_SET(wire_json, field_path, new_field_array);
@@ -2649,7 +2649,7 @@ BEGIN
 		IF repeated_index = 0 THEN
 			IF use_packed THEN
 				CALL _pb_wire_write_i32(value, temp_encoded);
-				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', TO_BASE64(temp_encoded));
+				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(temp_encoded));
 				SET next_wire_index = next_wire_index + 1;
 			ELSE
 				SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 5, 'v', CAST(value AS JSON));
@@ -2747,7 +2747,7 @@ BEGIN
 
 	-- Return result based on format
 	IF use_packed THEN
-		SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', TO_BASE64(result_packed_data));
+		SET new_element = JSON_OBJECT('i', next_wire_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(result_packed_data));
 		RETURN JSON_SET(wire_json, field_path, JSON_ARRAY(new_element));
 	ELSE
 		RETURN JSON_SET(wire_json, field_path, new_field_array);
@@ -2773,7 +2773,7 @@ BEGIN
 	DECLARE new_element JSON;
 	DECLARE i INT DEFAULT 0;
 	DECLARE temp_value JSON;
-	DECLARE encoded_value JSON DEFAULT JSON_QUOTE(TO_BASE64(value));
+	DECLARE encoded_value JSON DEFAULT JSON_QUOTE(_pb_to_base64(value));
 
 	-- Get the field array (null if doesn't exist)
 	-- Calculate wire index once
