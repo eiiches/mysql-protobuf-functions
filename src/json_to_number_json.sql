@@ -128,7 +128,7 @@ BEGIN
 
 	CASE field_type
 	WHEN 14 THEN -- enum
-		SET converted_value = _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value, JSON_ARRAY(descriptor_set_json));
+		CALL _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value, JSON_ARRAY(descriptor_set_json), converted_value);
 		IF converted_value IS NULL THEN -- Not handled by well-known type parser
 			SET enum_numeric_value = _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, field_json_value, ignore_unknown_enums);
 			SET converted_value = CAST(enum_numeric_value AS JSON);
@@ -144,7 +144,7 @@ BEGIN
 			SET converted_value = NULL;
 		ELSE
 			SET is_default = FALSE;
-			SET converted_value = _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value, JSON_ARRAY(descriptor_set_json));
+			CALL _pb_convert_json_wkt_to_number_json(field_type, field_type_name, field_json_value, JSON_ARRAY(descriptor_set_json), converted_value);
 			IF converted_value IS NULL THEN -- Not handled by well-known type parser
 				-- For regular (non-WKT) messages, validate that the JSON value is an object
 				IF JSON_TYPE(field_json_value) != 'OBJECT' THEN
@@ -301,7 +301,7 @@ proc: BEGIN
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
 	-- Check if this is a well-known type and handle it specially
-	SET wkt_result = _pb_convert_json_wkt_to_number_json(11, full_type_name, proto_json, JSON_ARRAY(descriptor_set_json));
+	CALL _pb_convert_json_wkt_to_number_json(11, full_type_name, proto_json, JSON_ARRAY(descriptor_set_json), wkt_result);
 	IF wkt_result IS NOT NULL THEN
 		SET result = wkt_result;
 		LEAVE proc;

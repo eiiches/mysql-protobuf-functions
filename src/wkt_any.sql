@@ -50,9 +50,9 @@ BEGIN
 END $$
 
 -- Convert google.protobuf.Any from ProtoNumberJSON to ProtoJSON
-DROP FUNCTION IF EXISTS _pb_wkt_any_number_json_to_json $$
-CREATE FUNCTION _pb_wkt_any_number_json_to_json(number_json_value JSON, descriptor_set_jsons JSON) RETURNS JSON DETERMINISTIC
-BEGIN
+DROP PROCEDURE IF EXISTS _pb_wkt_any_number_json_to_json $$
+CREATE PROCEDURE _pb_wkt_any_number_json_to_json(IN number_json_value JSON, IN descriptor_set_jsons JSON, OUT result JSON)
+proc_label: BEGIN
 	DECLARE type_url TEXT;
 	DECLARE value_base64 TEXT;
 	DECLARE type_name TEXT;
@@ -60,7 +60,6 @@ BEGIN
 	DECLARE decoded_message LONGBLOB;
 	DECLARE inner_json JSON;
 	DECLARE inner_number_json JSON;
-	DECLARE result JSON;
 	DECLARE i INT DEFAULT 0;
 	DECLARE descriptor_count INT;
 	DECLARE current_descriptor_set JSON;
@@ -75,7 +74,8 @@ BEGIN
 
 	-- If no value, return just the type
 	IF message IS NULL THEN
-		RETURN JSON_OBJECT('@type', type_url);
+		SET result = JSON_OBJECT('@type', type_url);
+		LEAVE proc_label;
 	END IF;
 
 	-- Extract type name from type_url
@@ -86,7 +86,7 @@ BEGIN
 		-- TODO: set json_marshal_option
 		SET inner_number_json = _pb_message_to_number_json(descriptor_set_json, type_name, message, NULL);
 		CALL _pb_convert_number_json_to_wkt(11, type_name, inner_number_json, descriptor_set_jsons, inner_json);
-		RETURN JSON_OBJECT('@type', type_url, 'value', inner_json);
+		SET result = JSON_OBJECT('@type', type_url, 'value', inner_json);
 	ELSE -- non-wkt
 		-- Find the descriptor set that contains this message type
 		SET descriptor_set_json = _pb_wkt_any_find_descriptor_set(type_name, descriptor_set_jsons);
@@ -97,13 +97,13 @@ BEGIN
 		SET inner_number_json = _pb_message_to_number_json(descriptor_set_json, type_name, message, NULL);
 		-- TODO: set json_marshal_option
 		CALL _pb_number_json_to_json_proc(descriptor_set_json, type_name, inner_number_json, FALSE, inner_json);
-		RETURN JSON_SET(inner_json, '$."@type"', type_url);
+		SET result = JSON_SET(inner_json, '$."@type"', type_url);
 	END IF;
 END $$
 
 -- Convert google.protobuf.Any from ProtoJSON to ProtoNumberJSON
-DROP FUNCTION IF EXISTS _pb_wkt_any_json_to_number_json $$
-CREATE FUNCTION _pb_wkt_any_json_to_number_json(proto_json_value JSON, descriptor_set_jsons JSON) RETURNS JSON DETERMINISTIC
+DROP PROCEDURE IF EXISTS _pb_wkt_any_json_to_number_json $$
+CREATE PROCEDURE _pb_wkt_any_json_to_number_json(IN proto_json_value JSON, IN descriptor_set_jsons JSON, OUT result JSON)
 BEGIN
 	DECLARE type_url TEXT;
 	DECLARE type_name TEXT;
@@ -128,14 +128,15 @@ BEGIN
 
 	-- If no content besides @type, return just type_url
 	-- IF value_json IS NULL OR JSON_LENGTH(value_json) = 0 THEN
-	-- 	RETURN JSON_OBJECT('1', COALESCE(type_url, ''));
+	-- 	SET result = JSON_OBJECT('1', COALESCE(type_url, ''));
+	-- 	LEAVE _pb_wkt_any_json_to_number_json;
 	-- END IF;
 
 	-- Find the descriptor set that contains this message type
 	SET descriptor_set_json = _pb_wkt_get_descriptor_set(type_name);
 	IF descriptor_set_json IS NOT NULL THEN -- wkt
 		-- TODO: support enum?
-		CALL _pb_convert_json_wkt_to_number_json(11, type_name, JSON_EXTRACT(proto_json_value, '$.value'), descriptor_set_json, inner_number_json);
+		CALL _pb_convert_json_wkt_to_number_json(11, type_name, JSON_EXTRACT(proto_json_value, '$.value'), descriptor_set_jsons, inner_number_json);
 		SET message = _pb_number_json_to_message(descriptor_set_json, type_name, inner_number_json, NULL);
 	ELSE -- non-wkt
 		SET descriptor_set_json = _pb_wkt_any_find_descriptor_set(type_name, descriptor_set_jsons);
@@ -144,12 +145,12 @@ BEGIN
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 		END IF;
 
-		SET inner_number_json = _pb_json_to_number_json(descriptor_set_json, type_name, JSON_REMOVE(proto_json_value, '$.\"@type\"'), NULL);
+		CALL _pb_json_to_number_json_proc(descriptor_set_json, type_name, JSON_REMOVE(proto_json_value, '$.\"@type\"'), FALSE, FALSE, inner_number_json);
 		SET message = _pb_number_json_to_message(descriptor_set_json, type_name, inner_number_json, NULL);
 	END IF;
 
 	-- Return ProtoNumberJSON format: field 1 = type_url, field 2 = base64 value
-	RETURN JSON_OBJECT(
+	SET result = JSON_OBJECT(
 		'1', type_url,
 		'2', TO_BASE64(message)
 	);

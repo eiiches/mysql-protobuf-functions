@@ -73,20 +73,11 @@ BEGIN
 		WHEN '.google.protobuf.Empty' THEN
 			SET result = _pb_wkt_empty_json_to_number_json(proto_json_value);
 		WHEN '.google.protobuf.Any' THEN
-			SET result = _pb_wkt_any_json_to_number_json(proto_json_value, descriptor_set_jsons);
+			CALL _pb_wkt_any_json_to_number_json(proto_json_value, descriptor_set_jsons, result);
 		ELSE
 			SET result = NULL;
 		END CASE;
 	END CASE;
-END $$
-
--- Helper function to convert well-known type from ProtoJSON to ProtoNumberJSON
-DROP FUNCTION IF EXISTS _pb_convert_json_wkt_to_number_json $$
-CREATE FUNCTION _pb_convert_json_wkt_to_number_json(field_type INT, full_type_name TEXT, proto_json_value JSON, descriptor_set_jsons JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE result JSON;
-	CALL _pb_convert_json_wkt_to_number_json(field_type, full_type_name, proto_json_value, descriptor_set_jsons, result);
-	RETURN result;
 END $$
 
 -- Helper procedure to convert well-known type from ProtoNumberJSON to ProtoJSON
@@ -136,18 +127,9 @@ BEGIN
 		WHEN '.google.protobuf.FieldMask' THEN
 			SET result = _pb_wkt_field_mask_number_json_to_json(number_json_value);
 		WHEN '.google.protobuf.Any' THEN
-			SET result = _pb_wkt_any_number_json_to_json(number_json_value, descriptor_set_jsons);
+			CALL _pb_wkt_any_number_json_to_json(number_json_value, descriptor_set_jsons, result);
 		ELSE
 			SET result = NULL;
 		END CASE;
 	END CASE;
-END $$
-
--- Helper function to convert well-known type from ProtoNumberJSON to ProtoJSON
-DROP FUNCTION IF EXISTS _pb_convert_number_json_to_wkt $$
-CREATE FUNCTION _pb_convert_number_json_to_wkt(field_type INT, full_type_name TEXT, number_json_value JSON, descriptor_set_jsons JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE result JSON;
-	CALL _pb_convert_number_json_to_wkt(field_type, full_type_name, number_json_value, descriptor_set_jsons, result);
-	RETURN result;
 END $$
