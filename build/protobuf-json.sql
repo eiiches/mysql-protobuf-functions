@@ -832,7 +832,7 @@ proc: BEGIN
 		SET field_type = JSON_EXTRACT(field_descriptor, '$."5"'); -- type
 		SET field_type_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."6"')); -- type_name
 		SET json_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."10"')); -- json_name
-		SET proto3_optional = COALESCE(CAST(JSON_EXTRACT(field_descriptor, '$."17"') AS SIGNED), FALSE); -- proto3_optional
+		SET proto3_optional = COALESCE(CAST(JSON_EXTRACT(field_descriptor, '$."17"') AS UNSIGNED), FALSE); -- proto3_optional
 		SET oneof_index = JSON_EXTRACT(field_descriptor, '$."9"'); -- oneof_index
 
 		SET is_repeated = (field_label = 3);
@@ -1751,7 +1751,7 @@ proc: BEGIN
 		SET field_type = JSON_EXTRACT(field_descriptor, '$."5"'); -- type
 		SET field_type_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."6"')); -- type_name
 		SET json_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."10"')); -- json_name
-		SET proto3_optional = COALESCE(JSON_EXTRACT(field_descriptor, '$."17"'), 0) = 1; -- proto3_optional
+		SET proto3_optional = COALESCE(CAST(JSON_EXTRACT(field_descriptor, '$."17"') AS UNSIGNED), FALSE); -- proto3_optional
 
 		-- Determine target field name (json_name takes precedence over field_name)
 		SET target_field_name = COALESCE(json_name, field_name);
