@@ -1,11 +1,19 @@
 # Expected failures for MySQL protobuf conformance tests
 
-# Duration and Timestamp range validation issues
-# Architectural limitation due to JSON internal representation
-# Required.Proto3.DurationProtoInputTooLarge.JsonOutput
-# Required.Proto3.DurationProtoInputTooSmall.JsonOutput
-# Required.Proto3.TimestampProtoInputTooLarge.JsonOutput
-# Required.Proto3.TimestampProtoInputTooSmall.JsonOutput
-
 # GROUP field tests - deprecated Proto2 feature not supported
-Required.Proto2.ProtobufInput.UnknownOrdering.ProtobufOutput
+# Required.Proto2.ProtobufInput.UnknownOrdering.ProtobufOutput
+
+# MySQL's JSON parser exhibits different rounding behavior. This can't be
+# fixed without implementing a JSON parser of our own.
+Required.Proto2.JsonInput.DoubleFieldMaxNegativeValue.JsonOutput # Output was not equivalent to reference message: modified: optional_double: -2.22507e-308 -> -2.2250700000000003e-308
+Required.Proto2.JsonInput.DoubleFieldMaxNegativeValue.ProtobufOutput # Output was not equivalent to reference message: modified: optional_double: -2.22507e-308 -> -2.2250700000000003e-308
+Required.Proto2.JsonInput.DoubleFieldMinPositiveValue.JsonOutput # Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308
+Required.Proto2.JsonInput.DoubleFieldMinPositiveValue.ProtobufOutput # Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308
+Required.Proto2.JsonInput.DoubleFieldQuotedExponentialValue.JsonOutput # Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308
+Required.Proto2.JsonInput.DoubleFieldQuotedExponentialValue.ProtobufOutput # Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308
+Required.Proto3.JsonInput.DoubleFieldMaxNegativeValue.JsonOutput # Output was not equivalent to reference message: modified: optional_double: -2.22507e-308 -> -2.2250700000000003e-308
+Required.Proto3.JsonInput.DoubleFieldMaxNegativeValue.ProtobufOutput # Output was not equivalent to reference message: modified: optional_double: -2.22507e-308 -> -2.2250700000000003e-308
+Required.Proto3.JsonInput.DoubleFieldMinPositiveValue.JsonOutput # Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308
+Required.Proto3.JsonInput.DoubleFieldMinPositiveValue.ProtobufOutput # Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308
+Required.Proto3.JsonInput.DoubleFieldQuotedExponentialValue.JsonOutput # Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308
+Required.Proto3.JsonInput.DoubleFieldQuotedExponentialValue.ProtobufOutput # Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308
