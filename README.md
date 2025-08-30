@@ -49,8 +49,26 @@ A comprehensive library of MySQL stored functions and procedures for working wit
 - **[Tutorial: Modification](docs/tutorial-modification.md)** - Creating and modifying protobuf messages
 - **[Tutorial: JSON Integration](docs/tutorial-json.md)** - Schema-aware JSON conversion
 - **[Advanced Usage](docs/advanced-usage.md)** - Indexing, triggers, and performance optimization
-- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 - **[API Reference](docs/function-reference.md)** - Complete function reference
+
+## Project Status
+
+| Feature                                                            | Status            | Description                                    |
+|--------------------------------------------------------------------|-------------------|------------------------------------------------|
+| Low-level Accessors                                                | ✅ Complete       | Direct field access using field numbers        |
+| [ProtoJSON](https://protobuf.dev/programming-guides/json/) Support | ✅ Complete       | Bidirectional Binary ↔ ProtoJSON conversion    |
+| Well-Known Types                                                   | ✅ Complete       | Google's standard types (Any, Timestamp, etc.) |
+| Proto3 Support                                                     | ✅ Complete       | Full proto3 syntax and semantics               |
+| Proto2 Support                                                     | ✅ Complete       | Full proto2 syntax and semantics               |
+| Code Generation & High-level Accessors                             | ❌ Incomplete      | Generated type-safe accessor functions         |
+| [Groups](https://protobuf.dev/programming-guides/proto2/#groups)  | ❌ Not Implemented | Deprecated proto2 feature (might be added)     |
+| [Editions](https://protobuf.dev/editions/overview/) Support       | ❌ Planned         | Newer protobuf syntax (in roadmap)             |
+| [Text Format](https://protobuf.dev/reference/protobuf/textformat-spec/) | ❌ Not Planned     | Textual protobuf representation                |
+
+See the following documentations for the details.
+
+- **[Conformance Status](docs/conformance-status.md)** - Protocol Buffers conformance test results
+- **[Known Issues](docs/known-issues.md)** - Known issues
 - **[Roadmap](docs/roadmap.md)** - Planned features and current limitations
 
 ## Requirements
