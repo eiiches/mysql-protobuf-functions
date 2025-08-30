@@ -810,20 +810,20 @@ BEGIN
 END $$
 
 DROP PROCEDURE IF EXISTS _pb_message_to_wire_json $$
-CREATE PROCEDURE _pb_message_to_wire_json(IN buf LONGBLOB, OUT wire_json JSON)
-BEGIN
+CREATE PROCEDURE _pb_message_to_wire_json(IN buf LONGBLOB, IN expected_egroup_field_number INT, OUT wire_json JSON, OUT tail LONGBLOB)
+proc: BEGIN
 	DECLARE CUSTOM_EXCEPTION CONDITION FOR SQLSTATE '45000';
 
 	DECLARE tag INT;
 	DECLARE field_number INT;
 	DECLARE wire_type INT;
-	DECLARE tail LONGBLOB;
 	DECLARE uint_value BIGINT UNSIGNED;
 	DECLARE bytes_value LONGBLOB;
 	DECLARE message_text TEXT;
 	DECLARE i INT;
 	DECLARE json_path TEXT;
 	DECLARE wire_element JSON;
+	DECLARE nested_wire_json JSON;
 
 	SET wire_json = JSON_OBJECT();
 	SET tail = buf;
@@ -850,6 +850,18 @@ BEGIN
 		WHEN 2 THEN -- LEN
 			CALL _pb_wire_read_len_type(tail, bytes_value, tail);
 			SET wire_element = JSON_OBJECT('i', i, 'n', field_number, 't', wire_type, 'v', _pb_to_base64(bytes_value));
+		WHEN 3 THEN -- SGROUP
+			CALL _pb_message_to_wire_json(tail, field_number, nested_wire_json, tail);
+			SET wire_element = JSON_OBJECT('i', i, 'n', field_number, 't', wire_type, 'v', nested_wire_json);
+		WHEN 4 THEN -- EGROUP
+			IF expected_egroup_field_number IS NULL THEN
+				SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '_pb_message_to_wire_json: unexpected EGROUP found outside a group';
+			END IF;
+			IF expected_egroup_field_number <> field_number THEN
+				SET message_text = CONCAT('_pb_message_to_wire_json: expected EGROUP field number (', expected_egroup_field_number, ') but got ', field_number);
+				SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+			END IF;
+			LEAVE proc;
 		WHEN 5 THEN -- I32
 			CALL _pb_wire_read_i32_as_uint32(tail, uint_value, tail);
 			SET wire_element = JSON_OBJECT('i', i, 'n', field_number, 't', wire_type, 'v', uint_value);
@@ -867,6 +879,11 @@ BEGIN
 
 		SET i = i + 1;
 	END WHILE;
+
+	IF expected_egroup_field_number IS NOT NULL THEN
+		SET message_text = CONCAT('_pb_message_to_wire_json: expected EGROUP field number (', expected_egroup_field_number, ') but reached EOF');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
 END $$
 
 DROP FUNCTION IF EXISTS pb_message_new $$
@@ -883,7 +900,7 @@ BEGIN
 	IF buf IS NULL THEN
 		RETURN NULL;
 	END IF;
-	CALL _pb_message_to_wire_json(buf, wire_json);
+	CALL _pb_message_to_wire_json(buf, NULL, wire_json, buf);
 	RETURN wire_json;
 END $$
 
