@@ -2799,14 +2799,20 @@ proc_label: BEGIN
 	DECLARE message_text TEXT;
 
 	-- Extract type_url (field 1) and value (field 2) from ProtoNumberJSON
-	SET type_url = JSON_UNQUOTE(JSON_EXTRACT(number_json_value, '$.\"1\"'));
-	SET message = FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(number_json_value, '$.\"2\"')));
+	SET type_url = COALESCE(JSON_UNQUOTE(JSON_EXTRACT(number_json_value, '$.\"1\"')), '');
+	SET message = COALESCE(FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(number_json_value, '$.\"2\"'))), '');
 
-	-- If no value, return just the type
-	IF message IS NULL THEN
-		SET result = JSON_OBJECT('@type', type_url);
+	-- If Any value is empty, use non-WKT form, as required by AnyWithNoType conformance test.
+	IF type_url = '' AND message = '' THEN
+		SET result = JSON_OBJECT();
 		LEAVE proc_label;
 	END IF;
+
+	-- If no value, return just the type
+	-- IF message = '' THEN
+	-- 	SET result = JSON_OBJECT('@type', type_url);
+	-- 	LEAVE proc_label;
+	-- END IF;
 
 	-- Extract type name from type_url
 	SET type_name = _pb_wkt_any_extract_type_name(type_url);
@@ -2834,7 +2840,7 @@ END $$
 -- Convert google.protobuf.Any from ProtoJSON to ProtoNumberJSON
 DROP PROCEDURE IF EXISTS _pb_wkt_any_json_to_number_json $$
 CREATE PROCEDURE _pb_wkt_any_json_to_number_json(IN proto_json_value JSON, IN descriptor_set_jsons JSON, OUT result JSON)
-BEGIN
+proc: BEGIN
 	DECLARE type_url TEXT;
 	DECLARE type_name TEXT;
 	DECLARE message_descriptor JSON;
@@ -2850,8 +2856,22 @@ BEGIN
 	DECLARE message LONGBLOB;
 	DECLARE message_text TEXT;
 
+	IF JSON_TYPE(proto_json_value) <> 'OBJECT' THEN
+		SET message_text = CONCAT('_pb_wkt_any_json_to_number_json: expected OBJECT, but got: ', JSON_TYPE(proto_json_value));
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
+
+	IF JSON_LENGTH(proto_json_value) = 0 THEN
+		SET result = JSON_OBJECT();
+		LEAVE proc;
+	END IF;
+
 	-- Extract @type field
 	SET type_url = JSON_UNQUOTE(JSON_EXTRACT(proto_json_value, '$.\"@type\"'));
+	IF type_url IS NULL THEN
+		SET message_text = CONCAT('_pb_wkt_any_json_to_number_json: @type is required for Any');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+	END IF;
 
 	-- Extract type name from type_url
 	SET type_name = _pb_wkt_any_extract_type_name(type_url);
