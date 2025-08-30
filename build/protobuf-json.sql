@@ -787,6 +787,8 @@ proc: BEGIN
 	DECLARE converted_map JSON;
 	-- WKT handling
 	DECLARE wkt_result JSON;
+	-- Oneof handling
+	DECLARE oneofs JSON;
 
 	-- Set recursion limit for nested message processing
 	SET @@SESSION.max_sp_recursion_depth = 255;
@@ -800,6 +802,7 @@ proc: BEGIN
 
 	-- Initialize result as empty object
 	SET result = JSON_OBJECT();
+	SET oneofs = JSON_OBJECT();
 
 	-- Get message descriptor
 	SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);
@@ -829,7 +832,7 @@ proc: BEGIN
 		SET field_type = JSON_EXTRACT(field_descriptor, '$."5"'); -- type
 		SET field_type_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."6"')); -- type_name
 		SET json_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."10"')); -- json_name
-		SET proto3_optional = JSON_EXTRACT(field_descriptor, '$."17"'); -- proto3_optional
+		SET proto3_optional = COALESCE(CAST(JSON_EXTRACT(field_descriptor, '$."17"') AS SIGNED), FALSE); -- proto3_optional
 		SET oneof_index = JSON_EXTRACT(field_descriptor, '$."9"'); -- oneof_index
 
 		SET is_repeated = (field_label = 3);
@@ -968,6 +971,14 @@ proc: BEGIN
 				ITERATE field_loop;
 			END IF;
 
+			IF oneof_index IS NOT NULL AND NOT proto3_optional THEN
+				IF JSON_CONTAINS_PATH(oneofs, 'one', CONCAT('$."', oneof_index, '"')) THEN
+					SET message_text = CONCAT('_pb_json_to_number_json_proc: duplicate oneof field: ', field_name);
+					SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
+				END IF;
+				SET oneofs = JSON_SET(oneofs, CONCAT('$."', oneof_index, '"'), 1);
+			END IF;
+
 			-- Handle singular fields
 			CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, field_type, field_type_name, field_json_value, ignore_unknown_fields, ignore_unknown_enums, converted_value, is_default);
 
@@ -1005,6 +1016,11 @@ BEGIN
 
 	IF proto_json IS NULL THEN
 		RETURN NULL;
+	END IF;
+
+	IF JSON_TYPE(proto_json) = 'NULL' AND type_name <> '.google.protobuf.Value' THEN
+		SET message_text = CONCAT('_pb_json_to_number_json: top-level null not allowed');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
 
 	CALL _pb_json_to_number_json_proc(descriptor_set_json, type_name, proto_json, ignore_unknown_fields, ignore_unknown_enums, result);
@@ -2807,12 +2823,6 @@ proc_label: BEGIN
 		SET result = JSON_OBJECT();
 		LEAVE proc_label;
 	END IF;
-
-	-- If no value, return just the type
-	-- IF message = '' THEN
-	-- 	SET result = JSON_OBJECT('@type', type_url);
-	-- 	LEAVE proc_label;
-	-- END IF;
 
 	-- Extract type name from type_url
 	SET type_name = _pb_wkt_any_extract_type_name(type_url);
