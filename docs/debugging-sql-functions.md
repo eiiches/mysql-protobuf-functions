@@ -20,7 +20,7 @@ When you encounter MySQL errors during function execution but can't easily ident
 2. **Execute the Failing Operation**
    Run the specific SQL statement that's causing the error. For example:
    ```sql
-   SELECT pb_json_to_message('[descriptor_json]', '.MessageType', '{"field": "value"}');
+   SELECT pb_json_to_message('[descriptor_json]', '.MessageType', '{"field": "value"}', NULL, NULL);
    ```
 
 3. **Check Coverage Events for Error Location**
@@ -47,7 +47,7 @@ When you encounter MySQL errors during function execution but can't easily ident
 make load-instrumented-files
 
 # 2. Run the failing case
-mysql> SELECT pb_json_to_message('[...]', '.Test', '{"boolField": false}');
+mysql> SELECT pb_json_to_message('[...]', '.Test', '{"boolField": false}', NULL, NULL);
 ERROR 1292 (22007): Truncated incorrect INTEGER value: 'false'
 
 # 3. Check where execution stopped

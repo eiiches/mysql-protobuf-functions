@@ -81,7 +81,7 @@ CREATE TABLE Person (pb_data BLOB);
 INSERT INTO Person (pb_data) VALUES (_binary X'0a0b4167656e7420536d69746810011a11736d697468406578616d706c652e636f6d22140a102b38312d30302d303030302d3030303010032a0c08f091f1c10610c0de9cf802');
 
 -- Convert to JSON using schema
-SELECT pb_message_to_json(person_schema(), '.Person', pb_data) FROM Person;
+SELECT pb_message_to_json(person_schema(), '.Person', pb_data, NULL, NULL) FROM Person;
 -- Result: {
 --   "id": 1,
 --   "name": "Agent Smith",
@@ -110,7 +110,7 @@ Schema-aware functions are perfect for creating debug and inspection views:
 CREATE VIEW PersonDebugView AS
 SELECT
     *,
-    pb_message_to_json(person_schema(), '.Person', pb_data) AS pb_data_json
+    pb_message_to_json(person_schema(), '.Person', pb_data, NULL, NULL) AS pb_data_json
 FROM Person;
 
 -- Use MySQL JSON functions for powerful queries

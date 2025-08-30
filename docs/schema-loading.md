@@ -83,7 +83,7 @@ mysql -u your_username -p your_database < person_schema.sql
 
 ```sql
 -- The generated function returns schema JSON directly
-SELECT pb_message_to_json(person_schema(), '.Person', pb_data) FROM Example;
+SELECT pb_message_to_json(person_schema(), '.Person', pb_data, NULL, NULL) FROM Example;
 ```
 
 ## Method 2: Using pb_build_descriptor_set_json
@@ -136,13 +136,15 @@ INSERT INTO schema_registry VALUES (
 
 ```sql
 -- With user variable
-SELECT pb_message_to_json(@my_schema, '.Person', pb_data) FROM Example;
+SELECT pb_message_to_json(@my_schema, '.Person', pb_data, NULL, NULL) FROM Example;
 
 -- With table storage
 SELECT pb_message_to_json(
     (SELECT schema_json FROM schema_registry WHERE schema_name = 'person_schema'),
     '.Person',
-    pb_data
+    pb_data,
+    NULL,
+    NULL
 ) FROM Example;
 ```
 

@@ -321,7 +321,7 @@ SELECT pb_wire_json_to_message(@wire_json);
 
 ```sql  
 -- Binary → ProtoJSON
-SELECT pb_message_to_json(@schema, '.MessageType', @binary_message);
+SELECT pb_message_to_json(@schema, '.MessageType', @binary_message, NULL, NULL);
 
 -- Binary → ProtoNumberJSON  
 SELECT _pb_message_to_number_json(@schema, '.MessageType', @binary_message);
@@ -330,7 +330,7 @@ SELECT _pb_message_to_number_json(@schema, '.MessageType', @binary_message);
 SELECT pb_wire_json_to_json(@schema, '.MessageType', @wire_json);
 
 -- ProtoJSON → Binary
-SELECT pb_json_to_message(@schema, '.MessageType', @proto_json);
+SELECT pb_json_to_message(@schema, '.MessageType', @proto_json, NULL, NULL);
 
 -- ProtoJSON → WireJSON
 SELECT pb_json_to_wire_json(@schema, '.MessageType', @proto_json);

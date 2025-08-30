@@ -54,7 +54,7 @@ WHERE user_id = 123;
 | **Write Fields** | `pb_message_set_int32_field(data, 2, 25)` | Update specific fields safely |
 | **Repeated Fields** | `pb_message_add_repeated_string_field_element(data, 3, 'item')` | Manage lists/arrays |
 | **Bulk Operations** | `pb_message_add_all_repeated_int32_field_elements(data, 4, '[1,2,3]')` | Efficient batch updates |
-| **JSON Conversion** | `pb_message_to_json(schema_json, '.Type', data)` | Human-readable JSON with schema |
+| **JSON Conversion** | `pb_message_to_json(schema_json, '.Type', data, NULL, NULL)` | Human-readable JSON with schema |
 | **Wire Format** | `pb_message_to_wire_json(data)` | Performance optimization for multiple operations |
 
 ## When to Use This Library
@@ -158,7 +158,7 @@ mysql -u your_username -p your_database < person_schema.sql
 
 ```sql
 -- Convert protobuf message to human-readable JSON
-SELECT pb_message_to_json(@schema_json, '.Person', pb_data) AS person_json
+SELECT pb_message_to_json(@schema_json, '.Person', pb_data, NULL, NULL) AS person_json
 FROM example_table;
 
 -- Result:

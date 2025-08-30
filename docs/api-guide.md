@@ -340,7 +340,7 @@ xxd -p -c0 schema.binpb
 #### Basic Message to JSON
 ```sql
 -- Convert message to JSON (requires schema JSON)
-SELECT pb_message_to_json(@schema_json, '.Person', pb_data) AS json_output;
+SELECT pb_message_to_json(@schema_json, '.Person', pb_data, NULL, NULL) AS json_output;
 
 -- Example output:
 -- {
@@ -685,7 +685,7 @@ END IF;
 #### JSON Conversion Errors
 ```sql
 -- Verify message type name (include leading dot)
-SELECT pb_message_to_json(@schema_json, '.MessageTypeName', pb_data);
+SELECT pb_message_to_json(@schema_json, '.MessageTypeName', pb_data, NULL, NULL);
 ```
 
 #### Wire JSON Format Issues
@@ -705,7 +705,7 @@ SELECT JSON_PRETTY(pb_message_to_wire_json(pb_data));
 SELECT JSON_PRETTY(pb_message_to_wire_json(pb_data)) AS wire_format;
 
 -- Convert to readable JSON (if schema available)
-SELECT JSON_PRETTY(pb_message_to_json(@schema_json, '.MessageType', pb_data)) AS readable_json;
+SELECT JSON_PRETTY(pb_message_to_json(@schema_json, '.MessageType', pb_data, NULL, NULL)) AS readable_json;
 ```
 
 #### Check Message Structure
