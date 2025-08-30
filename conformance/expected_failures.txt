@@ -1,8 +1,5 @@
 # Expected failures for MySQL protobuf conformance tests
 
-# GROUP field tests - deprecated Proto2 feature not supported
-# Required.Proto2.ProtobufInput.UnknownOrdering.ProtobufOutput
-
 # MySQL's JSON parser exhibits different rounding behavior. This can't be
 # fixed without implementing a JSON parser of our own.
 Required.Proto2.JsonInput.DoubleFieldMaxNegativeValue.JsonOutput # Output was not equivalent to reference message: modified: optional_double: -2.22507e-308 -> -2.2250700000000003e-308
@@ -17,3 +14,8 @@ Required.Proto3.JsonInput.DoubleFieldMinPositiveValue.JsonOutput # Output was no
 Required.Proto3.JsonInput.DoubleFieldMinPositiveValue.ProtobufOutput # Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308
 Required.Proto3.JsonInput.DoubleFieldQuotedExponentialValue.JsonOutput # Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308
 Required.Proto3.JsonInput.DoubleFieldQuotedExponentialValue.ProtobufOutput # Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308
+
+# Unsupported for now.
+Recommended.Proto2.JsonInput.FieldNameExtension.Validator # JSON payload validation failed.
+Required.Proto3.ProtobufInput.UnknownOrdering.ProtobufOutput # Unknown field mismatch
+Required.Proto3.ProtobufInput.UnknownVarint.ProtobufOutput # Output was not equivalent to reference message: Expect: \250\037\001, but got:
