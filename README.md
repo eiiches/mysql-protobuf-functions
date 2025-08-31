@@ -53,17 +53,18 @@ A comprehensive library of MySQL stored functions and procedures for working wit
 
 ## Project Status
 
-| Feature                                                            | Status            | Description                                    |
-|--------------------------------------------------------------------|-------------------|------------------------------------------------|
-| Low-level Accessors                                                | ✅ Complete       | Direct field access using field numbers        |
-| [ProtoJSON](https://protobuf.dev/programming-guides/json/) Support | ✅ Complete       | Bidirectional Binary ↔ ProtoJSON conversion    |
-| Well-Known Types                                                   | ✅ Complete       | Google's standard types (Any, Timestamp, etc.) |
-| Proto3 Support                                                     | ✅ Complete       | Full proto3 syntax and semantics               |
-| Proto2 Support                                                     | ✅ Complete       | Full proto2 syntax and semantics               |
-| Code Generation & High-level Accessors                             | ❌ Incomplete      | Generated type-safe accessor functions         |
-| [Groups](https://protobuf.dev/programming-guides/proto2/#groups)  | ❌ Not Implemented | Deprecated proto2 feature (might be added)     |
-| [Editions](https://protobuf.dev/editions/overview/) Support       | ❌ Planned         | Newer protobuf syntax (in roadmap)             |
-| [Text Format](https://protobuf.dev/reference/protobuf/textformat-spec/) | ❌ Not Planned     | Textual protobuf representation                |
+| Feature                                                                                                                                           | Status            | Description                                    |
+|---------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|------------------------------------------------|
+| Low-level Field Accessors                                                                                                                         | ✅ Complete        | Direct field access using field numbers        |
+| [ProtoJSON](https://protobuf.dev/programming-guides/json/) Support                                                                                | ✅ Complete        | Bidirectional Binary ↔ ProtoJSON conversion    |
+| Well-Known Types                                                                                                                                  | ✅ Complete        | Google's standard types (Any, Timestamp, etc.) |
+| Proto3 Support                                                                                                                                    | ✅ Complete        | Full proto3 syntax and semantics               |
+| Proto2 Support                                                                                                                                    | ✅ Complete        | Full proto2 syntax and semantics               |
+| Code Generation & High-level Field Accessors                                                                                                      | ❌ Incomplete      | Generated type-safe accessor functions         |
+| [Extensions](https://protobuf.dev/programming-guides/proto2/#extensions) &amp; [Options](https://protobuf.dev/programming-guides/proto2/#options) | ❌ Not Implemented | Custom fields that extend existing messages    |
+| [Groups](https://protobuf.dev/programming-guides/proto2/#groups)                                                                                  | ❌ Not Implemented | Deprecated proto2 feature                      |
+| [Editions](https://protobuf.dev/editions/overview/) Support                                                                                       | ❌ Not Implemented | Newer protobuf syntax (in roadmap)             |
+| [Text Format](https://protobuf.dev/reference/protobuf/textformat-spec/)                                                                           | ❌ Not Planned     | Textual protobuf representation                |
 
 See the following documentations for the details.
 

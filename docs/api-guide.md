@@ -598,9 +598,9 @@ Use bulk operations when possible:
 SELECT pb_message_add_all_repeated_int32_field_elements(pb_data, 4, '[1,2,3,4,5]', TRUE);
 
 -- Inefficient: Add elements one by one
-SET @msg = pb_message_add_repeated_int32_field_element(pb_data, 4, 1);
-SET @msg = pb_message_add_repeated_int32_field_element(@msg, 4, 2);
-SET @msg = pb_message_add_repeated_int32_field_element(@msg, 4, 3);
+SET @msg = pb_message_add_repeated_int32_field_element(pb_data, 4, 1, FALSE);
+SET @msg = pb_message_add_repeated_int32_field_element(@msg, 4, 2, FALSE);
+SET @msg = pb_message_add_repeated_int32_field_element(@msg, 4, 3, FALSE);
 -- ... etc
 ```
 

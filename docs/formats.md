@@ -327,13 +327,13 @@ SELECT pb_message_to_json(@schema, '.MessageType', @binary_message, NULL, NULL);
 SELECT _pb_message_to_number_json(@schema, '.MessageType', @binary_message);
 
 -- WireJSON → ProtoJSON
-SELECT pb_wire_json_to_json(@schema, '.MessageType', @wire_json);
+SELECT pb_wire_json_to_json(@schema, '.MessageType', @wire_json, NULL, NULL);
 
 -- ProtoJSON → Binary
 SELECT pb_json_to_message(@schema, '.MessageType', @proto_json, NULL, NULL);
 
 -- ProtoJSON → WireJSON
-SELECT pb_json_to_wire_json(@schema, '.MessageType', @proto_json);
+SELECT pb_json_to_wire_json(@schema, '.MessageType', @proto_json, NULL, NULL);
 
 -- ProtoJSON ↔ ProtoNumberJSON (bidirectional)
 SELECT _pb_json_to_number_json(@schema, '.MessageType', @proto_json);
@@ -360,7 +360,7 @@ SET @result = pb_wire_json_to_message(@wire);
 ### Human-Readable Output
 ```sql
 -- Use ProtoJSON for debugging/reporting
-SELECT pb_message_to_json(@schema, '.MessageType', @binary_message);
+SELECT pb_message_to_json(@schema, '.MessageType', @binary_message, NULL, NULL);
 ```
 
 ### Schema Evolution Safety
