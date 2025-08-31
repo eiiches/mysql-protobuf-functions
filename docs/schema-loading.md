@@ -98,7 +98,7 @@ This method converts binary FileDescriptorSet data into the required JSON format
 
 ### Prerequisites
 
-- `protobuf-descriptor.sql` and `protobuf-json.sql` need to be installed in your MySQL instance.
+- `protobuf-json.sql` needs to be installed in your MySQL instance (includes schema loading functionality).
 
 ### Step 1: Generate Binary Descriptor Set
 

@@ -40,7 +40,6 @@ SOURCE protobuf-accessors.sql;
 
 2. Install optional JSON features:
 ```sql
-SOURCE protobuf-descriptor.sql;
 SOURCE protobuf-json.sql;
 ```
 

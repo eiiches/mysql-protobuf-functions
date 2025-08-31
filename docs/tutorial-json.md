@@ -7,7 +7,7 @@ This tutorial demonstrates JSON conversion features that require protobuf schema
 > **What are schema-aware functions?** These functions require your protobuf schema definition to work. They provide rich features like JSON conversion, proper enum names, timestamp formatting, and field name resolution.
 
 > **Prerequisites:**
-> - This tutorial requires both `protobuf-descriptor.sql` and `protobuf-json.sql` to be installed. If you haven't already, see the [Installation Guide](installation.md) to get started.
+> - This tutorial requires `protobuf-json.sql` to be installed (which includes schema loading functionality). If you haven't already, see the [Installation Guide](installation.md) to get started.
 > - Basic familiarity with protobuf concepts is helpful but not required
 
 ## Loading Protobuf Schema

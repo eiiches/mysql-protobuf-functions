@@ -88,7 +88,6 @@ WHERE user_id = 123;
 
 3. **Install optional components** (for JSON conversion):
    ```bash
-   mysql -u your_username -p your_database < build/protobuf-descriptor.sql
    mysql -u your_username -p your_database < build/protobuf-json.sql
    ```
 
