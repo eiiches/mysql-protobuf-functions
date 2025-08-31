@@ -654,8 +654,8 @@ func TestJsonToNumberJsonWellKnownTypes(t *testing.T) {
 		// Empty Any message
 		testJsonToNumberJson(t, "google.protobuf.Any any_field = 1;", `{}`, `{}`)
 
-		// Any with type_url but no value
-		testJsonToNumberJson(t, "google.protobuf.Any any_field = 1;", `{"anyField": {"@type": "type.googleapis.com/MessageType"}}`, `{"1": {"1": "type.googleapis.com/MessageType"}}`)
+		// Any with type_url but no value - Go protojson EmitDefaultValues will include default value
+		testJsonToNumberJson(t, "google.protobuf.Any any_field = 1;", `{"anyField": {"@type": "type.googleapis.com/MessageType", "value": 0}}`, `{"1": {"1": "type.googleapis.com/MessageType"}}`)
 
 		// Any with MessageType containing an int32 value
 		testJsonToNumberJson(t, "google.protobuf.Any any_field = 1;", `{"anyField": {"@type": "type.googleapis.com/MessageType", "value": 12345}}`, `{"1": {"1": "type.googleapis.com/MessageType", "2": "CLlg"}}`)

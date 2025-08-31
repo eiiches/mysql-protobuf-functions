@@ -1526,7 +1526,7 @@ BEGIN
 		-- Check if it's a well-known type
 		CALL _pb_is_well_known_type(field_type_name, @is_wkt);
 		IF @is_wkt THEN
-			CALL _pb_convert_number_json_to_wkt(field_type, field_type_name, field_number_json_value, JSON_ARRAY(descriptor_set_json), converted_value);
+			CALL _pb_convert_number_json_to_wkt(field_type, field_type_name, field_number_json_value, JSON_ARRAY(descriptor_set_json), emit_default_values, converted_value);
 		ELSE
 			SET enum_numeric_value = JSON_EXTRACT(field_number_json_value, '$');
 			SET converted_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, enum_numeric_value);
@@ -1535,7 +1535,7 @@ BEGIN
 		-- Check if it's a well-known type
 		CALL _pb_is_well_known_type(field_type_name, @is_wkt);
 		IF @is_wkt THEN
-			CALL _pb_convert_number_json_to_wkt(field_type, field_type_name, field_number_json_value, JSON_ARRAY(descriptor_set_json), converted_value);
+			CALL _pb_convert_number_json_to_wkt(field_type, field_type_name, field_number_json_value, JSON_ARRAY(descriptor_set_json), emit_default_values, converted_value);
 		ELSE
 			-- Recursively convert nested message
 			CALL _pb_number_json_to_json_proc(descriptor_set_json, field_type_name, field_number_json_value, emit_default_values, nested_json);
@@ -1718,7 +1718,7 @@ proc: BEGIN
 	SET @@SESSION.max_sp_recursion_depth = 255;
 
 	-- Check if this is a well-known type and handle it specially
-	CALL _pb_convert_number_json_to_wkt(11, full_type_name, number_json, JSON_ARRAY(descriptor_set_json), wkt_result);
+	CALL _pb_convert_number_json_to_wkt(11, full_type_name, number_json, JSON_ARRAY(descriptor_set_json), emit_default_values, wkt_result);
 	IF wkt_result IS NOT NULL THEN
 		SET result = wkt_result;
 		LEAVE proc;
@@ -2797,7 +2797,7 @@ END $$
 
 -- Convert google.protobuf.Any from ProtoNumberJSON to ProtoJSON
 DROP PROCEDURE IF EXISTS _pb_wkt_any_number_json_to_json $$
-CREATE PROCEDURE _pb_wkt_any_number_json_to_json(IN number_json_value JSON, IN descriptor_set_jsons JSON, OUT result JSON)
+CREATE PROCEDURE _pb_wkt_any_number_json_to_json(IN number_json_value JSON, IN descriptor_set_jsons JSON, IN emit_default_values BOOLEAN, OUT result JSON)
 proc_label: BEGIN
 	DECLARE type_url TEXT;
 	DECLARE value_base64 TEXT;
@@ -2829,9 +2829,8 @@ proc_label: BEGIN
 
 	SET descriptor_set_json = _pb_wkt_get_descriptor_set(type_name);
 	IF descriptor_set_json IS NOT NULL THEN -- wkt
-		-- TODO: set json_marshal_option
 		SET inner_number_json = _pb_message_to_number_json(descriptor_set_json, type_name, message, NULL);
-		CALL _pb_convert_number_json_to_wkt(11, type_name, inner_number_json, descriptor_set_jsons, inner_json);
+		CALL _pb_convert_number_json_to_wkt(11, type_name, inner_number_json, descriptor_set_jsons, emit_default_values, inner_json);
 		SET result = JSON_OBJECT('@type', type_url, 'value', inner_json);
 	ELSE -- non-wkt
 		-- Find the descriptor set that contains this message type
@@ -2841,8 +2840,7 @@ proc_label: BEGIN
 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 		END IF;
 		SET inner_number_json = _pb_message_to_number_json(descriptor_set_json, type_name, message, NULL);
-		-- TODO: set json_marshal_option
-		CALL _pb_number_json_to_json_proc(descriptor_set_json, type_name, inner_number_json, FALSE, inner_json);
+		CALL _pb_number_json_to_json_proc(descriptor_set_json, type_name, inner_number_json, emit_default_values, inner_json);
 		SET result = JSON_SET(inner_json, '$."@type"', type_url);
 	END IF;
 END $$
@@ -2909,96 +2907,12 @@ proc: BEGIN
 		SET message = _pb_number_json_to_message(descriptor_set_json, type_name, inner_number_json, NULL);
 	END IF;
 
-	-- Return ProtoNumberJSON format: field 1 = type_url, field 2 = base64 value
-	SET result = JSON_OBJECT(
-		'1', type_url,
-		'2', _pb_to_base64(message)
-	);
-END $$
-
--- Helper function to decode Any value field
-DROP FUNCTION IF EXISTS _pb_wkt_any_decode_value $$
-CREATE FUNCTION _pb_wkt_any_decode_value(type_url TEXT, value_base64 TEXT, descriptor_set_jsons JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-	DECLARE type_name TEXT;
-	DECLARE message_descriptor JSON;
-	DECLARE decoded_message LONGBLOB;
-	DECLARE decoded_json JSON;
-	DECLARE i INT DEFAULT 0;
-	DECLARE descriptor_count INT;
-	DECLARE current_descriptor_set JSON;
-	DECLARE first_descriptor_set JSON;
-	DECLARE wire_json JSON;
-
-	-- Extract type name from type_url
-	SET type_name = _pb_wkt_any_extract_type_name(type_url);
-
-	-- Decode base64 value to binary message
-	IF value_base64 IS NOT NULL AND value_base64 != '' THEN
-		SET decoded_message = FROM_BASE64(value_base64);
-	ELSE
-		RETURN JSON_OBJECT();
-	END IF;
-
-	-- Find the descriptor set that contains this message type
-	SET first_descriptor_set = _pb_wkt_any_find_descriptor_set(type_name, descriptor_set_jsons);
-	IF first_descriptor_set IS NOT NULL THEN
-		SET message_descriptor = _pb_descriptor_set_get_message_descriptor(first_descriptor_set, type_name);
-	END IF;
-
-	-- Convert binary message to JSON
-	IF message_descriptor IS NOT NULL THEN
-		SET decoded_json = pb_message_to_json(first_descriptor_set, type_name, decoded_message, NULL, NULL);
-	ELSE
-		-- Fallback: convert to wire JSON without schema
-		SET wire_json = pb_message_to_wire_json(decoded_message);
-		SET decoded_json = wire_json;
-	END IF;
-
-	RETURN COALESCE(decoded_json, JSON_OBJECT());
-END $$
-
--- Helper function to encode Any value field
-DROP FUNCTION IF EXISTS _pb_wkt_any_encode_value $$
-CREATE FUNCTION _pb_wkt_any_encode_value(type_url TEXT, value_json JSON, descriptor_set_jsons JSON) RETURNS TEXT DETERMINISTIC
-BEGIN
-	DECLARE type_name TEXT;
-	DECLARE message_descriptor JSON;
-	DECLARE encoded_message LONGBLOB;
-	DECLARE i INT DEFAULT 0;
-	DECLARE descriptor_count INT;
-	DECLARE current_descriptor_set JSON;
-	DECLARE first_descriptor_set JSON;
-	DECLARE wire_json JSON;
-
-	-- Extract type name from type_url
-	SET type_name = _pb_wkt_any_extract_type_name(type_url);
-
-	-- Find the descriptor set that contains this message type
-	SET first_descriptor_set = _pb_wkt_any_find_descriptor_set(type_name, descriptor_set_jsons);
-	IF first_descriptor_set IS NOT NULL THEN
-		SET message_descriptor = _pb_descriptor_set_get_message_descriptor(first_descriptor_set, type_name);
-	END IF;
-
-	-- Convert JSON to binary message
-	IF message_descriptor IS NOT NULL AND value_json IS NOT NULL THEN
-		SET encoded_message = _pb_json_to_message_with_descriptor(value_json, message_descriptor, descriptor_set_json);
-	ELSE
-		-- Fallback: try to encode as raw message without schema
-		IF value_json IS NOT NULL THEN
-			SET encoded_message = pb_json_to_message(value_json, descriptor_set_json);
-		END IF;
-	END IF;
-
-	-- Return base64 encoded value
-	IF encoded_message IS NOT NULL THEN
-		RETURN _pb_to_base64(encoded_message);
-	ELSE
-		RETURN '';
+	-- Return ProtoNumberJSON format: field 1 = type_url, field 2 = base64 value (only if message is not empty)
+	SET result = JSON_OBJECT('1', type_url);
+	IF message IS NOT NULL AND LENGTH(message) > 0 THEN
+		SET result = JSON_SET(result, '$.\"2\"', _pb_to_base64(message));
 	END IF;
 END $$
-
-DELIMITER ;
 
 DELIMITER $$
 
@@ -3393,7 +3307,7 @@ END $$
 
 -- Helper procedure to convert well-known type from ProtoNumberJSON to ProtoJSON
 DROP PROCEDURE IF EXISTS _pb_convert_number_json_to_wkt $$
-CREATE PROCEDURE _pb_convert_number_json_to_wkt(IN field_type INT, IN full_type_name TEXT, IN number_json_value JSON, IN descriptor_set_jsons JSON, OUT result JSON)
+CREATE PROCEDURE _pb_convert_number_json_to_wkt(IN field_type INT, IN full_type_name TEXT, IN number_json_value JSON, IN descriptor_set_jsons JSON, IN emit_default_values BOOLEAN, OUT result JSON)
 BEGIN
 	CASE field_type
 	WHEN 14 THEN -- enum
@@ -3438,7 +3352,7 @@ BEGIN
 		WHEN '.google.protobuf.FieldMask' THEN
 			SET result = _pb_wkt_field_mask_number_json_to_json(number_json_value);
 		WHEN '.google.protobuf.Any' THEN
-			CALL _pb_wkt_any_number_json_to_json(number_json_value, descriptor_set_jsons, result);
+			CALL _pb_wkt_any_number_json_to_json(number_json_value, descriptor_set_jsons, emit_default_values, result);
 		ELSE
 			SET result = NULL;
 		END CASE;
@@ -5440,7 +5354,7 @@ DELIMITER $$
 DROP FUNCTION IF EXISTS _pb_options_proto $$
 CREATE FUNCTION _pb_options_proto() RETURNS JSON DETERMINISTIC
 BEGIN
-	RETURN CAST('{"1":{"1":[{"1":"json_options.proto","12":"proto3","2":"mysqlprotobuf","4":[{"1":"JsonUnmarshalOptions","2":[{"1":"ignore_unknown_fields","10":"ignoreUnknownFields","3":1,"4":1,"5":8},{"1":"ignore_unknown_enums","10":"ignoreUnknownEnums","3":2,"4":1,"5":8}]},{"1":"JsonMarshalOptions","2":[{"1":"emit_default_values","10":"emitDefaultValues","3":1,"4":1,"5":8},{"1":"use_enum_numbers","10":"useEnumNumbers","3":2,"4":1,"5":8},{"1":"emit_int64s_as_numbers","10":"emitInt64sAsNumbers","3":3,"4":1,"5":8},{"1":"treat_wkt_as_normal_types","10":"treatWktAsNormalTypes","3":4,"4":1,"5":8}]}]},{"1":"marshal_options.proto","12":"proto3","2":"mysqlprotobuf","4":[{"1":"MarshalOptions"},{"1":"UnmarshalOptions"}]}]},"2":{".mysqlprotobuf.JsonMarshalOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[1]","3":{"emit_default_values":0,"emit_int64s_as_numbers":2,"treat_wkt_as_normal_types":3,"use_enum_numbers":1},"4":{"1":0,"2":1,"3":2,"4":3}},".mysqlprotobuf.JsonUnmarshalOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"ignore_unknown_enums":1,"ignore_unknown_fields":0},"4":{"1":0,"2":1}},".mysqlprotobuf.MarshalOptions":{"1":"$.\\"1\\"[1]","2":"$.\\"1\\"[1].\\"4\\"[0]"},".mysqlprotobuf.UnmarshalOptions":{"1":"$.\\"1\\"[1]","2":"$.\\"1\\"[1].\\"4\\"[1]"}}}' AS JSON);
+	RETURN CAST('{"1":{"1":[{"1":"json_options.proto","12":"proto3","2":"mysqlprotobuf","4":[{"1":"JsonUnmarshalOptions","2":[{"1":"ignore_unknown_fields","10":"ignoreUnknownFields","3":1,"4":1,"5":8},{"1":"ignore_unknown_enums","10":"ignoreUnknownEnums","3":2,"4":1,"5":8}]},{"1":"JsonMarshalOptions","2":[{"1":"emit_default_values","10":"emitDefaultValues","3":1,"4":1,"5":8}]}]},{"1":"marshal_options.proto","12":"proto3","2":"mysqlprotobuf","4":[{"1":"MarshalOptions"},{"1":"UnmarshalOptions"}]}]},"2":{".mysqlprotobuf.JsonMarshalOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[1]","3":{"emit_default_values":0},"4":{"1":0}},".mysqlprotobuf.JsonUnmarshalOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"ignore_unknown_enums":1,"ignore_unknown_fields":0},"4":{"1":0,"2":1}},".mysqlprotobuf.MarshalOptions":{"1":"$.\\"1\\"[1]","2":"$.\\"1\\"[1].\\"4\\"[0]"},".mysqlprotobuf.UnmarshalOptions":{"1":"$.\\"1\\"[1]","2":"$.\\"1\\"[1].\\"4\\"[1]"}}}' AS JSON);
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_new $$
@@ -5537,42 +5451,6 @@ DROP FUNCTION IF EXISTS pb_json_marshal_options_get_emit_default_values $$
 CREATE FUNCTION pb_json_marshal_options_get_emit_default_values(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     RETURN JSON_EXTRACT(proto_data, '$."1"');
-END $$
-
-DROP FUNCTION IF EXISTS pb_json_marshal_options_set_use_enum_numbers $$
-CREATE FUNCTION pb_json_marshal_options_set_use_enum_numbers(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
-BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
-END $$
-
-DROP FUNCTION IF EXISTS pb_json_marshal_options_get_use_enum_numbers $$
-CREATE FUNCTION pb_json_marshal_options_get_use_enum_numbers(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
-BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."2"');
-END $$
-
-DROP FUNCTION IF EXISTS pb_json_marshal_options_set_emit_int64s_as_numbers $$
-CREATE FUNCTION pb_json_marshal_options_set_emit_int64s_as_numbers(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
-BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
-END $$
-
-DROP FUNCTION IF EXISTS pb_json_marshal_options_get_emit_int64s_as_numbers $$
-CREATE FUNCTION pb_json_marshal_options_get_emit_int64s_as_numbers(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
-BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."3"');
-END $$
-
-DROP FUNCTION IF EXISTS pb_json_marshal_options_set_treat_wkt_as_normal_types $$
-CREATE FUNCTION pb_json_marshal_options_set_treat_wkt_as_normal_types(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
-BEGIN
-    RETURN JSON_SET(proto_data, '$."4"', field_value);
-END $$
-
-DROP FUNCTION IF EXISTS pb_json_marshal_options_get_treat_wkt_as_normal_types $$
-CREATE FUNCTION pb_json_marshal_options_get_treat_wkt_as_normal_types(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
-BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."4"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_marshal_options_new $$

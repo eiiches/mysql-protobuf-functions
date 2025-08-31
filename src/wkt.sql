@@ -82,7 +82,7 @@ END $$
 
 -- Helper procedure to convert well-known type from ProtoNumberJSON to ProtoJSON
 DROP PROCEDURE IF EXISTS _pb_convert_number_json_to_wkt $$
-CREATE PROCEDURE _pb_convert_number_json_to_wkt(IN field_type INT, IN full_type_name TEXT, IN number_json_value JSON, IN descriptor_set_jsons JSON, OUT result JSON)
+CREATE PROCEDURE _pb_convert_number_json_to_wkt(IN field_type INT, IN full_type_name TEXT, IN number_json_value JSON, IN descriptor_set_jsons JSON, IN emit_default_values BOOLEAN, OUT result JSON)
 BEGIN
 	CASE field_type
 	WHEN 14 THEN -- enum
@@ -127,7 +127,7 @@ BEGIN
 		WHEN '.google.protobuf.FieldMask' THEN
 			SET result = _pb_wkt_field_mask_number_json_to_json(number_json_value);
 		WHEN '.google.protobuf.Any' THEN
-			CALL _pb_wkt_any_number_json_to_json(number_json_value, descriptor_set_jsons, result);
+			CALL _pb_wkt_any_number_json_to_json(number_json_value, descriptor_set_jsons, emit_default_values, result);
 		ELSE
 			SET result = NULL;
 		END CASE;

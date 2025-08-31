@@ -85,17 +85,8 @@ type JsonMarshalOptions struct {
 	// and empty maps. This option doesn't affect if the field has
 	// a field presence.
 	EmitDefaultValues bool `protobuf:"varint,1,opt,name=emit_default_values,json=emitDefaultValues,proto3" json:"emit_default_values,omitempty"`
-	// Emits enum values as numbers, instead of their names.
-	UseEnumNumbers bool `protobuf:"varint,2,opt,name=use_enum_numbers,json=useEnumNumbers,proto3" json:"use_enum_numbers,omitempty"`
-	// ONLY FOR INTERNAL USE.
-	// Emits 64bit integer types (int64, uint64, fixed64, sfixed64, sint64) as numbers, instead of strings.
-	EmitInt64SAsNumbers bool `protobuf:"varint,3,opt,name=emit_int64s_as_numbers,json=emitInt64sAsNumbers,proto3" json:"emit_int64s_as_numbers,omitempty"`
-	// ONLY FOR INTERNAL USE.
-	// Don't treat Well-known Types as special.
-	// E.g. Timestamp becomes {"seconds": 61, "nanos": 123000000} instead of "1970-01-01T00:01:01.123Z".
-	TreatWktAsNormalTypes bool `protobuf:"varint,4,opt,name=treat_wkt_as_normal_types,json=treatWktAsNormalTypes,proto3" json:"treat_wkt_as_normal_types,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *JsonMarshalOptions) Reset() {
@@ -135,27 +126,6 @@ func (x *JsonMarshalOptions) GetEmitDefaultValues() bool {
 	return false
 }
 
-func (x *JsonMarshalOptions) GetUseEnumNumbers() bool {
-	if x != nil {
-		return x.UseEnumNumbers
-	}
-	return false
-}
-
-func (x *JsonMarshalOptions) GetEmitInt64SAsNumbers() bool {
-	if x != nil {
-		return x.EmitInt64SAsNumbers
-	}
-	return false
-}
-
-func (x *JsonMarshalOptions) GetTreatWktAsNormalTypes() bool {
-	if x != nil {
-		return x.TreatWktAsNormalTypes
-	}
-	return false
-}
-
 var File_json_options_proto protoreflect.FileDescriptor
 
 const file_json_options_proto_rawDesc = "" +
@@ -163,12 +133,9 @@ const file_json_options_proto_rawDesc = "" +
 	"\x12json_options.proto\x12\rmysqlprotobuf\"|\n" +
 	"\x14JsonUnmarshalOptions\x122\n" +
 	"\x15ignore_unknown_fields\x18\x01 \x01(\bR\x13ignoreUnknownFields\x120\n" +
-	"\x14ignore_unknown_enums\x18\x02 \x01(\bR\x12ignoreUnknownEnums\"\xdd\x01\n" +
+	"\x14ignore_unknown_enums\x18\x02 \x01(\bR\x12ignoreUnknownEnums\"D\n" +
 	"\x12JsonMarshalOptions\x12.\n" +
-	"\x13emit_default_values\x18\x01 \x01(\bR\x11emitDefaultValues\x12(\n" +
-	"\x10use_enum_numbers\x18\x02 \x01(\bR\x0euseEnumNumbers\x123\n" +
-	"\x16emit_int64s_as_numbers\x18\x03 \x01(\bR\x13emitInt64sAsNumbers\x128\n" +
-	"\x19treat_wkt_as_normal_types\x18\x04 \x01(\bR\x15treatWktAsNormalTypesb\x06proto3"
+	"\x13emit_default_values\x18\x01 \x01(\bR\x11emitDefaultValuesb\x06proto3"
 
 var (
 	file_json_options_proto_rawDescOnce sync.Once
