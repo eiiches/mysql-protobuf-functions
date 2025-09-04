@@ -77,17 +77,63 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 	// Get prefix for this specific type
 	funcPrefix := typePrefixFunc(packageName, fullTypeName)
 
-	// Generate constructor
+	// Generate basic constructor
+	if err := generateConstructor(content, funcPrefix, fullTypeName); err != nil {
+		return err
+	}
+
+	// Generate conversion methods (from_json, to_json, etc.)
+	if err := generateConversionMethods(content, funcPrefix, fullTypeName, schemaFunctionName); err != nil {
+		return err
+	}
+
+	// Generate field accessor methods with enhanced opaque API patterns
+	if err := generateFieldAccessorMethods(content, messageDesc, funcPrefix, fullTypeName); err != nil {
+		return err
+	}
+
+	// Generate oneOf methods for oneOf groups
+	if err := generateOneOfMethods(content, messageDesc, funcPrefix, fullTypeName); err != nil {
+		return err
+	}
+
+	// Generate methods for nested message types
+	nestedMessages := messageDesc.Messages()
+	for nestedMessageDesc := range protoreflectutils.Iterate(nestedMessages) {
+		if err := generateMessageMethods(content, nestedMessageDesc, typePrefixFunc, schemaFunctionName); err != nil {
+			return err
+		}
+	}
+
+	// Generate methods for nested enum types
+	nestedEnums := messageDesc.Enums()
+	for nestedEnumDesc := range protoreflectutils.Iterate(nestedEnums) {
+		if err := generateEnumMethods(content, nestedEnumDesc, typePrefixFunc, schemaFunctionName); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// generateConstructor creates a basic constructor function
+func generateConstructor(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName) error {
 	newFuncName := funcPrefix + "_new"
 	if err := validateFunctionName(newFuncName, fullTypeName); err != nil {
 		return err
 	}
+
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", newFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s() RETURNS JSON DETERMINISTIC\n", newFuncName))
 	content.WriteString("BEGIN\n")
 	content.WriteString("    RETURN JSON_OBJECT();\n")
 	content.WriteString("END $$\n\n")
 
+	return nil
+}
+
+// generateConversionMethods creates conversion methods (from_json, to_json, etc.)
+func generateConversionMethods(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, schemaFunctionName string) error {
 	// Generate from_json
 	fromJsonFuncName := funcPrefix + "_from_json"
 	if err := validateFunctionName(fromJsonFuncName, fullTypeName); err != nil {
@@ -132,66 +178,329 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_message(%s(), '.%s', proto_data, marshal_options);\n", schemaFunctionName, fullTypeName))
 	content.WriteString("END $$\n\n")
 
-	// Generate setter and getter methods for each field
+	return nil
+}
+
+// generateFieldAccessorMethods creates enhanced field accessor methods following opaque API patterns
+func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, funcPrefix string, fullTypeName protoreflect.FullName) error {
 	fields := messageDesc.Fields()
+
 	for field := range protoreflectutils.Iterate(fields) {
 		fieldName := string(field.Name())
 		fieldType := field.Kind()
 		isRepeated := field.Cardinality() == protoreflect.Repeated
+		isMessage := fieldType == protoreflect.MessageKind
 
-		// Determine MySQL types for setter parameter and getter return
-		setterType, getterType := getMySQLTypesForFieldFromReflection(fieldType, isRepeated)
-
-		// Generate setter
-		setterFuncName := fmt.Sprintf("%s_set_%s", funcPrefix, fieldName)
-		if err := validateFunctionName(setterFuncName, fullTypeName); err != nil {
+		// Generate enhanced getter with better defaults and type safety
+		if err := generateEnhancedGetter(content, funcPrefix, fullTypeName, field, fieldName, fieldType, isRepeated, isMessage); err != nil {
 			return err
 		}
-		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", setterFuncName))
-		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, field_value %s) RETURNS JSON DETERMINISTIC\n", setterFuncName, setterType))
-		content.WriteString("BEGIN\n")
-		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
-		content.WriteString("END $$\n\n")
 
-		// Generate getter
-		getterFuncName := fmt.Sprintf("%s_get_%s", funcPrefix, fieldName)
-		if err := validateFunctionName(getterFuncName, fullTypeName); err != nil {
+		// Generate enhanced setter with validation
+		if err := generateEnhancedSetter(content, funcPrefix, fullTypeName, field, fieldName, fieldType, isRepeated, isMessage); err != nil {
 			return err
 		}
-		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", getterFuncName))
-		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS %s DETERMINISTIC\n", getterFuncName, getterType))
-		content.WriteString("BEGIN\n")
-		if isRepeated || fieldType == protoreflect.MessageKind || fieldType == protoreflect.BoolKind {
-			// For repeated fields and messages, return JSON directly
-			content.WriteString(fmt.Sprintf("    RETURN JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
-		} else {
-			// For scalar fields, unquote the JSON value with default value fallback
-			defaultValue := getFieldDefaultValueFromReflection(field)
-			content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$.\"%.d\"')), %s);\n", field.Number(), defaultValue))
-		}
-		content.WriteString("END $$\n\n")
-	}
 
-	// Generate methods for nested message types
-	nestedMessages := messageDesc.Messages()
-	for nestedMessageDesc := range protoreflectutils.Iterate(nestedMessages) {
-		if err := generateMessageMethods(content, nestedMessageDesc, typePrefixFunc, schemaFunctionName); err != nil {
+		// Generate has method for fields with presence semantics
+		if field.HasPresence() {
+			if err := generateHasMethod(content, funcPrefix, fullTypeName, field, fieldName); err != nil {
+				return err
+			}
+		}
+
+		// Generate clear method for all fields
+		if err := generateClearMethod(content, funcPrefix, fullTypeName, field, fieldName); err != nil {
 			return err
 		}
-	}
 
-	// Generate methods for nested enum types
-	nestedEnums := messageDesc.Enums()
-	for nestedEnumDesc := range protoreflectutils.Iterate(nestedEnums) {
-		if err := generateEnumMethods(content, nestedEnumDesc, typePrefixFunc, schemaFunctionName); err != nil {
-			return err
+		// Generate additional methods for repeated fields
+		if isRepeated {
+			if err := generateRepeatedFieldMethods(content, funcPrefix, fullTypeName, field, fieldName, fieldType); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-func generateEnumMethods(content *strings.Builder, enumDesc protoreflect.EnumDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string) error {
+// generateEnhancedGetter creates an enhanced getter with better defaults and type safety
+func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, fieldType protoreflect.Kind, isRepeated, isMessage bool) error {
+	getterFuncName := fmt.Sprintf("%s_get_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(getterFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	_, getterType := getMySQLTypesForFieldFromReflection(fieldType, isRepeated)
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", getterFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS %s DETERMINISTIC\n", getterFuncName, getterType))
+	content.WriteString("BEGIN\n")
+
+	// Declare variables at the beginning for fields that need JSON parsing
+	needsJsonParsing := !isRepeated && !isMessage && (fieldType == protoreflect.BoolKind ||
+		fieldType == protoreflect.StringKind ||
+		fieldType == protoreflect.BytesKind ||
+		fieldType == protoreflect.Int64Kind ||
+		fieldType == protoreflect.Sint64Kind ||
+		fieldType == protoreflect.Sfixed64Kind ||
+		fieldType == protoreflect.Int32Kind ||
+		fieldType == protoreflect.Sint32Kind ||
+		fieldType == protoreflect.Sfixed32Kind ||
+		fieldType == protoreflect.Uint64Kind ||
+		fieldType == protoreflect.Fixed64Kind ||
+		fieldType == protoreflect.Uint32Kind ||
+		fieldType == protoreflect.Fixed32Kind ||
+		fieldType == protoreflect.FloatKind ||
+		fieldType == protoreflect.DoubleKind ||
+		fieldType == protoreflect.EnumKind)
+
+	if needsJsonParsing {
+		content.WriteString("    DECLARE json_value JSON;\n")
+	}
+
+	switch {
+	case isRepeated:
+		// For repeated fields, return JSON array or empty array if not present
+		content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_ARRAY());\n", field.Number()))
+	case isMessage:
+		// For message fields, return JSON object or NULL if not present
+		content.WriteString(fmt.Sprintf("    RETURN JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	case fieldType == protoreflect.BoolKind:
+		// For boolean fields, use _pb_json_parse_bool if the field exists
+		defaultValue := getFieldDefaultValueFromReflection(field)
+		content.WriteString(fmt.Sprintf("    SET json_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+		content.WriteString("    IF json_value IS NULL THEN\n")
+		content.WriteString(fmt.Sprintf("        RETURN %s;\n", defaultValue))
+		content.WriteString("    END IF;\n")
+		content.WriteString("    RETURN _pb_json_parse_bool(json_value);\n")
+	default:
+		// For scalar fields, use appropriate _pb_json_parse functions
+		defaultValue := getFieldDefaultValueFromReflection(field)
+		content.WriteString(fmt.Sprintf("    SET json_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+		content.WriteString("    IF json_value IS NULL THEN\n")
+		content.WriteString(fmt.Sprintf("        RETURN %s;\n", defaultValue))
+		content.WriteString("    END IF;\n")
+		content.WriteString(fmt.Sprintf("    RETURN %s;\n", getJsonParseFunction(fieldType)))
+	}
+
+	content.WriteString("END $$\n\n")
+	return nil
+}
+
+// getJsonParseFunction returns the appropriate _pb_json_parse function for a field type
+func getJsonParseFunction(fieldType protoreflect.Kind) string {
+	switch fieldType {
+	case protoreflect.BoolKind:
+		return "_pb_json_parse_bool(json_value)"
+	case protoreflect.StringKind:
+		return "_pb_json_parse_string(json_value)"
+	case protoreflect.BytesKind:
+		return "_pb_json_parse_bytes(json_value)"
+	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind,
+		protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind,
+		protoreflect.EnumKind:
+		return "_pb_json_parse_signed_int(json_value)"
+	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind,
+		protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
+		return "_pb_json_parse_unsigned_int(json_value)"
+	case protoreflect.FloatKind:
+		return "_pb_json_parse_float_as_uint32(json_value, FALSE)"
+	case protoreflect.DoubleKind:
+		return "_pb_json_parse_double_as_uint64(json_value, FALSE)"
+	case protoreflect.GroupKind:
+		// Groups are deprecated but treated like messages (JSON)
+		return "json_value"
+	default:
+		// This should not happen since we check needsJsonParsing
+		return "json_value"
+	}
+}
+
+// generateEnhancedSetter creates an enhanced setter with input validation
+func generateEnhancedSetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, fieldType protoreflect.Kind, isRepeated, isMessage bool) error {
+	setterFuncName := fmt.Sprintf("%s_set_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(setterFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	setterType, _ := getMySQLTypesForFieldFromReflection(fieldType, isRepeated)
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", setterFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, field_value %s) RETURNS JSON DETERMINISTIC\n", setterFuncName, setterType))
+	content.WriteString("BEGIN\n")
+
+	// Declare variables at the beginning (required by MySQL syntax)
+	oneof := field.ContainingOneof()
+	if oneof != nil {
+		content.WriteString("    DECLARE temp_data JSON DEFAULT proto_data;\n")
+	}
+
+	// Add input validation
+	if isRepeated || isMessage {
+		content.WriteString("    IF field_value IS NULL THEN\n")
+		content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+		content.WriteString("    END IF;\n")
+	}
+
+	// Handle oneOf field mutual exclusion
+	if oneof != nil {
+		content.WriteString("    -- OneOf field mutual exclusion: clear other fields in the same oneOf group\n")
+
+		// Clear all other fields in the same oneOf group
+		fields := oneof.Fields()
+		for otherField := range protoreflectutils.Iterate(fields) {
+			if otherField.Number() != field.Number() {
+				content.WriteString(fmt.Sprintf("    SET temp_data = JSON_REMOVE(temp_data, '$.\"%.d\"');\n", otherField.Number()))
+			}
+		}
+
+		// Set the new field value with proper JSON conversion for booleans
+		if fieldType == protoreflect.BoolKind {
+			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', CAST((field_value IS TRUE) AS JSON));\n", field.Number()))
+		} else {
+			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', field_value);\n", field.Number()))
+		}
+	} else {
+		// Set the new field value with proper JSON conversion for booleans
+		if fieldType == protoreflect.BoolKind {
+			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', CAST((field_value IS TRUE) AS JSON));\n", field.Number()))
+		} else {
+			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
+		}
+	}
+
+	content.WriteString("END $$\n\n")
+
+	return nil
+}
+
+// generateHasMethod creates a method to check field presence
+func generateHasMethod(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string) error {
+	hasFuncName := fmt.Sprintf("%s_has_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(hasFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", hasFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC\n", hasFuncName))
+	content.WriteString("BEGIN\n")
+	content.WriteString(fmt.Sprintf("    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("END $$\n\n")
+
+	return nil
+}
+
+// generateClearMethod creates a method to clear/unset a field
+func generateClearMethod(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string) error {
+	clearFuncName := fmt.Sprintf("%s_clear_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(clearFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", clearFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS JSON DETERMINISTIC\n", clearFuncName))
+	content.WriteString("BEGIN\n")
+	content.WriteString(fmt.Sprintf("    RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("END $$\n\n")
+
+	return nil
+}
+
+// generateRepeatedFieldMethods creates additional methods for repeated fields
+func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, fieldType protoreflect.Kind) error {
+	// Generate add method for repeated fields
+	addFuncName := fmt.Sprintf("%s_add_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(addFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	elementSetterType, _ := getMySQLTypesForFieldFromReflection(fieldType, false) // Get non-repeated type for element
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", addFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, element_value %s) RETURNS JSON DETERMINISTIC\n", addFuncName, elementSetterType))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE current_array JSON;\n")
+	content.WriteString(fmt.Sprintf("    SET current_array = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF current_array IS NULL THEN\n")
+	content.WriteString("        SET current_array = JSON_ARRAY();\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);\n")
+	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', current_array);\n", field.Number()))
+	content.WriteString("END $$\n\n")
+
+	// Generate count method for repeated fields
+	countFuncName := fmt.Sprintf("%s_count_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(countFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", countFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS INT DETERMINISTIC\n", countFuncName))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE array_value JSON;\n")
+	content.WriteString(fmt.Sprintf("    SET array_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF array_value IS NULL THEN\n")
+	content.WriteString("        RETURN 0;\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    RETURN JSON_LENGTH(array_value);\n")
+	content.WriteString("END $$\n\n")
+
+	return nil
+}
+
+// generateOneOfMethods creates methods for oneOf groups
+func generateOneOfMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, funcPrefix string, fullTypeName protoreflect.FullName) error {
+	oneofs := messageDesc.Oneofs()
+	for oneof := range protoreflectutils.Iterate(oneofs) {
+		oneofName := string(oneof.Name())
+
+		// Generate which method to detect which field is set in the oneOf group
+		whichFuncName := fmt.Sprintf("%s_which_%s", funcPrefix, oneofName)
+		if err := validateFunctionName(whichFuncName, fullTypeName); err != nil {
+			return err
+		}
+
+		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", whichFuncName))
+		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC\n", whichFuncName))
+		content.WriteString("BEGIN\n")
+
+		// Check each field in the oneOf group
+		fields := oneof.Fields()
+		for field := range protoreflectutils.Iterate(fields) {
+			fieldName := string(field.Name())
+			content.WriteString(fmt.Sprintf("    IF JSON_CONTAINS_PATH(proto_data, 'one', '$.\"%.d\"') THEN\n", field.Number()))
+			content.WriteString(fmt.Sprintf("        RETURN '%s';\n", fieldName))
+			content.WriteString("    END IF;\n")
+		}
+
+		content.WriteString("    RETURN NULL; -- No field is set in this oneOf group\n")
+		content.WriteString("END $$\n\n")
+
+		// Generate clear method for entire oneOf group
+		clearOneOfFuncName := fmt.Sprintf("%s_clear_%s", funcPrefix, oneofName)
+		if err := validateFunctionName(clearOneOfFuncName, fullTypeName); err != nil {
+			return err
+		}
+
+		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", clearOneOfFuncName))
+		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS JSON DETERMINISTIC\n", clearOneOfFuncName))
+		content.WriteString("BEGIN\n")
+		content.WriteString("    DECLARE temp_data JSON DEFAULT proto_data;\n")
+
+		// Clear all fields in the oneOf group
+		for field := range protoreflectutils.Iterate(fields) {
+			content.WriteString(fmt.Sprintf("    SET temp_data = JSON_REMOVE(temp_data, '$.\"%.d\"');\n", field.Number()))
+		}
+
+		content.WriteString("    RETURN temp_data;\n")
+		content.WriteString("END $$\n\n")
+	}
+
+	return nil
+}
+
+func generateEnumMethods(content *strings.Builder, enumDesc protoreflect.EnumDescriptor, typePrefixFunc TypePrefixFunc, _ string) error {
 	// Use FullName from descriptor
 	fullTypeName := enumDesc.FullName()
 	packageName := enumDesc.ParentFile().Package()
@@ -289,6 +598,9 @@ func getMySQLTypesForFieldFromReflection(fieldKind protoreflect.Kind, isRepeated
 	case protoreflect.MessageKind:
 		// Messages are represented as JSON (ProtoNumberJSON format)
 		return "JSON", "JSON"
+	case protoreflect.GroupKind:
+		// Groups are deprecated but still need handling - represent as JSON
+		return "JSON", "JSON"
 	default:
 		// Fallback to JSON for unknown types
 		return "JSON", "JSON"
@@ -318,6 +630,12 @@ func getFieldDefaultValueFromReflection(field protoreflect.FieldDescriptor) stri
 		case protoreflect.EnumKind:
 			// Enum defaults
 			return fmt.Sprintf("%d", defaultVal.Enum())
+		case protoreflect.MessageKind:
+			// Messages don't have default values in proto2
+			return "NULL"
+		case protoreflect.GroupKind:
+			// Groups don't have default values
+			return "NULL"
 		default:
 			// Numeric defaults can be used directly
 			switch fieldKind {
@@ -329,6 +647,19 @@ func getFieldDefaultValueFromReflection(field protoreflect.FieldDescriptor) stri
 			case protoreflect.Uint64Kind, protoreflect.Fixed64Kind,
 				protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
 				return fmt.Sprintf("%d", defaultVal.Uint())
+			case protoreflect.BoolKind:
+				if defaultVal.Bool() {
+					return "1"
+				}
+				return "0"
+			case protoreflect.EnumKind:
+				return fmt.Sprintf("%d", defaultVal.Enum())
+			case protoreflect.StringKind:
+				return fmt.Sprintf("'%s'", strings.ReplaceAll(defaultVal.String(), "'", "''"))
+			case protoreflect.BytesKind:
+				return fmt.Sprintf("X'%X'", defaultVal.Bytes())
+			case protoreflect.MessageKind, protoreflect.GroupKind:
+				return "NULL"
 			default:
 				return "NULL"
 			}
@@ -352,6 +683,8 @@ func getFieldDefaultValueFromReflection(field protoreflect.FieldDescriptor) stri
 		return "''"
 	case protoreflect.BytesKind:
 		return "X''"
+	case protoreflect.MessageKind, protoreflect.GroupKind:
+		return "NULL"
 	default:
 		return "NULL"
 	}

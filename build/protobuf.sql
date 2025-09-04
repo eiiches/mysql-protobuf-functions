@@ -2852,7 +2852,7 @@ BEGIN
 	IF data IS NULL THEN
 		RETURN NULL;
 	END IF;
-	
+
 	-- Use TO_BASE64 and remove all newline characters
 	RETURN REPLACE(TO_BASE64(data), '\n', '');
 END $$

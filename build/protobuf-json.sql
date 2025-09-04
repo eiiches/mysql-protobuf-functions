@@ -4471,16 +4471,48 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Struct', proto_data, marshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_struct_set_fields $$
-CREATE FUNCTION pb_wkt_struct_set_fields(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
-END $$
-
 DROP FUNCTION IF EXISTS pb_wkt_struct_get_fields $$
 CREATE FUNCTION pb_wkt_struct_get_fields(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."1"');
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_set_fields $$
+CREATE FUNCTION pb_wkt_struct_set_fields(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_clear_fields $$
+CREATE FUNCTION pb_wkt_struct_clear_fields(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_add_fields $$
+CREATE FUNCTION pb_wkt_struct_add_fields(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_count_fields $$
+CREATE FUNCTION pb_wkt_struct_count_fields(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_new $$
@@ -4513,28 +4545,54 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Struct.FieldsEntry', proto_data, marshal_options);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_get_key $$
+CREATE FUNCTION pb_wkt_struct_fields_entry_get_key(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_set_key $$
 CREATE FUNCTION pb_wkt_struct_fields_entry_set_key(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_get_key $$
-CREATE FUNCTION pb_wkt_struct_fields_entry_get_key(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_clear_key $$
+CREATE FUNCTION pb_wkt_struct_fields_entry_clear_key(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), '');
-END $$
-
-DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_set_value $$
-CREATE FUNCTION pb_wkt_struct_fields_entry_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_get_value $$
 CREATE FUNCTION pb_wkt_struct_fields_entry_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_EXTRACT(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_set_value $$
+CREATE FUNCTION pb_wkt_struct_fields_entry_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_has_value $$
+CREATE FUNCTION pb_wkt_struct_fields_entry_has_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_clear_value $$
+CREATE FUNCTION pb_wkt_struct_fields_entry_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_new $$
@@ -4567,58 +4625,148 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Value', proto_data, marshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_value_set_null_value $$
-CREATE FUNCTION pb_wkt_value_set_null_value(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
-BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
-END $$
-
 DROP FUNCTION IF EXISTS pb_wkt_value_get_null_value $$
 CREATE FUNCTION pb_wkt_value_get_null_value(proto_data JSON) RETURNS INT DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_value_set_number_value $$
-CREATE FUNCTION pb_wkt_value_set_number_value(proto_data JSON, field_value DOUBLE) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_value_set_null_value $$
+CREATE FUNCTION pb_wkt_value_set_null_value(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    DECLARE temp_data JSON DEFAULT proto_data;
+    -- OneOf field mutual exclusion: clear other fields in the same oneOf group
+    SET temp_data = JSON_REMOVE(temp_data, '$."2"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."3"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."4"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."5"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."6"');
+    RETURN JSON_SET(temp_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_has_null_value $$
+CREATE FUNCTION pb_wkt_value_has_null_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_clear_null_value $$
+CREATE FUNCTION pb_wkt_value_clear_null_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_get_number_value $$
 CREATE FUNCTION pb_wkt_value_get_number_value(proto_data JSON) RETURNS DOUBLE DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."2"')), 0.0);
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0.0;
+    END IF;
+    RETURN _pb_json_parse_double_as_uint64(json_value, FALSE);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_value_set_string_value $$
-CREATE FUNCTION pb_wkt_value_set_string_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_value_set_number_value $$
+CREATE FUNCTION pb_wkt_value_set_number_value(proto_data JSON, field_value DOUBLE) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
+    DECLARE temp_data JSON DEFAULT proto_data;
+    -- OneOf field mutual exclusion: clear other fields in the same oneOf group
+    SET temp_data = JSON_REMOVE(temp_data, '$."1"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."3"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."4"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."5"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."6"');
+    RETURN JSON_SET(temp_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_has_number_value $$
+CREATE FUNCTION pb_wkt_value_has_number_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_clear_number_value $$
+CREATE FUNCTION pb_wkt_value_clear_number_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_get_string_value $$
 CREATE FUNCTION pb_wkt_value_get_string_value(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."3"')), '');
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_value_set_bool_value $$
-CREATE FUNCTION pb_wkt_value_set_bool_value(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_value_set_string_value $$
+CREATE FUNCTION pb_wkt_value_set_string_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."4"', field_value);
+    DECLARE temp_data JSON DEFAULT proto_data;
+    -- OneOf field mutual exclusion: clear other fields in the same oneOf group
+    SET temp_data = JSON_REMOVE(temp_data, '$."1"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."2"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."4"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."5"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."6"');
+    RETURN JSON_SET(temp_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_has_string_value $$
+CREATE FUNCTION pb_wkt_value_has_string_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_clear_string_value $$
+CREATE FUNCTION pb_wkt_value_clear_string_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_get_bool_value $$
 CREATE FUNCTION pb_wkt_value_get_bool_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."4"');
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_value_set_struct_value $$
-CREATE FUNCTION pb_wkt_value_set_struct_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_value_set_bool_value $$
+CREATE FUNCTION pb_wkt_value_set_bool_value(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."5"', field_value);
+    DECLARE temp_data JSON DEFAULT proto_data;
+    -- OneOf field mutual exclusion: clear other fields in the same oneOf group
+    SET temp_data = JSON_REMOVE(temp_data, '$."1"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."2"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."3"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."5"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."6"');
+    RETURN JSON_SET(temp_data, '$."4"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_has_bool_value $$
+CREATE FUNCTION pb_wkt_value_has_bool_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_clear_bool_value $$
+CREATE FUNCTION pb_wkt_value_clear_bool_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_get_struct_value $$
@@ -4627,16 +4775,103 @@ BEGIN
     RETURN JSON_EXTRACT(proto_data, '$."5"');
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_value_set_list_value $$
-CREATE FUNCTION pb_wkt_value_set_list_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_value_set_struct_value $$
+CREATE FUNCTION pb_wkt_value_set_struct_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."6"', field_value);
+    DECLARE temp_data JSON DEFAULT proto_data;
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."5"');
+    END IF;
+    -- OneOf field mutual exclusion: clear other fields in the same oneOf group
+    SET temp_data = JSON_REMOVE(temp_data, '$."1"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."2"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."3"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."4"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."6"');
+    RETURN JSON_SET(temp_data, '$."5"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_has_struct_value $$
+CREATE FUNCTION pb_wkt_value_has_struct_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_clear_struct_value $$
+CREATE FUNCTION pb_wkt_value_clear_struct_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_get_list_value $$
 CREATE FUNCTION pb_wkt_value_get_list_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_EXTRACT(proto_data, '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_set_list_value $$
+CREATE FUNCTION pb_wkt_value_set_list_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE temp_data JSON DEFAULT proto_data;
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."6"');
+    END IF;
+    -- OneOf field mutual exclusion: clear other fields in the same oneOf group
+    SET temp_data = JSON_REMOVE(temp_data, '$."1"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."2"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."3"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."4"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."5"');
+    RETURN JSON_SET(temp_data, '$."6"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_has_list_value $$
+CREATE FUNCTION pb_wkt_value_has_list_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_clear_list_value $$
+CREATE FUNCTION pb_wkt_value_clear_list_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_which_kind $$
+CREATE FUNCTION pb_wkt_value_which_kind(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        RETURN 'null_value';
+    END IF;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        RETURN 'number_value';
+    END IF;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        RETURN 'string_value';
+    END IF;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        RETURN 'bool_value';
+    END IF;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        RETURN 'struct_value';
+    END IF;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
+        RETURN 'list_value';
+    END IF;
+    RETURN NULL; -- No field is set in this oneOf group
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_clear_kind $$
+CREATE FUNCTION pb_wkt_value_clear_kind(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE temp_data JSON DEFAULT proto_data;
+    SET temp_data = JSON_REMOVE(temp_data, '$."1"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."2"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."3"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."4"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."5"');
+    SET temp_data = JSON_REMOVE(temp_data, '$."6"');
+    RETURN temp_data;
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_list_value_new $$
@@ -4669,16 +4904,48 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.ListValue', proto_data, marshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_list_value_set_values $$
-CREATE FUNCTION pb_wkt_list_value_set_values(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
-END $$
-
 DROP FUNCTION IF EXISTS pb_wkt_list_value_get_values $$
 CREATE FUNCTION pb_wkt_list_value_get_values(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."1"');
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_list_value_set_values $$
+CREATE FUNCTION pb_wkt_list_value_set_values(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_list_value_clear_values $$
+CREATE FUNCTION pb_wkt_list_value_clear_values(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_list_value_add_values $$
+CREATE FUNCTION pb_wkt_list_value_add_values(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_list_value_count_values $$
+CREATE FUNCTION pb_wkt_list_value_count_values(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_null_value_from_string $$
@@ -4735,16 +5002,48 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_field_mask_proto(), '.google.protobuf.FieldMask', proto_data, marshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_field_mask_set_paths $$
-CREATE FUNCTION pb_wkt_field_mask_set_paths(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
-END $$
-
 DROP FUNCTION IF EXISTS pb_wkt_field_mask_get_paths $$
 CREATE FUNCTION pb_wkt_field_mask_get_paths(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."1"');
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_field_mask_set_paths $$
+CREATE FUNCTION pb_wkt_field_mask_set_paths(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_field_mask_clear_paths $$
+CREATE FUNCTION pb_wkt_field_mask_clear_paths(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_field_mask_add_paths $$
+CREATE FUNCTION pb_wkt_field_mask_add_paths(proto_data JSON, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_field_mask_count_paths $$
+CREATE FUNCTION pb_wkt_field_mask_count_paths(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_wrappers_proto $$
@@ -4783,16 +5082,27 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.DoubleValue', proto_data, marshal_options);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_double_value_get_value $$
+CREATE FUNCTION pb_wkt_double_value_get_value(proto_data JSON) RETURNS DOUBLE DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0.0;
+    END IF;
+    RETURN _pb_json_parse_double_as_uint64(json_value, FALSE);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_double_value_set_value $$
 CREATE FUNCTION pb_wkt_double_value_set_value(proto_data JSON, field_value DOUBLE) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_double_value_get_value $$
-CREATE FUNCTION pb_wkt_double_value_get_value(proto_data JSON) RETURNS DOUBLE DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_double_value_clear_value $$
+CREATE FUNCTION pb_wkt_double_value_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0.0);
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_float_value_new $$
@@ -4825,16 +5135,27 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.FloatValue', proto_data, marshal_options);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_float_value_get_value $$
+CREATE FUNCTION pb_wkt_float_value_get_value(proto_data JSON) RETURNS FLOAT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0.0;
+    END IF;
+    RETURN _pb_json_parse_float_as_uint32(json_value, FALSE);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_float_value_set_value $$
 CREATE FUNCTION pb_wkt_float_value_set_value(proto_data JSON, field_value FLOAT) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_float_value_get_value $$
-CREATE FUNCTION pb_wkt_float_value_get_value(proto_data JSON) RETURNS FLOAT DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_float_value_clear_value $$
+CREATE FUNCTION pb_wkt_float_value_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0.0);
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_int64_value_new $$
@@ -4867,16 +5188,27 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.Int64Value', proto_data, marshal_options);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_int64_value_get_value $$
+CREATE FUNCTION pb_wkt_int64_value_get_value(proto_data JSON) RETURNS BIGINT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_int64_value_set_value $$
 CREATE FUNCTION pb_wkt_int64_value_set_value(proto_data JSON, field_value BIGINT) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_int64_value_get_value $$
-CREATE FUNCTION pb_wkt_int64_value_get_value(proto_data JSON) RETURNS BIGINT DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_int64_value_clear_value $$
+CREATE FUNCTION pb_wkt_int64_value_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_uint64_value_new $$
@@ -4909,16 +5241,27 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt64Value', proto_data, marshal_options);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_uint64_value_get_value $$
+CREATE FUNCTION pb_wkt_uint64_value_get_value(proto_data JSON) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_unsigned_int(json_value);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_uint64_value_set_value $$
 CREATE FUNCTION pb_wkt_uint64_value_set_value(proto_data JSON, field_value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_uint64_value_get_value $$
-CREATE FUNCTION pb_wkt_uint64_value_get_value(proto_data JSON) RETURNS BIGINT UNSIGNED DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_uint64_value_clear_value $$
+CREATE FUNCTION pb_wkt_uint64_value_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_int32_value_new $$
@@ -4951,16 +5294,27 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.Int32Value', proto_data, marshal_options);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_int32_value_get_value $$
+CREATE FUNCTION pb_wkt_int32_value_get_value(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_int32_value_set_value $$
 CREATE FUNCTION pb_wkt_int32_value_set_value(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_int32_value_get_value $$
-CREATE FUNCTION pb_wkt_int32_value_get_value(proto_data JSON) RETURNS INT DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_int32_value_clear_value $$
+CREATE FUNCTION pb_wkt_int32_value_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_uint32_value_new $$
@@ -4993,16 +5347,27 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.UInt32Value', proto_data, marshal_options);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_uint32_value_get_value $$
+CREATE FUNCTION pb_wkt_uint32_value_get_value(proto_data JSON) RETURNS INT UNSIGNED DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_unsigned_int(json_value);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_uint32_value_set_value $$
 CREATE FUNCTION pb_wkt_uint32_value_set_value(proto_data JSON, field_value INT UNSIGNED) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_uint32_value_get_value $$
-CREATE FUNCTION pb_wkt_uint32_value_get_value(proto_data JSON) RETURNS INT UNSIGNED DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_uint32_value_clear_value $$
+CREATE FUNCTION pb_wkt_uint32_value_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_bool_value_new $$
@@ -5035,16 +5400,27 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.BoolValue', proto_data, marshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_bool_value_set_value $$
-CREATE FUNCTION pb_wkt_bool_value_set_value(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
-BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
-END $$
-
 DROP FUNCTION IF EXISTS pb_wkt_bool_value_get_value $$
 CREATE FUNCTION pb_wkt_bool_value_get_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."1"');
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_bool_value_set_value $$
+CREATE FUNCTION pb_wkt_bool_value_set_value(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_bool_value_clear_value $$
+CREATE FUNCTION pb_wkt_bool_value_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_string_value_new $$
@@ -5077,16 +5453,27 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.StringValue', proto_data, marshal_options);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_string_value_get_value $$
+CREATE FUNCTION pb_wkt_string_value_get_value(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_string_value_set_value $$
 CREATE FUNCTION pb_wkt_string_value_set_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_string_value_get_value $$
-CREATE FUNCTION pb_wkt_string_value_get_value(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_string_value_clear_value $$
+CREATE FUNCTION pb_wkt_string_value_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), '');
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_bytes_value_new $$
@@ -5119,16 +5506,27 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_wrappers_proto(), '.google.protobuf.BytesValue', proto_data, marshal_options);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_bytes_value_get_value $$
+CREATE FUNCTION pb_wkt_bytes_value_get_value(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN X'';
+    END IF;
+    RETURN _pb_json_parse_bytes(json_value);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_bytes_value_set_value $$
 CREATE FUNCTION pb_wkt_bytes_value_set_value(proto_data JSON, field_value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_bytes_value_get_value $$
-CREATE FUNCTION pb_wkt_bytes_value_get_value(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_bytes_value_clear_value $$
+CREATE FUNCTION pb_wkt_bytes_value_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), X'');
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_timestamp_proto $$
@@ -5167,16 +5565,38 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_timestamp_proto(), '.google.protobuf.Timestamp', proto_data, marshal_options);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_timestamp_get_seconds $$
+CREATE FUNCTION pb_wkt_timestamp_get_seconds(proto_data JSON) RETURNS BIGINT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_timestamp_set_seconds $$
 CREATE FUNCTION pb_wkt_timestamp_set_seconds(proto_data JSON, field_value BIGINT) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_timestamp_get_seconds $$
-CREATE FUNCTION pb_wkt_timestamp_get_seconds(proto_data JSON) RETURNS BIGINT DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_timestamp_clear_seconds $$
+CREATE FUNCTION pb_wkt_timestamp_clear_seconds(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_timestamp_get_nanos $$
+CREATE FUNCTION pb_wkt_timestamp_get_nanos(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_timestamp_set_nanos $$
@@ -5185,10 +5605,10 @@ BEGIN
     RETURN JSON_SET(proto_data, '$."2"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_timestamp_get_nanos $$
-CREATE FUNCTION pb_wkt_timestamp_get_nanos(proto_data JSON) RETURNS INT DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_timestamp_clear_nanos $$
+CREATE FUNCTION pb_wkt_timestamp_clear_nanos(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."2"')), 0);
+    RETURN JSON_REMOVE(proto_data, '$."2"');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_duration_proto $$
@@ -5227,16 +5647,38 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_duration_proto(), '.google.protobuf.Duration', proto_data, marshal_options);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_duration_get_seconds $$
+CREATE FUNCTION pb_wkt_duration_get_seconds(proto_data JSON) RETURNS BIGINT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_duration_set_seconds $$
 CREATE FUNCTION pb_wkt_duration_set_seconds(proto_data JSON, field_value BIGINT) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_duration_get_seconds $$
-CREATE FUNCTION pb_wkt_duration_get_seconds(proto_data JSON) RETURNS BIGINT DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_duration_clear_seconds $$
+CREATE FUNCTION pb_wkt_duration_clear_seconds(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), 0);
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_duration_get_nanos $$
+CREATE FUNCTION pb_wkt_duration_get_nanos(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_duration_set_nanos $$
@@ -5245,10 +5687,10 @@ BEGIN
     RETURN JSON_SET(proto_data, '$."2"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_duration_get_nanos $$
-CREATE FUNCTION pb_wkt_duration_get_nanos(proto_data JSON) RETURNS INT DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_duration_clear_nanos $$
+CREATE FUNCTION pb_wkt_duration_clear_nanos(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."2"')), 0);
+    RETURN JSON_REMOVE(proto_data, '$."2"');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_any_proto $$
@@ -5287,16 +5729,38 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_any_proto(), '.google.protobuf.Any', proto_data, marshal_options);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_any_get_type_url $$
+CREATE FUNCTION pb_wkt_any_get_type_url(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_any_set_type_url $$
 CREATE FUNCTION pb_wkt_any_set_type_url(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_any_get_type_url $$
-CREATE FUNCTION pb_wkt_any_get_type_url(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_any_clear_type_url $$
+CREATE FUNCTION pb_wkt_any_clear_type_url(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."1"')), '');
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_any_get_value $$
+CREATE FUNCTION pb_wkt_any_get_value(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN X'';
+    END IF;
+    RETURN _pb_json_parse_bytes(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_any_set_value $$
@@ -5305,10 +5769,10 @@ BEGIN
     RETURN JSON_SET(proto_data, '$."2"', field_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_any_get_value $$
-CREATE FUNCTION pb_wkt_any_get_value(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_any_clear_value $$
+CREATE FUNCTION pb_wkt_any_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN COALESCE(JSON_UNQUOTE(JSON_EXTRACT(proto_data, '$."2"')), X'');
+    RETURN JSON_REMOVE(proto_data, '$."2"');
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_empty_proto $$
@@ -5387,28 +5851,50 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_options_proto(), '.mysqlprotobuf.JsonUnmarshalOptions', proto_data, marshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS pb_json_unmarshal_options_set_ignore_unknown_fields $$
-CREATE FUNCTION pb_json_unmarshal_options_set_ignore_unknown_fields(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
-BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
-END $$
-
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_get_ignore_unknown_fields $$
 CREATE FUNCTION pb_json_unmarshal_options_get_ignore_unknown_fields(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."1"');
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_json_unmarshal_options_set_ignore_unknown_enums $$
-CREATE FUNCTION pb_json_unmarshal_options_set_ignore_unknown_enums(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_set_ignore_unknown_fields $$
+CREATE FUNCTION pb_json_unmarshal_options_set_ignore_unknown_fields(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_clear_ignore_unknown_fields $$
+CREATE FUNCTION pb_json_unmarshal_options_clear_ignore_unknown_fields(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_get_ignore_unknown_enums $$
 CREATE FUNCTION pb_json_unmarshal_options_get_ignore_unknown_enums(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."2"');
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_set_ignore_unknown_enums $$
+CREATE FUNCTION pb_json_unmarshal_options_set_ignore_unknown_enums(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_unmarshal_options_clear_ignore_unknown_enums $$
+CREATE FUNCTION pb_json_unmarshal_options_clear_ignore_unknown_enums(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_json_marshal_options_new $$
@@ -5441,16 +5927,27 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_options_proto(), '.mysqlprotobuf.JsonMarshalOptions', proto_data, marshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS pb_json_marshal_options_set_emit_default_values $$
-CREATE FUNCTION pb_json_marshal_options_set_emit_default_values(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
-BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
-END $$
-
 DROP FUNCTION IF EXISTS pb_json_marshal_options_get_emit_default_values $$
 CREATE FUNCTION pb_json_marshal_options_get_emit_default_values(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."1"');
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_marshal_options_set_emit_default_values $$
+CREATE FUNCTION pb_json_marshal_options_set_emit_default_values(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS pb_json_marshal_options_clear_emit_default_values $$
+CREATE FUNCTION pb_json_marshal_options_clear_emit_default_values(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
 DROP FUNCTION IF EXISTS pb_marshal_options_new $$
