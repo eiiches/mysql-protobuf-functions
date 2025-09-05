@@ -4559,6 +4559,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_set_key $$
 CREATE FUNCTION pb_wkt_struct_fields_entry_set_key(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = '' THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
@@ -4669,7 +4673,7 @@ BEGIN
     IF json_value IS NULL THEN
         RETURN 0.0;
     END IF;
-    RETURN _pb_json_parse_double_as_uint64(json_value, FALSE);
+    RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_number_value $$
@@ -4682,7 +4686,7 @@ BEGIN
     SET temp_data = JSON_REMOVE(temp_data, '$."4"');
     SET temp_data = JSON_REMOVE(temp_data, '$."5"');
     SET temp_data = JSON_REMOVE(temp_data, '$."6"');
-    RETURN JSON_SET(temp_data, '$."2"', field_value);
+    RETURN JSON_SET(temp_data, '$."2"', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(field_value)));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_has_number_value $$
@@ -5090,13 +5094,17 @@ BEGIN
     IF json_value IS NULL THEN
         RETURN 0.0;
     END IF;
-    RETURN _pb_json_parse_double_as_uint64(json_value, FALSE);
+    RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_double_value_set_value $$
 CREATE FUNCTION pb_wkt_double_value_set_value(proto_data JSON, field_value DOUBLE) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = 0.0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."1"', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(field_value)));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_double_value_clear_value $$
@@ -5143,13 +5151,17 @@ BEGIN
     IF json_value IS NULL THEN
         RETURN 0.0;
     END IF;
-    RETURN _pb_json_parse_float_as_uint32(json_value, FALSE);
+    RETURN _pb_util_reinterpret_uint32_as_float(_pb_json_parse_float_as_uint32(json_value, TRUE));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_float_value_set_value $$
 CREATE FUNCTION pb_wkt_float_value_set_value(proto_data JSON, field_value FLOAT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = 0.0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."1"', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(field_value)));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_float_value_clear_value $$
@@ -5202,6 +5214,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_int64_value_set_value $$
 CREATE FUNCTION pb_wkt_int64_value_set_value(proto_data JSON, field_value BIGINT) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
@@ -5255,6 +5271,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_uint64_value_set_value $$
 CREATE FUNCTION pb_wkt_uint64_value_set_value(proto_data JSON, field_value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
@@ -5308,6 +5328,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_int32_value_set_value $$
 CREATE FUNCTION pb_wkt_int32_value_set_value(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
@@ -5361,6 +5385,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_uint32_value_set_value $$
 CREATE FUNCTION pb_wkt_uint32_value_set_value(proto_data JSON, field_value INT UNSIGNED) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
@@ -5414,6 +5442,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_bool_value_set_value $$
 CREATE FUNCTION pb_wkt_bool_value_set_value(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value IS FALSE THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', CAST((field_value IS TRUE) AS JSON));
 END $$
 
@@ -5467,6 +5499,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_string_value_set_value $$
 CREATE FUNCTION pb_wkt_string_value_set_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = '' THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
@@ -5520,7 +5556,11 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_bytes_value_set_value $$
 CREATE FUNCTION pb_wkt_bytes_value_set_value(proto_data JSON, field_value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = _binary X'' THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."1"', _pb_to_base64(field_value));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_bytes_value_clear_value $$
@@ -5579,6 +5619,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_timestamp_set_seconds $$
 CREATE FUNCTION pb_wkt_timestamp_set_seconds(proto_data JSON, field_value BIGINT) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
@@ -5602,6 +5646,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_timestamp_set_nanos $$
 CREATE FUNCTION pb_wkt_timestamp_set_nanos(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."2"', field_value);
 END $$
 
@@ -5661,6 +5709,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_duration_set_seconds $$
 CREATE FUNCTION pb_wkt_duration_set_seconds(proto_data JSON, field_value BIGINT) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
@@ -5684,6 +5736,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_duration_set_nanos $$
 CREATE FUNCTION pb_wkt_duration_set_nanos(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."2"', field_value);
 END $$
 
@@ -5743,6 +5799,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_any_set_type_url $$
 CREATE FUNCTION pb_wkt_any_set_type_url(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = '' THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
@@ -5766,7 +5826,11 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_any_set_value $$
 CREATE FUNCTION pb_wkt_any_set_value(proto_data JSON, field_value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value = _binary X'' THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."2"', _pb_to_base64(field_value));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_any_clear_value $$
@@ -5865,6 +5929,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_set_ignore_unknown_fields $$
 CREATE FUNCTION pb_json_unmarshal_options_set_ignore_unknown_fields(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value IS FALSE THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', CAST((field_value IS TRUE) AS JSON));
 END $$
 
@@ -5888,6 +5956,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_json_unmarshal_options_set_ignore_unknown_enums $$
 CREATE FUNCTION pb_json_unmarshal_options_set_ignore_unknown_enums(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value IS FALSE THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."2"', CAST((field_value IS TRUE) AS JSON));
 END $$
 
@@ -5941,6 +6013,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_json_marshal_options_set_emit_default_values $$
 CREATE FUNCTION pb_json_marshal_options_set_emit_default_values(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
+    -- Proto3 field without presence: omit default values per protonumberjson spec
+    IF field_value IS FALSE THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', CAST((field_value IS TRUE) AS JSON));
 END $$
 

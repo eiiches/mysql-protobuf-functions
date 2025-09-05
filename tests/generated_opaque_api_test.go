@@ -169,10 +169,571 @@ func testBasicFieldOperations(t *testing.T, fieldDef, fieldName, typeName string
 		t.Run("boolean_storage_format", func(t *testing.T) {
 			setterFunc := fmt.Sprintf("test_set_%s", fieldName)
 			// Verify boolean values are stored as true/false, not 1/0
+			// Proto3 without presence: FALSE omitted, TRUE stored
 			RunTestThatExpression(t, fmt.Sprintf("%s(test_new(), TRUE)", setterFunc)).IsEqualToJsonString(fmt.Sprintf(`{"1": true}`))
-			RunTestThatExpression(t, fmt.Sprintf("%s(test_new(), FALSE)", setterFunc)).IsEqualToJsonString(fmt.Sprintf(`{"1": false}`))
+			RunTestThatExpression(t, fmt.Sprintf("%s(test_new(), FALSE)", setterFunc)).IsEqualToJsonString(`{}`)
 		})
 	}
+}
+
+// TestGeneratedOpaqueApiInternalRepresentation tests that setter functions create correct protonumberjson format for all protobuf types
+func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
+	// Test all protobuf field types in a single comprehensive message
+	t.Run("all_protobuf_types_internal_format", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    double double_field = 1;
+			|    float float_field = 2;
+			|    int32 int32_field = 3;
+			|    int64 int64_field = 4;
+			|    uint32 uint32_field = 5;
+			|    uint64 uint64_field = 6;
+			|    sint32 sint32_field = 7;
+			|    sint64 sint64_field = 8;
+			|    fixed32 fixed32_field = 9;
+			|    fixed64 fixed64_field = 10;
+			|    sfixed32 sfixed32_field = 11;
+			|    sfixed64 sfixed64_field = 12;
+			|    bool bool_field = 13;
+			|    string string_field = 14;
+			|    bytes bytes_field = 15;
+			|    Status enum_field = 16;
+			|    Nested message_field = 17;
+			|}
+			|message Nested {
+			|    string name = 1;
+			|    int32 value = 2;
+			|}
+			|enum Status {
+			|    STATUS_UNSPECIFIED = 0;
+			|    STATUS_ACTIVE = 1;
+			|    STATUS_INACTIVE = 2;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Test double field (IEEE 754 binary64 format)
+		RunTestThatExpression(t, "test_set_double_field(test_new(), 3.141592653589793)").IsEqualToJsonString(`{"1": "binary64:0x400921fb54442d18"}`)
+		RunTestThatExpression(t, "test_set_double_field(test_new(), 1.0)").IsEqualToJsonString(`{"1": "binary64:0x3ff0000000000000"}`)
+		RunTestThatExpression(t, "test_set_double_field(test_new(), 0.0)").IsEqualToJsonString(`{}`) // Zero omitted
+
+		// Test float field (IEEE 754 binary32 format)
+		RunTestThatExpression(t, "test_set_float_field(test_new(), 3.14)").IsEqualToJsonString(`{"2": "binary32:0x4048f5c3"}`)
+		RunTestThatExpression(t, "test_set_float_field(test_new(), 1.0)").IsEqualToJsonString(`{"2": "binary32:0x3f800000"}`)
+		RunTestThatExpression(t, "test_set_float_field(test_new(), 0.0)").IsEqualToJsonString(`{}`) // Zero omitted
+
+		// Test int32 field (JSON numbers)
+		RunTestThatExpression(t, "test_set_int32_field(test_new(), 42)").IsEqualToJsonString(`{"3": 42}`)
+		RunTestThatExpression(t, "test_set_int32_field(test_new(), -2147483648)").IsEqualToJsonString(`{"3": -2147483648}`)
+		RunTestThatExpression(t, "test_set_int32_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+
+		// Test int64 field (JSON numbers, not strings per protonumberjson spec)
+		RunTestThatExpression(t, "test_set_int64_field(test_new(), 9223372036854775807)").IsEqualToJsonString(`{"4": 9223372036854775807}`)
+		RunTestThatExpression(t, "test_set_int64_field(test_new(), -9223372036854775808)").IsEqualToJsonString(`{"4": -9223372036854775808}`)
+		RunTestThatExpression(t, "test_set_int64_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+
+		// Test uint32 field
+		RunTestThatExpression(t, "test_set_uint32_field(test_new(), 4294967295)").IsEqualToJsonString(`{"5": 4294967295}`)
+		RunTestThatExpression(t, "test_set_uint32_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+
+		// Test uint64 field (JSON numbers, not strings per protonumberjson spec)
+		RunTestThatExpression(t, "test_set_uint64_field(test_new(), 18446744073709551615)").IsEqualToJsonString(`{"6": 18446744073709551615}`)
+		RunTestThatExpression(t, "test_set_uint64_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+
+		// Test sint32 field (zigzag encoded but stored as regular JSON numbers)
+		RunTestThatExpression(t, "test_set_sint32_field(test_new(), -1)").IsEqualToJsonString(`{"7": -1}`)
+		RunTestThatExpression(t, "test_set_sint32_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+
+		// Test sint64 field
+		RunTestThatExpression(t, "test_set_sint64_field(test_new(), -1)").IsEqualToJsonString(`{"8": -1}`)
+		RunTestThatExpression(t, "test_set_sint64_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+
+		// Test fixed32 field
+		RunTestThatExpression(t, "test_set_fixed32_field(test_new(), 4294967295)").IsEqualToJsonString(`{"9": 4294967295}`)
+		RunTestThatExpression(t, "test_set_fixed32_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+
+		// Test fixed64 field
+		RunTestThatExpression(t, "test_set_fixed64_field(test_new(), 18446744073709551615)").IsEqualToJsonString(`{"10": 18446744073709551615}`)
+		RunTestThatExpression(t, "test_set_fixed64_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+
+		// Test sfixed32 field
+		RunTestThatExpression(t, "test_set_sfixed32_field(test_new(), -2147483648)").IsEqualToJsonString(`{"11": -2147483648}`)
+		RunTestThatExpression(t, "test_set_sfixed32_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+
+		// Test sfixed64 field
+		RunTestThatExpression(t, "test_set_sfixed64_field(test_new(), -9223372036854775808)").IsEqualToJsonString(`{"12": -9223372036854775808}`)
+		RunTestThatExpression(t, "test_set_sfixed64_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+
+		// Test bool field (JSON booleans, not 1/0)
+		RunTestThatExpression(t, "test_set_bool_field(test_new(), TRUE)").IsEqualToJsonString(`{"13": true}`)
+		RunTestThatExpression(t, "test_set_bool_field(test_new(), FALSE)").IsEqualToJsonString(`{}`) // False omitted
+
+		// Test string field
+		RunTestThatExpression(t, "test_set_string_field(test_new(), 'hello world')").IsEqualToJsonString(`{"14": "hello world"}`)
+		RunTestThatExpression(t, "test_set_string_field(test_new(), '')").IsEqualToJsonString(`{}`) // Empty string omitted
+
+		// Test bytes field (base64 encoded)
+		RunTestThatExpression(t, "test_set_bytes_field(test_new(), ?)", []byte("hello world")).IsEqualToJsonString(`{"15": "aGVsbG8gd29ybGQ="}`)
+		RunTestThatExpression(t, "test_set_bytes_field(test_new(), ?)", []byte{0xDE, 0xAD, 0xBE, 0xEF}).IsEqualToJsonString(`{"15": "3q2+7w=="}`)
+		RunTestThatExpression(t, "test_set_bytes_field(test_new(), ?)", []byte{}).IsEqualToJsonString(`{}`) // Empty bytes omitted
+
+		// Test enum field (stored as numbers, not string names)
+		RunTestThatExpression(t, "test_set_enum_field(test_new(), 1)").IsEqualToJsonString(`{"16": 1}`)
+		RunTestThatExpression(t, "test_set_enum_field(test_new(), 2)").IsEqualToJsonString(`{"16": 2}`)
+		RunTestThatExpression(t, "test_set_enum_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero enum omitted
+
+		// Test message field (nested object with field number keys)
+		nestedObj := "nested_set_value(nested_set_name(nested_new(), 'test'), 42)"
+		RunTestThatExpression(t, fmt.Sprintf("test_set_message_field(test_new(), %s)", nestedObj)).IsEqualToJsonString(`{"17": {"1": "test", "2": 42}}`)
+		RunTestThatExpression(t, "test_set_message_field(test_new(), nested_new())").IsEqualToJsonString(`{"17": {}}`) // Empty message is stored
+	})
+
+	// Test getters return actual values from known internal representations
+	t.Run("all_protobuf_types_getters", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    double double_field = 1;
+			|    float float_field = 2;
+			|    int32 int32_field = 3;
+			|    int64 int64_field = 4;
+			|    uint32 uint32_field = 5;
+			|    uint64 uint64_field = 6;
+			|    sint32 sint32_field = 7;
+			|    sint64 sint64_field = 8;
+			|    fixed32 fixed32_field = 9;
+			|    fixed64 fixed64_field = 10;
+			|    sfixed32 sfixed32_field = 11;
+			|    sfixed64 sfixed64_field = 12;
+			|    bool bool_field = 13;
+			|    string string_field = 14;
+			|    bytes bytes_field = 15;
+			|    Status enum_field = 16;
+			|    Nested message_field = 17;
+			|}
+			|message Nested {
+			|    string name = 1;
+			|    int32 value = 2;
+			|}
+			|enum Status {
+			|    STATUS_UNSPECIFIED = 0;
+			|    STATUS_ACTIVE = 1;
+			|    STATUS_INACTIVE = 2;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Test double getter converts from binary64 format back to actual double
+		RunTestThatExpression(t, `test_get_double_field('{"1": "binary64:0x400921fb54442d18"}')`).IsEqualTo(3.141592653589793)
+		RunTestThatExpression(t, `test_get_double_field('{"1": "binary64:0x3ff0000000000000"}')`).IsEqualTo(1.0)
+		RunTestThatExpression(t, `test_get_double_field('{}')`).IsEqualTo(0.0) // Missing field returns default
+
+		// Test float getter converts from binary32 format back to actual float
+		RunTestThatExpression(t, `test_get_float_field('{"2": "binary32:0x4048f5c3"}')`).IsEqualTo(3.14) // MySQL returns 3.14 for float precision
+		RunTestThatExpression(t, `test_get_float_field('{"2": "binary32:0x3f800000"}')`).IsEqualTo(1.0)
+		RunTestThatExpression(t, `test_get_float_field('{}')`).IsEqualTo(0.0) // Missing field returns default
+
+		// Test integer getters return values directly (no conversion needed)
+		RunTestThatExpression(t, `test_get_int32_field('{"3": 42}')`).IsEqualTo(42)
+		RunTestThatExpression(t, `test_get_int32_field('{"3": -2147483648}')`).IsEqualTo(-2147483648)
+		RunTestThatExpression(t, `test_get_int32_field('{}')`).IsEqualTo(0) // Missing field returns default
+
+		RunTestThatExpression(t, `test_get_int64_field('{"4": 9223372036854775807}')`).IsEqualTo(int64(9223372036854775807))
+		RunTestThatExpression(t, `test_get_int64_field('{"4": -9223372036854775808}')`).IsEqualTo(int64(-9223372036854775808))
+		RunTestThatExpression(t, `test_get_int64_field('{}')`).IsEqualTo(int64(0)) // Missing field returns default
+
+		RunTestThatExpression(t, `test_get_uint32_field('{"5": 4294967295}')`).IsEqualTo(uint32(4294967295))
+		RunTestThatExpression(t, `test_get_uint32_field('{}')`).IsEqualTo(uint32(0)) // Missing field returns default
+
+		RunTestThatExpression(t, `test_get_uint64_field('{"6": 18446744073709551615}')`).IsEqualTo(uint64(18446744073709551615))
+		RunTestThatExpression(t, `test_get_uint64_field('{}')`).IsEqualTo(uint64(0)) // Missing field returns default
+
+		RunTestThatExpression(t, `test_get_sint32_field('{"7": -1}')`).IsEqualTo(-1)
+		RunTestThatExpression(t, `test_get_sint32_field('{}')`).IsEqualTo(0) // Missing field returns default
+
+		RunTestThatExpression(t, `test_get_sint64_field('{"8": -1}')`).IsEqualTo(int64(-1))
+		RunTestThatExpression(t, `test_get_sint64_field('{}')`).IsEqualTo(int64(0)) // Missing field returns default
+
+		RunTestThatExpression(t, `test_get_fixed32_field('{"9": 4294967295}')`).IsEqualTo(uint32(4294967295))
+		RunTestThatExpression(t, `test_get_fixed32_field('{}')`).IsEqualTo(uint32(0)) // Missing field returns default
+
+		RunTestThatExpression(t, `test_get_fixed64_field('{"10": 18446744073709551615}')`).IsEqualTo(uint64(18446744073709551615))
+		RunTestThatExpression(t, `test_get_fixed64_field('{}')`).IsEqualTo(uint64(0)) // Missing field returns default
+
+		RunTestThatExpression(t, `test_get_sfixed32_field('{"11": -2147483648}')`).IsEqualTo(-2147483648)
+		RunTestThatExpression(t, `test_get_sfixed32_field('{}')`).IsEqualTo(0) // Missing field returns default
+
+		RunTestThatExpression(t, `test_get_sfixed64_field('{"12": -9223372036854775808}')`).IsEqualTo(int64(-9223372036854775808))
+		RunTestThatExpression(t, `test_get_sfixed64_field('{}')`).IsEqualTo(int64(0)) // Missing field returns default
+
+		// Test bool getter returns actual boolean from JSON boolean
+		RunTestThatExpression(t, `test_get_bool_field('{"13": true}')`).IsTrue()
+		RunTestThatExpression(t, `test_get_bool_field('{"13": false}')`).IsFalse()
+		RunTestThatExpression(t, `test_get_bool_field('{}')`).IsFalse() // Missing field returns default
+
+		// Test string getter returns actual string
+		RunTestThatExpression(t, `test_get_string_field('{"14": "hello world"}')`).IsEqualTo("hello world")
+		RunTestThatExpression(t, `test_get_string_field('{"14": ""}')`).IsEqualTo("") // Empty string
+		RunTestThatExpression(t, `test_get_string_field('{}')`).IsEqualTo("")         // Missing field returns default
+
+		// Test bytes getter converts from base64 back to actual bytes
+		RunTestThatExpression(t, `test_get_bytes_field('{"15": "aGVsbG8gd29ybGQ="}')`).IsEqualTo([]byte("hello world"))
+		RunTestThatExpression(t, `test_get_bytes_field('{"15": "3q2+7w=="}')`).IsEqualTo([]byte{0xDE, 0xAD, 0xBE, 0xEF})
+		RunTestThatExpression(t, `test_get_bytes_field('{"15": ""}')`).IsEqualTo([]byte{}) // Empty base64
+		RunTestThatExpression(t, `test_get_bytes_field('{}')`).IsEqualTo([]byte{})         // Missing field returns default
+
+		// Test enum getter returns actual integer value
+		RunTestThatExpression(t, `test_get_enum_field('{"16": 1}')`).IsEqualTo(1)
+		RunTestThatExpression(t, `test_get_enum_field('{"16": 2}')`).IsEqualTo(2)
+		RunTestThatExpression(t, `test_get_enum_field('{}')`).IsEqualTo(0) // Missing field returns default
+
+		// Test message getter returns actual nested message as JSON object
+		RunTestThatExpression(t, `test_get_message_field('{"17": {"1": "test", "2": 42}}')`).IsEqualToJsonString(`{"1": "test", "2": 42}`)
+		RunTestThatExpression(t, `test_get_message_field('{"17": {"1": "hello"}}')`).IsEqualToJsonString(`{"1": "hello"}`) // Partial message
+		RunTestThatExpression(t, `test_get_message_field('{"17": {}}')`).IsEqualToJsonString(`{}`)                         // Empty message
+		RunTestThatExpression(t, `test_get_message_field('{}')`).IsNull()                                                  // Missing field returns NULL
+	})
+
+	// Test repeated fields for all protobuf types
+	t.Run("repeated_fields_internal_format", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    repeated double repeated_double = 1;
+			|    repeated float repeated_float = 2;
+			|    repeated int32 repeated_int32 = 3;
+			|    repeated int64 repeated_int64 = 4;
+			|    repeated uint32 repeated_uint32 = 5;
+			|    repeated uint64 repeated_uint64 = 6;
+			|    repeated sint32 repeated_sint32 = 7;
+			|    repeated sint64 repeated_sint64 = 8;
+			|    repeated fixed32 repeated_fixed32 = 9;
+			|    repeated fixed64 repeated_fixed64 = 10;
+			|    repeated sfixed32 repeated_sfixed32 = 11;
+			|    repeated sfixed64 repeated_sfixed64 = 12;
+			|    repeated bool repeated_bool = 13;
+			|    repeated string repeated_string = 14;
+			|    repeated bytes repeated_bytes = 15;
+			|    repeated Status repeated_enum = 16;
+			|    repeated Nested repeated_message = 17;
+			|}
+			|message Nested {
+			|    string name = 1;
+			|    int32 value = 2;
+			|}
+			|enum Status {
+			|    STATUS_UNSPECIFIED = 0;
+			|    STATUS_ACTIVE = 1;
+			|    STATUS_INACTIVE = 2;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Test repeated double (binary64 format in arrays)
+		RunTestThatExpression(t, "test_add_repeated_double(test_add_repeated_double(test_new(), 3.141592653589793), 1.0)").IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}`)
+
+		// Test repeated float (binary32 format in arrays)
+		RunTestThatExpression(t, "test_add_repeated_float(test_add_repeated_float(test_new(), 3.14), 1.0)").IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}`)
+
+		// Test repeated int32
+		RunTestThatExpression(t, "test_add_repeated_int32(test_add_repeated_int32(test_new(), 42), -2147483648)").IsEqualToJsonString(`{"3": [42, -2147483648]}`)
+
+		// Test repeated int64
+		RunTestThatExpression(t, "test_add_repeated_int64(test_add_repeated_int64(test_new(), 9223372036854775807), -9223372036854775808)").IsEqualToJsonString(`{"4": [9223372036854775807, -9223372036854775808]}`)
+
+		// Test repeated uint32
+		RunTestThatExpression(t, "test_add_repeated_uint32(test_add_repeated_uint32(test_new(), 4294967295), 42)").IsEqualToJsonString(`{"5": [4294967295, 42]}`)
+
+		// Test repeated uint64
+		RunTestThatExpression(t, "test_add_repeated_uint64(test_add_repeated_uint64(test_new(), 18446744073709551615), 100)").IsEqualToJsonString(`{"6": [18446744073709551615, 100]}`)
+
+		// Test repeated sint32
+		RunTestThatExpression(t, "test_add_repeated_sint32(test_add_repeated_sint32(test_new(), -1), 42)").IsEqualToJsonString(`{"7": [-1, 42]}`)
+
+		// Test repeated sint64
+		RunTestThatExpression(t, "test_add_repeated_sint64(test_add_repeated_sint64(test_new(), -1), 100)").IsEqualToJsonString(`{"8": [-1, 100]}`)
+
+		// Test repeated fixed32
+		RunTestThatExpression(t, "test_add_repeated_fixed32(test_add_repeated_fixed32(test_new(), 4294967295), 42)").IsEqualToJsonString(`{"9": [4294967295, 42]}`)
+
+		// Test repeated fixed64
+		RunTestThatExpression(t, "test_add_repeated_fixed64(test_add_repeated_fixed64(test_new(), 18446744073709551615), 100)").IsEqualToJsonString(`{"10": [18446744073709551615, 100]}`)
+
+		// Test repeated sfixed32
+		RunTestThatExpression(t, "test_add_repeated_sfixed32(test_add_repeated_sfixed32(test_new(), -2147483648), 42)").IsEqualToJsonString(`{"11": [-2147483648, 42]}`)
+
+		// Test repeated sfixed64
+		RunTestThatExpression(t, "test_add_repeated_sfixed64(test_add_repeated_sfixed64(test_new(), -9223372036854775808), 100)").IsEqualToJsonString(`{"12": [-9223372036854775808, 100]}`)
+
+		// Test repeated bool (JSON booleans, not 1/0)
+		RunTestThatExpression(t, "test_add_repeated_bool(test_add_repeated_bool(test_new(), TRUE), FALSE)").IsEqualToJsonString(`{"13": [true, false]}`)
+
+		// Test repeated string
+		RunTestThatExpression(t, "test_add_repeated_string(test_add_repeated_string(test_new(), 'hello'), 'world')").IsEqualToJsonString(`{"14": ["hello", "world"]}`)
+
+		// Test repeated bytes (base64 encoded)
+		obj := "test_add_repeated_bytes(test_add_repeated_bytes(test_new(), ?), ?)"
+		RunTestThatExpression(t, obj, []byte("hello"), []byte("world")).IsEqualToJsonString(`{"15": ["aGVsbG8=", "d29ybGQ="]}`)
+
+		// Test repeated enum (numbers, not string names)
+		RunTestThatExpression(t, "test_add_repeated_enum(test_add_repeated_enum(test_new(), 1), 2)").IsEqualToJsonString(`{"16": [1, 2]}`)
+
+		// Test repeated message (array of nested objects with field number keys)
+		nested1 := "nested_set_name(nested_new(), 'first')"
+		nested2 := "nested_set_value(nested_set_name(nested_new(), 'second'), 42)"
+		RunTestThatExpression(t, fmt.Sprintf("test_add_repeated_message(test_add_repeated_message(test_new(), %s), %s)", nested1, nested2)).IsEqualToJsonString(`{"17": [{"1": "first"}, {"1": "second", "2": 42}]}`)
+
+		// Test empty repeated arrays are omitted
+		RunTestThatExpression(t, "test_new()").IsEqualToJsonString(`{}`) // No repeated fields set
+	})
+
+	// Test repeated field getters return actual arrays from internal representations
+	t.Run("repeated_fields_getters", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    repeated double repeated_double = 1;
+			|    repeated float repeated_float = 2;
+			|    repeated int32 repeated_int32 = 3;
+			|    repeated int64 repeated_int64 = 4;
+			|    repeated uint32 repeated_uint32 = 5;
+			|    repeated uint64 repeated_uint64 = 6;
+			|    repeated sint32 repeated_sint32 = 7;
+			|    repeated sint64 repeated_sint64 = 8;
+			|    repeated fixed32 repeated_fixed32 = 9;
+			|    repeated fixed64 repeated_fixed64 = 10;
+			|    repeated sfixed32 repeated_sfixed32 = 11;
+			|    repeated sfixed64 repeated_sfixed64 = 12;
+			|    repeated bool repeated_bool = 13;
+			|    repeated string repeated_string = 14;
+			|    repeated bytes repeated_bytes = 15;
+			|    repeated Status repeated_enum = 16;
+			|    repeated Nested repeated_message = 17;
+			|}
+			|message Nested {
+			|    string name = 1;
+			|    int32 value = 2;
+			|}
+			|enum Status {
+			|    STATUS_UNSPECIFIED = 0;
+			|    STATUS_ACTIVE = 1;
+			|    STATUS_INACTIVE = 2;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Test repeated double getter returns internal binary64 format arrays (raw storage)
+		RunTestThatExpression(t, `test_get_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}')`).IsEqualToJsonString(`["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]`)
+		RunTestThatExpression(t, `test_get_repeated_double('{"1": []}')`).IsEqualToJsonString(`[]`) // Empty array
+		RunTestThatExpression(t, `test_get_repeated_double('{}')`).IsEqualToJsonString(`[]`)        // Missing field returns empty array
+
+		// Test repeated float getter returns internal binary32 format arrays (raw storage)
+		RunTestThatExpression(t, `test_get_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}')`).IsEqualToJsonString(`["binary32:0x4048f5c3", "binary32:0x3f800000"]`)
+		RunTestThatExpression(t, `test_get_repeated_float('{"2": []}')`).IsEqualToJsonString(`[]`) // Empty array
+		RunTestThatExpression(t, `test_get_repeated_float('{}')`).IsEqualToJsonString(`[]`)        // Missing field returns empty array
+
+		// Test repeated integer getters return actual numeric arrays
+		RunTestThatExpression(t, `test_get_repeated_int32('{"3": [42, -2147483648]}')`).IsEqualToJsonString(`[42, -2147483648]`)
+		RunTestThatExpression(t, `test_get_repeated_int32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		RunTestThatExpression(t, `test_get_repeated_int64('{"4": [9223372036854775807, -9223372036854775808]}')`).IsEqualToJsonString(`[9223372036854775807, -9223372036854775808]`)
+		RunTestThatExpression(t, `test_get_repeated_int64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		RunTestThatExpression(t, `test_get_repeated_uint32('{"5": [4294967295, 42]}')`).IsEqualToJsonString(`[4294967295, 42]`)
+		RunTestThatExpression(t, `test_get_repeated_uint32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		RunTestThatExpression(t, `test_get_repeated_uint64('{"6": [18446744073709551615, 100]}')`).IsEqualToJsonString(`[18446744073709551615, 100]`)
+		RunTestThatExpression(t, `test_get_repeated_uint64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		RunTestThatExpression(t, `test_get_repeated_sint32('{"7": [-1, 42]}')`).IsEqualToJsonString(`[-1, 42]`)
+		RunTestThatExpression(t, `test_get_repeated_sint32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		RunTestThatExpression(t, `test_get_repeated_sint64('{"8": [-1, 100]}')`).IsEqualToJsonString(`[-1, 100]`)
+		RunTestThatExpression(t, `test_get_repeated_sint64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		RunTestThatExpression(t, `test_get_repeated_fixed32('{"9": [4294967295, 42]}')`).IsEqualToJsonString(`[4294967295, 42]`)
+		RunTestThatExpression(t, `test_get_repeated_fixed32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		RunTestThatExpression(t, `test_get_repeated_fixed64('{"10": [18446744073709551615, 100]}')`).IsEqualToJsonString(`[18446744073709551615, 100]`)
+		RunTestThatExpression(t, `test_get_repeated_fixed64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		RunTestThatExpression(t, `test_get_repeated_sfixed32('{"11": [-2147483648, 42]}')`).IsEqualToJsonString(`[-2147483648, 42]`)
+		RunTestThatExpression(t, `test_get_repeated_sfixed32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		RunTestThatExpression(t, `test_get_repeated_sfixed64('{"12": [-9223372036854775808, 100]}')`).IsEqualToJsonString(`[-9223372036854775808, 100]`)
+		RunTestThatExpression(t, `test_get_repeated_sfixed64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test repeated bool getter returns actual boolean arrays
+		RunTestThatExpression(t, `test_get_repeated_bool('{"13": [true, false]}')`).IsEqualToJsonString(`[true, false]`)
+		RunTestThatExpression(t, `test_get_repeated_bool('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test repeated string getter returns actual string arrays
+		RunTestThatExpression(t, `test_get_repeated_string('{"14": ["hello", "world"]}')`).IsEqualToJsonString(`["hello", "world"]`)
+		RunTestThatExpression(t, `test_get_repeated_string('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test repeated bytes getter converts from base64 back to actual byte arrays (but returned as base64 JSON)
+		RunTestThatExpression(t, `test_get_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ="]}')`).IsEqualToJsonString(`["aGVsbG8=", "d29ybGQ="]`) // Returns base64 strings in array
+		RunTestThatExpression(t, `test_get_repeated_bytes('{}')`).IsEqualToJsonString(`[]`)                                                     // Missing field returns empty array
+
+		// Test repeated enum getter returns actual integer arrays
+		RunTestThatExpression(t, `test_get_repeated_enum('{"16": [1, 2]}')`).IsEqualToJsonString(`[1, 2]`)
+		RunTestThatExpression(t, `test_get_repeated_enum('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test repeated message getter returns actual nested object arrays
+		RunTestThatExpression(t, `test_get_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}')`).IsEqualToJsonString(`[{"1": "first"}, {"1": "second", "2": 42}]`)
+		RunTestThatExpression(t, `test_get_repeated_message('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+	})
+
+	// Test oneof fields with all protobuf types
+	t.Run("oneof_fields_internal_format", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    oneof choice {
+			|        double double_field = 1;
+			|        float float_field = 2;
+			|        int32 int32_field = 3;
+			|        int64 int64_field = 4;
+			|        uint32 uint32_field = 5;
+			|        uint64 uint64_field = 6;
+			|        sint32 sint32_field = 7;
+			|        sint64 sint64_field = 8;
+			|        fixed32 fixed32_field = 9;
+			|        fixed64 fixed64_field = 10;
+			|        sfixed32 sfixed32_field = 11;
+			|        sfixed64 sfixed64_field = 12;
+			|        bool bool_field = 13;
+			|        string string_field = 14;
+			|        bytes bytes_field = 15;
+			|        Status enum_field = 16;
+			|        Nested message_field = 17;
+			|    }
+			|}
+			|message Nested {
+			|    string name = 1;
+			|    int32 value = 2;
+			|}
+			|enum Status {
+			|    STATUS_UNSPECIFIED = 0;
+			|    STATUS_ACTIVE = 1;
+			|    STATUS_INACTIVE = 2;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Test oneof mutual exclusion with all protobuf types
+		// Each set operation should clear any previously set field
+
+		// Test double field in oneof (binary64 format)
+		RunTestThatExpression(t, "test_set_double_field(test_new(), 3.141592653589793)").IsEqualToJsonString(`{"1": "binary64:0x400921fb54442d18"}`)
+
+		// Test float field in oneof (binary32 format) - should clear double
+		RunTestThatExpression(t, "test_set_float_field(test_set_double_field(test_new(), 3.14), 1.0)").IsEqualToJsonString(`{"2": "binary32:0x3f800000"}`)
+
+		// Test int32 field in oneof - should clear float
+		RunTestThatExpression(t, "test_set_int32_field(test_set_float_field(test_new(), 1.0), 42)").IsEqualToJsonString(`{"3": 42}`)
+
+		// Test int64 field in oneof - should clear int32
+		RunTestThatExpression(t, "test_set_int64_field(test_set_int32_field(test_new(), 42), 9223372036854775807)").IsEqualToJsonString(`{"4": 9223372036854775807}`)
+
+		// Test uint32 field in oneof - should clear int64
+		RunTestThatExpression(t, "test_set_uint32_field(test_set_int64_field(test_new(), 100), 4294967295)").IsEqualToJsonString(`{"5": 4294967295}`)
+
+		// Test uint64 field in oneof - should clear uint32
+		RunTestThatExpression(t, "test_set_uint64_field(test_set_uint32_field(test_new(), 100), 18446744073709551615)").IsEqualToJsonString(`{"6": 18446744073709551615}`)
+
+		// Test sint32 field in oneof - should clear uint64
+		RunTestThatExpression(t, "test_set_sint32_field(test_set_uint64_field(test_new(), 100), -1)").IsEqualToJsonString(`{"7": -1}`)
+
+		// Test sint64 field in oneof - should clear sint32
+		RunTestThatExpression(t, "test_set_sint64_field(test_set_sint32_field(test_new(), -1), -9223372036854775808)").IsEqualToJsonString(`{"8": -9223372036854775808}`)
+
+		// Test fixed32 field in oneof - should clear sint64
+		RunTestThatExpression(t, "test_set_fixed32_field(test_set_sint64_field(test_new(), -1), 4294967295)").IsEqualToJsonString(`{"9": 4294967295}`)
+
+		// Test fixed64 field in oneof - should clear fixed32
+		RunTestThatExpression(t, "test_set_fixed64_field(test_set_fixed32_field(test_new(), 100), 18446744073709551615)").IsEqualToJsonString(`{"10": 18446744073709551615}`)
+
+		// Test sfixed32 field in oneof - should clear fixed64
+		RunTestThatExpression(t, "test_set_sfixed32_field(test_set_fixed64_field(test_new(), 100), -2147483648)").IsEqualToJsonString(`{"11": -2147483648}`)
+
+		// Test sfixed64 field in oneof - should clear sfixed32
+		RunTestThatExpression(t, "test_set_sfixed64_field(test_set_sfixed32_field(test_new(), -1), -9223372036854775808)").IsEqualToJsonString(`{"12": -9223372036854775808}`)
+
+		// Test bool field in oneof - should clear sfixed64
+		RunTestThatExpression(t, "test_set_bool_field(test_set_sfixed64_field(test_new(), -1), TRUE)").IsEqualToJsonString(`{"13": true}`)
+
+		// Test string field in oneof - should clear bool
+		RunTestThatExpression(t, "test_set_string_field(test_set_bool_field(test_new(), TRUE), 'hello world')").IsEqualToJsonString(`{"14": "hello world"}`)
+
+		// Test bytes field in oneof - should clear string
+		RunTestThatExpression(t, "test_set_bytes_field(test_set_string_field(test_new(), 'hello'), ?)", []byte("world")).IsEqualToJsonString(`{"15": "d29ybGQ="}`)
+
+		// Test enum field in oneof - should clear bytes
+		RunTestThatExpression(t, "test_set_enum_field(test_set_bytes_field(test_new(), ?), 1)", []byte("test")).IsEqualToJsonString(`{"16": 1}`)
+
+		// Test message field in oneof - should clear enum
+		nestedObj := "nested_set_value(nested_set_name(nested_new(), 'test'), 42)"
+		RunTestThatExpression(t, fmt.Sprintf("test_set_message_field(test_set_enum_field(test_new(), 1), %s)", nestedObj)).IsEqualToJsonString(`{"17": {"1": "test", "2": 42}}`)
+
+		// Test that default values in oneof are NOT omitted (oneof has presence semantics)
+		RunTestThatExpression(t, "test_set_double_field(test_new(), 0.0)").IsEqualToJsonString(`{"1": "binary64:0x0000000000000000"}`) // Zero double stored
+		RunTestThatExpression(t, "test_set_int32_field(test_new(), 0)").IsEqualToJsonString(`{"3": 0}`)                                // Zero int32 stored
+		RunTestThatExpression(t, "test_set_bool_field(test_new(), FALSE)").IsEqualToJsonString(`{"13": false}`)                        // False bool stored
+		RunTestThatExpression(t, "test_set_string_field(test_new(), '')").IsEqualToJsonString(`{"14": ""}`)                            // Empty string stored
+	})
+
+	// Test field number keys (crucial for protonumberjson format)
+	t.Run("field_number_keys", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    string first = 10;     // field number 10
+			|    string second = 5;     // field number 5  
+			|    string third = 100;    // field number 100
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Verify field numbers are used as JSON keys, not field names
+		obj := "test_set_third(test_set_second(test_set_first(test_new(), 'value10'), 'value5'), 'value100')"
+		RunTestThatExpression(t, obj).IsEqualToJsonString(`{"10": "value10", "5": "value5", "100": "value100"}`)
+	})
+
+	// Test complex combined scenario
+	t.Run("complex_combined_scenario", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    string name = 1;
+			|    int32 age = 2;
+			|    bool active = 3;
+			|    float score = 4;
+			|    repeated int32 numbers = 5;
+			|    bytes data = 6;
+			|    Status status = 7;
+			|}
+			|enum Status {
+			|    STATUS_UNSPECIFIED = 0;
+			|    STATUS_ACTIVE = 1;
+			|    STATUS_INACTIVE = 2;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Build complex object with multiple field types
+		obj := "test_set_status(test_set_data(test_add_numbers(test_add_numbers(test_set_score(test_set_active(test_set_age(test_set_name(test_new(), 'John'), 25), TRUE), 3.14), 1), 2), ?), 1)"
+		expected := `{"1": "John", "2": 25, "3": true, "4": "binary32:0x4048f5c3", "5": [1, 2], "6": "dGVzdA==", "7": 1}`
+		RunTestThatExpression(t, obj, []byte("test")).IsEqualToJsonString(expected)
+	})
 }
 
 // TestGeneratedOpaqueApiBasicFields tests basic field operations for all protobuf field types
@@ -226,25 +787,7 @@ func TestGeneratedOpaqueApiBasicFields(t *testing.T) {
 	})
 
 	t.Run("bytes field", func(t *testing.T) {
-		// Note: bytes fields in MySQL are handled as binary data, we'll test this differently
-		protoContent := dedent.Pipe(`
-			|syntax = "proto3";
-			|message Test {
-			|    bytes data = 1;
-			|}
-		`)
-		schemaName := "test_schema"
-		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
-
-		t.Run("constructor", func(t *testing.T) {
-			RunTestThatExpression(t, "test_new()").IsEqualToJsonString("{}")
-		})
-
-		t.Run("setter_and_getter", func(t *testing.T) {
-			// Test with binary data (represented as hex)
-			testData := []byte("hello")
-			RunTestThatExpression(t, "test_get_data(test_set_data(test_new(), ?))", testData).IsEqualToBytes(testData)
-		})
+		testBasicFieldOperations(t, "bytes data = 1;", "data", "bytes", []byte("hello world"), []byte{})
 	})
 
 	t.Run("float field", func(t *testing.T) {
@@ -262,6 +805,7 @@ func TestGeneratedOpaqueApiBasicFields(t *testing.T) {
 		})
 
 		t.Run("setter_and_getter", func(t *testing.T) {
+			// Float getters now return the actual float value
 			RunTestThatExpression(t, "test_get_value(test_set_value(test_new(), 3.14))").IsEqualToFloat(3.14)
 		})
 	})
@@ -281,7 +825,8 @@ func TestGeneratedOpaqueApiBasicFields(t *testing.T) {
 		})
 
 		t.Run("setter_and_getter", func(t *testing.T) {
-			RunTestThatExpression(t, "test_get_value(test_set_value(test_new(), 3.141592653589793))").IsEqualToDouble(3.141592653589793)
+			// Double getters now return the actual double value
+			RunTestThatExpression(t, "test_get_value(test_set_value(test_new(), 3.141592653589793))").IsEqualToFloat(3.141592653589793)
 		})
 	})
 
@@ -770,7 +1315,386 @@ func TestGeneratedOpaqueApiPresence(t *testing.T) {
 	})
 }
 
-// TestGeneratedOpaqueApiConversions tests JSON/protobuf round-trip conversions
+// TestGeneratedOpaqueApiOptionalFields tests proto3 optional field presence semantics for all protobuf types
+func TestGeneratedOpaqueApiOptionalFields(t *testing.T) {
+	// Test optional fields for all protobuf types - optional fields have presence semantics
+	t.Run("optional_fields_internal_format", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    optional double optional_double_field = 1;
+			|    optional float optional_float_field = 2;
+			|    optional int32 optional_int32_field = 3;
+			|    optional int64 optional_int64_field = 4;
+			|    optional uint32 optional_uint32_field = 5;
+			|    optional uint64 optional_uint64_field = 6;
+			|    optional sint32 optional_sint32_field = 7;
+			|    optional sint64 optional_sint64_field = 8;
+			|    optional fixed32 optional_fixed32_field = 9;
+			|    optional fixed64 optional_fixed64_field = 10;
+			|    optional sfixed32 optional_sfixed32_field = 11;
+			|    optional sfixed64 optional_sfixed64_field = 12;
+			|    optional bool optional_bool_field = 13;
+			|    optional string optional_string_field = 14;
+			|    optional bytes optional_bytes_field = 15;
+			|    optional Status optional_enum_field = 16;
+			|    optional Nested optional_message_field = 17;
+			|}
+			|message Nested {
+			|    string name = 1;
+			|    int32 value = 2;
+			|}
+			|enum Status {
+			|    STATUS_UNSPECIFIED = 0;
+			|    STATUS_ACTIVE = 1;
+			|    STATUS_INACTIVE = 2;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Test optional fields with non-default values
+		RunTestThatExpression(t, "test_set_optional_double_field(test_new(), 3.141592653589793)").IsEqualToJsonString(`{"1": "binary64:0x400921fb54442d18"}`)
+		RunTestThatExpression(t, "test_set_optional_float_field(test_new(), 3.14)").IsEqualToJsonString(`{"2": "binary32:0x4048f5c3"}`)
+		RunTestThatExpression(t, "test_set_optional_int32_field(test_new(), 42)").IsEqualToJsonString(`{"3": 42}`)
+		RunTestThatExpression(t, "test_set_optional_int64_field(test_new(), 9223372036854775807)").IsEqualToJsonString(`{"4": 9223372036854775807}`)
+		RunTestThatExpression(t, "test_set_optional_uint32_field(test_new(), 4294967295)").IsEqualToJsonString(`{"5": 4294967295}`)
+		RunTestThatExpression(t, "test_set_optional_uint64_field(test_new(), 18446744073709551615)").IsEqualToJsonString(`{"6": 18446744073709551615}`)
+		RunTestThatExpression(t, "test_set_optional_sint32_field(test_new(), -1)").IsEqualToJsonString(`{"7": -1}`)
+		RunTestThatExpression(t, "test_set_optional_sint64_field(test_new(), -9223372036854775808)").IsEqualToJsonString(`{"8": -9223372036854775808}`)
+		RunTestThatExpression(t, "test_set_optional_fixed32_field(test_new(), 4294967295)").IsEqualToJsonString(`{"9": 4294967295}`)
+		RunTestThatExpression(t, "test_set_optional_fixed64_field(test_new(), 18446744073709551615)").IsEqualToJsonString(`{"10": 18446744073709551615}`)
+		RunTestThatExpression(t, "test_set_optional_sfixed32_field(test_new(), -2147483648)").IsEqualToJsonString(`{"11": -2147483648}`)
+		RunTestThatExpression(t, "test_set_optional_sfixed64_field(test_new(), -9223372036854775808)").IsEqualToJsonString(`{"12": -9223372036854775808}`)
+		RunTestThatExpression(t, "test_set_optional_bool_field(test_new(), TRUE)").IsEqualToJsonString(`{"13": true}`)
+		RunTestThatExpression(t, "test_set_optional_string_field(test_new(), 'hello world')").IsEqualToJsonString(`{"14": "hello world"}`)
+		RunTestThatExpression(t, "test_set_optional_bytes_field(test_new(), ?)", []byte("hello")).IsEqualToJsonString(`{"15": "aGVsbG8="}`)
+		RunTestThatExpression(t, "test_set_optional_enum_field(test_new(), 1)").IsEqualToJsonString(`{"16": 1}`)
+
+		// Test optional message field
+		nestedObj := "nested_set_value(nested_set_name(nested_new(), 'test'), 42)"
+		RunTestThatExpression(t, fmt.Sprintf("test_set_optional_message_field(test_new(), %s)", nestedObj)).IsEqualToJsonString(`{"17": {"1": "test", "2": 42}}`)
+
+		// Test that default values in optional fields are NOT omitted (optional has presence semantics)
+		RunTestThatExpression(t, "test_set_optional_double_field(test_new(), 0.0)").IsEqualToJsonString(`{"1": "binary64:0x0000000000000000"}`) // Zero double stored
+		RunTestThatExpression(t, "test_set_optional_float_field(test_new(), 0.0)").IsEqualToJsonString(`{"2": "binary32:0x00000000"}`)          // Zero float stored
+		RunTestThatExpression(t, "test_set_optional_int32_field(test_new(), 0)").IsEqualToJsonString(`{"3": 0}`)                                // Zero int32 stored
+		RunTestThatExpression(t, "test_set_optional_int64_field(test_new(), 0)").IsEqualToJsonString(`{"4": 0}`)                                // Zero int64 stored
+		RunTestThatExpression(t, "test_set_optional_uint32_field(test_new(), 0)").IsEqualToJsonString(`{"5": 0}`)                               // Zero uint32 stored
+		RunTestThatExpression(t, "test_set_optional_uint64_field(test_new(), 0)").IsEqualToJsonString(`{"6": 0}`)                               // Zero uint64 stored
+		RunTestThatExpression(t, "test_set_optional_sint32_field(test_new(), 0)").IsEqualToJsonString(`{"7": 0}`)                               // Zero sint32 stored
+		RunTestThatExpression(t, "test_set_optional_sint64_field(test_new(), 0)").IsEqualToJsonString(`{"8": 0}`)                               // Zero sint64 stored
+		RunTestThatExpression(t, "test_set_optional_fixed32_field(test_new(), 0)").IsEqualToJsonString(`{"9": 0}`)                              // Zero fixed32 stored
+		RunTestThatExpression(t, "test_set_optional_fixed64_field(test_new(), 0)").IsEqualToJsonString(`{"10": 0}`)                             // Zero fixed64 stored
+		RunTestThatExpression(t, "test_set_optional_sfixed32_field(test_new(), 0)").IsEqualToJsonString(`{"11": 0}`)                            // Zero sfixed32 stored
+		RunTestThatExpression(t, "test_set_optional_sfixed64_field(test_new(), 0)").IsEqualToJsonString(`{"12": 0}`)                            // Zero sfixed64 stored
+		RunTestThatExpression(t, "test_set_optional_bool_field(test_new(), FALSE)").IsEqualToJsonString(`{"13": false}`)                        // False bool stored
+		RunTestThatExpression(t, "test_set_optional_string_field(test_new(), '')").IsEqualToJsonString(`{"14": ""}`)                            // Empty string stored
+		RunTestThatExpression(t, "test_set_optional_bytes_field(test_new(), ?)", []byte{}).IsEqualToJsonString(`{"15": ""}`)                    // Empty bytes stored
+		RunTestThatExpression(t, "test_set_optional_enum_field(test_new(), 0)").IsEqualToJsonString(`{"16": 0}`)                                // Zero enum stored
+
+		// Test optional message field with empty message
+		emptyNestedObj := "nested_new()"
+		RunTestThatExpression(t, fmt.Sprintf("test_set_optional_message_field(test_new(), %s)", emptyNestedObj)).IsEqualToJsonString(`{"17": {}}`) // Empty message stored
+	})
+
+	// Test getter functions for optional fields
+	t.Run("optional_fields_getters", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    optional double optional_double_field = 1;
+			|    optional float optional_float_field = 2;
+			|    optional int32 optional_int32_field = 3;
+			|    optional int64 optional_int64_field = 4;
+			|    optional uint32 optional_uint32_field = 5;
+			|    optional uint64 optional_uint64_field = 6;
+			|    optional sint32 optional_sint32_field = 7;
+			|    optional sint64 optional_sint64_field = 8;
+			|    optional fixed32 optional_fixed32_field = 9;
+			|    optional fixed64 optional_fixed64_field = 10;
+			|    optional sfixed32 optional_sfixed32_field = 11;
+			|    optional sfixed64 optional_sfixed64_field = 12;
+			|    optional bool optional_bool_field = 13;
+			|    optional string optional_string_field = 14;
+			|    optional bytes optional_bytes_field = 15;
+			|    optional Status optional_enum_field = 16;
+			|    optional Nested optional_message_field = 17;
+			|}
+			|message Nested {
+			|    string name = 1;
+			|    int32 value = 2;
+			|}
+			|enum Status {
+			|    STATUS_UNSPECIFIED = 0;
+			|    STATUS_ACTIVE = 1;
+			|    STATUS_INACTIVE = 2;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Test getters converting from internal representation back to actual values
+		RunTestThatExpression(t, "test_get_optional_double_field(JSON_OBJECT('1', 'binary64:0x400921fb54442d18'))").IsEqualToDouble(3.141592653589793)
+		RunTestThatExpression(t, "test_get_optional_float_field(JSON_OBJECT('2', 'binary32:0x4048f5c3'))").IsEqualToFloat(3.14)
+		RunTestThatExpression(t, "test_get_optional_int32_field(JSON_OBJECT('3', 42))").IsEqualToInt(42)
+		RunTestThatExpression(t, "test_get_optional_int64_field(JSON_OBJECT('4', 9223372036854775807))").IsEqualToInt(9223372036854775807)
+		RunTestThatExpression(t, "test_get_optional_uint32_field(JSON_OBJECT('5', 4294967295))").IsEqualToUint(4294967295)
+		RunTestThatExpression(t, "test_get_optional_uint64_field(JSON_OBJECT('6', 18446744073709551615))").IsEqualToUint(18446744073709551615)
+		RunTestThatExpression(t, "test_get_optional_sint32_field(JSON_OBJECT('7', -1))").IsEqualToInt(-1)
+		RunTestThatExpression(t, "test_get_optional_sint64_field(JSON_OBJECT('8', -9223372036854775808))").IsEqualToInt(-9223372036854775808)
+		RunTestThatExpression(t, "test_get_optional_fixed32_field(JSON_OBJECT('9', 4294967295))").IsEqualToUint(4294967295)
+		RunTestThatExpression(t, "test_get_optional_fixed64_field(JSON_OBJECT('10', 18446744073709551615))").IsEqualToUint(18446744073709551615)
+		RunTestThatExpression(t, "test_get_optional_sfixed32_field(JSON_OBJECT('11', -2147483648))").IsEqualToInt(-2147483648)
+		RunTestThatExpression(t, "test_get_optional_sfixed64_field(JSON_OBJECT('12', -9223372036854775808))").IsEqualToInt(-9223372036854775808)
+		RunTestThatExpression(t, "test_get_optional_bool_field(JSON_OBJECT('13', true))").IsEqualToBool(true)
+		RunTestThatExpression(t, "test_get_optional_string_field(JSON_OBJECT('14', 'hello world'))").IsEqualToString("hello world")
+		RunTestThatExpression(t, "test_get_optional_bytes_field(JSON_OBJECT('15', 'aGVsbG8='))").IsEqualToBytes([]byte("hello"))
+		RunTestThatExpression(t, "test_get_optional_enum_field(JSON_OBJECT('16', 1))").IsEqualToInt(1)
+
+		// Test getter for message field
+		RunTestThatExpression(t, "test_get_optional_message_field(JSON_OBJECT('17', JSON_OBJECT('1', 'test', '2', 42)))").IsEqualToJsonString(`{"1": "test", "2": 42}`)
+
+		// Test getters with default values (zero values)
+		RunTestThatExpression(t, "test_get_optional_double_field(JSON_OBJECT('1', 'binary64:0x0000000000000000'))").IsEqualToDouble(0.0)
+		RunTestThatExpression(t, "test_get_optional_float_field(JSON_OBJECT('2', 'binary32:0x00000000'))").IsEqualToFloat(0.0)
+		RunTestThatExpression(t, "test_get_optional_int32_field(JSON_OBJECT('3', 0))").IsEqualToInt(0)
+		RunTestThatExpression(t, "test_get_optional_bool_field(JSON_OBJECT('13', false))").IsEqualToBool(false)
+		RunTestThatExpression(t, "test_get_optional_string_field(JSON_OBJECT('14', ''))").IsEqualToString("")
+		RunTestThatExpression(t, "test_get_optional_enum_field(JSON_OBJECT('16', 0))").IsEqualToInt(0)
+
+		// Test getters returning default when field is absent (optional fields can be unset)
+		RunTestThatExpression(t, "test_get_optional_double_field(JSON_OBJECT())").IsEqualToDouble(0.0)
+		RunTestThatExpression(t, "test_get_optional_float_field(JSON_OBJECT())").IsEqualToFloat(0.0)
+		RunTestThatExpression(t, "test_get_optional_int32_field(JSON_OBJECT())").IsEqualToInt(0)
+		RunTestThatExpression(t, "test_get_optional_bool_field(JSON_OBJECT())").IsEqualToBool(false)
+		RunTestThatExpression(t, "test_get_optional_string_field(JSON_OBJECT())").IsEqualToString("")
+		RunTestThatExpression(t, "test_get_optional_enum_field(JSON_OBJECT())").IsEqualToInt(0)
+	})
+
+	// Test has/clear methods for optional fields
+	t.Run("optional_fields_presence_methods", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    optional int32 optional_value = 1;
+			|    optional string optional_name = 2;
+			|    optional bool optional_flag = 3;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Test that unset optional fields are not present
+		RunTestThatExpression(t, "test_has_optional_value(test_new())").IsFalse()
+		RunTestThatExpression(t, "test_has_optional_name(test_new())").IsFalse()
+		RunTestThatExpression(t, "test_has_optional_flag(test_new())").IsFalse()
+
+		// Test that set optional fields are present (even with default values)
+		RunTestThatExpression(t, "test_has_optional_value(test_set_optional_value(test_new(), 0))").IsTrue()
+		RunTestThatExpression(t, "test_has_optional_name(test_set_optional_name(test_new(), ''))").IsTrue()
+		RunTestThatExpression(t, "test_has_optional_flag(test_set_optional_flag(test_new(), FALSE))").IsTrue()
+
+		// Test that cleared optional fields are not present
+		RunTestThatExpression(t, "test_has_optional_value(test_clear_optional_value(test_set_optional_value(test_new(), 42)))").IsFalse()
+		RunTestThatExpression(t, "test_has_optional_name(test_clear_optional_name(test_set_optional_name(test_new(), 'hello')))").IsFalse()
+		RunTestThatExpression(t, "test_has_optional_flag(test_clear_optional_flag(test_set_optional_flag(test_new(), TRUE)))").IsFalse()
+
+		// Test getters return defaults for unset optional fields
+		RunTestThatExpression(t, "test_get_optional_value(test_new())").IsEqualToInt(0)
+		RunTestThatExpression(t, "test_get_optional_name(test_new())").IsEqualToString("")
+		RunTestThatExpression(t, "test_get_optional_flag(test_new())").IsEqualToBool(false)
+	})
+}
+
+// TestGeneratedOpaqueApiMapFields tests map field operations for all key and value types
+func TestGeneratedOpaqueApiMapFields(t *testing.T) {
+	// Test all possible key types with a fixed value type (int32)
+	t.Run("map_fields_all_key_types", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    map<int32, int32> int32_to_int32_map = 1;
+			|    map<int64, int32> int64_to_int32_map = 2;
+			|    map<uint32, int32> uint32_to_int32_map = 3;
+			|    map<uint64, int32> uint64_to_int32_map = 4;
+			|    map<sint32, int32> sint32_to_int32_map = 5;
+			|    map<sint64, int32> sint64_to_int32_map = 6;
+			|    map<fixed32, int32> fixed32_to_int32_map = 7;
+			|    map<fixed64, int32> fixed64_to_int32_map = 8;
+			|    map<sfixed32, int32> sfixed32_to_int32_map = 9;
+			|    map<sfixed64, int32> sfixed64_to_int32_map = 10;
+			|    map<bool, int32> bool_to_int32_map = 11;
+			|    map<string, int32> string_to_int32_map = 12;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Test all key types with int32 values - use JSON objects for map values
+		RunTestThatExpression(t, "test_set_int32_to_int32_map(test_new(), JSON_OBJECT('42', 100))").IsEqualToJsonString(`{"1": {"42": 100}}`)
+		RunTestThatExpression(t, "test_set_int64_to_int32_map(test_new(), JSON_OBJECT('9223372036854775807', 200))").IsEqualToJsonString(`{"2": {"9223372036854775807": 200}}`)
+		RunTestThatExpression(t, "test_set_uint32_to_int32_map(test_new(), JSON_OBJECT('4294967295', 300))").IsEqualToJsonString(`{"3": {"4294967295": 300}}`)
+		RunTestThatExpression(t, "test_set_uint64_to_int32_map(test_new(), JSON_OBJECT('18446744073709551615', 400))").IsEqualToJsonString(`{"4": {"18446744073709551615": 400}}`)
+		RunTestThatExpression(t, "test_set_sint32_to_int32_map(test_new(), JSON_OBJECT('-1', 500))").IsEqualToJsonString(`{"5": {"-1": 500}}`)
+		RunTestThatExpression(t, "test_set_sint64_to_int32_map(test_new(), JSON_OBJECT('-9223372036854775808', 600))").IsEqualToJsonString(`{"6": {"-9223372036854775808": 600}}`)
+		RunTestThatExpression(t, "test_set_fixed32_to_int32_map(test_new(), JSON_OBJECT('4294967295', 700))").IsEqualToJsonString(`{"7": {"4294967295": 700}}`)
+		RunTestThatExpression(t, "test_set_fixed64_to_int32_map(test_new(), JSON_OBJECT('18446744073709551615', 800))").IsEqualToJsonString(`{"8": {"18446744073709551615": 800}}`)
+		RunTestThatExpression(t, "test_set_sfixed32_to_int32_map(test_new(), JSON_OBJECT('-2147483648', 900))").IsEqualToJsonString(`{"9": {"-2147483648": 900}}`)
+		RunTestThatExpression(t, "test_set_sfixed64_to_int32_map(test_new(), JSON_OBJECT('-9223372036854775808', 1000))").IsEqualToJsonString(`{"10": {"-9223372036854775808": 1000}}`)
+		RunTestThatExpression(t, "test_set_bool_to_int32_map(test_new(), JSON_OBJECT('true', 1100))").IsEqualToJsonString(`{"11": {"true": 1100}}`)
+		RunTestThatExpression(t, "test_set_string_to_int32_map(test_new(), JSON_OBJECT('key', 1200))").IsEqualToJsonString(`{"12": {"key": 1200}}`)
+
+		// Test multiple entries in same map
+		RunTestThatExpression(t, "test_set_string_to_int32_map(test_new(), JSON_OBJECT('first', 10, 'second', 20))").IsEqualToJsonString(`{"12": {"first": 10, "second": 20}}`)
+
+		// Test overwriting existing map (replaces entire map)
+		RunTestThatExpression(t, "test_set_string_to_int32_map(test_set_string_to_int32_map(test_new(), JSON_OBJECT('old', 100)), JSON_OBJECT('new', 200))").IsEqualToJsonString(`{"12": {"new": 200}}`)
+	})
+
+	// Test all possible value types with a fixed key type (string)
+	t.Run("map_fields_all_value_types", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    map<string, double> string_to_double_map = 1;
+			|    map<string, float> string_to_float_map = 2;
+			|    map<string, int32> string_to_int32_map = 3;
+			|    map<string, int64> string_to_int64_map = 4;
+			|    map<string, uint32> string_to_uint32_map = 5;
+			|    map<string, uint64> string_to_uint64_map = 6;
+			|    map<string, sint32> string_to_sint32_map = 7;
+			|    map<string, sint64> string_to_sint64_map = 8;
+			|    map<string, fixed32> string_to_fixed32_map = 9;
+			|    map<string, fixed64> string_to_fixed64_map = 10;
+			|    map<string, sfixed32> string_to_sfixed32_map = 11;
+			|    map<string, sfixed64> string_to_sfixed64_map = 12;
+			|    map<string, bool> string_to_bool_map = 13;
+			|    map<string, string> string_to_string_map = 14;
+			|    map<string, bytes> string_to_bytes_map = 15;
+			|    map<string, Status> string_to_enum_map = 16;
+			|    map<string, Nested> string_to_message_map = 17;
+			|}
+			|message Nested {
+			|    string name = 1;
+			|    int32 value = 2;
+			|}
+			|enum Status {
+			|    STATUS_UNSPECIFIED = 0;
+			|    STATUS_ACTIVE = 1;
+			|    STATUS_INACTIVE = 2;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Test all value types with string keys - use JSON objects for map values
+		RunTestThatExpression(t, "test_set_string_to_double_map(test_new(), JSON_OBJECT('pi', 'binary64:0x400921fb54442d18'))").IsEqualToJsonString(`{"1": {"pi": "binary64:0x400921fb54442d18"}}`)
+		RunTestThatExpression(t, "test_set_string_to_float_map(test_new(), JSON_OBJECT('pi_float', 'binary32:0x4048f5c3'))").IsEqualToJsonString(`{"2": {"pi_float": "binary32:0x4048f5c3"}}`)
+		RunTestThatExpression(t, "test_set_string_to_int32_map(test_new(), JSON_OBJECT('answer', 42))").IsEqualToJsonString(`{"3": {"answer": 42}}`)
+		RunTestThatExpression(t, "test_set_string_to_int64_map(test_new(), JSON_OBJECT('big', 9223372036854775807))").IsEqualToJsonString(`{"4": {"big": 9223372036854775807}}`)
+		RunTestThatExpression(t, "test_set_string_to_uint32_map(test_new(), JSON_OBJECT('max32', 4294967295))").IsEqualToJsonString(`{"5": {"max32": 4294967295}}`)
+		RunTestThatExpression(t, "test_set_string_to_uint64_map(test_new(), JSON_OBJECT('max64', 18446744073709551615))").IsEqualToJsonString(`{"6": {"max64": 18446744073709551615}}`)
+		RunTestThatExpression(t, "test_set_string_to_sint32_map(test_new(), JSON_OBJECT('neg', -1))").IsEqualToJsonString(`{"7": {"neg": -1}}`)
+		RunTestThatExpression(t, "test_set_string_to_sint64_map(test_new(), JSON_OBJECT('min64', -9223372036854775808))").IsEqualToJsonString(`{"8": {"min64": -9223372036854775808}}`)
+		RunTestThatExpression(t, "test_set_string_to_fixed32_map(test_new(), JSON_OBJECT('fixed', 4294967295))").IsEqualToJsonString(`{"9": {"fixed": 4294967295}}`)
+		RunTestThatExpression(t, "test_set_string_to_fixed64_map(test_new(), JSON_OBJECT('fixed64', 18446744073709551615))").IsEqualToJsonString(`{"10": {"fixed64": 18446744073709551615}}`)
+		RunTestThatExpression(t, "test_set_string_to_sfixed32_map(test_new(), JSON_OBJECT('sfixed', -2147483648))").IsEqualToJsonString(`{"11": {"sfixed": -2147483648}}`)
+		RunTestThatExpression(t, "test_set_string_to_sfixed64_map(test_new(), JSON_OBJECT('sfixed64', -9223372036854775808))").IsEqualToJsonString(`{"12": {"sfixed64": -9223372036854775808}}`)
+		RunTestThatExpression(t, "test_set_string_to_bool_map(test_new(), JSON_OBJECT('flag', true))").IsEqualToJsonString(`{"13": {"flag": true}}`)
+		RunTestThatExpression(t, "test_set_string_to_string_map(test_new(), JSON_OBJECT('greeting', 'hello'))").IsEqualToJsonString(`{"14": {"greeting": "hello"}}`)
+		RunTestThatExpression(t, "test_set_string_to_bytes_map(test_new(), JSON_OBJECT('data', 'aGVsbG8='))").IsEqualToJsonString(`{"15": {"data": "aGVsbG8="}}`)
+		RunTestThatExpression(t, "test_set_string_to_enum_map(test_new(), JSON_OBJECT('status', 1))").IsEqualToJsonString(`{"16": {"status": 1}}`)
+
+		// Test message value
+		RunTestThatExpression(t, "test_set_string_to_message_map(test_new(), JSON_OBJECT('nested', JSON_OBJECT('1', 'test', '2', 42)))").IsEqualToJsonString(`{"17": {"nested": {"1": "test", "2": 42}}}`)
+	})
+
+	// Test map getter functions (return entire map)
+	t.Run("map_fields_getters", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    map<string, int32> data = 1;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Test getter returns entire map
+		obj := "test_set_data(test_new(), JSON_OBJECT('key1', 10, 'key2', 20))"
+		RunTestThatExpression(t, fmt.Sprintf("test_get_data(%s)", obj)).IsEqualToJsonString(`{"key1": 10, "key2": 20}`)
+
+		// Test getter returns empty for new object
+		RunTestThatExpression(t, "test_get_data(test_new())").IsEqualToJsonString("[]")
+	})
+
+	// Test map operations (clear, count)
+	t.Run("map_fields_operations", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    map<string, int32> data = 1;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Test map with multiple entries
+		obj := "test_set_data(test_new(), JSON_OBJECT('key1', 10, 'key2', 20))"
+
+		// Test map count operation
+		RunTestThatExpression(t, "test_count_data(test_new())").IsEqualToInt(0)
+		RunTestThatExpression(t, fmt.Sprintf("test_count_data(%s)", obj)).IsEqualToInt(2)
+
+		// Test map clear operation
+		objAfterClear := fmt.Sprintf("test_clear_data(%s)", obj)
+		RunTestThatExpression(t, fmt.Sprintf("test_count_data(%s)", objAfterClear)).IsEqualToInt(0)
+		RunTestThatExpression(t, fmt.Sprintf("test_get_data(%s)", objAfterClear)).IsEqualToJsonString("[]")
+	})
+
+	// Test map internal representation format
+	t.Run("map_fields_internal_format", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    map<int32, string> int_to_string_map = 1;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Verify that maps are stored as nested JSON objects
+		// Map field 1 contains a JSON object where keys are string representations of the map keys
+		RunTestThatExpression(t, "test_set_int_to_string_map(test_new(), JSON_OBJECT('1', 'one', '2', 'two'))").IsEqualToJsonString(`{"1": {"1": "one", "2": "two"}}`)
+
+		// Verify field number keys are used for the map field itself
+		RunTestThatExpression(t, "test_set_int_to_string_map(test_new(), JSON_OBJECT('42', 'answer'))").IsEqualToJsonString(`{"1": {"42": "answer"}}`)
+	})
+
+	// Test empty and default values in maps
+	t.Run("map_fields_default_values", func(t *testing.T) {
+		protoContent := dedent.Pipe(`
+			|syntax = "proto3";
+			|message Test {
+			|    map<string, int32> int_map = 1;
+			|    map<string, string> string_map = 2;
+			|    map<string, bool> bool_map = 3;
+			|    map<string, bytes> bytes_map = 4;
+			|}
+		`)
+		schemaName := "test_schema"
+		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
+
+		// Maps can store default/zero values (unlike regular proto3 fields without presence)
+		RunTestThatExpression(t, "test_set_int_map(test_new(), JSON_OBJECT('zero', 0))").IsEqualToJsonString(`{"1": {"zero": 0}}`)
+		RunTestThatExpression(t, "test_set_string_map(test_new(), JSON_OBJECT('empty', ''))").IsEqualToJsonString(`{"2": {"empty": ""}}`)
+		RunTestThatExpression(t, "test_set_bool_map(test_new(), JSON_OBJECT('false', false))").IsEqualToJsonString(`{"3": {"false": false}}`)
+		RunTestThatExpression(t, "test_set_bytes_map(test_new(), JSON_OBJECT('empty', ''))").IsEqualToJsonString(`{"4": {"empty": ""}}`)
+	})
+}
+
+// TestGeneratedOpaqueApiConversions tests JSON conversion functionality
 func TestGeneratedOpaqueApiConversions(t *testing.T) {
 	t.Run("simple_message_roundtrip", func(t *testing.T) {
 		protoContent := dedent.Pipe(`
@@ -784,256 +1708,44 @@ func TestGeneratedOpaqueApiConversions(t *testing.T) {
 		schemaName := "test_schema"
 		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
 
-		t.Run("json_to_protobuf_to_json", func(t *testing.T) {
+		t.Run("json_roundtrip", func(t *testing.T) {
 			// Create a message using the opaque API
 			obj := "test_set_flag(test_set_name(test_set_value(test_new(), 42), 'hello'), TRUE)"
 
-			// Convert to protobuf wire format (binary)
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", obj)).IsEqualToJsonString(`{"1": 42, "2": "hello", "3": true}`)
+			// Convert to standard JSON format (regular protobuf JSON)
+			jsonExpr := fmt.Sprintf("test_to_json(%s, NULL)", obj)
 
-			// Test the conversion produces a valid protobuf-compatible JSON representation
-			// Round-trip: opaque -> json -> opaque
-			jsonExpr := fmt.Sprintf("test_to_protobuf(%s)", obj)
-			backToOpaque := fmt.Sprintf("test_from_protobuf(%s)", jsonExpr)
-
+			// Test round-trip via JSON conversion
+			backToOpaque := fmt.Sprintf("test_from_json(%s, NULL)", jsonExpr)
 			RunTestThatExpression(t, fmt.Sprintf("test_get_value(%s)", backToOpaque)).IsEqualToInt(42)
 			RunTestThatExpression(t, fmt.Sprintf("test_get_name(%s)", backToOpaque)).IsEqualToString("hello")
 			RunTestThatExpression(t, fmt.Sprintf("test_get_flag(%s)", backToOpaque)).IsEqualToBool(true)
 		})
 
-		t.Run("protobuf_json_format_compatibility", func(t *testing.T) {
-			// Test that our ProtoNumberJSON format is properly structured
+		t.Run("binary_message_conversion", func(t *testing.T) {
+			// Test binary message round-trip
 			obj := "test_set_name(test_set_value(test_new(), 123), 'world')"
 
-			// Verify the JSON structure uses field numbers as keys
-			RunTestThatExpression(t, fmt.Sprintf("JSON_EXTRACT(test_to_protobuf(%s), '$.\"1\"')", obj)).IsEqualToInt(123)
-			RunTestThatExpression(t, fmt.Sprintf("JSON_EXTRACT(test_to_protobuf(%s), '$.\"2\"')", obj)).IsEqualToString("world")
-			RunTestThatExpression(t, fmt.Sprintf("JSON_EXTRACT(test_to_protobuf(%s), '$.\"3\"')", obj)).IsNull() // not set
+			// Convert to binary message format
+			messageExpr := fmt.Sprintf("test_to_message(%s, NULL)", obj)
+
+			// Convert back from binary message
+			backToOpaque := fmt.Sprintf("test_from_message(%s, NULL)", messageExpr)
+			RunTestThatExpression(t, fmt.Sprintf("test_get_value(%s)", backToOpaque)).IsEqualToInt(123)
+			RunTestThatExpression(t, fmt.Sprintf("test_get_name(%s)", backToOpaque)).IsEqualToString("world")
 		})
 
 		t.Run("empty_message_conversion", func(t *testing.T) {
-			// Empty message should convert to empty JSON object
-			RunTestThatExpression(t, "test_to_protobuf(test_new())").IsEqualToJsonString("{}")
+			// Empty message conversion tests
+			emptyObj := "test_new()"
 
-			// Empty JSON should convert back to empty message
-			RunTestThatExpression(t, "test_from_protobuf('{}')").IsEqualToJsonString("{}")
-		})
-	})
+			// JSON conversion
+			jsonResult := fmt.Sprintf("test_to_json(%s, NULL)", emptyObj)
+			RunTestThatExpression(t, fmt.Sprintf("test_from_json(%s, NULL)", jsonResult)).IsEqualToJsonString("{}")
 
-	t.Run("nested_message_roundtrip", func(t *testing.T) {
-		protoContent := dedent.Pipe(`
-			|syntax = "proto3";
-			|message Test {
-			|    MessageType nested = 1;
-			|    int32 value = 2;
-			|}
-			|message MessageType {
-			|    string data = 1;
-			|    int32 number = 2;
-			|}
-		`)
-		schemaName := "test_schema"
-		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
-
-		t.Run("nested_object_conversion", func(t *testing.T) {
-			// Create nested message structure
-			nestedObj := "JSON_OBJECT('1', 'nested_data', '2', 456)"
-			obj := fmt.Sprintf("test_set_value(test_set_nested(test_new(), %s), 789)", nestedObj)
-
-			// Convert to ProtoNumberJSON format
-			expectedJson := `{"1": {"1": "nested_data", "2": 456}, "2": 789}`
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", obj)).IsEqualToJsonString(expectedJson)
-
-			// Round-trip conversion
-			backToOpaque := fmt.Sprintf("test_from_protobuf('%s')", expectedJson)
-			RunTestThatExpression(t, fmt.Sprintf("test_get_value(%s)", backToOpaque)).IsEqualToInt(789)
-			RunTestThatExpression(t, fmt.Sprintf("JSON_EXTRACT(test_get_nested(%s), '$.\"1\"')", backToOpaque)).IsEqualToString("nested_data")
-			RunTestThatExpression(t, fmt.Sprintf("JSON_EXTRACT(test_get_nested(%s), '$.\"2\"')", backToOpaque)).IsEqualToInt(456)
-		})
-	})
-
-	t.Run("repeated_field_conversion", func(t *testing.T) {
-		protoContent := dedent.Pipe(`
-			|syntax = "proto3";
-			|message Test {
-			|    repeated int32 numbers = 1;
-			|    repeated string names = 2;
-			|}
-		`)
-		schemaName := "test_schema"
-		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
-
-		t.Run("repeated_field_roundtrip", func(t *testing.T) {
-			// Create message with repeated fields
-			obj := "test_add_names(test_add_names(test_add_numbers(test_add_numbers(test_new(), 1), 2), 'alice'), 'bob')"
-
-			// Convert to ProtoNumberJSON format
-			expectedJson := `{"1": [1, 2], "2": ["alice", "bob"]}`
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", obj)).IsEqualToJsonString(expectedJson)
-
-			// Round-trip conversion
-			backToOpaque := fmt.Sprintf("test_from_protobuf('%s')", expectedJson)
-			RunTestThatExpression(t, fmt.Sprintf("test_get_numbers(%s)", backToOpaque)).IsEqualToJsonString("[1, 2]")
-			RunTestThatExpression(t, fmt.Sprintf("test_get_names(%s)", backToOpaque)).IsEqualToJsonString(`["alice", "bob"]`)
-			RunTestThatExpression(t, fmt.Sprintf("test_count_numbers(%s)", backToOpaque)).IsEqualToInt(2)
-			RunTestThatExpression(t, fmt.Sprintf("test_count_names(%s)", backToOpaque)).IsEqualToInt(2)
-		})
-
-		t.Run("empty_repeated_fields", func(t *testing.T) {
-			// Empty repeated fields should be represented as empty arrays
-			RunTestThatExpression(t, "test_to_protobuf(test_new())").IsEqualToJsonString("{}")
-
-			// Arrays with elements, then cleared
-			obj := "test_clear_numbers(test_add_numbers(test_new(), 42))"
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", obj)).IsEqualToJsonString("{}")
-		})
-	})
-
-	t.Run("oneof_field_conversion", func(t *testing.T) {
-		protoContent := dedent.Pipe(`
-			|syntax = "proto3";
-			|message Test {
-			|    oneof choice {
-			|        int32 number = 1;
-			|        string text = 2;
-			|        MessageType nested = 3;
-			|    }
-			|}
-			|message MessageType {
-			|    bool flag = 1;
-			|}
-		`)
-		schemaName := "test_schema"
-		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
-
-		t.Run("oneof_number_conversion", func(t *testing.T) {
-			obj := "test_set_number(test_new(), 42)"
-			expectedJson := `{"1": 42}`
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", obj)).IsEqualToJsonString(expectedJson)
-
-			// Round-trip
-			backToOpaque := fmt.Sprintf("test_from_protobuf('%s')", expectedJson)
-			RunTestThatExpression(t, fmt.Sprintf("test_which_choice(%s)", backToOpaque)).IsEqualToString("number")
-			RunTestThatExpression(t, fmt.Sprintf("test_get_number(%s)", backToOpaque)).IsEqualToInt(42)
-		})
-
-		t.Run("oneof_nested_message_conversion", func(t *testing.T) {
-			nestedObj := "JSON_OBJECT('1', TRUE)"
-			obj := fmt.Sprintf("test_set_nested(test_new(), %s)", nestedObj)
-			expectedJson := `{"3": {"1": true}}`
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", obj)).IsEqualToJsonString(expectedJson)
-
-			// Round-trip
-			backToOpaque := fmt.Sprintf("test_from_protobuf('%s')", expectedJson)
-			RunTestThatExpression(t, fmt.Sprintf("test_which_choice(%s)", backToOpaque)).IsEqualToString("nested")
-			RunTestThatExpression(t, fmt.Sprintf("JSON_EXTRACT(test_get_nested(%s), '$.\"1\"')", backToOpaque)).IsEqualToBool(true)
-		})
-	})
-
-	t.Run("enum_field_conversion", func(t *testing.T) {
-		protoContent := dedent.Pipe(`
-			|syntax = "proto3";
-			|message Test {
-			|    Status status = 1;
-			|}
-			|enum Status {
-			|    STATUS_UNKNOWN = 0;
-			|    STATUS_ACTIVE = 1;
-			|    STATUS_INACTIVE = 2;
-			|}
-		`)
-		schemaName := "test_schema"
-		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
-
-		t.Run("enum_numeric_conversion", func(t *testing.T) {
-			obj := "test_set_status(test_new(), 2)"
-			expectedJson := `{"1": 2}`
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", obj)).IsEqualToJsonString(expectedJson)
-
-			// Round-trip
-			backToOpaque := fmt.Sprintf("test_from_protobuf('%s')", expectedJson)
-			RunTestThatExpression(t, fmt.Sprintf("test_get_status(%s)", backToOpaque)).IsEqualToInt(2)
-			RunTestThatExpression(t, fmt.Sprintf("status_to_string(test_get_status(%s))", backToOpaque)).IsEqualToString("STATUS_INACTIVE")
-		})
-
-		t.Run("enum_zero_value_conversion", func(t *testing.T) {
-			// Enum zero values should be included in JSON when explicitly set
-			obj := "test_set_status(test_new(), 0)"
-			expectedJson := `{"1": 0}`
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", obj)).IsEqualToJsonString(expectedJson)
-		})
-	})
-
-	t.Run("type_specific_conversions", func(t *testing.T) {
-		protoContent := dedent.Pipe(`
-			|syntax = "proto3";
-			|message Test {
-			|    bool flag = 1;
-			|    double pi = 2;
-			|    float small_pi = 3;
-			|    bytes data = 4;
-			|}
-		`)
-		schemaName := "test_schema"
-		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
-
-		t.Run("boolean_conversion", func(t *testing.T) {
-			objTrue := "test_set_flag(test_new(), TRUE)"
-			objFalse := "test_set_flag(test_new(), FALSE)"
-
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", objTrue)).IsEqualToJsonString(`{"1": true}`)
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", objFalse)).IsEqualToJsonString(`{"1": false}`)
-
-			// Round-trip
-			RunTestThatExpression(t, "test_get_flag(test_from_protobuf('{\"1\": true}'))").IsEqualToBool(true)
-			RunTestThatExpression(t, "test_get_flag(test_from_protobuf('{\"1\": false}'))").IsEqualToBool(false)
-		})
-
-		t.Run("float_conversion", func(t *testing.T) {
-			obj := "test_set_small_pi(test_set_pi(test_new(), 3.141592653589793), 3.14)"
-
-			// Verify float precision is maintained in JSON conversion
-			RunTestThatExpression(t, fmt.Sprintf("JSON_EXTRACT(test_to_protobuf(%s), '$.\"2\"')", obj)).IsEqualToDouble(3.141592653589793)
-			RunTestThatExpression(t, fmt.Sprintf("JSON_EXTRACT(test_to_protobuf(%s), '$.\"3\"')", obj)).IsEqualToFloat(3.14)
-		})
-
-		t.Run("bytes_conversion", func(t *testing.T) {
-			// Test binary data conversion
-			testData := []byte("hello world")
-			obj := fmt.Sprintf("test_set_data(test_new(), ?)")
-
-			// Convert bytes field to JSON and back
-			jsonResult := fmt.Sprintf("test_to_protobuf(%s)", obj)
-			backToOpaque := fmt.Sprintf("test_from_protobuf(%s)", jsonResult)
-
-			RunTestThatExpression(t, fmt.Sprintf("test_get_data(%s)", backToOpaque), testData).IsEqualToBytes(testData)
-		})
-	})
-
-	t.Run("conversion_error_handling", func(t *testing.T) {
-		protoContent := dedent.Pipe(`
-			|syntax = "proto3";
-			|message Test {
-			|    int32 value = 1;
-			|}
-		`)
-		schemaName := "test_schema"
-		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
-
-		t.Run("invalid_json_input", func(t *testing.T) {
-			// Test error handling for malformed JSON
-			RunTestThatExpression(t, "test_from_protobuf('{invalid json}')").ToFailWithSignalException("45000", "Invalid JSON")
-		})
-
-		t.Run("wrong_field_types", func(t *testing.T) {
-			// Test error handling for wrong field types in JSON
-			RunTestThatExpression(t, "test_from_protobuf('{\"1\": \"not_a_number\"}')").ToFailWithSignalException("45000", "Type mismatch")
-		})
-
-		t.Run("unknown_field_numbers", func(t *testing.T) {
-			// Unknown field numbers should be ignored or handled gracefully
-			validObj := "test_from_protobuf('{\"1\": 42, \"999\": \"unknown_field\"}')"
-			RunTestThatExpression(t, fmt.Sprintf("test_get_value(%s)", validObj)).IsEqualToInt(42)
+			// Binary message conversion
+			messageResult := fmt.Sprintf("test_to_message(%s, NULL)", emptyObj)
+			RunTestThatExpression(t, fmt.Sprintf("test_from_message(%s, NULL)", messageResult)).IsEqualToJsonString("{}")
 		})
 	})
 }
@@ -1051,24 +1763,18 @@ func TestGeneratedOpaqueApiTypeSpecific(t *testing.T) {
 		schemaName := "test_schema"
 		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
 
-		t.Run("boolean_json_representation", func(t *testing.T) {
-			// Ensure booleans are stored as true/false in JSON, not 1/0
+		t.Run("boolean_basic_operations", func(t *testing.T) {
+			// Test basic boolean field operations
 			objTrue := "test_set_flag(test_new(), TRUE)"
 			objFalse := "test_set_flag(test_new(), FALSE)"
 
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", objTrue)).IsEqualToJsonString(`{"1": true}`)
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", objFalse)).IsEqualToJsonString(`{"1": false}`)
+			RunTestThatExpression(t, fmt.Sprintf("test_get_flag(%s)", objTrue)).IsEqualToBool(true)
+			RunTestThatExpression(t, fmt.Sprintf("test_get_flag(%s)", objFalse)).IsEqualToBool(false)
 		})
 
-		t.Run("repeated_boolean_json", func(t *testing.T) {
+		t.Run("repeated_boolean_operations", func(t *testing.T) {
 			obj := "test_add_flags(test_add_flags(test_add_flags(test_new(), TRUE), FALSE), TRUE)"
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", obj)).IsEqualToJsonString(`{"2": [true, false, true]}`)
-		})
-
-		t.Run("boolean_mysql_vs_json_conversion", func(t *testing.T) {
-			// Test that MySQL TRUE/FALSE converts properly to JSON true/false
-			RunTestThatExpression(t, "test_get_flag(test_from_protobuf('{\"1\": true}'))").IsEqualToBool(true)
-			RunTestThatExpression(t, "test_get_flag(test_from_protobuf('{\"1\": false}'))").IsEqualToBool(false)
+			RunTestThatExpression(t, fmt.Sprintf("test_count_flags(%s)", obj)).IsEqualToInt(3)
 		})
 	})
 
@@ -1086,7 +1792,6 @@ func TestGeneratedOpaqueApiTypeSpecific(t *testing.T) {
 		t.Run("empty_string", func(t *testing.T) {
 			obj := "test_set_text(test_new(), '')"
 			RunTestThatExpression(t, fmt.Sprintf("test_get_text(%s)", obj)).IsEqualToString("")
-			RunTestThatExpression(t, fmt.Sprintf("test_to_protobuf(%s)", obj)).IsEqualToJsonString(`{"1": ""}`)
 		})
 
 		t.Run("special_characters", func(t *testing.T) {
@@ -1156,15 +1861,15 @@ func TestGeneratedOpaqueApiTypeSpecific(t *testing.T) {
 		})
 
 		t.Run("float_precision", func(t *testing.T) {
-			// Test float precision
+			// Test float precision - getters now return the actual float value
 			obj := "test_set_less_precise(test_new(), 3.14159265)"
 			RunTestThatExpression(t, fmt.Sprintf("test_get_less_precise(%s)", obj)).IsEqualToFloat(3.14159265)
 		})
 
 		t.Run("double_precision", func(t *testing.T) {
-			// Test double precision
+			// Test double precision - getters now return the actual double value
 			obj := "test_set_precise(test_new(), 3.141592653589793)"
-			RunTestThatExpression(t, fmt.Sprintf("test_get_precise(%s)", obj)).IsEqualToDouble(3.141592653589793)
+			RunTestThatExpression(t, fmt.Sprintf("test_get_precise(%s)", obj)).IsEqualToFloat(3.141592653589793)
 		})
 
 		t.Run("zero_values", func(t *testing.T) {
@@ -1235,16 +1940,11 @@ func TestGeneratedOpaqueApiTypeSpecific(t *testing.T) {
 			// Verify both fields are set correctly
 			RunTestThatExpression(t, fmt.Sprintf("test_get_field_1(%s)", obj)).IsEqualToInt(42)
 			RunTestThatExpression(t, fmt.Sprintf("test_get_field_large(%s)", obj)).IsEqualToInt(123)
-
-			// Verify JSON uses correct field numbers
-			RunTestThatExpression(t, fmt.Sprintf("JSON_EXTRACT(test_to_protobuf(%s), '$.\"1\"')", obj)).IsEqualToInt(42)
-			RunTestThatExpression(t, fmt.Sprintf("JSON_EXTRACT(test_to_protobuf(%s), '$.\"999999\"')", obj)).IsEqualToInt(123)
 		})
 
 		t.Run("maximum_field_number", func(t *testing.T) {
 			obj := "test_set_field_max(test_new(), 456)"
 			RunTestThatExpression(t, fmt.Sprintf("test_get_field_max(%s)", obj)).IsEqualToInt(456)
-			RunTestThatExpression(t, fmt.Sprintf("JSON_EXTRACT(test_to_protobuf(%s), '$.\"536870911\"')", obj)).IsEqualToInt(456)
 		})
 	})
 

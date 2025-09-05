@@ -305,9 +305,9 @@ func getJsonParseFunction(fieldType protoreflect.Kind) string {
 		protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
 		return "_pb_json_parse_unsigned_int(json_value)"
 	case protoreflect.FloatKind:
-		return "_pb_json_parse_float_as_uint32(json_value, FALSE)"
+		return "_pb_util_reinterpret_uint32_as_float(_pb_json_parse_float_as_uint32(json_value, TRUE))"
 	case protoreflect.DoubleKind:
-		return "_pb_json_parse_double_as_uint64(json_value, FALSE)"
+		return "_pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE))"
 	case protoreflect.GroupKind:
 		// Groups are deprecated but treated like messages (JSON)
 		return "json_value"
@@ -355,18 +355,84 @@ func generateEnhancedSetter(content *strings.Builder, funcPrefix string, fullTyp
 			}
 		}
 
-		// Set the new field value with proper JSON conversion for booleans
+		// Set the new field value with proper JSON conversion for booleans, bytes, and floats
 		if fieldType == protoreflect.BoolKind {
 			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', CAST((field_value IS TRUE) AS JSON));\n", field.Number()))
+		} else if fieldType == protoreflect.BytesKind {
+			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', _pb_to_base64(field_value));\n", field.Number()))
+		} else if fieldType == protoreflect.FloatKind {
+			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(field_value)));\n", field.Number()))
+		} else if fieldType == protoreflect.DoubleKind {
+			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(field_value)));\n", field.Number()))
 		} else {
 			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', field_value);\n", field.Number()))
 		}
 	} else {
-		// Set the new field value with proper JSON conversion for booleans
-		if fieldType == protoreflect.BoolKind {
-			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', CAST((field_value IS TRUE) AS JSON));\n", field.Number()))
+		// Check if this is a proto3 field without presence and being set to default value
+		// According to protonumberjson spec, such fields should be omitted
+		if !field.HasPresence() && !isRepeated && !isMessage {
+			// For proto3 fields without presence, omit default values
+			content.WriteString("    -- Proto3 field without presence: omit default values per protonumberjson spec\n")
+
+			switch fieldType {
+			case protoreflect.BoolKind:
+				content.WriteString("    IF field_value IS FALSE THEN\n")
+				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+				content.WriteString("    END IF;\n")
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', CAST((field_value IS TRUE) AS JSON));\n", field.Number()))
+			case protoreflect.StringKind:
+				content.WriteString("    IF field_value = '' THEN\n")
+				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+				content.WriteString("    END IF;\n")
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
+			case protoreflect.BytesKind:
+				content.WriteString("    IF field_value = _binary X'' THEN\n")
+				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+				content.WriteString("    END IF;\n")
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', _pb_to_base64(field_value));\n", field.Number()))
+			case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind,
+				protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
+				content.WriteString("    IF field_value = 0 THEN\n")
+				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+				content.WriteString("    END IF;\n")
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
+			case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind,
+				protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
+				content.WriteString("    IF field_value = 0 THEN\n")
+				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+				content.WriteString("    END IF;\n")
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
+			case protoreflect.FloatKind:
+				content.WriteString("    IF field_value = 0.0 THEN\n")
+				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+				content.WriteString("    END IF;\n")
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(field_value)));\n", field.Number()))
+			case protoreflect.DoubleKind:
+				content.WriteString("    IF field_value = 0.0 THEN\n")
+				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+				content.WriteString("    END IF;\n")
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(field_value)));\n", field.Number()))
+			case protoreflect.EnumKind:
+				content.WriteString("    IF field_value = 0 THEN\n")
+				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+				content.WriteString("    END IF;\n")
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
+			default:
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
+			}
 		} else {
-			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
+			// Fields with presence: always set the value
+			if fieldType == protoreflect.BoolKind {
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', CAST((field_value IS TRUE) AS JSON));\n", field.Number()))
+			} else if fieldType == protoreflect.BytesKind {
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', _pb_to_base64(field_value));\n", field.Number()))
+			} else if fieldType == protoreflect.FloatKind {
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(field_value)));\n", field.Number()))
+			} else if fieldType == protoreflect.DoubleKind {
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(field_value)));\n", field.Number()))
+			} else {
+				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
+			}
 		}
 	}
 
@@ -425,7 +491,21 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("    IF current_array IS NULL THEN\n")
 	content.WriteString("        SET current_array = JSON_ARRAY();\n")
 	content.WriteString("    END IF;\n")
-	content.WriteString("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);\n")
+
+	// Handle type-specific conversions for proper protonumberjson format in arrays
+	switch fieldType {
+	case protoreflect.BoolKind:
+		content.WriteString("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST((element_value IS TRUE) AS JSON));\n")
+	case protoreflect.BytesKind:
+		content.WriteString("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', _pb_to_base64(element_value));\n")
+	case protoreflect.FloatKind:
+		content.WriteString("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(element_value)));\n")
+	case protoreflect.DoubleKind:
+		content.WriteString("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(element_value)));\n")
+	default:
+		content.WriteString("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);\n")
+	}
+
 	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', current_array);\n", field.Number()))
 	content.WriteString("END $$\n\n")
 
