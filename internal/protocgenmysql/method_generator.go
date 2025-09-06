@@ -641,22 +641,7 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("    DECLARE element_value JSON;\n")
 	content.WriteString(fmt.Sprintf("    SET array_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
 	content.WriteString("    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN\n")
-	
-	// Return appropriate default value for the field type
-	switch fieldType {
-	case protoreflect.BoolKind:
-		content.WriteString("        RETURN FALSE;\n")
-	case protoreflect.StringKind, protoreflect.BytesKind:
-		content.WriteString("        RETURN '';\n")
-	case protoreflect.EnumKind:
-		content.WriteString("        RETURN 0;\n")
-	case protoreflect.MessageKind:
-		content.WriteString("        RETURN JSON_OBJECT();\n")
-	default:
-		// All numeric types default to 0
-		content.WriteString("        RETURN 0;\n")
-	}
-	
+	content.WriteString("        RETURN NULL;\n")
 	content.WriteString("    END IF;\n")
 	content.WriteString("    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));\n")
 	
@@ -669,9 +654,11 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	case protoreflect.BytesKind:
 		content.WriteString("    RETURN FROM_BASE64(JSON_UNQUOTE(element_value));\n")
 	case protoreflect.DoubleKind:
-		content.WriteString("    RETURN _pb_json_parse_double(element_value);\n")
+		content.WriteString("    RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(element_value, TRUE));\n")
 	case protoreflect.FloatKind:
-		content.WriteString("    RETURN _pb_json_parse_float(element_value);\n")
+		content.WriteString("    RETURN _pb_util_reinterpret_uint32_as_float(_pb_json_parse_float_as_uint32(element_value, TRUE));\n")
+	case protoreflect.MessageKind:
+		content.WriteString("    RETURN element_value;\n")
 	default:
 		// For integers and enums, direct JSON parsing
 		content.WriteString("    RETURN CAST(element_value AS SIGNED);\n")
@@ -706,13 +693,13 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	case protoreflect.BoolKind:
 		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST((element_value IS TRUE) AS JSON));\n")
 	case protoreflect.StringKind:
-		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));\n")
+		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);\n")
 	case protoreflect.BytesKind:
-		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(TO_BASE64(element_value) AS JSON));\n")
+		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), _pb_to_base64(element_value));\n")
 	case protoreflect.DoubleKind:
-		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), _pb_convert_double_to_number_json(element_value));\n")
+		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(element_value)));\n")
 	case protoreflect.FloatKind:
-		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), _pb_convert_float_to_number_json(element_value));\n")
+		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(element_value)));\n")
 	default:
 		// For integers and enums, direct JSON casting
 		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));\n")
@@ -759,13 +746,13 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	case protoreflect.BoolKind:
 		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST((element_value IS TRUE) AS JSON));\n")
 	case protoreflect.StringKind:
-		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));\n")
+		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);\n")
 	case protoreflect.BytesKind:
-		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(TO_BASE64(element_value) AS JSON));\n")
+		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', _pb_to_base64(element_value));\n")
 	case protoreflect.DoubleKind:
-		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', _pb_convert_double_to_number_json(element_value));\n")
+		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(element_value)));\n")
 	case protoreflect.FloatKind:
-		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', _pb_convert_float_to_number_json(element_value));\n")
+		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(element_value)));\n")
 	default:
 		// For integers and enums, direct JSON casting
 		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));\n")
@@ -811,7 +798,53 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("        SET i = i + 1;\n")
 	content.WriteString("    END WHILE;\n")
 	content.WriteString("    \n")
+	content.WriteString("    -- If array becomes empty, remove the field entirely (proto3 default value omission)\n")
+	content.WriteString("    IF JSON_LENGTH(new_array) = 0 THEN\n")
+	content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    END IF;\n")
 	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', new_array);\n", field.Number()))
+	content.WriteString("END $$\n\n")
+
+	// Generate add_all method for repeated fields
+	addAllFuncName := fmt.Sprintf("%s_add_all_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(addAllFuncName, fullTypeName); err != nil {
+		return err
+	}
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", addAllFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC\n", addAllFuncName))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE current_array JSON;\n")
+	content.WriteString("    DECLARE elements_length INT;\n")
+	content.WriteString("    DECLARE i INT DEFAULT 0;\n")
+	content.WriteString("    DECLARE element_value JSON;\n")
+	content.WriteString(fmt.Sprintf("    SET current_array = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF current_array IS NULL THEN\n")
+	content.WriteString("        SET current_array = JSON_ARRAY();\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN\n")
+	content.WriteString("        RETURN proto_data; -- Invalid input, return unchanged\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    SET elements_length = JSON_LENGTH(elements_array);\n")
+	content.WriteString("    WHILE i < elements_length DO\n")
+	content.WriteString("        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));\n")
+	
+	// Handle type-specific conversions for adding elements
+	switch fieldType {
+	case protoreflect.BoolKind:
+		content.WriteString("        SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST((_pb_json_parse_bool(element_value) IS TRUE) AS JSON));\n")
+	case protoreflect.BytesKind:
+		content.WriteString("        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);\n") // Assume already base64 encoded
+	case protoreflect.FloatKind:
+		content.WriteString("        SET current_array = JSON_ARRAY_APPEND(current_array, '$', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(CAST(element_value AS DOUBLE))));\n")
+	case protoreflect.DoubleKind:
+		content.WriteString("        SET current_array = JSON_ARRAY_APPEND(current_array, '$', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(CAST(element_value AS DOUBLE))));\n")
+	default:
+		content.WriteString("        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);\n")
+	}
+	
+	content.WriteString("        SET i = i + 1;\n")
+	content.WriteString("    END WHILE;\n")
+	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', current_array);\n", field.Number()))
 	content.WriteString("END $$\n\n")
 
 	return nil
@@ -1032,6 +1065,22 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 	}
 
 	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', map_value);\n", field.Number()))
+	content.WriteString("END $$\n\n")
+
+	// Generate count method for map fields
+	countFuncName := fmt.Sprintf("%s_count_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(countFuncName, fullTypeName); err != nil {
+		return err
+	}
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", countFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS INT DETERMINISTIC\n", countFuncName))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE map_value JSON;\n")
+	content.WriteString(fmt.Sprintf("    SET map_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF map_value IS NULL THEN\n")
+	content.WriteString("        RETURN 0;\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    RETURN JSON_LENGTH(map_value);\n")
 	content.WriteString("END $$\n\n")
 
 	return nil

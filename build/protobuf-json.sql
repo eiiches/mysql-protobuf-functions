@@ -4542,10 +4542,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_set_set_file $$
@@ -4626,7 +4626,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_add_all_file $$
+CREATE FUNCTION _pb_file_descriptor_set_add_all_file(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_new $$
@@ -4788,7 +4815,7 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."3"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN '';
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN JSON_UNQUOTE(element_value);
@@ -4807,7 +4834,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         RETURN proto_data; -- Index out of bounds
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."3"', array_value);
 END $$
 
@@ -4837,7 +4864,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -4872,7 +4899,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."3"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."3"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_all_dependency(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."3"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."3"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_public_dependency $$
@@ -4946,7 +5000,7 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."10"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN 0;
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN CAST(element_value AS SIGNED);
@@ -5030,7 +5084,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."10"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."10"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_public_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_all_public_dependency(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."10"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."10"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_weak_dependency $$
@@ -5104,7 +5185,7 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."11"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN 0;
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN CAST(element_value AS SIGNED);
@@ -5188,7 +5269,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."11"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."11"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_weak_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_all_weak_dependency(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."11"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."11"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_message_type $$
@@ -5262,10 +5370,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_message_type $$
@@ -5346,7 +5454,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."4"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."4"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_message_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_all_message_type(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."4"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."4"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_enum_type $$
@@ -5420,10 +5555,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_enum_type $$
@@ -5504,7 +5639,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."5"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."5"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_enum_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_all_enum_type(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."5"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."5"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_service $$
@@ -5578,10 +5740,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_service $$
@@ -5662,7 +5824,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."6"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."6"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_service $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_all_service(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."6"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."6"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_extension $$
@@ -5736,10 +5925,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."7"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_extension $$
@@ -5820,7 +6009,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."7"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."7"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_extension $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_all_extension(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."7"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."7"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_options $$
@@ -6065,10 +6281,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_field $$
@@ -6149,7 +6365,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_field $$
+CREATE FUNCTION _pb_descriptor_proto_add_all_field(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."2"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."2"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_extension $$
@@ -6223,10 +6466,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_extension $$
@@ -6307,7 +6550,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."6"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."6"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_extension $$
+CREATE FUNCTION _pb_descriptor_proto_add_all_extension(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."6"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."6"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_nested_type $$
@@ -6381,10 +6651,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."3"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_nested_type $$
@@ -6465,7 +6735,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."3"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."3"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_nested_type $$
+CREATE FUNCTION _pb_descriptor_proto_add_all_nested_type(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."3"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."3"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_enum_type $$
@@ -6539,10 +6836,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_enum_type $$
@@ -6623,7 +6920,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."4"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."4"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_enum_type $$
+CREATE FUNCTION _pb_descriptor_proto_add_all_enum_type(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."4"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."4"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_extension_range $$
@@ -6697,10 +7021,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_extension_range $$
@@ -6781,7 +7105,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."5"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."5"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_extension_range $$
+CREATE FUNCTION _pb_descriptor_proto_add_all_extension_range(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."5"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."5"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_oneof_decl $$
@@ -6855,10 +7206,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."8"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_oneof_decl $$
@@ -6939,7 +7290,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."8"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."8"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_oneof_decl $$
+CREATE FUNCTION _pb_descriptor_proto_add_all_oneof_decl(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."8"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."8"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_options $$
@@ -7040,10 +7418,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."9"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_reserved_range $$
@@ -7124,7 +7502,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."9"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."9"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_reserved_range $$
+CREATE FUNCTION _pb_descriptor_proto_add_all_reserved_range(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."9"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."9"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_reserved_name $$
@@ -7198,7 +7603,7 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."10"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN '';
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN JSON_UNQUOTE(element_value);
@@ -7217,7 +7622,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         RETURN proto_data; -- Index out of bounds
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."10"', array_value);
 END $$
 
@@ -7247,7 +7652,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -7282,7 +7687,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."10"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."10"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_reserved_name $$
+CREATE FUNCTION _pb_descriptor_proto_add_all_reserved_name(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."10"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."10"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_new $$
@@ -7589,10 +8021,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_set_uninterpreted_option $$
@@ -7673,7 +8105,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_add_all_uninterpreted_option $$
+CREATE FUNCTION _pb_extension_range_options_add_all_uninterpreted_option(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_get_all_declaration $$
@@ -7747,10 +8206,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_set_declaration $$
@@ -7831,7 +8290,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_add_all_declaration $$
+CREATE FUNCTION _pb_extension_range_options_add_all_declaration(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."2"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."2"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_get_features $$
@@ -8722,10 +9208,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_value $$
@@ -8806,7 +9292,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_add_all_value $$
+CREATE FUNCTION _pb_enum_descriptor_proto_add_all_value(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."2"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."2"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_options $$
@@ -8907,10 +9420,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_reserved_range $$
@@ -8991,7 +9504,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."4"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."4"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_add_all_reserved_range $$
+CREATE FUNCTION _pb_enum_descriptor_proto_add_all_reserved_range(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."4"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."4"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_all_reserved_name $$
@@ -9065,7 +9605,7 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN '';
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN JSON_UNQUOTE(element_value);
@@ -9084,7 +9624,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         RETURN proto_data; -- Index out of bounds
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."5"', array_value);
 END $$
 
@@ -9114,7 +9654,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -9149,7 +9689,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."5"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."5"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_add_all_reserved_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_add_all_reserved_name(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."5"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."5"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_new $$
@@ -9485,10 +10052,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_set_method $$
@@ -9569,7 +10136,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_add_all_method $$
+CREATE FUNCTION _pb_service_descriptor_proto_add_all_method(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."2"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."2"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_get_options $$
@@ -10480,10 +11074,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_uninterpreted_option $$
@@ -10564,7 +11158,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_add_all_uninterpreted_option $$
+CREATE FUNCTION _pb_file_options_add_all_uninterpreted_option(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_optimize_mode_from_string $$
@@ -10862,10 +11483,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_set_uninterpreted_option $$
@@ -10946,7 +11567,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_add_all_uninterpreted_option $$
+CREATE FUNCTION _pb_message_options_add_all_uninterpreted_option(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_new $$
@@ -11311,7 +11959,7 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."19"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN 0;
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN CAST(element_value AS SIGNED);
@@ -11395,7 +12043,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."19"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."19"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_add_all_targets $$
+CREATE FUNCTION _pb_field_options_add_all_targets(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."19"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."19"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_get_all_edition_defaults $$
@@ -11469,10 +12144,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."20"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_edition_defaults $$
@@ -11553,7 +12228,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."20"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."20"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_add_all_edition_defaults $$
+CREATE FUNCTION _pb_field_options_add_all_edition_defaults(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."20"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."20"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_get_features $$
@@ -11681,10 +12383,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_uninterpreted_option $$
@@ -11765,7 +12467,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_add_all_uninterpreted_option $$
+CREATE FUNCTION _pb_field_options_add_all_uninterpreted_option(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_edition_default_new $$
@@ -12232,10 +12961,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_oneof_options_set_uninterpreted_option $$
@@ -12316,7 +13045,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_add_all_uninterpreted_option $$
+CREATE FUNCTION _pb_oneof_options_add_all_uninterpreted_option(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_options_new $$
@@ -12534,10 +13290,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_options_set_uninterpreted_option $$
@@ -12618,7 +13374,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_add_all_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_options_add_all_uninterpreted_option(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_options_new $$
@@ -12834,10 +13617,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_options_set_uninterpreted_option $$
@@ -12918,7 +13701,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_add_all_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_value_options_add_all_uninterpreted_option(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_options_new $$
@@ -13078,10 +13888,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_options_set_uninterpreted_option $$
@@ -13162,7 +13972,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_add_all_uninterpreted_option $$
+CREATE FUNCTION _pb_service_options_add_all_uninterpreted_option(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_options_new $$
@@ -13351,10 +14188,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_options_set_uninterpreted_option $$
@@ -13435,7 +14272,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_add_all_uninterpreted_option $$
+CREATE FUNCTION _pb_method_options_add_all_uninterpreted_option(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_options_idempotency_level_from_string $$
@@ -13561,10 +14425,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_name $$
@@ -13645,7 +14509,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_add_all_name $$
+CREATE FUNCTION _pb_uninterpreted_option_add_all_name(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."2"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."2"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_identifier_value $$
@@ -14400,10 +15291,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_set_defaults $$
@@ -14484,7 +15375,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_add_all_defaults $$
+CREATE FUNCTION _pb_feature_set_defaults_add_all_defaults(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_minimum_edition $$
@@ -14759,10 +15677,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_set_location $$
@@ -14843,7 +15761,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_add_all_location $$
+CREATE FUNCTION _pb_source_code_info_add_all_location(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_new $$
@@ -14947,7 +15892,7 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN 0;
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN CAST(element_value AS SIGNED);
@@ -15031,7 +15976,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_add_all_path $$
+CREATE FUNCTION _pb_source_code_info_location_add_all_path(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_all_span $$
@@ -15105,7 +16077,7 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN 0;
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN CAST(element_value AS SIGNED);
@@ -15189,7 +16161,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_add_all_span $$
+CREATE FUNCTION _pb_source_code_info_location_add_all_span(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."2"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."2"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_leading_comments $$
@@ -15321,7 +16320,7 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN '';
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN JSON_UNQUOTE(element_value);
@@ -15340,7 +16339,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         RETURN proto_data; -- Index out of bounds
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."6"', array_value);
 END $$
 
@@ -15370,7 +16369,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -15405,7 +16404,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."6"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."6"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_add_all_leading_detached_comments $$
+CREATE FUNCTION _pb_source_code_info_location_add_all_leading_detached_comments(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."6"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."6"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_new $$
@@ -15509,10 +16535,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_set_annotation $$
@@ -15593,7 +16619,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_add_all_annotation $$
+CREATE FUNCTION _pb_generated_code_info_add_all_annotation(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_new $$
@@ -15697,7 +16750,7 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN 0;
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN CAST(element_value AS SIGNED);
@@ -15781,7 +16834,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_add_all_path $$
+CREATE FUNCTION _pb_generated_code_info_annotation_add_all_path(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_source_file $$
@@ -16082,6 +17162,17 @@ BEGIN
     END IF;
     SET map_value = JSON_REMOVE(map_value, CONCAT('$.', JSON_QUOTE(key_value)));
     RETURN JSON_SET(proto_data, '$."1"', map_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_count_fields $$
+CREATE FUNCTION pb_wkt_struct_count_fields(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE map_value JSON;
+    SET map_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF map_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(map_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_new $$
@@ -16548,10 +17639,10 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN JSON_OBJECT();
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_list_value_set_values $$
@@ -16632,7 +17723,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_list_value_add_all_values $$
+CREATE FUNCTION pb_wkt_list_value_add_all_values(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_null_value_from_string $$
@@ -16760,7 +17878,7 @@ BEGIN
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN '';
+        RETURN NULL;
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN JSON_UNQUOTE(element_value);
@@ -16779,7 +17897,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         RETURN proto_data; -- Index out of bounds
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
@@ -16809,7 +17927,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -16844,7 +17962,34 @@ BEGIN
         SET i = i + 1;
     END WHILE;
     
+    -- If array becomes empty, remove the field entirely (proto3 default value omission)
+    IF JSON_LENGTH(new_array) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_field_mask_add_all_paths $$
+CREATE FUNCTION pb_wkt_field_mask_add_all_paths(proto_data JSON, elements_array JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    DECLARE elements_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    IF elements_array IS NULL OR JSON_TYPE(elements_array) != 'ARRAY' THEN
+        RETURN proto_data; -- Invalid input, return unchanged
+    END IF;
+    SET elements_length = JSON_LENGTH(elements_array);
+    WHILE i < elements_length DO
+        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));
+        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_wrappers_proto $$
