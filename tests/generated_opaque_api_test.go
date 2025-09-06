@@ -178,7 +178,6 @@ func testBasicFieldOperations(t *testing.T, fieldDef, fieldName, typeName string
 
 // TestGeneratedOpaqueApiInternalRepresentation tests that setter functions create correct protonumberjson format for all protobuf types
 func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
-
 	// Test oneof fields with all protobuf types
 	t.Run("oneof_fields_internal_format", func(t *testing.T) {
 		protoContent := dedent.Pipe(`

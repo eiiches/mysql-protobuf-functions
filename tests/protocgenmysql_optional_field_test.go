@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
 	"testing"
+
+	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
 )
 
 func TestProtocGenOptionalField(t *testing.T) {

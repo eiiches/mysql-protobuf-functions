@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
 	"testing"
+
+	"github.com/eiiches/mysql-protobuf-functions/internal/dedent"
 )
 
 func TestProtocGenNormalField(t *testing.T) {

@@ -274,14 +274,14 @@ func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTyp
 			content.WriteString("\n")
 			content.WriteString("    WHILE i < array_length DO\n")
 			content.WriteString("        SET element_value = JSON_EXTRACT(raw_array, CONCAT('$[', i, ']'));\n")
-			
+
 			// Use the appropriate conversion function based on field type
 			if fieldType == protoreflect.FloatKind {
 				content.WriteString("        SET result_array = JSON_ARRAY_APPEND(result_array, '$', _pb_util_reinterpret_uint32_as_float(_pb_json_parse_float_as_uint32(element_value, TRUE)));\n")
 			} else { // DoubleKind
 				content.WriteString("        SET result_array = JSON_ARRAY_APPEND(result_array, '$', _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(element_value, TRUE)));\n")
 			}
-			
+
 			content.WriteString("        SET i = i + 1;\n")
 			content.WriteString("    END WHILE;\n")
 			content.WriteString("\n")
