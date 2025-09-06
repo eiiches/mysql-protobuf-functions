@@ -59,6 +59,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_double('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_double('{"1": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated float field (IEEE 754 binary32 format in arrays)
@@ -78,6 +83,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_float('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_float('{"2": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated int32 field
@@ -96,6 +106,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_int32('{"3": [42, -2147483648]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_int32('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_int32('{"3": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_int32('{"3": [42, -2147483648]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated int64 field
@@ -114,6 +129,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_int64('{"4": [9223372036854775807, -9223372036854775808]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_int64('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_int64('{"4": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_int64('{"4": [9223372036854775807, -9223372036854775808]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated uint32 field
@@ -132,6 +152,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_uint32('{"5": [4294967295, 42]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_uint32('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_uint32('{"5": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_uint32('{"5": [4294967295, 42]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated uint64 field
@@ -150,6 +175,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_uint64('{"6": [18446744073709551615, 100]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_uint64('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_uint64('{"6": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_uint64('{"6": [18446744073709551615, 100]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated sint32 field
@@ -168,6 +198,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_sint32('{"7": [-1, 42]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_sint32('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_sint32('{"7": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_sint32('{"7": [-1, 42]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated sint64 field
@@ -186,6 +221,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_sint64('{"8": [-1, 100]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_sint64('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_sint64('{"8": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_sint64('{"8": [-1, 100]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated fixed32 field
@@ -204,6 +244,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_fixed32('{"9": [4294967295, 42]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_fixed32('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_fixed32('{"9": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_fixed32('{"9": [4294967295, 42]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated fixed64 field
@@ -222,6 +267,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_fixed64('{"10": [18446744073709551615, 100]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_fixed64('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_fixed64('{"10": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_fixed64('{"10": [18446744073709551615, 100]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated sfixed32 field
@@ -240,6 +290,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_sfixed32('{"11": [-2147483648, 42]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_sfixed32('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_sfixed32('{"11": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_sfixed32('{"11": [-2147483648, 42]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated sfixed64 field
@@ -258,6 +313,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_sfixed64('{"12": [-9223372036854775808, 100]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_sfixed64('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_sfixed64('{"12": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_sfixed64('{"12": [-9223372036854775808, 100]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated bool field (JSON booleans, not 1/0)
@@ -276,6 +336,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_bool('{"13": [true, false]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_bool('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_bool('{"13": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_bool('{"13": [true, false]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated string field
@@ -294,6 +359,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_string('{"14": ["hello", "world"]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_string('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_string('{"14": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_string('{"14": ["hello", "world"]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated bytes field (base64 encoded)
@@ -312,6 +382,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ="]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_bytes('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_bytes('{"15": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ="]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated enum field (numbers, not string names)
@@ -330,6 +405,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_enum('{"16": [1, 2]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_enum('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_enum('{"16": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_enum('{"16": [1, 2]}')`).IsEqualToInt(2) // Two elements
 	})
 
 	// Test repeated message field (array of nested objects with field number keys)
@@ -350,5 +430,10 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `test_count_repeated_message('{}')`).IsEqualToInt(0) // Empty object/missing field
+		RunTestThatExpression(t, `test_count_repeated_message('{"17": []}')`).IsEqualToInt(0) // Empty array
+		RunTestThatExpression(t, `test_count_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}')`).IsEqualToInt(2) // Two elements
 	})
 }
