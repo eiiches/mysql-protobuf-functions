@@ -4492,29 +4492,6 @@ BEGIN
     RETURN JSON_REMOVE(proto_data, '$."1"');
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_struct_add_fields $$
-CREATE FUNCTION pb_wkt_struct_add_fields(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
-BEGIN
-    DECLARE current_array JSON;
-    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
-    IF current_array IS NULL THEN
-        SET current_array = JSON_ARRAY();
-    END IF;
-    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
-    RETURN JSON_SET(proto_data, '$."1"', current_array);
-END $$
-
-DROP FUNCTION IF EXISTS pb_wkt_struct_count_fields $$
-CREATE FUNCTION pb_wkt_struct_count_fields(proto_data JSON) RETURNS INT DETERMINISTIC
-BEGIN
-    DECLARE array_value JSON;
-    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL THEN
-        RETURN 0;
-    END IF;
-    RETURN JSON_LENGTH(array_value);
-END $$
-
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_new $$
 CREATE FUNCTION pb_wkt_struct_fields_entry_new() RETURNS JSON DETERMINISTIC
 BEGIN
@@ -4917,10 +4894,30 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_list_value_set_values $$
 CREATE FUNCTION pb_wkt_list_value_set_values(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
     IF field_value IS NULL THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."1"', converted_array);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_list_value_clear_values $$
@@ -5015,10 +5012,30 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_field_mask_set_paths $$
 CREATE FUNCTION pb_wkt_field_mask_set_paths(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
     IF field_value IS NULL THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."1"', converted_array);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_field_mask_clear_paths $$

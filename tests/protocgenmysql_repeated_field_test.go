@@ -54,7 +54,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `test_get_repeated_double('{}')`).IsEqualToJsonString(`[]`)        // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_double(?, '["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]')`, `{}`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}`)
+		RunTestThatExpression(t, `test_set_repeated_double(?, '[3.141592653589793, 1.0]')`, `{}`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}`)
 		RunTestThatExpression(t, `test_set_repeated_double(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
@@ -73,7 +73,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `test_get_repeated_float('{}')`).IsEqualToJsonString(`[]`)                                                                          // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_float(?, '["binary32:0x4048f5c3", "binary32:0x3f800000"]')`, `{}`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}`)
+		RunTestThatExpression(t, `test_set_repeated_float(?, '[3.14, 1.0]')`, `{}`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}`)
 		RunTestThatExpression(t, `test_set_repeated_float(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON

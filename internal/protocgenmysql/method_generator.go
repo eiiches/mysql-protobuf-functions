@@ -190,14 +190,15 @@ func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoref
 		fieldType := field.Kind()
 		isRepeated := field.Cardinality() == protoreflect.Repeated
 		isMessage := fieldType == protoreflect.MessageKind
+		isMapField := isRepeated && isMessage && field.MapKey() != nil
 
 		// Generate enhanced getter with better defaults and type safety
-		if err := generateEnhancedGetter(content, funcPrefix, fullTypeName, field, fieldName, fieldType, isRepeated, isMessage); err != nil {
+		if err := generateEnhancedGetter(content, funcPrefix, fullTypeName, field, fieldName, fieldType, isRepeated, isMessage, isMapField); err != nil {
 			return err
 		}
 
 		// Generate enhanced setter with validation
-		if err := generateEnhancedSetter(content, funcPrefix, fullTypeName, field, fieldName, fieldType, isRepeated, isMessage); err != nil {
+		if err := generateEnhancedSetter(content, funcPrefix, fullTypeName, field, fieldName, fieldType, isRepeated, isMessage, isMapField); err != nil {
 			return err
 		}
 
@@ -213,8 +214,8 @@ func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoref
 			return err
 		}
 
-		// Generate additional methods for repeated fields
-		if isRepeated {
+		// Generate additional methods for repeated fields (but not map fields)
+		if isRepeated && !isMapField {
 			if err := generateRepeatedFieldMethods(content, funcPrefix, fullTypeName, field, fieldName, fieldType); err != nil {
 				return err
 			}
@@ -225,13 +226,13 @@ func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoref
 }
 
 // generateEnhancedGetter creates an enhanced getter with better defaults and type safety
-func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, fieldType protoreflect.Kind, isRepeated, isMessage bool) error {
+func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, fieldType protoreflect.Kind, isRepeated, isMessage, isMapField bool) error {
 	getterFuncName := fmt.Sprintf("%s_get_%s", funcPrefix, fieldName)
 	if err := validateFunctionName(getterFuncName, fullTypeName); err != nil {
 		return err
 	}
 
-	_, getterType := getMySQLTypesForFieldFromReflection(fieldType, isRepeated)
+	_, getterType := getMySQLTypesForFieldFromReflection(fieldType, isRepeated || isMapField)
 
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", getterFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS %s DETERMINISTIC\n", getterFuncName, getterType))
@@ -260,6 +261,9 @@ func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTyp
 	}
 
 	switch {
+	case isMapField:
+		// For map fields, return JSON object or empty array if not present
+		content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_ARRAY());\n", field.Number()))
 	case isRepeated:
 		// For repeated fields, special handling for float and double to convert from binary format
 		if fieldType == protoreflect.FloatKind || fieldType == protoreflect.DoubleKind {
@@ -345,13 +349,13 @@ func getJsonParseFunction(fieldType protoreflect.Kind) string {
 }
 
 // generateEnhancedSetter creates an enhanced setter with input validation
-func generateEnhancedSetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, fieldType protoreflect.Kind, isRepeated, isMessage bool) error {
+func generateEnhancedSetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, fieldType protoreflect.Kind, isRepeated, isMessage, isMapField bool) error {
 	setterFuncName := fmt.Sprintf("%s_set_%s", funcPrefix, fieldName)
 	if err := validateFunctionName(setterFuncName, fullTypeName); err != nil {
 		return err
 	}
 
-	setterType, _ := getMySQLTypesForFieldFromReflection(fieldType, isRepeated)
+	setterType, _ := getMySQLTypesForFieldFromReflection(fieldType, isRepeated || isMapField)
 
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", setterFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, field_value %s) RETURNS JSON DETERMINISTIC\n", setterFuncName, setterType))
@@ -364,7 +368,57 @@ func generateEnhancedSetter(content *strings.Builder, funcPrefix string, fullTyp
 	}
 
 	// Add input validation
-	if isRepeated || isMessage {
+	if isMapField {
+		// For map fields, handle JSON object input directly
+		content.WriteString("    IF field_value IS NULL THEN\n")
+		content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+		content.WriteString("    END IF;\n")
+		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
+		content.WriteString("END $$\n\n")
+		return nil
+	} else if isRepeated {
+		// For repeated fields, handle JSON array input
+		content.WriteString("    DECLARE array_length INT;\n")
+		content.WriteString("    DECLARE i INT DEFAULT 0;\n")
+		content.WriteString("    DECLARE element_value JSON;\n")
+		content.WriteString("    DECLARE converted_array JSON DEFAULT JSON_ARRAY();\n")
+		content.WriteString("\n")
+		content.WriteString("    IF field_value IS NULL THEN\n")
+		content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+		content.WriteString("    END IF;\n")
+		content.WriteString("\n")
+		content.WriteString("    SET array_length = JSON_LENGTH(field_value);\n")
+		content.WriteString("\n")
+		content.WriteString("    -- Handle empty array case\n")
+		content.WriteString("    IF array_length = 0 THEN\n")
+		content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+		content.WriteString("    END IF;\n")
+		content.WriteString("\n")
+		content.WriteString("    -- Convert each element to internal format\n")
+		content.WriteString("    WHILE i < array_length DO\n")
+		content.WriteString("        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));\n")
+
+		// Handle type-specific conversions for proper internal format
+		switch fieldType {
+		case protoreflect.BoolKind:
+			content.WriteString("        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);\n")
+		case protoreflect.BytesKind:
+			content.WriteString("        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value); -- Expect base64 strings\n")
+		case protoreflect.FloatKind:
+			content.WriteString("        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(CAST(element_value AS DOUBLE))));\n")
+		case protoreflect.DoubleKind:
+			content.WriteString("        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(CAST(element_value AS DOUBLE))));\n")
+		default:
+			content.WriteString("        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);\n")
+		}
+
+		content.WriteString("        SET i = i + 1;\n")
+		content.WriteString("    END WHILE;\n")
+		content.WriteString("\n")
+		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', converted_array);\n", field.Number()))
+		content.WriteString("END $$\n\n")
+		return nil
+	} else if isMessage {
 		content.WriteString("    IF field_value IS NULL THEN\n")
 		content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
 		content.WriteString("    END IF;\n")
