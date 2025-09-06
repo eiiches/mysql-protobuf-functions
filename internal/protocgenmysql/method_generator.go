@@ -220,6 +220,13 @@ func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoref
 				return err
 			}
 		}
+
+		// Generate additional methods for map fields
+		if isMapField {
+			if err := generateMapFieldMethods(content, funcPrefix, fullTypeName, field, fieldName); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -227,7 +234,13 @@ func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoref
 
 // generateEnhancedGetter creates an enhanced getter with better defaults and type safety
 func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, fieldType protoreflect.Kind, isRepeated, isMessage, isMapField bool) error {
-	getterFuncName := fmt.Sprintf("%s_get_%s", funcPrefix, fieldName)
+	// Use new naming: get_all_ for repeated/map fields, get_ for singular fields
+	var getterFuncName string
+	if isRepeated || isMapField {
+		getterFuncName = fmt.Sprintf("%s_get_all_%s", funcPrefix, fieldName)
+	} else {
+		getterFuncName = fmt.Sprintf("%s_get_%s", funcPrefix, fieldName)
+	}
 	if err := validateFunctionName(getterFuncName, fullTypeName); err != nil {
 		return err
 	}
@@ -350,7 +363,13 @@ func getJsonParseFunction(fieldType protoreflect.Kind) string {
 
 // generateEnhancedSetter creates an enhanced setter with input validation
 func generateEnhancedSetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, fieldType protoreflect.Kind, isRepeated, isMessage, isMapField bool) error {
-	setterFuncName := fmt.Sprintf("%s_set_%s", funcPrefix, fieldName)
+	// Use new naming: set_all_ for repeated/map fields, set_ for singular fields
+	var setterFuncName string
+	if isRepeated || isMapField {
+		setterFuncName = fmt.Sprintf("%s_set_all_%s", funcPrefix, fieldName)
+	} else {
+		setterFuncName = fmt.Sprintf("%s_set_%s", funcPrefix, fieldName)
+	}
 	if err := validateFunctionName(setterFuncName, fullTypeName); err != nil {
 		return err
 	}
@@ -605,6 +624,414 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("        RETURN 0;\n")
 	content.WriteString("    END IF;\n")
 	content.WriteString("    RETURN JSON_LENGTH(array_value);\n")
+	content.WriteString("END $$\n\n")
+
+	// Generate index-based get method for repeated fields
+	getIndexFuncName := fmt.Sprintf("%s_get_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(getIndexFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	_, elementGetterType := getMySQLTypesForFieldFromReflection(fieldType, false) // Get non-repeated type for element
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", getIndexFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, index_value INT) RETURNS %s DETERMINISTIC\n", getIndexFuncName, elementGetterType))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE array_value JSON;\n")
+	content.WriteString("    DECLARE element_value JSON;\n")
+	content.WriteString(fmt.Sprintf("    SET array_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN\n")
+	
+	// Return appropriate default value for the field type
+	switch fieldType {
+	case protoreflect.BoolKind:
+		content.WriteString("        RETURN FALSE;\n")
+	case protoreflect.StringKind, protoreflect.BytesKind:
+		content.WriteString("        RETURN '';\n")
+	case protoreflect.EnumKind:
+		content.WriteString("        RETURN 0;\n")
+	case protoreflect.MessageKind:
+		content.WriteString("        RETURN JSON_OBJECT();\n")
+	default:
+		// All numeric types default to 0
+		content.WriteString("        RETURN 0;\n")
+	}
+	
+	content.WriteString("    END IF;\n")
+	content.WriteString("    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));\n")
+	
+	// Handle type-specific parsing for return value
+	switch fieldType {
+	case protoreflect.BoolKind:
+		content.WriteString("    RETURN _pb_json_parse_bool(element_value);\n")
+	case protoreflect.StringKind:
+		content.WriteString("    RETURN JSON_UNQUOTE(element_value);\n")
+	case protoreflect.BytesKind:
+		content.WriteString("    RETURN FROM_BASE64(JSON_UNQUOTE(element_value));\n")
+	case protoreflect.DoubleKind:
+		content.WriteString("    RETURN _pb_json_parse_double(element_value);\n")
+	case protoreflect.FloatKind:
+		content.WriteString("    RETURN _pb_json_parse_float(element_value);\n")
+	default:
+		// For integers and enums, direct JSON parsing
+		content.WriteString("    RETURN CAST(element_value AS SIGNED);\n")
+	}
+	
+	content.WriteString("END $$\n\n")
+
+	// Generate index-based set method for repeated fields
+	setIndexFuncName := fmt.Sprintf("%s_set_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(setIndexFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	elementSetterType, _ = getMySQLTypesForFieldFromReflection(fieldType, false) // Get non-repeated type for element
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", setIndexFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, index_value INT, element_value %s) RETURNS JSON DETERMINISTIC\n", setIndexFuncName, elementSetterType))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE array_value JSON;\n")
+	content.WriteString("    DECLARE array_length INT;\n")
+	content.WriteString(fmt.Sprintf("    SET array_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF array_value IS NULL THEN\n")
+	content.WriteString("        RETURN proto_data; -- Cannot set at index in non-existent array\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    SET array_length = JSON_LENGTH(array_value);\n")
+	content.WriteString("    IF index_value < 0 OR index_value >= array_length THEN\n")
+	content.WriteString("        RETURN proto_data; -- Index out of bounds\n")
+	content.WriteString("    END IF;\n")
+
+	// Handle type-specific conversions for setting
+	switch fieldType {
+	case protoreflect.BoolKind:
+		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST((element_value IS TRUE) AS JSON));\n")
+	case protoreflect.StringKind:
+		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));\n")
+	case protoreflect.BytesKind:
+		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(TO_BASE64(element_value) AS JSON));\n")
+	case protoreflect.DoubleKind:
+		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), _pb_convert_double_to_number_json(element_value));\n")
+	case protoreflect.FloatKind:
+		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), _pb_convert_float_to_number_json(element_value));\n")
+	default:
+		// For integers and enums, direct JSON casting
+		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));\n")
+	}
+
+	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', array_value);\n", field.Number()))
+	content.WriteString("END $$\n\n")
+
+	// Generate insert method for repeated fields
+	insertFuncName := fmt.Sprintf("%s_insert_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(insertFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", insertFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, index_value INT, element_value %s) RETURNS JSON DETERMINISTIC\n", insertFuncName, elementSetterType))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE array_value JSON;\n")
+	content.WriteString("    DECLARE array_length INT;\n")
+	content.WriteString("    DECLARE new_array JSON DEFAULT JSON_ARRAY();\n")
+	content.WriteString("    DECLARE i INT DEFAULT 0;\n")
+	content.WriteString(fmt.Sprintf("    SET array_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF array_value IS NULL THEN\n")
+	content.WriteString("        SET array_value = JSON_ARRAY();\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    SET array_length = JSON_LENGTH(array_value);\n")
+	content.WriteString("    IF index_value < 0 THEN\n")
+	content.WriteString("        SET index_value = 0;\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    IF index_value > array_length THEN\n")
+	content.WriteString("        SET index_value = array_length;\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    \n")
+	content.WriteString("    -- Copy elements before insert position\n")
+	content.WriteString("    WHILE i < index_value DO\n")
+	content.WriteString("        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));\n")
+	content.WriteString("        SET i = i + 1;\n")
+	content.WriteString("    END WHILE;\n")
+	content.WriteString("    \n")
+	content.WriteString("    -- Insert new element\n")
+	
+	// Handle type-specific conversions for inserting
+	switch fieldType {
+	case protoreflect.BoolKind:
+		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST((element_value IS TRUE) AS JSON));\n")
+	case protoreflect.StringKind:
+		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));\n")
+	case protoreflect.BytesKind:
+		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(TO_BASE64(element_value) AS JSON));\n")
+	case protoreflect.DoubleKind:
+		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', _pb_convert_double_to_number_json(element_value));\n")
+	case protoreflect.FloatKind:
+		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', _pb_convert_float_to_number_json(element_value));\n")
+	default:
+		// For integers and enums, direct JSON casting
+		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));\n")
+	}
+	
+	content.WriteString("    \n")
+	content.WriteString("    -- Copy remaining elements after insert position\n")
+	content.WriteString("    WHILE i < array_length DO\n")
+	content.WriteString("        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));\n")
+	content.WriteString("        SET i = i + 1;\n")
+	content.WriteString("    END WHILE;\n")
+	content.WriteString("    \n")
+	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', new_array);\n", field.Number()))
+	content.WriteString("END $$\n\n")
+
+	// Generate remove method for repeated fields
+	removeFuncName := fmt.Sprintf("%s_remove_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(removeFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", removeFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC\n", removeFuncName))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE array_value JSON;\n")
+	content.WriteString("    DECLARE array_length INT;\n")
+	content.WriteString("    DECLARE new_array JSON DEFAULT JSON_ARRAY();\n")
+	content.WriteString("    DECLARE i INT DEFAULT 0;\n")
+	content.WriteString(fmt.Sprintf("    SET array_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF array_value IS NULL THEN\n")
+	content.WriteString("        RETURN proto_data;\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    SET array_length = JSON_LENGTH(array_value);\n")
+	content.WriteString("    IF index_value < 0 OR index_value >= array_length THEN\n")
+	content.WriteString("        RETURN proto_data; -- Index out of bounds\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    \n")
+	content.WriteString("    -- Copy all elements except the one to remove\n")
+	content.WriteString("    WHILE i < array_length DO\n")
+	content.WriteString("        IF i != index_value THEN\n")
+	content.WriteString("            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));\n")
+	content.WriteString("        END IF;\n")
+	content.WriteString("        SET i = i + 1;\n")
+	content.WriteString("    END WHILE;\n")
+	content.WriteString("    \n")
+	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', new_array);\n", field.Number()))
+	content.WriteString("END $$\n\n")
+
+	return nil
+}
+
+// generateMapFieldMethods creates additional methods for map fields
+func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string) error {
+	keyType := field.MapKey().Kind()
+	valueType := field.MapValue().Kind()
+
+	// Get MySQL types for key and value
+	keySetterType, _ := getMySQLTypesForFieldFromReflection(keyType, false)
+	valueSetterType, _ := getMySQLTypesForFieldFromReflection(valueType, false)
+	_, valueGetterType := getMySQLTypesForFieldFromReflection(valueType, false)
+
+	// Generate key-based get method for map fields
+	getKeyFuncName := fmt.Sprintf("%s_get_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(getKeyFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", getKeyFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, key_value %s) RETURNS %s DETERMINISTIC\n", getKeyFuncName, keySetterType, valueGetterType))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE map_value JSON;\n")
+	content.WriteString("    DECLARE element_value JSON;\n")
+	content.WriteString(fmt.Sprintf("    SET map_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF map_value IS NULL THEN\n")
+	
+	// Return appropriate default value for the value type
+	switch valueType {
+	case protoreflect.BoolKind:
+		content.WriteString("        RETURN FALSE;\n")
+	case protoreflect.StringKind, protoreflect.BytesKind:
+		content.WriteString("        RETURN '';\n")
+	case protoreflect.EnumKind:
+		content.WriteString("        RETURN 0;\n")
+	case protoreflect.MessageKind:
+		content.WriteString("        RETURN JSON_OBJECT();\n")
+	default:
+		// All numeric types default to 0
+		content.WriteString("        RETURN 0;\n")
+	}
+	
+	content.WriteString("    END IF;\n")
+	
+	// Convert key to string for JSON access (all map keys are stored as strings in JSON)
+	switch keyType {
+	case protoreflect.StringKind:
+		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', JSON_QUOTE(key_value)));\n")
+	default:
+		// For numeric keys, convert to string
+		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', CAST(key_value AS CHAR)));\n")
+	}
+	
+	content.WriteString("    IF element_value IS NULL THEN\n")
+	
+	// Return appropriate default value for the value type when key not found
+	switch valueType {
+	case protoreflect.BoolKind:
+		content.WriteString("        RETURN FALSE;\n")
+	case protoreflect.StringKind, protoreflect.BytesKind:
+		content.WriteString("        RETURN '';\n")
+	case protoreflect.EnumKind:
+		content.WriteString("        RETURN 0;\n")
+	case protoreflect.MessageKind:
+		content.WriteString("        RETURN JSON_OBJECT();\n")
+	default:
+		// All numeric types default to 0
+		content.WriteString("        RETURN 0;\n")
+	}
+	
+	content.WriteString("    END IF;\n")
+	
+	// Handle type-specific parsing for return value
+	switch valueType {
+	case protoreflect.BoolKind:
+		content.WriteString("    RETURN _pb_json_parse_bool(element_value);\n")
+	case protoreflect.StringKind:
+		content.WriteString("    RETURN JSON_UNQUOTE(element_value);\n")
+	case protoreflect.BytesKind:
+		content.WriteString("    RETURN FROM_BASE64(JSON_UNQUOTE(element_value));\n")
+	case protoreflect.DoubleKind:
+		content.WriteString("    RETURN _pb_json_parse_double(element_value);\n")
+	case protoreflect.FloatKind:
+		content.WriteString("    RETURN _pb_json_parse_float(element_value);\n")
+	default:
+		// For integers and enums, direct JSON parsing
+		content.WriteString("    RETURN CAST(element_value AS SIGNED);\n")
+	}
+	
+	content.WriteString("END $$\n\n")
+
+	// Generate contains method for map fields
+	containsFuncName := fmt.Sprintf("%s_contains_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(containsFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", containsFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, key_value %s) RETURNS BOOLEAN DETERMINISTIC\n", containsFuncName, keySetterType))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE map_value JSON;\n")
+	content.WriteString(fmt.Sprintf("    SET map_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF map_value IS NULL THEN\n")
+	content.WriteString("        RETURN FALSE;\n")
+	content.WriteString("    END IF;\n")
+	
+	// Convert key to string for JSON access
+	switch keyType {
+	case protoreflect.StringKind:
+		content.WriteString("    RETURN JSON_CONTAINS_PATH(map_value, 'one', CONCAT('$.', JSON_QUOTE(key_value)));\n")
+	default:
+		// For numeric keys, convert to string
+		content.WriteString("    RETURN JSON_CONTAINS_PATH(map_value, 'one', CONCAT('$.', CAST(key_value AS CHAR)));\n")
+	}
+	
+	content.WriteString("END $$\n\n")
+
+	// Generate put method for map fields
+	putFuncName := fmt.Sprintf("%s_put_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(putFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", putFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, key_value %s, value_param %s) RETURNS JSON DETERMINISTIC\n", putFuncName, keySetterType, valueSetterType))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE map_value JSON;\n")
+	content.WriteString(fmt.Sprintf("    SET map_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF map_value IS NULL THEN\n")
+	content.WriteString("        SET map_value = JSON_OBJECT();\n")
+	content.WriteString("    END IF;\n")
+
+	// Convert key to string and handle value conversion
+	switch keyType {
+	case protoreflect.StringKind:
+		// Handle type-specific conversions for putting values
+		switch valueType {
+		case protoreflect.BoolKind:
+			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), CAST((value_param IS TRUE) AS JSON));\n")
+		case protoreflect.StringKind:
+			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), CAST(value_param AS JSON));\n")
+		case protoreflect.BytesKind:
+			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), CAST(TO_BASE64(value_param) AS JSON));\n")
+		case protoreflect.DoubleKind:
+			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), _pb_convert_double_to_number_json(value_param));\n")
+		case protoreflect.FloatKind:
+			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), _pb_convert_float_to_number_json(value_param));\n")
+		default:
+			// For integers and enums, direct JSON casting
+			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), CAST(value_param AS JSON));\n")
+		}
+	default:
+		// For numeric keys, convert to string
+		switch valueType {
+		case protoreflect.BoolKind:
+			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', CAST(key_value AS CHAR)), CAST((value_param IS TRUE) AS JSON));\n")
+		case protoreflect.StringKind:
+			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', CAST(key_value AS CHAR)), CAST(value_param AS JSON));\n")
+		case protoreflect.BytesKind:
+			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', CAST(key_value AS CHAR)), CAST(TO_BASE64(value_param) AS JSON));\n")
+		case protoreflect.DoubleKind:
+			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', CAST(key_value AS CHAR)), _pb_convert_double_to_number_json(value_param));\n")
+		case protoreflect.FloatKind:
+			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', CAST(key_value AS CHAR)), _pb_convert_float_to_number_json(value_param));\n")
+		default:
+			// For integers and enums, direct JSON casting
+			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', CAST(key_value AS CHAR)), CAST(value_param AS JSON));\n")
+		}
+	}
+
+	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', map_value);\n", field.Number()))
+	content.WriteString("END $$\n\n")
+
+	// Generate put_all method for map fields
+	putAllFuncName := fmt.Sprintf("%s_put_all_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(putAllFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", putAllFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, new_entries JSON) RETURNS JSON DETERMINISTIC\n", putAllFuncName))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE map_value JSON;\n")
+	content.WriteString(fmt.Sprintf("    SET map_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF map_value IS NULL THEN\n")
+	content.WriteString("        SET map_value = JSON_OBJECT();\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    IF new_entries IS NOT NULL THEN\n")
+	content.WriteString("        SET map_value = JSON_MERGE_PATCH(map_value, new_entries);\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', map_value);\n", field.Number()))
+	content.WriteString("END $$\n\n")
+
+	// Generate remove method for map fields
+	removeFuncName := fmt.Sprintf("%s_remove_%s", funcPrefix, fieldName)
+	if err := validateFunctionName(removeFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", removeFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, key_value %s) RETURNS JSON DETERMINISTIC\n", removeFuncName, keySetterType))
+	content.WriteString("BEGIN\n")
+	content.WriteString("    DECLARE map_value JSON;\n")
+	content.WriteString(fmt.Sprintf("    SET map_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF map_value IS NULL THEN\n")
+	content.WriteString("        RETURN proto_data;\n")
+	content.WriteString("    END IF;\n")
+
+	// Convert key to string and remove
+	switch keyType {
+	case protoreflect.StringKind:
+		content.WriteString("    SET map_value = JSON_REMOVE(map_value, CONCAT('$.', JSON_QUOTE(key_value)));\n")
+	default:
+		// For numeric keys, convert to string
+		content.WriteString("    SET map_value = JSON_REMOVE(map_value, CONCAT('$.', CAST(key_value AS CHAR)));\n")
+	}
+
+	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', map_value);\n", field.Number()))
 	content.WriteString("END $$\n\n")
 
 	return nil

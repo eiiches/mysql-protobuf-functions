@@ -322,27 +322,33 @@ proc: BEGIN
 	END IF;
 
 	-- Get fields array (field 2 in DescriptorProto)
-	SET fields = JSON_EXTRACT(message_descriptor, '$."2"');
+	SET fields = _pb_descriptor_proto_get_all_field(message_descriptor);
 	SET field_count = JSON_LENGTH(fields);
 	SET field_index = 0;
 
 	-- Get file descriptor to determine syntax
 	SET file_descriptor = _pb_descriptor_set_get_file_descriptor(descriptor_set_json, full_type_name);
-	SET syntax = COALESCE(JSON_UNQUOTE(JSON_EXTRACT(file_descriptor, '$."12"')), 'proto2');
+	SET syntax = _pb_file_descriptor_proto_get_syntax(file_descriptor);
 
 	-- Process each field in the message descriptor
 	field_loop: WHILE field_index < field_count DO
 		SET field_descriptor = JSON_EXTRACT(fields, CONCAT('$[', field_index, ']'));
 
 		-- Extract field metadata using protobuf field numbers
-		SET field_number = JSON_EXTRACT(field_descriptor, '$."3"'); -- number
-		SET field_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."1"')); -- name
-		SET field_label = COALESCE(JSON_EXTRACT(field_descriptor, '$."4"'), 1); -- label
+		SET field_number = _pb_field_descriptor_proto_get_number(field_descriptor);
+		SET field_name = _pb_field_descriptor_proto_get_name(field_descriptor);
+		SET field_label = _pb_field_descriptor_proto_get_label(field_descriptor);
 		SET field_type = JSON_EXTRACT(field_descriptor, '$."5"'); -- type
-		SET field_type_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."6"')); -- type_name
-		SET json_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."10"')); -- json_name
-		SET proto3_optional = COALESCE(CAST(JSON_EXTRACT(field_descriptor, '$."17"') AS UNSIGNED), FALSE); -- proto3_optional
-		SET oneof_index = JSON_EXTRACT(field_descriptor, '$."9"'); -- oneof_index
+		IF _pb_field_descriptor_proto_has_type_name(field_descriptor) THEN
+			SET field_type_name = _pb_field_descriptor_proto_get_type_name(field_descriptor);
+		END IF;
+		IF _pb_field_descriptor_proto_has_json_name(field_descriptor) THEN
+			SET json_name = _pb_field_descriptor_proto_get_json_name(field_descriptor);
+		END IF;
+		SET proto3_optional = _pb_field_descriptor_proto_get_proto3_optional(field_descriptor);
+		IF _pb_field_descriptor_proto_has_oneof_index(field_descriptor) THEN
+			SET oneof_index = _pb_field_descriptor_proto_get_oneof_index(field_descriptor);
+		END IF;
 
 		SET is_repeated = (field_label = 3);
 		-- Determine field presence

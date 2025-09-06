@@ -85,7 +85,7 @@ func main() {
 		if fileDescriptor.Path() == "google/protobuf/descriptor.proto" {
 			methodNamePrefix = "_pb_"
 			descriptorSetNamePrefix = "_pb_"
-			generateMethods = false
+			generateMethods = true
 		} else {
 			methodNamePrefix = "pb_wkt_"
 			descriptorSetNamePrefix = "_pb_wkt_"
@@ -105,6 +105,9 @@ func main() {
 				return descriptorSetName + ".pb.sql" // Doesn't matter since we concatenate all files later
 			},
 			TypePrefixFunc: func(packageName protoreflect.FullName, typeName protoreflect.FullName) string {
+				if typeName == "google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault" {
+					return "_pb_feature_set_edition_default"
+				}
 				snake := caseconv.LowerCamelToSnake(strings.ReplaceAll(strings.TrimPrefix(string(typeName), string(packageName)+"."), ".", "_"))
 				// Fix specific cases: "UInt64" -> "uint64", "UInt32" -> "uint32"
 				snake = strings.ReplaceAll(snake, "u_int64", "uint64")

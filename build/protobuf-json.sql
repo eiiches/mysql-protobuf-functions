@@ -813,27 +813,33 @@ proc: BEGIN
 	END IF;
 
 	-- Get fields array (field 2 in DescriptorProto)
-	SET fields = JSON_EXTRACT(message_descriptor, '$."2"');
+	SET fields = _pb_descriptor_proto_get_all_field(message_descriptor);
 	SET field_count = JSON_LENGTH(fields);
 	SET field_index = 0;
 
 	-- Get file descriptor to determine syntax
 	SET file_descriptor = _pb_descriptor_set_get_file_descriptor(descriptor_set_json, full_type_name);
-	SET syntax = COALESCE(JSON_UNQUOTE(JSON_EXTRACT(file_descriptor, '$."12"')), 'proto2');
+	SET syntax = _pb_file_descriptor_proto_get_syntax(file_descriptor);
 
 	-- Process each field in the message descriptor
 	field_loop: WHILE field_index < field_count DO
 		SET field_descriptor = JSON_EXTRACT(fields, CONCAT('$[', field_index, ']'));
 
 		-- Extract field metadata using protobuf field numbers
-		SET field_number = JSON_EXTRACT(field_descriptor, '$."3"'); -- number
-		SET field_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."1"')); -- name
-		SET field_label = COALESCE(JSON_EXTRACT(field_descriptor, '$."4"'), 1); -- label
+		SET field_number = _pb_field_descriptor_proto_get_number(field_descriptor);
+		SET field_name = _pb_field_descriptor_proto_get_name(field_descriptor);
+		SET field_label = _pb_field_descriptor_proto_get_label(field_descriptor);
 		SET field_type = JSON_EXTRACT(field_descriptor, '$."5"'); -- type
-		SET field_type_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."6"')); -- type_name
-		SET json_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."10"')); -- json_name
-		SET proto3_optional = COALESCE(CAST(JSON_EXTRACT(field_descriptor, '$."17"') AS UNSIGNED), FALSE); -- proto3_optional
-		SET oneof_index = JSON_EXTRACT(field_descriptor, '$."9"'); -- oneof_index
+		IF _pb_field_descriptor_proto_has_type_name(field_descriptor) THEN
+			SET field_type_name = _pb_field_descriptor_proto_get_type_name(field_descriptor);
+		END IF;
+		IF _pb_field_descriptor_proto_has_json_name(field_descriptor) THEN
+			SET json_name = _pb_field_descriptor_proto_get_json_name(field_descriptor);
+		END IF;
+		SET proto3_optional = _pb_field_descriptor_proto_get_proto3_optional(field_descriptor);
+		IF _pb_field_descriptor_proto_has_oneof_index(field_descriptor) THEN
+			SET oneof_index = _pb_field_descriptor_proto_get_oneof_index(field_descriptor);
+		END IF;
 
 		SET is_repeated = (field_label = 3);
 		-- Determine field presence
@@ -4435,6 +4441,11527 @@ BEGIN
 	RETURN CAST('{"1":{"1":[{"1":"google/protobuf/descriptor.proto","2":"google.protobuf","4":[{"1":"FileDescriptorSet","2":[{"1":"file","10":"file","3":1,"4":3,"5":11,"6":".google.protobuf.FileDescriptorProto"}],"5":[{"1":536000000,"2":536000001}]},{"1":"FileDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"package","10":"package","3":2,"4":1,"5":9},{"1":"dependency","10":"dependency","3":3,"4":3,"5":9},{"1":"public_dependency","10":"publicDependency","3":10,"4":3,"5":5},{"1":"weak_dependency","10":"weakDependency","3":11,"4":3,"5":5},{"1":"message_type","10":"messageType","3":4,"4":3,"5":11,"6":".google.protobuf.DescriptorProto"},{"1":"enum_type","10":"enumType","3":5,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto"},{"1":"service","10":"service","3":6,"4":3,"5":11,"6":".google.protobuf.ServiceDescriptorProto"},{"1":"extension","10":"extension","3":7,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"options","10":"options","3":8,"4":1,"5":11,"6":".google.protobuf.FileOptions"},{"1":"source_code_info","10":"sourceCodeInfo","3":9,"4":1,"5":11,"6":".google.protobuf.SourceCodeInfo"},{"1":"syntax","10":"syntax","3":12,"4":1,"5":9},{"1":"edition","10":"edition","3":14,"4":1,"5":14,"6":".google.protobuf.Edition"}]},{"1":"DescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"field","10":"field","3":2,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"extension","10":"extension","3":6,"4":3,"5":11,"6":".google.protobuf.FieldDescriptorProto"},{"1":"nested_type","10":"nestedType","3":3,"4":3,"5":11,"6":".google.protobuf.DescriptorProto"},{"1":"enum_type","10":"enumType","3":4,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto"},{"1":"extension_range","10":"extensionRange","3":5,"4":3,"5":11,"6":".google.protobuf.DescriptorProto.ExtensionRange"},{"1":"oneof_decl","10":"oneofDecl","3":8,"4":3,"5":11,"6":".google.protobuf.OneofDescriptorProto"},{"1":"options","10":"options","3":7,"4":1,"5":11,"6":".google.protobuf.MessageOptions"},{"1":"reserved_range","10":"reservedRange","3":9,"4":3,"5":11,"6":".google.protobuf.DescriptorProto.ReservedRange"},{"1":"reserved_name","10":"reservedName","3":10,"4":3,"5":9}],"3":[{"1":"ExtensionRange","2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.ExtensionRangeOptions"}]},{"1":"ReservedRange","2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5}]}]},{"1":"ExtensionRangeOptions","2":[{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"},{"1":"declaration","10":"declaration","3":2,"4":3,"5":11,"6":".google.protobuf.ExtensionRangeOptions.Declaration","8":{"17":2}},{"1":"features","10":"features","3":50,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"verification","10":"verification","3":3,"4":1,"5":14,"6":".google.protobuf.ExtensionRangeOptions.VerificationState","7":"UNVERIFIED","8":{"17":2}}],"3":[{"1":"Declaration","2":[{"1":"number","10":"number","3":1,"4":1,"5":5},{"1":"full_name","10":"fullName","3":2,"4":1,"5":9},{"1":"type","10":"type","3":3,"4":1,"5":9},{"1":"reserved","10":"reserved","3":5,"4":1,"5":8},{"1":"repeated","10":"repeated","3":6,"4":1,"5":8}],"9":[{"1":4,"2":5}]}],"4":[{"1":"VerificationState","2":[{"1":"DECLARATION","2":0},{"1":"UNVERIFIED","2":1}]}],"5":[{"1":1000,"2":536870912}]},{"1":"FieldDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"number","10":"number","3":3,"4":1,"5":5},{"1":"label","10":"label","3":4,"4":1,"5":14,"6":".google.protobuf.FieldDescriptorProto.Label"},{"1":"type","10":"type","3":5,"4":1,"5":14,"6":".google.protobuf.FieldDescriptorProto.Type"},{"1":"type_name","10":"typeName","3":6,"4":1,"5":9},{"1":"extendee","10":"extendee","3":2,"4":1,"5":9},{"1":"default_value","10":"defaultValue","3":7,"4":1,"5":9},{"1":"oneof_index","10":"oneofIndex","3":9,"4":1,"5":5},{"1":"json_name","10":"jsonName","3":10,"4":1,"5":9},{"1":"options","10":"options","3":8,"4":1,"5":11,"6":".google.protobuf.FieldOptions"},{"1":"proto3_optional","10":"proto3Optional","3":17,"4":1,"5":8}],"4":[{"1":"Type","2":[{"1":"TYPE_DOUBLE","2":1},{"1":"TYPE_FLOAT","2":2},{"1":"TYPE_INT64","2":3},{"1":"TYPE_UINT64","2":4},{"1":"TYPE_INT32","2":5},{"1":"TYPE_FIXED64","2":6},{"1":"TYPE_FIXED32","2":7},{"1":"TYPE_BOOL","2":8},{"1":"TYPE_STRING","2":9},{"1":"TYPE_GROUP","2":10},{"1":"TYPE_MESSAGE","2":11},{"1":"TYPE_BYTES","2":12},{"1":"TYPE_UINT32","2":13},{"1":"TYPE_ENUM","2":14},{"1":"TYPE_SFIXED32","2":15},{"1":"TYPE_SFIXED64","2":16},{"1":"TYPE_SINT32","2":17},{"1":"TYPE_SINT64","2":18}]},{"1":"Label","2":[{"1":"LABEL_OPTIONAL","2":1},{"1":"LABEL_REPEATED","2":3},{"1":"LABEL_REQUIRED","2":2}]}]},{"1":"OneofDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"options","10":"options","3":2,"4":1,"5":11,"6":".google.protobuf.OneofOptions"}]},{"1":"EnumDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"value","10":"value","3":2,"4":3,"5":11,"6":".google.protobuf.EnumValueDescriptorProto"},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.EnumOptions"},{"1":"reserved_range","10":"reservedRange","3":4,"4":3,"5":11,"6":".google.protobuf.EnumDescriptorProto.EnumReservedRange"},{"1":"reserved_name","10":"reservedName","3":5,"4":3,"5":9}],"3":[{"1":"EnumReservedRange","2":[{"1":"start","10":"start","3":1,"4":1,"5":5},{"1":"end","10":"end","3":2,"4":1,"5":5}]}]},{"1":"EnumValueDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"number","10":"number","3":2,"4":1,"5":5},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.EnumValueOptions"}]},{"1":"ServiceDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"method","10":"method","3":2,"4":3,"5":11,"6":".google.protobuf.MethodDescriptorProto"},{"1":"options","10":"options","3":3,"4":1,"5":11,"6":".google.protobuf.ServiceOptions"}]},{"1":"MethodDescriptorProto","2":[{"1":"name","10":"name","3":1,"4":1,"5":9},{"1":"input_type","10":"inputType","3":2,"4":1,"5":9},{"1":"output_type","10":"outputType","3":3,"4":1,"5":9},{"1":"options","10":"options","3":4,"4":1,"5":11,"6":".google.protobuf.MethodOptions"},{"1":"client_streaming","10":"clientStreaming","3":5,"4":1,"5":8,"7":"false"},{"1":"server_streaming","10":"serverStreaming","3":6,"4":1,"5":8,"7":"false"}]},{"1":"FileOptions","10":["php_generic_services"],"2":[{"1":"java_package","10":"javaPackage","3":1,"4":1,"5":9},{"1":"java_outer_classname","10":"javaOuterClassname","3":8,"4":1,"5":9},{"1":"java_multiple_files","10":"javaMultipleFiles","3":10,"4":1,"5":8,"7":"false"},{"1":"java_generate_equals_and_hash","10":"javaGenerateEqualsAndHash","3":20,"4":1,"5":8,"8":{"3":true}},{"1":"java_string_check_utf8","10":"javaStringCheckUtf8","3":27,"4":1,"5":8,"7":"false"},{"1":"optimize_for","10":"optimizeFor","3":9,"4":1,"5":14,"6":".google.protobuf.FileOptions.OptimizeMode","7":"SPEED"},{"1":"go_package","10":"goPackage","3":11,"4":1,"5":9},{"1":"cc_generic_services","10":"ccGenericServices","3":16,"4":1,"5":8,"7":"false"},{"1":"java_generic_services","10":"javaGenericServices","3":17,"4":1,"5":8,"7":"false"},{"1":"py_generic_services","10":"pyGenericServices","3":18,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":23,"4":1,"5":8,"7":"false"},{"1":"cc_enable_arenas","10":"ccEnableArenas","3":31,"4":1,"5":8,"7":"true"},{"1":"objc_class_prefix","10":"objcClassPrefix","3":36,"4":1,"5":9},{"1":"csharp_namespace","10":"csharpNamespace","3":37,"4":1,"5":9},{"1":"swift_prefix","10":"swiftPrefix","3":39,"4":1,"5":9},{"1":"php_class_prefix","10":"phpClassPrefix","3":40,"4":1,"5":9},{"1":"php_namespace","10":"phpNamespace","3":41,"4":1,"5":9},{"1":"php_metadata_namespace","10":"phpMetadataNamespace","3":44,"4":1,"5":9},{"1":"ruby_package","10":"rubyPackage","3":45,"4":1,"5":9},{"1":"features","10":"features","3":50,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"4":[{"1":"OptimizeMode","2":[{"1":"SPEED","2":1},{"1":"CODE_SIZE","2":2},{"1":"LITE_RUNTIME","2":3}]}],"5":[{"1":1000,"2":536870912}],"9":[{"1":42,"2":43},{"1":38,"2":39}]},{"1":"MessageOptions","2":[{"1":"message_set_wire_format","10":"messageSetWireFormat","3":1,"4":1,"5":8,"7":"false"},{"1":"no_standard_descriptor_accessor","10":"noStandardDescriptorAccessor","3":2,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"map_entry","10":"mapEntry","3":7,"4":1,"5":8},{"1":"deprecated_legacy_json_field_conflicts","10":"deprecatedLegacyJsonFieldConflicts","3":11,"4":1,"5":8,"8":{"3":true}},{"1":"features","10":"features","3":12,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}],"9":[{"1":4,"2":5},{"1":5,"2":6},{"1":6,"2":7},{"1":8,"2":9},{"1":9,"2":10}]},{"1":"FieldOptions","2":[{"1":"ctype","10":"ctype","3":1,"4":1,"5":14,"6":".google.protobuf.FieldOptions.CType","7":"STRING"},{"1":"packed","10":"packed","3":2,"4":1,"5":8},{"1":"jstype","10":"jstype","3":6,"4":1,"5":14,"6":".google.protobuf.FieldOptions.JSType","7":"JS_NORMAL"},{"1":"lazy","10":"lazy","3":5,"4":1,"5":8,"7":"false"},{"1":"unverified_lazy","10":"unverifiedLazy","3":15,"4":1,"5":8,"7":"false"},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"weak","10":"weak","3":10,"4":1,"5":8,"7":"false"},{"1":"debug_redact","10":"debugRedact","3":16,"4":1,"5":8,"7":"false"},{"1":"retention","10":"retention","3":17,"4":1,"5":14,"6":".google.protobuf.FieldOptions.OptionRetention"},{"1":"targets","10":"targets","3":19,"4":3,"5":14,"6":".google.protobuf.FieldOptions.OptionTargetType"},{"1":"edition_defaults","10":"editionDefaults","3":20,"4":3,"5":11,"6":".google.protobuf.FieldOptions.EditionDefault"},{"1":"features","10":"features","3":21,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"feature_support","10":"featureSupport","3":22,"4":1,"5":11,"6":".google.protobuf.FieldOptions.FeatureSupport"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"3":[{"1":"EditionDefault","2":[{"1":"edition","10":"edition","3":3,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"value","10":"value","3":2,"4":1,"5":9}]},{"1":"FeatureSupport","2":[{"1":"edition_introduced","10":"editionIntroduced","3":1,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"edition_deprecated","10":"editionDeprecated","3":2,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"deprecation_warning","10":"deprecationWarning","3":3,"4":1,"5":9},{"1":"edition_removed","10":"editionRemoved","3":4,"4":1,"5":14,"6":".google.protobuf.Edition"}]}],"4":[{"1":"CType","2":[{"1":"STRING","2":0},{"1":"CORD","2":1},{"1":"STRING_PIECE","2":2}]},{"1":"JSType","2":[{"1":"JS_NORMAL","2":0},{"1":"JS_STRING","2":1},{"1":"JS_NUMBER","2":2}]},{"1":"OptionRetention","2":[{"1":"RETENTION_UNKNOWN","2":0},{"1":"RETENTION_RUNTIME","2":1},{"1":"RETENTION_SOURCE","2":2}]},{"1":"OptionTargetType","2":[{"1":"TARGET_TYPE_UNKNOWN","2":0},{"1":"TARGET_TYPE_FILE","2":1},{"1":"TARGET_TYPE_EXTENSION_RANGE","2":2},{"1":"TARGET_TYPE_MESSAGE","2":3},{"1":"TARGET_TYPE_FIELD","2":4},{"1":"TARGET_TYPE_ONEOF","2":5},{"1":"TARGET_TYPE_ENUM","2":6},{"1":"TARGET_TYPE_ENUM_ENTRY","2":7},{"1":"TARGET_TYPE_SERVICE","2":8},{"1":"TARGET_TYPE_METHOD","2":9}]}],"5":[{"1":1000,"2":536870912}],"9":[{"1":4,"2":5},{"1":18,"2":19}]},{"1":"OneofOptions","2":[{"1":"features","10":"features","3":1,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}]},{"1":"EnumOptions","2":[{"1":"allow_alias","10":"allowAlias","3":2,"4":1,"5":8},{"1":"deprecated","10":"deprecated","3":3,"4":1,"5":8,"7":"false"},{"1":"deprecated_legacy_json_field_conflicts","10":"deprecatedLegacyJsonFieldConflicts","3":6,"4":1,"5":8,"8":{"3":true}},{"1":"features","10":"features","3":7,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}],"9":[{"1":5,"2":6}]},{"1":"EnumValueOptions","2":[{"1":"deprecated","10":"deprecated","3":1,"4":1,"5":8,"7":"false"},{"1":"features","10":"features","3":2,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"debug_redact","10":"debugRedact","3":3,"4":1,"5":8,"7":"false"},{"1":"feature_support","10":"featureSupport","3":4,"4":1,"5":11,"6":".google.protobuf.FieldOptions.FeatureSupport"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}]},{"1":"ServiceOptions","2":[{"1":"features","10":"features","3":34,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"deprecated","10":"deprecated","3":33,"4":1,"5":8,"7":"false"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"5":[{"1":1000,"2":536870912}]},{"1":"MethodOptions","2":[{"1":"deprecated","10":"deprecated","3":33,"4":1,"5":8,"7":"false"},{"1":"idempotency_level","10":"idempotencyLevel","3":34,"4":1,"5":14,"6":".google.protobuf.MethodOptions.IdempotencyLevel","7":"IDEMPOTENCY_UNKNOWN"},{"1":"features","10":"features","3":35,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"uninterpreted_option","10":"uninterpretedOption","3":999,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption"}],"4":[{"1":"IdempotencyLevel","2":[{"1":"IDEMPOTENCY_UNKNOWN","2":0},{"1":"NO_SIDE_EFFECTS","2":1},{"1":"IDEMPOTENT","2":2}]}],"5":[{"1":1000,"2":536870912}]},{"1":"UninterpretedOption","2":[{"1":"name","10":"name","3":2,"4":3,"5":11,"6":".google.protobuf.UninterpretedOption.NamePart"},{"1":"identifier_value","10":"identifierValue","3":3,"4":1,"5":9},{"1":"positive_int_value","10":"positiveIntValue","3":4,"4":1,"5":4},{"1":"negative_int_value","10":"negativeIntValue","3":5,"4":1,"5":3},{"1":"double_value","10":"doubleValue","3":6,"4":1,"5":1},{"1":"string_value","10":"stringValue","3":7,"4":1,"5":12},{"1":"aggregate_value","10":"aggregateValue","3":8,"4":1,"5":9}],"3":[{"1":"NamePart","2":[{"1":"name_part","10":"namePart","3":1,"4":2,"5":9},{"1":"is_extension","10":"isExtension","3":2,"4":2,"5":8}]}]},{"1":"FeatureSet","2":[{"1":"field_presence","10":"fieldPresence","3":1,"4":1,"5":14,"6":".google.protobuf.FeatureSet.FieldPresence","8":{"17":1,"19":[4,1],"20":[{"2":"EXPLICIT","3":900},{"2":"IMPLICIT","3":999},{"2":"EXPLICIT","3":1000}],"22":{"1":1000}}},{"1":"enum_type","10":"enumType","3":2,"4":1,"5":14,"6":".google.protobuf.FeatureSet.EnumType","8":{"17":1,"19":[6,1],"20":[{"2":"CLOSED","3":900},{"2":"OPEN","3":999}],"22":{"1":1000}}},{"1":"repeated_field_encoding","10":"repeatedFieldEncoding","3":3,"4":1,"5":14,"6":".google.protobuf.FeatureSet.RepeatedFieldEncoding","8":{"17":1,"19":[4,1],"20":[{"2":"EXPANDED","3":900},{"2":"PACKED","3":999}],"22":{"1":1000}}},{"1":"utf8_validation","10":"utf8Validation","3":4,"4":1,"5":14,"6":".google.protobuf.FeatureSet.Utf8Validation","8":{"17":1,"19":[4,1],"20":[{"2":"NONE","3":900},{"2":"VERIFY","3":999}],"22":{"1":1000}}},{"1":"message_encoding","10":"messageEncoding","3":5,"4":1,"5":14,"6":".google.protobuf.FeatureSet.MessageEncoding","8":{"17":1,"19":[4,1],"20":[{"2":"LENGTH_PREFIXED","3":900}],"22":{"1":1000}}},{"1":"json_format","10":"jsonFormat","3":6,"4":1,"5":14,"6":".google.protobuf.FeatureSet.JsonFormat","8":{"17":1,"19":[3,6,1],"20":[{"2":"LEGACY_BEST_EFFORT","3":900},{"2":"ALLOW","3":999}],"22":{"1":1000}}},{"1":"enforce_naming_style","10":"enforceNamingStyle","3":7,"4":1,"5":14,"6":".google.protobuf.FeatureSet.EnforceNamingStyle","8":{"17":2,"19":[1,2,3,4,5,6,7,8,9],"20":[{"2":"STYLE_LEGACY","3":900},{"2":"STYLE2024","3":1001}],"22":{"1":1001}}}],"4":[{"1":"FieldPresence","2":[{"1":"FIELD_PRESENCE_UNKNOWN","2":0},{"1":"EXPLICIT","2":1},{"1":"IMPLICIT","2":2},{"1":"LEGACY_REQUIRED","2":3}]},{"1":"EnumType","2":[{"1":"ENUM_TYPE_UNKNOWN","2":0},{"1":"OPEN","2":1},{"1":"CLOSED","2":2}]},{"1":"RepeatedFieldEncoding","2":[{"1":"REPEATED_FIELD_ENCODING_UNKNOWN","2":0},{"1":"PACKED","2":1},{"1":"EXPANDED","2":2}]},{"1":"Utf8Validation","2":[{"1":"UTF8_VALIDATION_UNKNOWN","2":0},{"1":"VERIFY","2":2},{"1":"NONE","2":3}],"4":[{"1":1,"2":1}]},{"1":"MessageEncoding","2":[{"1":"MESSAGE_ENCODING_UNKNOWN","2":0},{"1":"LENGTH_PREFIXED","2":1},{"1":"DELIMITED","2":2}]},{"1":"JsonFormat","2":[{"1":"JSON_FORMAT_UNKNOWN","2":0},{"1":"ALLOW","2":1},{"1":"LEGACY_BEST_EFFORT","2":2}]},{"1":"EnforceNamingStyle","2":[{"1":"ENFORCE_NAMING_STYLE_UNKNOWN","2":0},{"1":"STYLE2024","2":1},{"1":"STYLE_LEGACY","2":2}]}],"5":[{"1":1000,"2":9995},{"1":9995,"2":10000},{"1":10000,"2":10001}],"9":[{"1":999,"2":1000}]},{"1":"FeatureSetDefaults","2":[{"1":"defaults","10":"defaults","3":1,"4":3,"5":11,"6":".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault"},{"1":"minimum_edition","10":"minimumEdition","3":4,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"maximum_edition","10":"maximumEdition","3":5,"4":1,"5":14,"6":".google.protobuf.Edition"}],"3":[{"1":"FeatureSetEditionDefault","10":["features"],"2":[{"1":"edition","10":"edition","3":3,"4":1,"5":14,"6":".google.protobuf.Edition"},{"1":"overridable_features","10":"overridableFeatures","3":4,"4":1,"5":11,"6":".google.protobuf.FeatureSet"},{"1":"fixed_features","10":"fixedFeatures","3":5,"4":1,"5":11,"6":".google.protobuf.FeatureSet"}],"9":[{"1":1,"2":2},{"1":2,"2":3}]}]},{"1":"SourceCodeInfo","2":[{"1":"location","10":"location","3":1,"4":3,"5":11,"6":".google.protobuf.SourceCodeInfo.Location"}],"3":[{"1":"Location","2":[{"1":"path","10":"path","3":1,"4":3,"5":5,"8":{"2":true}},{"1":"span","10":"span","3":2,"4":3,"5":5,"8":{"2":true}},{"1":"leading_comments","10":"leadingComments","3":3,"4":1,"5":9},{"1":"trailing_comments","10":"trailingComments","3":4,"4":1,"5":9},{"1":"leading_detached_comments","10":"leadingDetachedComments","3":6,"4":3,"5":9}]}],"5":[{"1":536000000,"2":536000001}]},{"1":"GeneratedCodeInfo","2":[{"1":"annotation","10":"annotation","3":1,"4":3,"5":11,"6":".google.protobuf.GeneratedCodeInfo.Annotation"}],"3":[{"1":"Annotation","2":[{"1":"path","10":"path","3":1,"4":3,"5":5,"8":{"2":true}},{"1":"source_file","10":"sourceFile","3":2,"4":1,"5":9},{"1":"begin","10":"begin","3":3,"4":1,"5":5},{"1":"end","10":"end","3":4,"4":1,"5":5},{"1":"semantic","10":"semantic","3":5,"4":1,"5":14,"6":".google.protobuf.GeneratedCodeInfo.Annotation.Semantic"}],"4":[{"1":"Semantic","2":[{"1":"NONE","2":0},{"1":"SET","2":1},{"1":"ALIAS","2":2}]}]}]}],"5":[{"1":"Edition","2":[{"1":"EDITION_UNKNOWN","2":0},{"1":"EDITION_LEGACY","2":900},{"1":"EDITION_PROTO2","2":998},{"1":"EDITION_PROTO3","2":999},{"1":"EDITION_2023","2":1000},{"1":"EDITION_2024","2":1001},{"1":"EDITION_1_TEST_ONLY","2":1},{"1":"EDITION_2_TEST_ONLY","2":2},{"1":"EDITION_99997_TEST_ONLY","2":99997},{"1":"EDITION_99998_TEST_ONLY","2":99998},{"1":"EDITION_99999_TEST_ONLY","2":99999},{"1":"EDITION_MAX","2":2147483647}]}],"8":{"1":"com.google.protobuf","11":"google.golang.org/protobuf/types/descriptorpb","31":true,"36":"GPB","37":"Google.Protobuf.Reflection","8":"DescriptorProtos","9":1}}]},"2":{".google.protobuf.DescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[2]","3":{"enum_type":4,"extension":2,"extension_range":5,"field":1,"name":0,"nested_type":3,"oneof_decl":6,"options":7,"reserved_name":9,"reserved_range":8},"4":{"1":0,"10":9,"2":1,"3":3,"4":4,"5":5,"6":2,"7":7,"8":6,"9":8}},".google.protobuf.DescriptorProto.ExtensionRange":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[2].\\"3\\"[0]","3":{"end":1,"options":2,"start":0},"4":{"1":0,"2":1,"3":2}},".google.protobuf.DescriptorProto.ReservedRange":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[2].\\"3\\"[1]","3":{"end":1,"start":0},"4":{"1":0,"2":1}},".google.protobuf.EnumDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[6]","3":{"name":0,"options":2,"reserved_name":4,"reserved_range":3,"value":1},"4":{"1":0,"2":1,"3":2,"4":3,"5":4}},".google.protobuf.EnumDescriptorProto.EnumReservedRange":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[6].\\"3\\"[0]","3":{"end":1,"start":0},"4":{"1":0,"2":1}},".google.protobuf.EnumOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[14]","3":{"allow_alias":0,"deprecated":1,"deprecated_legacy_json_field_conflicts":2,"features":3,"uninterpreted_option":4},"4":{"2":0,"3":1,"6":2,"7":3,"999":4}},".google.protobuf.EnumValueDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[7]","3":{"name":0,"number":1,"options":2},"4":{"1":0,"2":1,"3":2}},".google.protobuf.EnumValueOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[15]","3":{"debug_redact":2,"deprecated":0,"feature_support":3,"features":1,"uninterpreted_option":4},"4":{"1":0,"2":1,"3":2,"4":3,"999":4}},".google.protobuf.ExtensionRangeOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[3]","3":{"declaration":1,"features":2,"uninterpreted_option":0,"verification":3},"4":{"2":1,"3":3,"50":2,"999":0}},".google.protobuf.ExtensionRangeOptions.Declaration":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[3].\\"3\\"[0]","3":{"full_name":1,"number":0,"repeated":4,"reserved":3,"type":2},"4":{"1":0,"2":1,"3":2,"5":3,"6":4}},".google.protobuf.FeatureSet":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19]","3":{"enforce_naming_style":6,"enum_type":1,"field_presence":0,"json_format":5,"message_encoding":4,"repeated_field_encoding":2,"utf8_validation":3},"4":{"1":0,"2":1,"3":2,"4":3,"5":4,"6":5,"7":6}},".google.protobuf.FeatureSetDefaults":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[20]","3":{"defaults":0,"maximum_edition":2,"minimum_edition":1},"4":{"1":0,"4":1,"5":2}},".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[20].\\"3\\"[0]","3":{"edition":0,"fixed_features":2,"overridable_features":1},"4":{"3":0,"4":1,"5":2}},".google.protobuf.FieldDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[4]","3":{"default_value":6,"extendee":5,"json_name":8,"label":2,"name":0,"number":1,"oneof_index":7,"options":9,"proto3_optional":10,"type":3,"type_name":4},"4":{"1":0,"10":8,"17":10,"2":5,"3":1,"4":2,"5":3,"6":4,"7":6,"8":9,"9":7}},".google.protobuf.FieldOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12]","3":{"ctype":0,"debug_redact":7,"deprecated":5,"edition_defaults":10,"feature_support":12,"features":11,"jstype":2,"lazy":3,"packed":1,"retention":8,"targets":9,"uninterpreted_option":13,"unverified_lazy":4,"weak":6},"4":{"1":0,"10":6,"15":4,"16":7,"17":8,"19":9,"2":1,"20":10,"21":11,"22":12,"3":5,"5":3,"6":2,"999":13}},".google.protobuf.FieldOptions.EditionDefault":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12].\\"3\\"[0]","3":{"edition":0,"value":1},"4":{"2":1,"3":0}},".google.protobuf.FieldOptions.FeatureSupport":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12].\\"3\\"[1]","3":{"deprecation_warning":2,"edition_deprecated":1,"edition_introduced":0,"edition_removed":3},"4":{"1":0,"2":1,"3":2,"4":3}},".google.protobuf.FileDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[1]","3":{"dependency":2,"edition":12,"enum_type":6,"extension":8,"message_type":5,"name":0,"options":9,"package":1,"public_dependency":3,"service":7,"source_code_info":10,"syntax":11,"weak_dependency":4},"4":{"1":0,"10":3,"11":4,"12":11,"14":12,"2":1,"3":2,"4":5,"5":6,"6":7,"7":8,"8":9,"9":10}},".google.protobuf.FileDescriptorSet":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[0]","3":{"file":0},"4":{"1":0}},".google.protobuf.FileOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[10]","3":{"cc_enable_arenas":11,"cc_generic_services":7,"csharp_namespace":13,"deprecated":10,"features":19,"go_package":6,"java_generate_equals_and_hash":3,"java_generic_services":8,"java_multiple_files":2,"java_outer_classname":1,"java_package":0,"java_string_check_utf8":4,"objc_class_prefix":12,"optimize_for":5,"php_class_prefix":15,"php_metadata_namespace":17,"php_namespace":16,"py_generic_services":9,"ruby_package":18,"swift_prefix":14,"uninterpreted_option":20},"4":{"1":0,"10":2,"11":6,"16":7,"17":8,"18":9,"20":3,"23":10,"27":4,"31":11,"36":12,"37":13,"39":14,"40":15,"41":16,"44":17,"45":18,"50":19,"8":1,"9":5,"999":20}},".google.protobuf.GeneratedCodeInfo":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[22]","3":{"annotation":0},"4":{"1":0}},".google.protobuf.GeneratedCodeInfo.Annotation":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[22].\\"3\\"[0]","3":{"begin":2,"end":3,"path":0,"semantic":4,"source_file":1},"4":{"1":0,"2":1,"3":2,"4":3,"5":4}},".google.protobuf.MessageOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[11]","3":{"deprecated":2,"deprecated_legacy_json_field_conflicts":4,"features":5,"map_entry":3,"message_set_wire_format":0,"no_standard_descriptor_accessor":1,"uninterpreted_option":6},"4":{"1":0,"11":4,"12":5,"2":1,"3":2,"7":3,"999":6}},".google.protobuf.MethodDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[9]","3":{"client_streaming":4,"input_type":1,"name":0,"options":3,"output_type":2,"server_streaming":5},"4":{"1":0,"2":1,"3":2,"4":3,"5":4,"6":5}},".google.protobuf.MethodOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[17]","3":{"deprecated":0,"features":2,"idempotency_level":1,"uninterpreted_option":3},"4":{"33":0,"34":1,"35":2,"999":3}},".google.protobuf.OneofDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[5]","3":{"name":0,"options":1},"4":{"1":0,"2":1}},".google.protobuf.OneofOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[13]","3":{"features":0,"uninterpreted_option":1},"4":{"1":0,"999":1}},".google.protobuf.ServiceDescriptorProto":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[8]","3":{"method":1,"name":0,"options":2},"4":{"1":0,"2":1,"3":2}},".google.protobuf.ServiceOptions":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[16]","3":{"deprecated":1,"features":0,"uninterpreted_option":2},"4":{"33":1,"34":0,"999":2}},".google.protobuf.SourceCodeInfo":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[21]","3":{"location":0},"4":{"1":0}},".google.protobuf.SourceCodeInfo.Location":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[21].\\"3\\"[0]","3":{"leading_comments":2,"leading_detached_comments":4,"path":0,"span":1,"trailing_comments":3},"4":{"1":0,"2":1,"3":2,"4":3,"6":4}},".google.protobuf.UninterpretedOption":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[18]","3":{"aggregate_value":6,"double_value":4,"identifier_value":1,"name":0,"negative_int_value":3,"positive_int_value":2,"string_value":5},"4":{"2":0,"3":1,"4":2,"5":3,"6":4,"7":5,"8":6}},".google.protobuf.UninterpretedOption.NamePart":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[18].\\"3\\"[0]","3":{"is_extension":1,"name_part":0},"4":{"1":0,"2":1}}},"3":{".google.protobuf.Edition":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"5\\"[0]","3":{"EDITION_1_TEST_ONLY":6,"EDITION_2023":4,"EDITION_2024":5,"EDITION_2_TEST_ONLY":7,"EDITION_99997_TEST_ONLY":8,"EDITION_99998_TEST_ONLY":9,"EDITION_99999_TEST_ONLY":10,"EDITION_LEGACY":1,"EDITION_MAX":11,"EDITION_PROTO2":2,"EDITION_PROTO3":3,"EDITION_UNKNOWN":0},"4":{"0":0,"1":6,"1000":4,"1001":5,"2":7,"2147483647":11,"900":1,"998":2,"999":3,"99997":8,"99998":9,"99999":10}},".google.protobuf.ExtensionRangeOptions.VerificationState":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[3].\\"4\\"[0]","3":{"DECLARATION":0,"UNVERIFIED":1},"4":{"0":0,"1":1}},".google.protobuf.FeatureSet.EnforceNamingStyle":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[6]","3":{"ENFORCE_NAMING_STYLE_UNKNOWN":0,"STYLE2024":1,"STYLE_LEGACY":2},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FeatureSet.EnumType":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[1]","3":{"CLOSED":2,"ENUM_TYPE_UNKNOWN":0,"OPEN":1},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FeatureSet.FieldPresence":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[0]","3":{"EXPLICIT":1,"FIELD_PRESENCE_UNKNOWN":0,"IMPLICIT":2,"LEGACY_REQUIRED":3},"4":{"0":0,"1":1,"2":2,"3":3}},".google.protobuf.FeatureSet.JsonFormat":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[5]","3":{"ALLOW":1,"JSON_FORMAT_UNKNOWN":0,"LEGACY_BEST_EFFORT":2},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FeatureSet.MessageEncoding":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[4]","3":{"DELIMITED":2,"LENGTH_PREFIXED":1,"MESSAGE_ENCODING_UNKNOWN":0},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FeatureSet.RepeatedFieldEncoding":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[2]","3":{"EXPANDED":2,"PACKED":1,"REPEATED_FIELD_ENCODING_UNKNOWN":0},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FeatureSet.Utf8Validation":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[19].\\"4\\"[3]","3":{"NONE":2,"UTF8_VALIDATION_UNKNOWN":0,"VERIFY":1},"4":{"0":0,"2":1,"3":2}},".google.protobuf.FieldDescriptorProto.Label":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[4].\\"4\\"[1]","3":{"LABEL_OPTIONAL":0,"LABEL_REPEATED":1,"LABEL_REQUIRED":2},"4":{"1":0,"2":2,"3":1}},".google.protobuf.FieldDescriptorProto.Type":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[4].\\"4\\"[0]","3":{"TYPE_BOOL":7,"TYPE_BYTES":11,"TYPE_DOUBLE":0,"TYPE_ENUM":13,"TYPE_FIXED32":6,"TYPE_FIXED64":5,"TYPE_FLOAT":1,"TYPE_GROUP":9,"TYPE_INT32":4,"TYPE_INT64":2,"TYPE_MESSAGE":10,"TYPE_SFIXED32":14,"TYPE_SFIXED64":15,"TYPE_SINT32":16,"TYPE_SINT64":17,"TYPE_STRING":8,"TYPE_UINT32":12,"TYPE_UINT64":3},"4":{"1":0,"10":9,"11":10,"12":11,"13":12,"14":13,"15":14,"16":15,"17":16,"18":17,"2":1,"3":2,"4":3,"5":4,"6":5,"7":6,"8":7,"9":8}},".google.protobuf.FieldOptions.CType":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12].\\"4\\"[0]","3":{"CORD":1,"STRING":0,"STRING_PIECE":2},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FieldOptions.JSType":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12].\\"4\\"[1]","3":{"JS_NORMAL":0,"JS_NUMBER":2,"JS_STRING":1},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FieldOptions.OptionRetention":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12].\\"4\\"[2]","3":{"RETENTION_RUNTIME":1,"RETENTION_SOURCE":2,"RETENTION_UNKNOWN":0},"4":{"0":0,"1":1,"2":2}},".google.protobuf.FieldOptions.OptionTargetType":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[12].\\"4\\"[3]","3":{"TARGET_TYPE_ENUM":6,"TARGET_TYPE_ENUM_ENTRY":7,"TARGET_TYPE_EXTENSION_RANGE":2,"TARGET_TYPE_FIELD":4,"TARGET_TYPE_FILE":1,"TARGET_TYPE_MESSAGE":3,"TARGET_TYPE_METHOD":9,"TARGET_TYPE_ONEOF":5,"TARGET_TYPE_SERVICE":8,"TARGET_TYPE_UNKNOWN":0},"4":{"0":0,"1":1,"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9}},".google.protobuf.FileOptions.OptimizeMode":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[10].\\"4\\"[0]","3":{"CODE_SIZE":1,"LITE_RUNTIME":2,"SPEED":0},"4":{"1":0,"2":1,"3":2}},".google.protobuf.GeneratedCodeInfo.Annotation.Semantic":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[22].\\"3\\"[0].\\"4\\"[0]","3":{"ALIAS":2,"NONE":0,"SET":1},"4":{"0":0,"1":1,"2":2}},".google.protobuf.MethodOptions.IdempotencyLevel":{"1":"$.\\"1\\"[0]","2":"$.\\"1\\"[0].\\"4\\"[17].\\"4\\"[0]","3":{"IDEMPOTENCY_UNKNOWN":0,"IDEMPOTENT":2,"NO_SIDE_EFFECTS":1},"4":{"0":0,"1":1,"2":2}}}}' AS JSON);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_new $$
+CREATE FUNCTION _pb_file_descriptor_set_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_from_json $$
+CREATE FUNCTION _pb_file_descriptor_set_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FileDescriptorSet', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_from_message $$
+CREATE FUNCTION _pb_file_descriptor_set_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FileDescriptorSet', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_to_json $$
+CREATE FUNCTION _pb_file_descriptor_set_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.FileDescriptorSet', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_to_message $$
+CREATE FUNCTION _pb_file_descriptor_set_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.FileDescriptorSet', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_get_all_file $$
+CREATE FUNCTION _pb_file_descriptor_set_get_all_file(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_set_all_file $$
+CREATE FUNCTION _pb_file_descriptor_set_set_all_file(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."1"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_clear_file $$
+CREATE FUNCTION _pb_file_descriptor_set_clear_file(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_add_file $$
+CREATE FUNCTION _pb_file_descriptor_set_add_file(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_count_file $$
+CREATE FUNCTION _pb_file_descriptor_set_count_file(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_get_file $$
+CREATE FUNCTION _pb_file_descriptor_set_get_file(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_set_file $$
+CREATE FUNCTION _pb_file_descriptor_set_set_file(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_insert_file $$
+CREATE FUNCTION _pb_file_descriptor_set_insert_file(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_set_remove_file $$
+CREATE FUNCTION _pb_file_descriptor_set_remove_file(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_new $$
+CREATE FUNCTION _pb_file_descriptor_proto_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_from_json $$
+CREATE FUNCTION _pb_file_descriptor_proto_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FileDescriptorProto', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_from_message $$
+CREATE FUNCTION _pb_file_descriptor_proto_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FileDescriptorProto', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_to_json $$
+CREATE FUNCTION _pb_file_descriptor_proto_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.FileDescriptorProto', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_to_message $$
+CREATE FUNCTION _pb_file_descriptor_proto_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.FileDescriptorProto', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_name $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_name $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_has_name $$
+CREATE FUNCTION _pb_file_descriptor_proto_has_name(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_name $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_package $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_package(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_package $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_package(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_has_package $$
+CREATE FUNCTION _pb_file_descriptor_proto_has_package(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_package $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_package(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_all_dependency(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."3"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_all_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_all_dependency(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."3"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."3"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."3"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_dependency(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_dependency(proto_data JSON, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."3"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."3"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_count_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_count_dependency(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_dependency(proto_data JSON, index_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN '';
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN JSON_UNQUOTE(element_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_dependency(proto_data JSON, index_value INT, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."3"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_insert_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_insert_dependency(proto_data JSON, index_value INT, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."3"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_remove_dependency(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."3"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_public_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_all_public_dependency(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."10"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_all_public_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_all_public_dependency(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."10"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."10"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."10"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_public_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_public_dependency(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."10"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_public_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_public_dependency(proto_data JSON, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."10"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."10"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_count_public_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_count_public_dependency(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_public_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_public_dependency(proto_data JSON, index_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN 0;
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_public_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_public_dependency(proto_data JSON, index_value INT, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."10"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_insert_public_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_insert_public_dependency(proto_data JSON, index_value INT, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."10"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_public_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_remove_public_dependency(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."10"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_weak_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_all_weak_dependency(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."11"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_all_weak_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_all_weak_dependency(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."11"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."11"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."11"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_weak_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_weak_dependency(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."11"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_weak_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_weak_dependency(proto_data JSON, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."11"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."11"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_count_weak_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_count_weak_dependency(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."11"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_weak_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_weak_dependency(proto_data JSON, index_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."11"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN 0;
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_weak_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_weak_dependency(proto_data JSON, index_value INT, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."11"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."11"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_insert_weak_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_insert_weak_dependency(proto_data JSON, index_value INT, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."11"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."11"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_weak_dependency $$
+CREATE FUNCTION _pb_file_descriptor_proto_remove_weak_dependency(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."11"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."11"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_message_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_all_message_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."4"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_all_message_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_all_message_type(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."4"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."4"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."4"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_message_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_message_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_message_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_message_type(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."4"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."4"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_count_message_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_count_message_type(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_message_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_message_type(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_message_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_message_type(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."4"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_insert_message_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_insert_message_type(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."4"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_message_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_remove_message_type(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."4"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_enum_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_all_enum_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."5"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_all_enum_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_all_enum_type(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."5"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."5"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."5"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_enum_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_enum_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_enum_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_enum_type(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."5"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."5"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_count_enum_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_count_enum_type(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_enum_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_enum_type(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_enum_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_enum_type(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."5"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_insert_enum_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_insert_enum_type(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."5"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_enum_type $$
+CREATE FUNCTION _pb_file_descriptor_proto_remove_enum_type(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."5"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_service $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_all_service(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."6"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_all_service $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_all_service(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."6"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."6"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."6"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_service $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_service(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_service $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_service(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."6"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."6"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_count_service $$
+CREATE FUNCTION _pb_file_descriptor_proto_count_service(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_service $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_service(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_service $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_service(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."6"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_insert_service $$
+CREATE FUNCTION _pb_file_descriptor_proto_insert_service(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."6"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_service $$
+CREATE FUNCTION _pb_file_descriptor_proto_remove_service(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."6"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_all_extension $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_all_extension(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."7"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_all_extension $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_all_extension(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."7"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."7"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."7"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_extension $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_extension(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_extension $$
+CREATE FUNCTION _pb_file_descriptor_proto_add_extension(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."7"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."7"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_count_extension $$
+CREATE FUNCTION _pb_file_descriptor_proto_count_extension(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_extension $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_extension(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_extension $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_extension(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."7"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_insert_extension $$
+CREATE FUNCTION _pb_file_descriptor_proto_insert_extension(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."7"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_extension $$
+CREATE FUNCTION _pb_file_descriptor_proto_remove_extension(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."7"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_options $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."8"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_options $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_options(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."8"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."8"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_has_options $$
+CREATE FUNCTION _pb_file_descriptor_proto_has_options(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."8"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_options $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."8"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_source_code_info $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_source_code_info(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."9"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_source_code_info $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_source_code_info(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."9"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."9"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_has_source_code_info $$
+CREATE FUNCTION _pb_file_descriptor_proto_has_source_code_info(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."9"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_source_code_info $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_source_code_info(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."9"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_syntax $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_syntax(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."12"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_syntax $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_syntax(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."12"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_has_syntax $$
+CREATE FUNCTION _pb_file_descriptor_proto_has_syntax(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."12"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_syntax $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_syntax(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."12"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_edition $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_edition(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."14"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_edition $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."14"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_has_edition $$
+CREATE FUNCTION _pb_file_descriptor_proto_has_edition(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."14"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_clear_edition $$
+CREATE FUNCTION _pb_file_descriptor_proto_clear_edition(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."14"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_new $$
+CREATE FUNCTION _pb_descriptor_proto_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_from_json $$
+CREATE FUNCTION _pb_descriptor_proto_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.DescriptorProto', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_from_message $$
+CREATE FUNCTION _pb_descriptor_proto_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.DescriptorProto', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_to_json $$
+CREATE FUNCTION _pb_descriptor_proto_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.DescriptorProto', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_to_message $$
+CREATE FUNCTION _pb_descriptor_proto_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.DescriptorProto', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_name $$
+CREATE FUNCTION _pb_descriptor_proto_get_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_name $$
+CREATE FUNCTION _pb_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_has_name $$
+CREATE FUNCTION _pb_descriptor_proto_has_name(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_clear_name $$
+CREATE FUNCTION _pb_descriptor_proto_clear_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_field $$
+CREATE FUNCTION _pb_descriptor_proto_get_all_field(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."2"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_all_field $$
+CREATE FUNCTION _pb_descriptor_proto_set_all_field(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."2"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_clear_field $$
+CREATE FUNCTION _pb_descriptor_proto_clear_field(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_field $$
+CREATE FUNCTION _pb_descriptor_proto_add_field(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."2"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."2"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_count_field $$
+CREATE FUNCTION _pb_descriptor_proto_count_field(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_field $$
+CREATE FUNCTION _pb_descriptor_proto_get_field(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_field $$
+CREATE FUNCTION _pb_descriptor_proto_set_field(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."2"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_insert_field $$
+CREATE FUNCTION _pb_descriptor_proto_insert_field(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_field $$
+CREATE FUNCTION _pb_descriptor_proto_remove_field(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_extension $$
+CREATE FUNCTION _pb_descriptor_proto_get_all_extension(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."6"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_all_extension $$
+CREATE FUNCTION _pb_descriptor_proto_set_all_extension(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."6"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."6"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."6"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_clear_extension $$
+CREATE FUNCTION _pb_descriptor_proto_clear_extension(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_extension $$
+CREATE FUNCTION _pb_descriptor_proto_add_extension(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."6"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."6"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_count_extension $$
+CREATE FUNCTION _pb_descriptor_proto_count_extension(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_extension $$
+CREATE FUNCTION _pb_descriptor_proto_get_extension(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_extension $$
+CREATE FUNCTION _pb_descriptor_proto_set_extension(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."6"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_insert_extension $$
+CREATE FUNCTION _pb_descriptor_proto_insert_extension(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."6"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_extension $$
+CREATE FUNCTION _pb_descriptor_proto_remove_extension(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."6"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_nested_type $$
+CREATE FUNCTION _pb_descriptor_proto_get_all_nested_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."3"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_all_nested_type $$
+CREATE FUNCTION _pb_descriptor_proto_set_all_nested_type(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."3"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."3"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."3"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_clear_nested_type $$
+CREATE FUNCTION _pb_descriptor_proto_clear_nested_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_nested_type $$
+CREATE FUNCTION _pb_descriptor_proto_add_nested_type(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."3"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."3"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_count_nested_type $$
+CREATE FUNCTION _pb_descriptor_proto_count_nested_type(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_nested_type $$
+CREATE FUNCTION _pb_descriptor_proto_get_nested_type(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_nested_type $$
+CREATE FUNCTION _pb_descriptor_proto_set_nested_type(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."3"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_insert_nested_type $$
+CREATE FUNCTION _pb_descriptor_proto_insert_nested_type(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."3"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_nested_type $$
+CREATE FUNCTION _pb_descriptor_proto_remove_nested_type(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."3"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_enum_type $$
+CREATE FUNCTION _pb_descriptor_proto_get_all_enum_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."4"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_all_enum_type $$
+CREATE FUNCTION _pb_descriptor_proto_set_all_enum_type(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."4"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."4"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."4"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_clear_enum_type $$
+CREATE FUNCTION _pb_descriptor_proto_clear_enum_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_enum_type $$
+CREATE FUNCTION _pb_descriptor_proto_add_enum_type(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."4"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."4"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_count_enum_type $$
+CREATE FUNCTION _pb_descriptor_proto_count_enum_type(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_enum_type $$
+CREATE FUNCTION _pb_descriptor_proto_get_enum_type(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_enum_type $$
+CREATE FUNCTION _pb_descriptor_proto_set_enum_type(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."4"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_insert_enum_type $$
+CREATE FUNCTION _pb_descriptor_proto_insert_enum_type(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."4"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_enum_type $$
+CREATE FUNCTION _pb_descriptor_proto_remove_enum_type(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."4"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_extension_range $$
+CREATE FUNCTION _pb_descriptor_proto_get_all_extension_range(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."5"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_all_extension_range $$
+CREATE FUNCTION _pb_descriptor_proto_set_all_extension_range(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."5"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."5"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."5"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_clear_extension_range $$
+CREATE FUNCTION _pb_descriptor_proto_clear_extension_range(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_extension_range $$
+CREATE FUNCTION _pb_descriptor_proto_add_extension_range(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."5"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."5"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_count_extension_range $$
+CREATE FUNCTION _pb_descriptor_proto_count_extension_range(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_extension_range $$
+CREATE FUNCTION _pb_descriptor_proto_get_extension_range(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_extension_range $$
+CREATE FUNCTION _pb_descriptor_proto_set_extension_range(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."5"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_insert_extension_range $$
+CREATE FUNCTION _pb_descriptor_proto_insert_extension_range(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."5"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_extension_range $$
+CREATE FUNCTION _pb_descriptor_proto_remove_extension_range(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."5"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_oneof_decl $$
+CREATE FUNCTION _pb_descriptor_proto_get_all_oneof_decl(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."8"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_all_oneof_decl $$
+CREATE FUNCTION _pb_descriptor_proto_set_all_oneof_decl(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."8"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."8"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."8"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_clear_oneof_decl $$
+CREATE FUNCTION _pb_descriptor_proto_clear_oneof_decl(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."8"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_oneof_decl $$
+CREATE FUNCTION _pb_descriptor_proto_add_oneof_decl(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."8"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."8"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_count_oneof_decl $$
+CREATE FUNCTION _pb_descriptor_proto_count_oneof_decl(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_oneof_decl $$
+CREATE FUNCTION _pb_descriptor_proto_get_oneof_decl(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_oneof_decl $$
+CREATE FUNCTION _pb_descriptor_proto_set_oneof_decl(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."8"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_insert_oneof_decl $$
+CREATE FUNCTION _pb_descriptor_proto_insert_oneof_decl(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."8"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_oneof_decl $$
+CREATE FUNCTION _pb_descriptor_proto_remove_oneof_decl(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."8"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_options $$
+CREATE FUNCTION _pb_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."7"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_options $$
+CREATE FUNCTION _pb_descriptor_proto_set_options(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."7"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."7"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_has_options $$
+CREATE FUNCTION _pb_descriptor_proto_has_options(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_clear_options $$
+CREATE FUNCTION _pb_descriptor_proto_clear_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_reserved_range $$
+CREATE FUNCTION _pb_descriptor_proto_get_all_reserved_range(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."9"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_all_reserved_range $$
+CREATE FUNCTION _pb_descriptor_proto_set_all_reserved_range(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."9"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."9"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."9"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_clear_reserved_range $$
+CREATE FUNCTION _pb_descriptor_proto_clear_reserved_range(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."9"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_reserved_range $$
+CREATE FUNCTION _pb_descriptor_proto_add_reserved_range(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."9"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."9"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_count_reserved_range $$
+CREATE FUNCTION _pb_descriptor_proto_count_reserved_range(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."9"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_reserved_range $$
+CREATE FUNCTION _pb_descriptor_proto_get_reserved_range(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."9"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_reserved_range $$
+CREATE FUNCTION _pb_descriptor_proto_set_reserved_range(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."9"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."9"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_insert_reserved_range $$
+CREATE FUNCTION _pb_descriptor_proto_insert_reserved_range(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."9"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."9"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_reserved_range $$
+CREATE FUNCTION _pb_descriptor_proto_remove_reserved_range(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."9"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."9"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_all_reserved_name $$
+CREATE FUNCTION _pb_descriptor_proto_get_all_reserved_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."10"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_all_reserved_name $$
+CREATE FUNCTION _pb_descriptor_proto_set_all_reserved_name(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."10"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."10"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."10"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_clear_reserved_name $$
+CREATE FUNCTION _pb_descriptor_proto_clear_reserved_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."10"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_reserved_name $$
+CREATE FUNCTION _pb_descriptor_proto_add_reserved_name(proto_data JSON, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."10"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."10"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_count_reserved_name $$
+CREATE FUNCTION _pb_descriptor_proto_count_reserved_name(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_reserved_name $$
+CREATE FUNCTION _pb_descriptor_proto_get_reserved_name(proto_data JSON, index_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN '';
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN JSON_UNQUOTE(element_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_reserved_name $$
+CREATE FUNCTION _pb_descriptor_proto_set_reserved_name(proto_data JSON, index_value INT, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."10"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_insert_reserved_name $$
+CREATE FUNCTION _pb_descriptor_proto_insert_reserved_name(proto_data JSON, index_value INT, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."10"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_reserved_name $$
+CREATE FUNCTION _pb_descriptor_proto_remove_reserved_name(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."10"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_new $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_from_json $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.DescriptorProto.ExtensionRange', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_from_message $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.DescriptorProto.ExtensionRange', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_to_json $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.DescriptorProto.ExtensionRange', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_to_message $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.DescriptorProto.ExtensionRange', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_get_start $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_get_start(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_set_start $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_set_start(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_has_start $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_has_start(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_clear_start $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_clear_start(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_get_end $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_get_end(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_set_end $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_set_end(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_has_end $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_has_end(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_clear_end $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_clear_end(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_get_options $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."3"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_set_options $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_set_options(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."3"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_has_options $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_has_options(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_clear_options $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_clear_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_new $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_from_json $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.DescriptorProto.ReservedRange', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_from_message $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.DescriptorProto.ReservedRange', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_to_json $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.DescriptorProto.ReservedRange', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_to_message $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.DescriptorProto.ReservedRange', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_get_start $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_get_start(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_set_start $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_set_start(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_has_start $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_has_start(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_clear_start $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_clear_start(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_get_end $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_get_end(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_set_end $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_set_end(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_has_end $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_has_end(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_clear_end $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_clear_end(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_new $$
+CREATE FUNCTION _pb_extension_range_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_from_json $$
+CREATE FUNCTION _pb_extension_range_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.ExtensionRangeOptions', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_from_message $$
+CREATE FUNCTION _pb_extension_range_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.ExtensionRangeOptions', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_to_json $$
+CREATE FUNCTION _pb_extension_range_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.ExtensionRangeOptions', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_to_message $$
+CREATE FUNCTION _pb_extension_range_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.ExtensionRangeOptions', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_get_all_uninterpreted_option $$
+CREATE FUNCTION _pb_extension_range_options_get_all_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."999"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_set_all_uninterpreted_option $$
+CREATE FUNCTION _pb_extension_range_options_set_all_uninterpreted_option(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."999"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_clear_uninterpreted_option $$
+CREATE FUNCTION _pb_extension_range_options_clear_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."999"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_add_uninterpreted_option $$
+CREATE FUNCTION _pb_extension_range_options_add_uninterpreted_option(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_count_uninterpreted_option $$
+CREATE FUNCTION _pb_extension_range_options_count_uninterpreted_option(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_get_uninterpreted_option $$
+CREATE FUNCTION _pb_extension_range_options_get_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_set_uninterpreted_option $$
+CREATE FUNCTION _pb_extension_range_options_set_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_insert_uninterpreted_option $$
+CREATE FUNCTION _pb_extension_range_options_insert_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_remove_uninterpreted_option $$
+CREATE FUNCTION _pb_extension_range_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_get_all_declaration $$
+CREATE FUNCTION _pb_extension_range_options_get_all_declaration(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."2"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_set_all_declaration $$
+CREATE FUNCTION _pb_extension_range_options_set_all_declaration(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."2"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_clear_declaration $$
+CREATE FUNCTION _pb_extension_range_options_clear_declaration(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_add_declaration $$
+CREATE FUNCTION _pb_extension_range_options_add_declaration(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."2"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."2"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_count_declaration $$
+CREATE FUNCTION _pb_extension_range_options_count_declaration(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_get_declaration $$
+CREATE FUNCTION _pb_extension_range_options_get_declaration(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_set_declaration $$
+CREATE FUNCTION _pb_extension_range_options_set_declaration(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."2"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_insert_declaration $$
+CREATE FUNCTION _pb_extension_range_options_insert_declaration(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_remove_declaration $$
+CREATE FUNCTION _pb_extension_range_options_remove_declaration(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_get_features $$
+CREATE FUNCTION _pb_extension_range_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."50"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_set_features $$
+CREATE FUNCTION _pb_extension_range_options_set_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."50"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."50"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_has_features $$
+CREATE FUNCTION _pb_extension_range_options_has_features(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."50"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_clear_features $$
+CREATE FUNCTION _pb_extension_range_options_clear_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."50"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_get_verification $$
+CREATE FUNCTION _pb_extension_range_options_get_verification(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN 1;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_set_verification $$
+CREATE FUNCTION _pb_extension_range_options_set_verification(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_has_verification $$
+CREATE FUNCTION _pb_extension_range_options_has_verification(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_clear_verification $$
+CREATE FUNCTION _pb_extension_range_options_clear_verification(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_new $$
+CREATE FUNCTION _pb_extension_range_options_declaration_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_from_json $$
+CREATE FUNCTION _pb_extension_range_options_declaration_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.ExtensionRangeOptions.Declaration', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_from_message $$
+CREATE FUNCTION _pb_extension_range_options_declaration_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.ExtensionRangeOptions.Declaration', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_to_json $$
+CREATE FUNCTION _pb_extension_range_options_declaration_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.ExtensionRangeOptions.Declaration', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_to_message $$
+CREATE FUNCTION _pb_extension_range_options_declaration_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.ExtensionRangeOptions.Declaration', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_number $$
+CREATE FUNCTION _pb_extension_range_options_declaration_get_number(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_number $$
+CREATE FUNCTION _pb_extension_range_options_declaration_set_number(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_has_number $$
+CREATE FUNCTION _pb_extension_range_options_declaration_has_number(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_clear_number $$
+CREATE FUNCTION _pb_extension_range_options_declaration_clear_number(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_full_name $$
+CREATE FUNCTION _pb_extension_range_options_declaration_get_full_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_full_name $$
+CREATE FUNCTION _pb_extension_range_options_declaration_set_full_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_has_full_name $$
+CREATE FUNCTION _pb_extension_range_options_declaration_has_full_name(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_clear_full_name $$
+CREATE FUNCTION _pb_extension_range_options_declaration_clear_full_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_type $$
+CREATE FUNCTION _pb_extension_range_options_declaration_get_type(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_type $$
+CREATE FUNCTION _pb_extension_range_options_declaration_set_type(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_has_type $$
+CREATE FUNCTION _pb_extension_range_options_declaration_has_type(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_clear_type $$
+CREATE FUNCTION _pb_extension_range_options_declaration_clear_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_reserved $$
+CREATE FUNCTION _pb_extension_range_options_declaration_get_reserved(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_reserved $$
+CREATE FUNCTION _pb_extension_range_options_declaration_set_reserved(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."5"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_has_reserved $$
+CREATE FUNCTION _pb_extension_range_options_declaration_has_reserved(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_clear_reserved $$
+CREATE FUNCTION _pb_extension_range_options_declaration_clear_reserved(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_repeated $$
+CREATE FUNCTION _pb_extension_range_options_declaration_get_repeated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_repeated $$
+CREATE FUNCTION _pb_extension_range_options_declaration_set_repeated(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."6"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_has_repeated $$
+CREATE FUNCTION _pb_extension_range_options_declaration_has_repeated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_clear_repeated $$
+CREATE FUNCTION _pb_extension_range_options_declaration_clear_repeated(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_verification_state_from_string $$
+CREATE FUNCTION _pb_extension_range_options_verification_state_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'DECLARATION' THEN RETURN 0;
+        WHEN 'UNVERIFIED' THEN RETURN 1;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_verification_state_to_string $$
+CREATE FUNCTION _pb_extension_range_options_verification_state_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'DECLARATION';
+        WHEN 1 THEN RETURN 'UNVERIFIED';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_new $$
+CREATE FUNCTION _pb_field_descriptor_proto_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_from_json $$
+CREATE FUNCTION _pb_field_descriptor_proto_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FieldDescriptorProto', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_from_message $$
+CREATE FUNCTION _pb_field_descriptor_proto_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FieldDescriptorProto', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_to_json $$
+CREATE FUNCTION _pb_field_descriptor_proto_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.FieldDescriptorProto', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_to_message $$
+CREATE FUNCTION _pb_field_descriptor_proto_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.FieldDescriptorProto', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_has_name(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_clear_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_clear_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_number $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_number(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_number $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_number(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_number $$
+CREATE FUNCTION _pb_field_descriptor_proto_has_number(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_clear_number $$
+CREATE FUNCTION _pb_field_descriptor_proto_clear_number(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_label $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_label(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_label $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_label(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."4"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_label $$
+CREATE FUNCTION _pb_field_descriptor_proto_has_label(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_clear_label $$
+CREATE FUNCTION _pb_field_descriptor_proto_clear_label(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_type $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_type(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_type $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_type(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."5"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_type $$
+CREATE FUNCTION _pb_field_descriptor_proto_has_type(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_clear_type $$
+CREATE FUNCTION _pb_field_descriptor_proto_clear_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_type_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_type_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_type_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_type_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."6"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_type_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_has_type_name(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_clear_type_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_clear_type_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_extendee $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_extendee(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_extendee $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_extendee(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_extendee $$
+CREATE FUNCTION _pb_field_descriptor_proto_has_extendee(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_clear_extendee $$
+CREATE FUNCTION _pb_field_descriptor_proto_clear_extendee(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_default_value $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_default_value(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_default_value $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_default_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."7"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_default_value $$
+CREATE FUNCTION _pb_field_descriptor_proto_has_default_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_clear_default_value $$
+CREATE FUNCTION _pb_field_descriptor_proto_clear_default_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_oneof_index $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_oneof_index(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."9"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_oneof_index $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_oneof_index(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."9"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_oneof_index $$
+CREATE FUNCTION _pb_field_descriptor_proto_has_oneof_index(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."9"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_clear_oneof_index $$
+CREATE FUNCTION _pb_field_descriptor_proto_clear_oneof_index(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."9"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_json_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_json_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_json_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_json_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."10"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_json_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_has_json_name(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."10"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_clear_json_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_clear_json_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."10"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_options $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."8"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_options $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_options(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."8"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."8"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_options $$
+CREATE FUNCTION _pb_field_descriptor_proto_has_options(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."8"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_clear_options $$
+CREATE FUNCTION _pb_field_descriptor_proto_clear_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."8"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_proto3_optional $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_proto3_optional(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."17"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_proto3_optional $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_proto3_optional(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."17"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_proto3_optional $$
+CREATE FUNCTION _pb_field_descriptor_proto_has_proto3_optional(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."17"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_clear_proto3_optional $$
+CREATE FUNCTION _pb_field_descriptor_proto_clear_proto3_optional(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."17"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_type_from_string $$
+CREATE FUNCTION _pb_field_descriptor_proto_type_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'TYPE_DOUBLE' THEN RETURN 1;
+        WHEN 'TYPE_FLOAT' THEN RETURN 2;
+        WHEN 'TYPE_INT64' THEN RETURN 3;
+        WHEN 'TYPE_UINT64' THEN RETURN 4;
+        WHEN 'TYPE_INT32' THEN RETURN 5;
+        WHEN 'TYPE_FIXED64' THEN RETURN 6;
+        WHEN 'TYPE_FIXED32' THEN RETURN 7;
+        WHEN 'TYPE_BOOL' THEN RETURN 8;
+        WHEN 'TYPE_STRING' THEN RETURN 9;
+        WHEN 'TYPE_GROUP' THEN RETURN 10;
+        WHEN 'TYPE_MESSAGE' THEN RETURN 11;
+        WHEN 'TYPE_BYTES' THEN RETURN 12;
+        WHEN 'TYPE_UINT32' THEN RETURN 13;
+        WHEN 'TYPE_ENUM' THEN RETURN 14;
+        WHEN 'TYPE_SFIXED32' THEN RETURN 15;
+        WHEN 'TYPE_SFIXED64' THEN RETURN 16;
+        WHEN 'TYPE_SINT32' THEN RETURN 17;
+        WHEN 'TYPE_SINT64' THEN RETURN 18;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_type_to_string $$
+CREATE FUNCTION _pb_field_descriptor_proto_type_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 1 THEN RETURN 'TYPE_DOUBLE';
+        WHEN 2 THEN RETURN 'TYPE_FLOAT';
+        WHEN 3 THEN RETURN 'TYPE_INT64';
+        WHEN 4 THEN RETURN 'TYPE_UINT64';
+        WHEN 5 THEN RETURN 'TYPE_INT32';
+        WHEN 6 THEN RETURN 'TYPE_FIXED64';
+        WHEN 7 THEN RETURN 'TYPE_FIXED32';
+        WHEN 8 THEN RETURN 'TYPE_BOOL';
+        WHEN 9 THEN RETURN 'TYPE_STRING';
+        WHEN 10 THEN RETURN 'TYPE_GROUP';
+        WHEN 11 THEN RETURN 'TYPE_MESSAGE';
+        WHEN 12 THEN RETURN 'TYPE_BYTES';
+        WHEN 13 THEN RETURN 'TYPE_UINT32';
+        WHEN 14 THEN RETURN 'TYPE_ENUM';
+        WHEN 15 THEN RETURN 'TYPE_SFIXED32';
+        WHEN 16 THEN RETURN 'TYPE_SFIXED64';
+        WHEN 17 THEN RETURN 'TYPE_SINT32';
+        WHEN 18 THEN RETURN 'TYPE_SINT64';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_label_from_string $$
+CREATE FUNCTION _pb_field_descriptor_proto_label_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'LABEL_OPTIONAL' THEN RETURN 1;
+        WHEN 'LABEL_REPEATED' THEN RETURN 3;
+        WHEN 'LABEL_REQUIRED' THEN RETURN 2;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_label_to_string $$
+CREATE FUNCTION _pb_field_descriptor_proto_label_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 1 THEN RETURN 'LABEL_OPTIONAL';
+        WHEN 3 THEN RETURN 'LABEL_REPEATED';
+        WHEN 2 THEN RETURN 'LABEL_REQUIRED';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_new $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_from_json $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.OneofDescriptorProto', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_from_message $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.OneofDescriptorProto', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_to_json $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.OneofDescriptorProto', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_to_message $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.OneofDescriptorProto', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_get_name $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_get_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_set_name $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_has_name $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_has_name(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_clear_name $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_clear_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_get_options $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."2"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_set_options $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_set_options(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_has_options $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_has_options(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_clear_options $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_clear_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_new $$
+CREATE FUNCTION _pb_enum_descriptor_proto_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_from_json $$
+CREATE FUNCTION _pb_enum_descriptor_proto_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.EnumDescriptorProto', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_from_message $$
+CREATE FUNCTION _pb_enum_descriptor_proto_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.EnumDescriptorProto', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_to_json $$
+CREATE FUNCTION _pb_enum_descriptor_proto_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.EnumDescriptorProto', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_to_message $$
+CREATE FUNCTION _pb_enum_descriptor_proto_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.EnumDescriptorProto', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_get_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_has_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_has_name(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_clear_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_clear_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_all_value $$
+CREATE FUNCTION _pb_enum_descriptor_proto_get_all_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."2"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_all_value $$
+CREATE FUNCTION _pb_enum_descriptor_proto_set_all_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."2"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_clear_value $$
+CREATE FUNCTION _pb_enum_descriptor_proto_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_add_value $$
+CREATE FUNCTION _pb_enum_descriptor_proto_add_value(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."2"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."2"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_count_value $$
+CREATE FUNCTION _pb_enum_descriptor_proto_count_value(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_value $$
+CREATE FUNCTION _pb_enum_descriptor_proto_get_value(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_value $$
+CREATE FUNCTION _pb_enum_descriptor_proto_set_value(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."2"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_insert_value $$
+CREATE FUNCTION _pb_enum_descriptor_proto_insert_value(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_remove_value $$
+CREATE FUNCTION _pb_enum_descriptor_proto_remove_value(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_options $$
+CREATE FUNCTION _pb_enum_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."3"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_options $$
+CREATE FUNCTION _pb_enum_descriptor_proto_set_options(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."3"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_has_options $$
+CREATE FUNCTION _pb_enum_descriptor_proto_has_options(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_clear_options $$
+CREATE FUNCTION _pb_enum_descriptor_proto_clear_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_all_reserved_range $$
+CREATE FUNCTION _pb_enum_descriptor_proto_get_all_reserved_range(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."4"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_all_reserved_range $$
+CREATE FUNCTION _pb_enum_descriptor_proto_set_all_reserved_range(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."4"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."4"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."4"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_clear_reserved_range $$
+CREATE FUNCTION _pb_enum_descriptor_proto_clear_reserved_range(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_add_reserved_range $$
+CREATE FUNCTION _pb_enum_descriptor_proto_add_reserved_range(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."4"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."4"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_count_reserved_range $$
+CREATE FUNCTION _pb_enum_descriptor_proto_count_reserved_range(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_reserved_range $$
+CREATE FUNCTION _pb_enum_descriptor_proto_get_reserved_range(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_reserved_range $$
+CREATE FUNCTION _pb_enum_descriptor_proto_set_reserved_range(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."4"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_insert_reserved_range $$
+CREATE FUNCTION _pb_enum_descriptor_proto_insert_reserved_range(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."4"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_remove_reserved_range $$
+CREATE FUNCTION _pb_enum_descriptor_proto_remove_reserved_range(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."4"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_all_reserved_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_get_all_reserved_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."5"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_all_reserved_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_set_all_reserved_name(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."5"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."5"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."5"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_clear_reserved_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_clear_reserved_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_add_reserved_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_add_reserved_name(proto_data JSON, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."5"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."5"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_count_reserved_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_count_reserved_name(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_reserved_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_get_reserved_name(proto_data JSON, index_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN '';
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN JSON_UNQUOTE(element_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_reserved_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_set_reserved_name(proto_data JSON, index_value INT, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."5"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_insert_reserved_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_insert_reserved_name(proto_data JSON, index_value INT, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."5"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_remove_reserved_name $$
+CREATE FUNCTION _pb_enum_descriptor_proto_remove_reserved_name(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."5"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_new $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_from_json $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.EnumDescriptorProto.EnumReservedRange', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_from_message $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.EnumDescriptorProto.EnumReservedRange', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_to_json $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.EnumDescriptorProto.EnumReservedRange', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_to_message $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.EnumDescriptorProto.EnumReservedRange', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_get_start $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_get_start(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_set_start $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_set_start(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_has_start $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_has_start(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_clear_start $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_clear_start(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_get_end $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_get_end(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_set_end $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_set_end(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_has_end $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_has_end(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_clear_end $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_clear_end(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_new $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_from_json $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.EnumValueDescriptorProto', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_from_message $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.EnumValueDescriptorProto', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_to_json $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.EnumValueDescriptorProto', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_to_message $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.EnumValueDescriptorProto', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_get_name $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_get_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_set_name $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_has_name $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_has_name(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_clear_name $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_clear_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_get_number $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_get_number(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_set_number $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_set_number(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_has_number $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_has_number(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_clear_number $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_clear_number(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_get_options $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."3"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_set_options $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_set_options(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."3"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_has_options $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_has_options(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_clear_options $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_clear_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_new $$
+CREATE FUNCTION _pb_service_descriptor_proto_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_from_json $$
+CREATE FUNCTION _pb_service_descriptor_proto_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.ServiceDescriptorProto', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_from_message $$
+CREATE FUNCTION _pb_service_descriptor_proto_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.ServiceDescriptorProto', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_to_json $$
+CREATE FUNCTION _pb_service_descriptor_proto_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.ServiceDescriptorProto', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_to_message $$
+CREATE FUNCTION _pb_service_descriptor_proto_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.ServiceDescriptorProto', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_get_name $$
+CREATE FUNCTION _pb_service_descriptor_proto_get_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_set_name $$
+CREATE FUNCTION _pb_service_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_has_name $$
+CREATE FUNCTION _pb_service_descriptor_proto_has_name(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_clear_name $$
+CREATE FUNCTION _pb_service_descriptor_proto_clear_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_get_all_method $$
+CREATE FUNCTION _pb_service_descriptor_proto_get_all_method(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."2"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_set_all_method $$
+CREATE FUNCTION _pb_service_descriptor_proto_set_all_method(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."2"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_clear_method $$
+CREATE FUNCTION _pb_service_descriptor_proto_clear_method(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_add_method $$
+CREATE FUNCTION _pb_service_descriptor_proto_add_method(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."2"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."2"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_count_method $$
+CREATE FUNCTION _pb_service_descriptor_proto_count_method(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_get_method $$
+CREATE FUNCTION _pb_service_descriptor_proto_get_method(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_set_method $$
+CREATE FUNCTION _pb_service_descriptor_proto_set_method(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."2"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_insert_method $$
+CREATE FUNCTION _pb_service_descriptor_proto_insert_method(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_remove_method $$
+CREATE FUNCTION _pb_service_descriptor_proto_remove_method(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_get_options $$
+CREATE FUNCTION _pb_service_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."3"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_set_options $$
+CREATE FUNCTION _pb_service_descriptor_proto_set_options(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."3"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_has_options $$
+CREATE FUNCTION _pb_service_descriptor_proto_has_options(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_clear_options $$
+CREATE FUNCTION _pb_service_descriptor_proto_clear_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_new $$
+CREATE FUNCTION _pb_method_descriptor_proto_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_from_json $$
+CREATE FUNCTION _pb_method_descriptor_proto_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.MethodDescriptorProto', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_from_message $$
+CREATE FUNCTION _pb_method_descriptor_proto_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.MethodDescriptorProto', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_to_json $$
+CREATE FUNCTION _pb_method_descriptor_proto_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.MethodDescriptorProto', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_to_message $$
+CREATE FUNCTION _pb_method_descriptor_proto_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.MethodDescriptorProto', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_name $$
+CREATE FUNCTION _pb_method_descriptor_proto_get_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_name $$
+CREATE FUNCTION _pb_method_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_has_name $$
+CREATE FUNCTION _pb_method_descriptor_proto_has_name(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_clear_name $$
+CREATE FUNCTION _pb_method_descriptor_proto_clear_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_input_type $$
+CREATE FUNCTION _pb_method_descriptor_proto_get_input_type(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_input_type $$
+CREATE FUNCTION _pb_method_descriptor_proto_set_input_type(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_has_input_type $$
+CREATE FUNCTION _pb_method_descriptor_proto_has_input_type(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_clear_input_type $$
+CREATE FUNCTION _pb_method_descriptor_proto_clear_input_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_output_type $$
+CREATE FUNCTION _pb_method_descriptor_proto_get_output_type(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_output_type $$
+CREATE FUNCTION _pb_method_descriptor_proto_set_output_type(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_has_output_type $$
+CREATE FUNCTION _pb_method_descriptor_proto_has_output_type(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_clear_output_type $$
+CREATE FUNCTION _pb_method_descriptor_proto_clear_output_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_options $$
+CREATE FUNCTION _pb_method_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."4"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_options $$
+CREATE FUNCTION _pb_method_descriptor_proto_set_options(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."4"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."4"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_has_options $$
+CREATE FUNCTION _pb_method_descriptor_proto_has_options(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_clear_options $$
+CREATE FUNCTION _pb_method_descriptor_proto_clear_options(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_client_streaming $$
+CREATE FUNCTION _pb_method_descriptor_proto_get_client_streaming(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_client_streaming $$
+CREATE FUNCTION _pb_method_descriptor_proto_set_client_streaming(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."5"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_has_client_streaming $$
+CREATE FUNCTION _pb_method_descriptor_proto_has_client_streaming(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_clear_client_streaming $$
+CREATE FUNCTION _pb_method_descriptor_proto_clear_client_streaming(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_server_streaming $$
+CREATE FUNCTION _pb_method_descriptor_proto_get_server_streaming(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_server_streaming $$
+CREATE FUNCTION _pb_method_descriptor_proto_set_server_streaming(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."6"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_has_server_streaming $$
+CREATE FUNCTION _pb_method_descriptor_proto_has_server_streaming(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_clear_server_streaming $$
+CREATE FUNCTION _pb_method_descriptor_proto_clear_server_streaming(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_new $$
+CREATE FUNCTION _pb_file_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_from_json $$
+CREATE FUNCTION _pb_file_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FileOptions', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_from_message $$
+CREATE FUNCTION _pb_file_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FileOptions', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_to_json $$
+CREATE FUNCTION _pb_file_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.FileOptions', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_to_message $$
+CREATE FUNCTION _pb_file_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.FileOptions', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_java_package $$
+CREATE FUNCTION _pb_file_options_get_java_package(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_java_package $$
+CREATE FUNCTION _pb_file_options_set_java_package(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_java_package $$
+CREATE FUNCTION _pb_file_options_has_java_package(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_java_package $$
+CREATE FUNCTION _pb_file_options_clear_java_package(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_java_outer_classname $$
+CREATE FUNCTION _pb_file_options_get_java_outer_classname(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_java_outer_classname $$
+CREATE FUNCTION _pb_file_options_set_java_outer_classname(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."8"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_java_outer_classname $$
+CREATE FUNCTION _pb_file_options_has_java_outer_classname(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."8"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_java_outer_classname $$
+CREATE FUNCTION _pb_file_options_clear_java_outer_classname(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."8"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_java_multiple_files $$
+CREATE FUNCTION _pb_file_options_get_java_multiple_files(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_java_multiple_files $$
+CREATE FUNCTION _pb_file_options_set_java_multiple_files(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."10"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_java_multiple_files $$
+CREATE FUNCTION _pb_file_options_has_java_multiple_files(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."10"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_java_multiple_files $$
+CREATE FUNCTION _pb_file_options_clear_java_multiple_files(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."10"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_java_generate_equals_and_hash $$
+CREATE FUNCTION _pb_file_options_get_java_generate_equals_and_hash(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."20"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_java_generate_equals_and_hash $$
+CREATE FUNCTION _pb_file_options_set_java_generate_equals_and_hash(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."20"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_java_generate_equals_and_hash $$
+CREATE FUNCTION _pb_file_options_has_java_generate_equals_and_hash(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."20"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_java_generate_equals_and_hash $$
+CREATE FUNCTION _pb_file_options_clear_java_generate_equals_and_hash(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."20"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_java_string_check_utf8 $$
+CREATE FUNCTION _pb_file_options_get_java_string_check_utf8(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."27"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_java_string_check_utf8 $$
+CREATE FUNCTION _pb_file_options_set_java_string_check_utf8(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."27"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_java_string_check_utf8 $$
+CREATE FUNCTION _pb_file_options_has_java_string_check_utf8(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."27"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_java_string_check_utf8 $$
+CREATE FUNCTION _pb_file_options_clear_java_string_check_utf8(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."27"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_optimize_for $$
+CREATE FUNCTION _pb_file_options_get_optimize_for(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."9"');
+    IF json_value IS NULL THEN
+        RETURN 1;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_optimize_for $$
+CREATE FUNCTION _pb_file_options_set_optimize_for(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."9"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_optimize_for $$
+CREATE FUNCTION _pb_file_options_has_optimize_for(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."9"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_optimize_for $$
+CREATE FUNCTION _pb_file_options_clear_optimize_for(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."9"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_go_package $$
+CREATE FUNCTION _pb_file_options_get_go_package(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."11"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_go_package $$
+CREATE FUNCTION _pb_file_options_set_go_package(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."11"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_go_package $$
+CREATE FUNCTION _pb_file_options_has_go_package(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."11"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_go_package $$
+CREATE FUNCTION _pb_file_options_clear_go_package(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."11"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_cc_generic_services $$
+CREATE FUNCTION _pb_file_options_get_cc_generic_services(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."16"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_cc_generic_services $$
+CREATE FUNCTION _pb_file_options_set_cc_generic_services(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."16"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_cc_generic_services $$
+CREATE FUNCTION _pb_file_options_has_cc_generic_services(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."16"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_cc_generic_services $$
+CREATE FUNCTION _pb_file_options_clear_cc_generic_services(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."16"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_java_generic_services $$
+CREATE FUNCTION _pb_file_options_get_java_generic_services(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."17"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_java_generic_services $$
+CREATE FUNCTION _pb_file_options_set_java_generic_services(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."17"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_java_generic_services $$
+CREATE FUNCTION _pb_file_options_has_java_generic_services(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."17"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_java_generic_services $$
+CREATE FUNCTION _pb_file_options_clear_java_generic_services(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."17"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_py_generic_services $$
+CREATE FUNCTION _pb_file_options_get_py_generic_services(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."18"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_py_generic_services $$
+CREATE FUNCTION _pb_file_options_set_py_generic_services(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."18"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_py_generic_services $$
+CREATE FUNCTION _pb_file_options_has_py_generic_services(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."18"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_py_generic_services $$
+CREATE FUNCTION _pb_file_options_clear_py_generic_services(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."18"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_deprecated $$
+CREATE FUNCTION _pb_file_options_get_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."23"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_deprecated $$
+CREATE FUNCTION _pb_file_options_set_deprecated(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."23"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_deprecated $$
+CREATE FUNCTION _pb_file_options_has_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."23"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_deprecated $$
+CREATE FUNCTION _pb_file_options_clear_deprecated(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."23"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_cc_enable_arenas $$
+CREATE FUNCTION _pb_file_options_get_cc_enable_arenas(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."31"');
+    IF json_value IS NULL THEN
+        RETURN 1;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_cc_enable_arenas $$
+CREATE FUNCTION _pb_file_options_set_cc_enable_arenas(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."31"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_cc_enable_arenas $$
+CREATE FUNCTION _pb_file_options_has_cc_enable_arenas(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."31"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_cc_enable_arenas $$
+CREATE FUNCTION _pb_file_options_clear_cc_enable_arenas(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."31"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_objc_class_prefix $$
+CREATE FUNCTION _pb_file_options_get_objc_class_prefix(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."36"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_objc_class_prefix $$
+CREATE FUNCTION _pb_file_options_set_objc_class_prefix(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."36"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_objc_class_prefix $$
+CREATE FUNCTION _pb_file_options_has_objc_class_prefix(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."36"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_objc_class_prefix $$
+CREATE FUNCTION _pb_file_options_clear_objc_class_prefix(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."36"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_csharp_namespace $$
+CREATE FUNCTION _pb_file_options_get_csharp_namespace(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."37"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_csharp_namespace $$
+CREATE FUNCTION _pb_file_options_set_csharp_namespace(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."37"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_csharp_namespace $$
+CREATE FUNCTION _pb_file_options_has_csharp_namespace(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."37"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_csharp_namespace $$
+CREATE FUNCTION _pb_file_options_clear_csharp_namespace(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."37"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_swift_prefix $$
+CREATE FUNCTION _pb_file_options_get_swift_prefix(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."39"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_swift_prefix $$
+CREATE FUNCTION _pb_file_options_set_swift_prefix(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."39"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_swift_prefix $$
+CREATE FUNCTION _pb_file_options_has_swift_prefix(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."39"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_swift_prefix $$
+CREATE FUNCTION _pb_file_options_clear_swift_prefix(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."39"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_php_class_prefix $$
+CREATE FUNCTION _pb_file_options_get_php_class_prefix(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."40"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_php_class_prefix $$
+CREATE FUNCTION _pb_file_options_set_php_class_prefix(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."40"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_php_class_prefix $$
+CREATE FUNCTION _pb_file_options_has_php_class_prefix(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."40"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_php_class_prefix $$
+CREATE FUNCTION _pb_file_options_clear_php_class_prefix(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."40"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_php_namespace $$
+CREATE FUNCTION _pb_file_options_get_php_namespace(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."41"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_php_namespace $$
+CREATE FUNCTION _pb_file_options_set_php_namespace(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."41"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_php_namespace $$
+CREATE FUNCTION _pb_file_options_has_php_namespace(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."41"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_php_namespace $$
+CREATE FUNCTION _pb_file_options_clear_php_namespace(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."41"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_php_metadata_namespace $$
+CREATE FUNCTION _pb_file_options_get_php_metadata_namespace(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."44"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_php_metadata_namespace $$
+CREATE FUNCTION _pb_file_options_set_php_metadata_namespace(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."44"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_php_metadata_namespace $$
+CREATE FUNCTION _pb_file_options_has_php_metadata_namespace(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."44"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_php_metadata_namespace $$
+CREATE FUNCTION _pb_file_options_clear_php_metadata_namespace(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."44"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_ruby_package $$
+CREATE FUNCTION _pb_file_options_get_ruby_package(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."45"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_ruby_package $$
+CREATE FUNCTION _pb_file_options_set_ruby_package(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."45"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_ruby_package $$
+CREATE FUNCTION _pb_file_options_has_ruby_package(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."45"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_ruby_package $$
+CREATE FUNCTION _pb_file_options_clear_ruby_package(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."45"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_features $$
+CREATE FUNCTION _pb_file_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."50"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_features $$
+CREATE FUNCTION _pb_file_options_set_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."50"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."50"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_has_features $$
+CREATE FUNCTION _pb_file_options_has_features(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."50"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_features $$
+CREATE FUNCTION _pb_file_options_clear_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."50"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_all_uninterpreted_option $$
+CREATE FUNCTION _pb_file_options_get_all_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."999"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_all_uninterpreted_option $$
+CREATE FUNCTION _pb_file_options_set_all_uninterpreted_option(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."999"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_clear_uninterpreted_option $$
+CREATE FUNCTION _pb_file_options_clear_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."999"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_add_uninterpreted_option $$
+CREATE FUNCTION _pb_file_options_add_uninterpreted_option(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_count_uninterpreted_option $$
+CREATE FUNCTION _pb_file_options_count_uninterpreted_option(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_uninterpreted_option $$
+CREATE FUNCTION _pb_file_options_get_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_uninterpreted_option $$
+CREATE FUNCTION _pb_file_options_set_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_insert_uninterpreted_option $$
+CREATE FUNCTION _pb_file_options_insert_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_remove_uninterpreted_option $$
+CREATE FUNCTION _pb_file_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_optimize_mode_from_string $$
+CREATE FUNCTION _pb_file_options_optimize_mode_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'SPEED' THEN RETURN 1;
+        WHEN 'CODE_SIZE' THEN RETURN 2;
+        WHEN 'LITE_RUNTIME' THEN RETURN 3;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_optimize_mode_to_string $$
+CREATE FUNCTION _pb_file_options_optimize_mode_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 1 THEN RETURN 'SPEED';
+        WHEN 2 THEN RETURN 'CODE_SIZE';
+        WHEN 3 THEN RETURN 'LITE_RUNTIME';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_new $$
+CREATE FUNCTION _pb_message_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_from_json $$
+CREATE FUNCTION _pb_message_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.MessageOptions', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_from_message $$
+CREATE FUNCTION _pb_message_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.MessageOptions', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_to_json $$
+CREATE FUNCTION _pb_message_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.MessageOptions', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_to_message $$
+CREATE FUNCTION _pb_message_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.MessageOptions', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_get_message_set_wire_format $$
+CREATE FUNCTION _pb_message_options_get_message_set_wire_format(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_set_message_set_wire_format $$
+CREATE FUNCTION _pb_message_options_set_message_set_wire_format(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_has_message_set_wire_format $$
+CREATE FUNCTION _pb_message_options_has_message_set_wire_format(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_clear_message_set_wire_format $$
+CREATE FUNCTION _pb_message_options_clear_message_set_wire_format(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_get_no_standard_descriptor_accessor $$
+CREATE FUNCTION _pb_message_options_get_no_standard_descriptor_accessor(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_set_no_standard_descriptor_accessor $$
+CREATE FUNCTION _pb_message_options_set_no_standard_descriptor_accessor(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_has_no_standard_descriptor_accessor $$
+CREATE FUNCTION _pb_message_options_has_no_standard_descriptor_accessor(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_clear_no_standard_descriptor_accessor $$
+CREATE FUNCTION _pb_message_options_clear_no_standard_descriptor_accessor(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_get_deprecated $$
+CREATE FUNCTION _pb_message_options_get_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_set_deprecated $$
+CREATE FUNCTION _pb_message_options_set_deprecated(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_has_deprecated $$
+CREATE FUNCTION _pb_message_options_has_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_clear_deprecated $$
+CREATE FUNCTION _pb_message_options_clear_deprecated(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_get_map_entry $$
+CREATE FUNCTION _pb_message_options_get_map_entry(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_set_map_entry $$
+CREATE FUNCTION _pb_message_options_set_map_entry(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."7"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_has_map_entry $$
+CREATE FUNCTION _pb_message_options_has_map_entry(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_clear_map_entry $$
+CREATE FUNCTION _pb_message_options_clear_map_entry(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_get_deprecated_legacy_json_field_conflicts $$
+CREATE FUNCTION _pb_message_options_get_deprecated_legacy_json_field_conflicts(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."11"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_set_deprecated_legacy_json_field_conflicts $$
+CREATE FUNCTION _pb_message_options_set_deprecated_legacy_json_field_conflicts(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."11"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_has_deprecated_legacy_json_field_conflicts $$
+CREATE FUNCTION _pb_message_options_has_deprecated_legacy_json_field_conflicts(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."11"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_clear_deprecated_legacy_json_field_conflicts $$
+CREATE FUNCTION _pb_message_options_clear_deprecated_legacy_json_field_conflicts(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."11"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_get_features $$
+CREATE FUNCTION _pb_message_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."12"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_set_features $$
+CREATE FUNCTION _pb_message_options_set_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."12"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."12"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_has_features $$
+CREATE FUNCTION _pb_message_options_has_features(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."12"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_clear_features $$
+CREATE FUNCTION _pb_message_options_clear_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."12"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_get_all_uninterpreted_option $$
+CREATE FUNCTION _pb_message_options_get_all_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."999"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_set_all_uninterpreted_option $$
+CREATE FUNCTION _pb_message_options_set_all_uninterpreted_option(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."999"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_clear_uninterpreted_option $$
+CREATE FUNCTION _pb_message_options_clear_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."999"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_add_uninterpreted_option $$
+CREATE FUNCTION _pb_message_options_add_uninterpreted_option(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_count_uninterpreted_option $$
+CREATE FUNCTION _pb_message_options_count_uninterpreted_option(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_get_uninterpreted_option $$
+CREATE FUNCTION _pb_message_options_get_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_set_uninterpreted_option $$
+CREATE FUNCTION _pb_message_options_set_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_insert_uninterpreted_option $$
+CREATE FUNCTION _pb_message_options_insert_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_remove_uninterpreted_option $$
+CREATE FUNCTION _pb_message_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_new $$
+CREATE FUNCTION _pb_field_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_from_json $$
+CREATE FUNCTION _pb_field_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FieldOptions', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_from_message $$
+CREATE FUNCTION _pb_field_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FieldOptions', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_to_json $$
+CREATE FUNCTION _pb_field_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.FieldOptions', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_to_message $$
+CREATE FUNCTION _pb_field_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.FieldOptions', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_ctype $$
+CREATE FUNCTION _pb_field_options_get_ctype(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_ctype $$
+CREATE FUNCTION _pb_field_options_set_ctype(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_has_ctype $$
+CREATE FUNCTION _pb_field_options_has_ctype(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_ctype $$
+CREATE FUNCTION _pb_field_options_clear_ctype(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_packed $$
+CREATE FUNCTION _pb_field_options_get_packed(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_packed $$
+CREATE FUNCTION _pb_field_options_set_packed(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_has_packed $$
+CREATE FUNCTION _pb_field_options_has_packed(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_packed $$
+CREATE FUNCTION _pb_field_options_clear_packed(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_jstype $$
+CREATE FUNCTION _pb_field_options_get_jstype(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_jstype $$
+CREATE FUNCTION _pb_field_options_set_jstype(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."6"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_has_jstype $$
+CREATE FUNCTION _pb_field_options_has_jstype(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_jstype $$
+CREATE FUNCTION _pb_field_options_clear_jstype(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_lazy $$
+CREATE FUNCTION _pb_field_options_get_lazy(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_lazy $$
+CREATE FUNCTION _pb_field_options_set_lazy(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."5"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_has_lazy $$
+CREATE FUNCTION _pb_field_options_has_lazy(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_lazy $$
+CREATE FUNCTION _pb_field_options_clear_lazy(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_unverified_lazy $$
+CREATE FUNCTION _pb_field_options_get_unverified_lazy(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."15"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_unverified_lazy $$
+CREATE FUNCTION _pb_field_options_set_unverified_lazy(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."15"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_has_unverified_lazy $$
+CREATE FUNCTION _pb_field_options_has_unverified_lazy(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."15"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_unverified_lazy $$
+CREATE FUNCTION _pb_field_options_clear_unverified_lazy(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."15"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_deprecated $$
+CREATE FUNCTION _pb_field_options_get_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_deprecated $$
+CREATE FUNCTION _pb_field_options_set_deprecated(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_has_deprecated $$
+CREATE FUNCTION _pb_field_options_has_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_deprecated $$
+CREATE FUNCTION _pb_field_options_clear_deprecated(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_weak $$
+CREATE FUNCTION _pb_field_options_get_weak(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_weak $$
+CREATE FUNCTION _pb_field_options_set_weak(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."10"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_has_weak $$
+CREATE FUNCTION _pb_field_options_has_weak(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."10"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_weak $$
+CREATE FUNCTION _pb_field_options_clear_weak(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."10"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_debug_redact $$
+CREATE FUNCTION _pb_field_options_get_debug_redact(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."16"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_debug_redact $$
+CREATE FUNCTION _pb_field_options_set_debug_redact(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."16"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_has_debug_redact $$
+CREATE FUNCTION _pb_field_options_has_debug_redact(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."16"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_debug_redact $$
+CREATE FUNCTION _pb_field_options_clear_debug_redact(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."16"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_retention $$
+CREATE FUNCTION _pb_field_options_get_retention(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."17"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_retention $$
+CREATE FUNCTION _pb_field_options_set_retention(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."17"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_has_retention $$
+CREATE FUNCTION _pb_field_options_has_retention(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."17"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_retention $$
+CREATE FUNCTION _pb_field_options_clear_retention(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."17"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_all_targets $$
+CREATE FUNCTION _pb_field_options_get_all_targets(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."19"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_all_targets $$
+CREATE FUNCTION _pb_field_options_set_all_targets(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."19"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."19"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."19"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_targets $$
+CREATE FUNCTION _pb_field_options_clear_targets(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."19"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_add_targets $$
+CREATE FUNCTION _pb_field_options_add_targets(proto_data JSON, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."19"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."19"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_count_targets $$
+CREATE FUNCTION _pb_field_options_count_targets(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."19"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_targets $$
+CREATE FUNCTION _pb_field_options_get_targets(proto_data JSON, index_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."19"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN 0;
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_targets $$
+CREATE FUNCTION _pb_field_options_set_targets(proto_data JSON, index_value INT, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."19"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."19"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_insert_targets $$
+CREATE FUNCTION _pb_field_options_insert_targets(proto_data JSON, index_value INT, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."19"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."19"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_remove_targets $$
+CREATE FUNCTION _pb_field_options_remove_targets(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."19"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."19"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_all_edition_defaults $$
+CREATE FUNCTION _pb_field_options_get_all_edition_defaults(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."20"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_all_edition_defaults $$
+CREATE FUNCTION _pb_field_options_set_all_edition_defaults(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."20"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."20"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."20"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_edition_defaults $$
+CREATE FUNCTION _pb_field_options_clear_edition_defaults(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."20"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_add_edition_defaults $$
+CREATE FUNCTION _pb_field_options_add_edition_defaults(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."20"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."20"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_count_edition_defaults $$
+CREATE FUNCTION _pb_field_options_count_edition_defaults(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."20"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_edition_defaults $$
+CREATE FUNCTION _pb_field_options_get_edition_defaults(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."20"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_edition_defaults $$
+CREATE FUNCTION _pb_field_options_set_edition_defaults(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."20"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."20"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_insert_edition_defaults $$
+CREATE FUNCTION _pb_field_options_insert_edition_defaults(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."20"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."20"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_remove_edition_defaults $$
+CREATE FUNCTION _pb_field_options_remove_edition_defaults(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."20"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."20"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_features $$
+CREATE FUNCTION _pb_field_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."21"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_features $$
+CREATE FUNCTION _pb_field_options_set_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."21"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."21"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_has_features $$
+CREATE FUNCTION _pb_field_options_has_features(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."21"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_features $$
+CREATE FUNCTION _pb_field_options_clear_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."21"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_feature_support $$
+CREATE FUNCTION _pb_field_options_get_feature_support(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."22"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_feature_support $$
+CREATE FUNCTION _pb_field_options_set_feature_support(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."22"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."22"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_has_feature_support $$
+CREATE FUNCTION _pb_field_options_has_feature_support(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."22"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_feature_support $$
+CREATE FUNCTION _pb_field_options_clear_feature_support(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."22"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_all_uninterpreted_option $$
+CREATE FUNCTION _pb_field_options_get_all_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."999"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_all_uninterpreted_option $$
+CREATE FUNCTION _pb_field_options_set_all_uninterpreted_option(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."999"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_clear_uninterpreted_option $$
+CREATE FUNCTION _pb_field_options_clear_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."999"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_add_uninterpreted_option $$
+CREATE FUNCTION _pb_field_options_add_uninterpreted_option(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_count_uninterpreted_option $$
+CREATE FUNCTION _pb_field_options_count_uninterpreted_option(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_uninterpreted_option $$
+CREATE FUNCTION _pb_field_options_get_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_uninterpreted_option $$
+CREATE FUNCTION _pb_field_options_set_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_insert_uninterpreted_option $$
+CREATE FUNCTION _pb_field_options_insert_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_remove_uninterpreted_option $$
+CREATE FUNCTION _pb_field_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_new $$
+CREATE FUNCTION _pb_field_options_edition_default_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_from_json $$
+CREATE FUNCTION _pb_field_options_edition_default_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FieldOptions.EditionDefault', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_from_message $$
+CREATE FUNCTION _pb_field_options_edition_default_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FieldOptions.EditionDefault', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_to_json $$
+CREATE FUNCTION _pb_field_options_edition_default_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.FieldOptions.EditionDefault', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_to_message $$
+CREATE FUNCTION _pb_field_options_edition_default_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.FieldOptions.EditionDefault', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_get_edition $$
+CREATE FUNCTION _pb_field_options_edition_default_get_edition(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_set_edition $$
+CREATE FUNCTION _pb_field_options_edition_default_set_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_has_edition $$
+CREATE FUNCTION _pb_field_options_edition_default_has_edition(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_clear_edition $$
+CREATE FUNCTION _pb_field_options_edition_default_clear_edition(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_get_value $$
+CREATE FUNCTION _pb_field_options_edition_default_get_value(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_set_value $$
+CREATE FUNCTION _pb_field_options_edition_default_set_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_has_value $$
+CREATE FUNCTION _pb_field_options_edition_default_has_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_clear_value $$
+CREATE FUNCTION _pb_field_options_edition_default_clear_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_new $$
+CREATE FUNCTION _pb_field_options_feature_support_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_from_json $$
+CREATE FUNCTION _pb_field_options_feature_support_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FieldOptions.FeatureSupport', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_from_message $$
+CREATE FUNCTION _pb_field_options_feature_support_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FieldOptions.FeatureSupport', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_to_json $$
+CREATE FUNCTION _pb_field_options_feature_support_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.FieldOptions.FeatureSupport', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_to_message $$
+CREATE FUNCTION _pb_field_options_feature_support_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.FieldOptions.FeatureSupport', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_introduced $$
+CREATE FUNCTION _pb_field_options_feature_support_get_edition_introduced(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_introduced $$
+CREATE FUNCTION _pb_field_options_feature_support_set_edition_introduced(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_has_edition_introduced $$
+CREATE FUNCTION _pb_field_options_feature_support_has_edition_introduced(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_clear_edition_introduced $$
+CREATE FUNCTION _pb_field_options_feature_support_clear_edition_introduced(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_deprecated $$
+CREATE FUNCTION _pb_field_options_feature_support_get_edition_deprecated(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_deprecated $$
+CREATE FUNCTION _pb_field_options_feature_support_set_edition_deprecated(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_has_edition_deprecated $$
+CREATE FUNCTION _pb_field_options_feature_support_has_edition_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_clear_edition_deprecated $$
+CREATE FUNCTION _pb_field_options_feature_support_clear_edition_deprecated(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_deprecation_warning $$
+CREATE FUNCTION _pb_field_options_feature_support_get_deprecation_warning(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_deprecation_warning $$
+CREATE FUNCTION _pb_field_options_feature_support_set_deprecation_warning(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_has_deprecation_warning $$
+CREATE FUNCTION _pb_field_options_feature_support_has_deprecation_warning(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_clear_deprecation_warning $$
+CREATE FUNCTION _pb_field_options_feature_support_clear_deprecation_warning(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_removed $$
+CREATE FUNCTION _pb_field_options_feature_support_get_edition_removed(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_removed $$
+CREATE FUNCTION _pb_field_options_feature_support_set_edition_removed(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."4"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_has_edition_removed $$
+CREATE FUNCTION _pb_field_options_feature_support_has_edition_removed(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_clear_edition_removed $$
+CREATE FUNCTION _pb_field_options_feature_support_clear_edition_removed(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_c_type_from_string $$
+CREATE FUNCTION _pb_field_options_c_type_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'STRING' THEN RETURN 0;
+        WHEN 'CORD' THEN RETURN 1;
+        WHEN 'STRING_PIECE' THEN RETURN 2;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_c_type_to_string $$
+CREATE FUNCTION _pb_field_options_c_type_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'STRING';
+        WHEN 1 THEN RETURN 'CORD';
+        WHEN 2 THEN RETURN 'STRING_PIECE';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_j_s_type_from_string $$
+CREATE FUNCTION _pb_field_options_j_s_type_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'JS_NORMAL' THEN RETURN 0;
+        WHEN 'JS_STRING' THEN RETURN 1;
+        WHEN 'JS_NUMBER' THEN RETURN 2;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_j_s_type_to_string $$
+CREATE FUNCTION _pb_field_options_j_s_type_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'JS_NORMAL';
+        WHEN 1 THEN RETURN 'JS_STRING';
+        WHEN 2 THEN RETURN 'JS_NUMBER';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_option_retention_from_string $$
+CREATE FUNCTION _pb_field_options_option_retention_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'RETENTION_UNKNOWN' THEN RETURN 0;
+        WHEN 'RETENTION_RUNTIME' THEN RETURN 1;
+        WHEN 'RETENTION_SOURCE' THEN RETURN 2;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_option_retention_to_string $$
+CREATE FUNCTION _pb_field_options_option_retention_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'RETENTION_UNKNOWN';
+        WHEN 1 THEN RETURN 'RETENTION_RUNTIME';
+        WHEN 2 THEN RETURN 'RETENTION_SOURCE';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_option_target_type_from_string $$
+CREATE FUNCTION _pb_field_options_option_target_type_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'TARGET_TYPE_UNKNOWN' THEN RETURN 0;
+        WHEN 'TARGET_TYPE_FILE' THEN RETURN 1;
+        WHEN 'TARGET_TYPE_EXTENSION_RANGE' THEN RETURN 2;
+        WHEN 'TARGET_TYPE_MESSAGE' THEN RETURN 3;
+        WHEN 'TARGET_TYPE_FIELD' THEN RETURN 4;
+        WHEN 'TARGET_TYPE_ONEOF' THEN RETURN 5;
+        WHEN 'TARGET_TYPE_ENUM' THEN RETURN 6;
+        WHEN 'TARGET_TYPE_ENUM_ENTRY' THEN RETURN 7;
+        WHEN 'TARGET_TYPE_SERVICE' THEN RETURN 8;
+        WHEN 'TARGET_TYPE_METHOD' THEN RETURN 9;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_option_target_type_to_string $$
+CREATE FUNCTION _pb_field_options_option_target_type_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'TARGET_TYPE_UNKNOWN';
+        WHEN 1 THEN RETURN 'TARGET_TYPE_FILE';
+        WHEN 2 THEN RETURN 'TARGET_TYPE_EXTENSION_RANGE';
+        WHEN 3 THEN RETURN 'TARGET_TYPE_MESSAGE';
+        WHEN 4 THEN RETURN 'TARGET_TYPE_FIELD';
+        WHEN 5 THEN RETURN 'TARGET_TYPE_ONEOF';
+        WHEN 6 THEN RETURN 'TARGET_TYPE_ENUM';
+        WHEN 7 THEN RETURN 'TARGET_TYPE_ENUM_ENTRY';
+        WHEN 8 THEN RETURN 'TARGET_TYPE_SERVICE';
+        WHEN 9 THEN RETURN 'TARGET_TYPE_METHOD';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_new $$
+CREATE FUNCTION _pb_oneof_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_from_json $$
+CREATE FUNCTION _pb_oneof_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.OneofOptions', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_from_message $$
+CREATE FUNCTION _pb_oneof_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.OneofOptions', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_to_json $$
+CREATE FUNCTION _pb_oneof_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.OneofOptions', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_to_message $$
+CREATE FUNCTION _pb_oneof_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.OneofOptions', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_get_features $$
+CREATE FUNCTION _pb_oneof_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_set_features $$
+CREATE FUNCTION _pb_oneof_options_set_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_has_features $$
+CREATE FUNCTION _pb_oneof_options_has_features(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_clear_features $$
+CREATE FUNCTION _pb_oneof_options_clear_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_get_all_uninterpreted_option $$
+CREATE FUNCTION _pb_oneof_options_get_all_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."999"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_set_all_uninterpreted_option $$
+CREATE FUNCTION _pb_oneof_options_set_all_uninterpreted_option(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."999"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_clear_uninterpreted_option $$
+CREATE FUNCTION _pb_oneof_options_clear_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."999"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_add_uninterpreted_option $$
+CREATE FUNCTION _pb_oneof_options_add_uninterpreted_option(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_count_uninterpreted_option $$
+CREATE FUNCTION _pb_oneof_options_count_uninterpreted_option(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_get_uninterpreted_option $$
+CREATE FUNCTION _pb_oneof_options_get_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_set_uninterpreted_option $$
+CREATE FUNCTION _pb_oneof_options_set_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_insert_uninterpreted_option $$
+CREATE FUNCTION _pb_oneof_options_insert_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_remove_uninterpreted_option $$
+CREATE FUNCTION _pb_oneof_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_new $$
+CREATE FUNCTION _pb_enum_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_from_json $$
+CREATE FUNCTION _pb_enum_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.EnumOptions', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_from_message $$
+CREATE FUNCTION _pb_enum_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.EnumOptions', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_to_json $$
+CREATE FUNCTION _pb_enum_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.EnumOptions', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_to_message $$
+CREATE FUNCTION _pb_enum_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.EnumOptions', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_get_allow_alias $$
+CREATE FUNCTION _pb_enum_options_get_allow_alias(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_set_allow_alias $$
+CREATE FUNCTION _pb_enum_options_set_allow_alias(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_has_allow_alias $$
+CREATE FUNCTION _pb_enum_options_has_allow_alias(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_clear_allow_alias $$
+CREATE FUNCTION _pb_enum_options_clear_allow_alias(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_get_deprecated $$
+CREATE FUNCTION _pb_enum_options_get_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_set_deprecated $$
+CREATE FUNCTION _pb_enum_options_set_deprecated(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_has_deprecated $$
+CREATE FUNCTION _pb_enum_options_has_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_clear_deprecated $$
+CREATE FUNCTION _pb_enum_options_clear_deprecated(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_get_deprecated_legacy_json_field_conflicts $$
+CREATE FUNCTION _pb_enum_options_get_deprecated_legacy_json_field_conflicts(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_set_deprecated_legacy_json_field_conflicts $$
+CREATE FUNCTION _pb_enum_options_set_deprecated_legacy_json_field_conflicts(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."6"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_has_deprecated_legacy_json_field_conflicts $$
+CREATE FUNCTION _pb_enum_options_has_deprecated_legacy_json_field_conflicts(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_clear_deprecated_legacy_json_field_conflicts $$
+CREATE FUNCTION _pb_enum_options_clear_deprecated_legacy_json_field_conflicts(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_get_features $$
+CREATE FUNCTION _pb_enum_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."7"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_set_features $$
+CREATE FUNCTION _pb_enum_options_set_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."7"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."7"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_has_features $$
+CREATE FUNCTION _pb_enum_options_has_features(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_clear_features $$
+CREATE FUNCTION _pb_enum_options_clear_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_get_all_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_options_get_all_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."999"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_set_all_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_options_set_all_uninterpreted_option(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."999"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_clear_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_options_clear_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."999"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_add_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_options_add_uninterpreted_option(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_count_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_options_count_uninterpreted_option(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_get_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_options_get_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_set_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_options_set_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_insert_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_options_insert_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_remove_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_new $$
+CREATE FUNCTION _pb_enum_value_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_from_json $$
+CREATE FUNCTION _pb_enum_value_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.EnumValueOptions', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_from_message $$
+CREATE FUNCTION _pb_enum_value_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.EnumValueOptions', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_to_json $$
+CREATE FUNCTION _pb_enum_value_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.EnumValueOptions', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_to_message $$
+CREATE FUNCTION _pb_enum_value_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.EnumValueOptions', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_get_deprecated $$
+CREATE FUNCTION _pb_enum_value_options_get_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_set_deprecated $$
+CREATE FUNCTION _pb_enum_value_options_set_deprecated(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_has_deprecated $$
+CREATE FUNCTION _pb_enum_value_options_has_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_clear_deprecated $$
+CREATE FUNCTION _pb_enum_value_options_clear_deprecated(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_get_features $$
+CREATE FUNCTION _pb_enum_value_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."2"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_set_features $$
+CREATE FUNCTION _pb_enum_value_options_set_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_has_features $$
+CREATE FUNCTION _pb_enum_value_options_has_features(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_clear_features $$
+CREATE FUNCTION _pb_enum_value_options_clear_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_get_debug_redact $$
+CREATE FUNCTION _pb_enum_value_options_get_debug_redact(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_set_debug_redact $$
+CREATE FUNCTION _pb_enum_value_options_set_debug_redact(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_has_debug_redact $$
+CREATE FUNCTION _pb_enum_value_options_has_debug_redact(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_clear_debug_redact $$
+CREATE FUNCTION _pb_enum_value_options_clear_debug_redact(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_get_feature_support $$
+CREATE FUNCTION _pb_enum_value_options_get_feature_support(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."4"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_set_feature_support $$
+CREATE FUNCTION _pb_enum_value_options_set_feature_support(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."4"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."4"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_has_feature_support $$
+CREATE FUNCTION _pb_enum_value_options_has_feature_support(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_clear_feature_support $$
+CREATE FUNCTION _pb_enum_value_options_clear_feature_support(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_get_all_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_value_options_get_all_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."999"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_set_all_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_value_options_set_all_uninterpreted_option(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."999"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_clear_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_value_options_clear_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."999"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_add_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_value_options_add_uninterpreted_option(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_count_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_value_options_count_uninterpreted_option(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_get_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_value_options_get_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_set_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_value_options_set_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_insert_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_value_options_insert_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_remove_uninterpreted_option $$
+CREATE FUNCTION _pb_enum_value_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_new $$
+CREATE FUNCTION _pb_service_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_from_json $$
+CREATE FUNCTION _pb_service_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.ServiceOptions', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_from_message $$
+CREATE FUNCTION _pb_service_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.ServiceOptions', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_to_json $$
+CREATE FUNCTION _pb_service_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.ServiceOptions', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_to_message $$
+CREATE FUNCTION _pb_service_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.ServiceOptions', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_get_features $$
+CREATE FUNCTION _pb_service_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."34"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_set_features $$
+CREATE FUNCTION _pb_service_options_set_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."34"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."34"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_has_features $$
+CREATE FUNCTION _pb_service_options_has_features(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."34"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_clear_features $$
+CREATE FUNCTION _pb_service_options_clear_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."34"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_get_deprecated $$
+CREATE FUNCTION _pb_service_options_get_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."33"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_set_deprecated $$
+CREATE FUNCTION _pb_service_options_set_deprecated(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."33"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_has_deprecated $$
+CREATE FUNCTION _pb_service_options_has_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."33"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_clear_deprecated $$
+CREATE FUNCTION _pb_service_options_clear_deprecated(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."33"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_get_all_uninterpreted_option $$
+CREATE FUNCTION _pb_service_options_get_all_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."999"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_set_all_uninterpreted_option $$
+CREATE FUNCTION _pb_service_options_set_all_uninterpreted_option(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."999"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_clear_uninterpreted_option $$
+CREATE FUNCTION _pb_service_options_clear_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."999"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_add_uninterpreted_option $$
+CREATE FUNCTION _pb_service_options_add_uninterpreted_option(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_count_uninterpreted_option $$
+CREATE FUNCTION _pb_service_options_count_uninterpreted_option(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_get_uninterpreted_option $$
+CREATE FUNCTION _pb_service_options_get_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_set_uninterpreted_option $$
+CREATE FUNCTION _pb_service_options_set_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_insert_uninterpreted_option $$
+CREATE FUNCTION _pb_service_options_insert_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_remove_uninterpreted_option $$
+CREATE FUNCTION _pb_service_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_new $$
+CREATE FUNCTION _pb_method_options_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_from_json $$
+CREATE FUNCTION _pb_method_options_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.MethodOptions', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_from_message $$
+CREATE FUNCTION _pb_method_options_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.MethodOptions', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_to_json $$
+CREATE FUNCTION _pb_method_options_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.MethodOptions', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_to_message $$
+CREATE FUNCTION _pb_method_options_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.MethodOptions', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_get_deprecated $$
+CREATE FUNCTION _pb_method_options_get_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."33"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_set_deprecated $$
+CREATE FUNCTION _pb_method_options_set_deprecated(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."33"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_has_deprecated $$
+CREATE FUNCTION _pb_method_options_has_deprecated(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."33"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_clear_deprecated $$
+CREATE FUNCTION _pb_method_options_clear_deprecated(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."33"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_get_idempotency_level $$
+CREATE FUNCTION _pb_method_options_get_idempotency_level(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."34"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_set_idempotency_level $$
+CREATE FUNCTION _pb_method_options_set_idempotency_level(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."34"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_has_idempotency_level $$
+CREATE FUNCTION _pb_method_options_has_idempotency_level(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."34"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_clear_idempotency_level $$
+CREATE FUNCTION _pb_method_options_clear_idempotency_level(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."34"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_get_features $$
+CREATE FUNCTION _pb_method_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."35"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_set_features $$
+CREATE FUNCTION _pb_method_options_set_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."35"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."35"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_has_features $$
+CREATE FUNCTION _pb_method_options_has_features(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."35"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_clear_features $$
+CREATE FUNCTION _pb_method_options_clear_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."35"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_get_all_uninterpreted_option $$
+CREATE FUNCTION _pb_method_options_get_all_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."999"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_set_all_uninterpreted_option $$
+CREATE FUNCTION _pb_method_options_set_all_uninterpreted_option(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."999"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."999"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_clear_uninterpreted_option $$
+CREATE FUNCTION _pb_method_options_clear_uninterpreted_option(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."999"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_add_uninterpreted_option $$
+CREATE FUNCTION _pb_method_options_add_uninterpreted_option(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."999"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."999"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_count_uninterpreted_option $$
+CREATE FUNCTION _pb_method_options_count_uninterpreted_option(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_get_uninterpreted_option $$
+CREATE FUNCTION _pb_method_options_get_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_set_uninterpreted_option $$
+CREATE FUNCTION _pb_method_options_set_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_insert_uninterpreted_option $$
+CREATE FUNCTION _pb_method_options_insert_uninterpreted_option(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_remove_uninterpreted_option $$
+CREATE FUNCTION _pb_method_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."999"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_idempotency_level_from_string $$
+CREATE FUNCTION _pb_method_options_idempotency_level_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'IDEMPOTENCY_UNKNOWN' THEN RETURN 0;
+        WHEN 'NO_SIDE_EFFECTS' THEN RETURN 1;
+        WHEN 'IDEMPOTENT' THEN RETURN 2;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_idempotency_level_to_string $$
+CREATE FUNCTION _pb_method_options_idempotency_level_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'IDEMPOTENCY_UNKNOWN';
+        WHEN 1 THEN RETURN 'NO_SIDE_EFFECTS';
+        WHEN 2 THEN RETURN 'IDEMPOTENT';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_new $$
+CREATE FUNCTION _pb_uninterpreted_option_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_from_json $$
+CREATE FUNCTION _pb_uninterpreted_option_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.UninterpretedOption', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_from_message $$
+CREATE FUNCTION _pb_uninterpreted_option_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.UninterpretedOption', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_to_json $$
+CREATE FUNCTION _pb_uninterpreted_option_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.UninterpretedOption', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_to_message $$
+CREATE FUNCTION _pb_uninterpreted_option_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.UninterpretedOption', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_all_name $$
+CREATE FUNCTION _pb_uninterpreted_option_get_all_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."2"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_all_name $$
+CREATE FUNCTION _pb_uninterpreted_option_set_all_name(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."2"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_clear_name $$
+CREATE FUNCTION _pb_uninterpreted_option_clear_name(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_add_name $$
+CREATE FUNCTION _pb_uninterpreted_option_add_name(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."2"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."2"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_count_name $$
+CREATE FUNCTION _pb_uninterpreted_option_count_name(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_name $$
+CREATE FUNCTION _pb_uninterpreted_option_get_name(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_name $$
+CREATE FUNCTION _pb_uninterpreted_option_set_name(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."2"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_insert_name $$
+CREATE FUNCTION _pb_uninterpreted_option_insert_name(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_remove_name $$
+CREATE FUNCTION _pb_uninterpreted_option_remove_name(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_identifier_value $$
+CREATE FUNCTION _pb_uninterpreted_option_get_identifier_value(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_identifier_value $$
+CREATE FUNCTION _pb_uninterpreted_option_set_identifier_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_has_identifier_value $$
+CREATE FUNCTION _pb_uninterpreted_option_has_identifier_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_clear_identifier_value $$
+CREATE FUNCTION _pb_uninterpreted_option_clear_identifier_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_positive_int_value $$
+CREATE FUNCTION _pb_uninterpreted_option_get_positive_int_value(proto_data JSON) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_unsigned_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_positive_int_value $$
+CREATE FUNCTION _pb_uninterpreted_option_set_positive_int_value(proto_data JSON, field_value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."4"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_has_positive_int_value $$
+CREATE FUNCTION _pb_uninterpreted_option_has_positive_int_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_clear_positive_int_value $$
+CREATE FUNCTION _pb_uninterpreted_option_clear_positive_int_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_negative_int_value $$
+CREATE FUNCTION _pb_uninterpreted_option_get_negative_int_value(proto_data JSON) RETURNS BIGINT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_negative_int_value $$
+CREATE FUNCTION _pb_uninterpreted_option_set_negative_int_value(proto_data JSON, field_value BIGINT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."5"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_has_negative_int_value $$
+CREATE FUNCTION _pb_uninterpreted_option_has_negative_int_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_clear_negative_int_value $$
+CREATE FUNCTION _pb_uninterpreted_option_clear_negative_int_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_double_value $$
+CREATE FUNCTION _pb_uninterpreted_option_get_double_value(proto_data JSON) RETURNS DOUBLE DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NULL THEN
+        RETURN 0.0;
+    END IF;
+    RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_double_value $$
+CREATE FUNCTION _pb_uninterpreted_option_set_double_value(proto_data JSON, field_value DOUBLE) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."6"', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(field_value)));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_has_double_value $$
+CREATE FUNCTION _pb_uninterpreted_option_has_double_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_clear_double_value $$
+CREATE FUNCTION _pb_uninterpreted_option_clear_double_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_string_value $$
+CREATE FUNCTION _pb_uninterpreted_option_get_string_value(proto_data JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF json_value IS NULL THEN
+        RETURN X'';
+    END IF;
+    RETURN _pb_json_parse_bytes(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_string_value $$
+CREATE FUNCTION _pb_uninterpreted_option_set_string_value(proto_data JSON, field_value LONGBLOB) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."7"', _pb_to_base64(field_value));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_has_string_value $$
+CREATE FUNCTION _pb_uninterpreted_option_has_string_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_clear_string_value $$
+CREATE FUNCTION _pb_uninterpreted_option_clear_string_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_aggregate_value $$
+CREATE FUNCTION _pb_uninterpreted_option_get_aggregate_value(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_aggregate_value $$
+CREATE FUNCTION _pb_uninterpreted_option_set_aggregate_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."8"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_has_aggregate_value $$
+CREATE FUNCTION _pb_uninterpreted_option_has_aggregate_value(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."8"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_clear_aggregate_value $$
+CREATE FUNCTION _pb_uninterpreted_option_clear_aggregate_value(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."8"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_new $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_from_json $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.UninterpretedOption.NamePart', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_from_message $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.UninterpretedOption.NamePart', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_to_json $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.UninterpretedOption.NamePart', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_to_message $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.UninterpretedOption.NamePart', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_get_name_part $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_get_name_part(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_set_name_part $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_set_name_part(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_has_name_part $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_has_name_part(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_clear_name_part $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_clear_name_part(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_get_is_extension $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_get_is_extension(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_set_is_extension $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_set_is_extension(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', CAST((field_value IS TRUE) AS JSON));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_has_is_extension $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_has_is_extension(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_clear_is_extension $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_clear_is_extension(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_new $$
+CREATE FUNCTION _pb_feature_set_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_from_json $$
+CREATE FUNCTION _pb_feature_set_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FeatureSet', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_from_message $$
+CREATE FUNCTION _pb_feature_set_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FeatureSet', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_to_json $$
+CREATE FUNCTION _pb_feature_set_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.FeatureSet', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_to_message $$
+CREATE FUNCTION _pb_feature_set_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.FeatureSet', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_field_presence $$
+CREATE FUNCTION _pb_feature_set_get_field_presence(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_field_presence $$
+CREATE FUNCTION _pb_feature_set_set_field_presence(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."1"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_has_field_presence $$
+CREATE FUNCTION _pb_feature_set_has_field_presence(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_clear_field_presence $$
+CREATE FUNCTION _pb_feature_set_clear_field_presence(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_enum_type $$
+CREATE FUNCTION _pb_feature_set_get_enum_type(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_enum_type $$
+CREATE FUNCTION _pb_feature_set_set_enum_type(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_has_enum_type $$
+CREATE FUNCTION _pb_feature_set_has_enum_type(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_clear_enum_type $$
+CREATE FUNCTION _pb_feature_set_clear_enum_type(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_repeated_field_encoding $$
+CREATE FUNCTION _pb_feature_set_get_repeated_field_encoding(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_repeated_field_encoding $$
+CREATE FUNCTION _pb_feature_set_set_repeated_field_encoding(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_has_repeated_field_encoding $$
+CREATE FUNCTION _pb_feature_set_has_repeated_field_encoding(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_clear_repeated_field_encoding $$
+CREATE FUNCTION _pb_feature_set_clear_repeated_field_encoding(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_utf8_validation $$
+CREATE FUNCTION _pb_feature_set_get_utf8_validation(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_utf8_validation $$
+CREATE FUNCTION _pb_feature_set_set_utf8_validation(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."4"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_has_utf8_validation $$
+CREATE FUNCTION _pb_feature_set_has_utf8_validation(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_clear_utf8_validation $$
+CREATE FUNCTION _pb_feature_set_clear_utf8_validation(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_message_encoding $$
+CREATE FUNCTION _pb_feature_set_get_message_encoding(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_message_encoding $$
+CREATE FUNCTION _pb_feature_set_set_message_encoding(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."5"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_has_message_encoding $$
+CREATE FUNCTION _pb_feature_set_has_message_encoding(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_clear_message_encoding $$
+CREATE FUNCTION _pb_feature_set_clear_message_encoding(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_json_format $$
+CREATE FUNCTION _pb_feature_set_get_json_format(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_json_format $$
+CREATE FUNCTION _pb_feature_set_set_json_format(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."6"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_has_json_format $$
+CREATE FUNCTION _pb_feature_set_has_json_format(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_clear_json_format $$
+CREATE FUNCTION _pb_feature_set_clear_json_format(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_enforce_naming_style $$
+CREATE FUNCTION _pb_feature_set_get_enforce_naming_style(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_enforce_naming_style $$
+CREATE FUNCTION _pb_feature_set_set_enforce_naming_style(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."7"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_has_enforce_naming_style $$
+CREATE FUNCTION _pb_feature_set_has_enforce_naming_style(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_clear_enforce_naming_style $$
+CREATE FUNCTION _pb_feature_set_clear_enforce_naming_style(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."7"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_field_presence_from_string $$
+CREATE FUNCTION _pb_feature_set_field_presence_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'FIELD_PRESENCE_UNKNOWN' THEN RETURN 0;
+        WHEN 'EXPLICIT' THEN RETURN 1;
+        WHEN 'IMPLICIT' THEN RETURN 2;
+        WHEN 'LEGACY_REQUIRED' THEN RETURN 3;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_field_presence_to_string $$
+CREATE FUNCTION _pb_feature_set_field_presence_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'FIELD_PRESENCE_UNKNOWN';
+        WHEN 1 THEN RETURN 'EXPLICIT';
+        WHEN 2 THEN RETURN 'IMPLICIT';
+        WHEN 3 THEN RETURN 'LEGACY_REQUIRED';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_enum_type_from_string $$
+CREATE FUNCTION _pb_feature_set_enum_type_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'ENUM_TYPE_UNKNOWN' THEN RETURN 0;
+        WHEN 'OPEN' THEN RETURN 1;
+        WHEN 'CLOSED' THEN RETURN 2;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_enum_type_to_string $$
+CREATE FUNCTION _pb_feature_set_enum_type_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'ENUM_TYPE_UNKNOWN';
+        WHEN 1 THEN RETURN 'OPEN';
+        WHEN 2 THEN RETURN 'CLOSED';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_repeated_field_encoding_from_string $$
+CREATE FUNCTION _pb_feature_set_repeated_field_encoding_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'REPEATED_FIELD_ENCODING_UNKNOWN' THEN RETURN 0;
+        WHEN 'PACKED' THEN RETURN 1;
+        WHEN 'EXPANDED' THEN RETURN 2;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_repeated_field_encoding_to_string $$
+CREATE FUNCTION _pb_feature_set_repeated_field_encoding_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'REPEATED_FIELD_ENCODING_UNKNOWN';
+        WHEN 1 THEN RETURN 'PACKED';
+        WHEN 2 THEN RETURN 'EXPANDED';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_utf8_validation_from_string $$
+CREATE FUNCTION _pb_feature_set_utf8_validation_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'UTF8_VALIDATION_UNKNOWN' THEN RETURN 0;
+        WHEN 'VERIFY' THEN RETURN 2;
+        WHEN 'NONE' THEN RETURN 3;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_utf8_validation_to_string $$
+CREATE FUNCTION _pb_feature_set_utf8_validation_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'UTF8_VALIDATION_UNKNOWN';
+        WHEN 2 THEN RETURN 'VERIFY';
+        WHEN 3 THEN RETURN 'NONE';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_message_encoding_from_string $$
+CREATE FUNCTION _pb_feature_set_message_encoding_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'MESSAGE_ENCODING_UNKNOWN' THEN RETURN 0;
+        WHEN 'LENGTH_PREFIXED' THEN RETURN 1;
+        WHEN 'DELIMITED' THEN RETURN 2;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_message_encoding_to_string $$
+CREATE FUNCTION _pb_feature_set_message_encoding_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'MESSAGE_ENCODING_UNKNOWN';
+        WHEN 1 THEN RETURN 'LENGTH_PREFIXED';
+        WHEN 2 THEN RETURN 'DELIMITED';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_json_format_from_string $$
+CREATE FUNCTION _pb_feature_set_json_format_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'JSON_FORMAT_UNKNOWN' THEN RETURN 0;
+        WHEN 'ALLOW' THEN RETURN 1;
+        WHEN 'LEGACY_BEST_EFFORT' THEN RETURN 2;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_json_format_to_string $$
+CREATE FUNCTION _pb_feature_set_json_format_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'JSON_FORMAT_UNKNOWN';
+        WHEN 1 THEN RETURN 'ALLOW';
+        WHEN 2 THEN RETURN 'LEGACY_BEST_EFFORT';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_enforce_naming_style_from_string $$
+CREATE FUNCTION _pb_feature_set_enforce_naming_style_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'ENFORCE_NAMING_STYLE_UNKNOWN' THEN RETURN 0;
+        WHEN 'STYLE2024' THEN RETURN 1;
+        WHEN 'STYLE_LEGACY' THEN RETURN 2;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_enforce_naming_style_to_string $$
+CREATE FUNCTION _pb_feature_set_enforce_naming_style_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'ENFORCE_NAMING_STYLE_UNKNOWN';
+        WHEN 1 THEN RETURN 'STYLE2024';
+        WHEN 2 THEN RETURN 'STYLE_LEGACY';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_new $$
+CREATE FUNCTION _pb_feature_set_defaults_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_from_json $$
+CREATE FUNCTION _pb_feature_set_defaults_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FeatureSetDefaults', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_from_message $$
+CREATE FUNCTION _pb_feature_set_defaults_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FeatureSetDefaults', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_to_json $$
+CREATE FUNCTION _pb_feature_set_defaults_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.FeatureSetDefaults', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_to_message $$
+CREATE FUNCTION _pb_feature_set_defaults_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.FeatureSetDefaults', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_all_defaults $$
+CREATE FUNCTION _pb_feature_set_defaults_get_all_defaults(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_set_all_defaults $$
+CREATE FUNCTION _pb_feature_set_defaults_set_all_defaults(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."1"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_clear_defaults $$
+CREATE FUNCTION _pb_feature_set_defaults_clear_defaults(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_add_defaults $$
+CREATE FUNCTION _pb_feature_set_defaults_add_defaults(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_count_defaults $$
+CREATE FUNCTION _pb_feature_set_defaults_count_defaults(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_defaults $$
+CREATE FUNCTION _pb_feature_set_defaults_get_defaults(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_set_defaults $$
+CREATE FUNCTION _pb_feature_set_defaults_set_defaults(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_insert_defaults $$
+CREATE FUNCTION _pb_feature_set_defaults_insert_defaults(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_remove_defaults $$
+CREATE FUNCTION _pb_feature_set_defaults_remove_defaults(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_minimum_edition $$
+CREATE FUNCTION _pb_feature_set_defaults_get_minimum_edition(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_set_minimum_edition $$
+CREATE FUNCTION _pb_feature_set_defaults_set_minimum_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."4"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_has_minimum_edition $$
+CREATE FUNCTION _pb_feature_set_defaults_has_minimum_edition(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_clear_minimum_edition $$
+CREATE FUNCTION _pb_feature_set_defaults_clear_minimum_edition(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_maximum_edition $$
+CREATE FUNCTION _pb_feature_set_defaults_get_maximum_edition(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_set_maximum_edition $$
+CREATE FUNCTION _pb_feature_set_defaults_set_maximum_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."5"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_has_maximum_edition $$
+CREATE FUNCTION _pb_feature_set_defaults_has_maximum_edition(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_clear_maximum_edition $$
+CREATE FUNCTION _pb_feature_set_defaults_clear_maximum_edition(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_new $$
+CREATE FUNCTION _pb_feature_set_edition_default_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_from_json $$
+CREATE FUNCTION _pb_feature_set_edition_default_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_from_message $$
+CREATE FUNCTION _pb_feature_set_edition_default_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_to_json $$
+CREATE FUNCTION _pb_feature_set_edition_default_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_to_message $$
+CREATE FUNCTION _pb_feature_set_edition_default_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_edition $$
+CREATE FUNCTION _pb_feature_set_edition_default_get_edition(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_set_edition $$
+CREATE FUNCTION _pb_feature_set_edition_default_set_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_has_edition $$
+CREATE FUNCTION _pb_feature_set_edition_default_has_edition(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_clear_edition $$
+CREATE FUNCTION _pb_feature_set_edition_default_clear_edition(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_overridable_features $$
+CREATE FUNCTION _pb_feature_set_edition_default_get_overridable_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."4"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_set_overridable_features $$
+CREATE FUNCTION _pb_feature_set_edition_default_set_overridable_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."4"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."4"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_has_overridable_features $$
+CREATE FUNCTION _pb_feature_set_edition_default_has_overridable_features(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_clear_overridable_features $$
+CREATE FUNCTION _pb_feature_set_edition_default_clear_overridable_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_fixed_features $$
+CREATE FUNCTION _pb_feature_set_edition_default_get_fixed_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."5"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_set_fixed_features $$
+CREATE FUNCTION _pb_feature_set_edition_default_set_fixed_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."5"');
+    END IF;
+    RETURN JSON_SET(proto_data, '$."5"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_has_fixed_features $$
+CREATE FUNCTION _pb_feature_set_edition_default_has_fixed_features(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_clear_fixed_features $$
+CREATE FUNCTION _pb_feature_set_edition_default_clear_fixed_features(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_new $$
+CREATE FUNCTION _pb_source_code_info_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_from_json $$
+CREATE FUNCTION _pb_source_code_info_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.SourceCodeInfo', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_from_message $$
+CREATE FUNCTION _pb_source_code_info_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.SourceCodeInfo', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_to_json $$
+CREATE FUNCTION _pb_source_code_info_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.SourceCodeInfo', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_to_message $$
+CREATE FUNCTION _pb_source_code_info_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.SourceCodeInfo', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_get_all_location $$
+CREATE FUNCTION _pb_source_code_info_get_all_location(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_set_all_location $$
+CREATE FUNCTION _pb_source_code_info_set_all_location(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."1"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_clear_location $$
+CREATE FUNCTION _pb_source_code_info_clear_location(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_add_location $$
+CREATE FUNCTION _pb_source_code_info_add_location(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_count_location $$
+CREATE FUNCTION _pb_source_code_info_count_location(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_get_location $$
+CREATE FUNCTION _pb_source_code_info_get_location(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_set_location $$
+CREATE FUNCTION _pb_source_code_info_set_location(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_insert_location $$
+CREATE FUNCTION _pb_source_code_info_insert_location(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_remove_location $$
+CREATE FUNCTION _pb_source_code_info_remove_location(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_new $$
+CREATE FUNCTION _pb_source_code_info_location_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_from_json $$
+CREATE FUNCTION _pb_source_code_info_location_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.SourceCodeInfo.Location', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_from_message $$
+CREATE FUNCTION _pb_source_code_info_location_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.SourceCodeInfo.Location', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_to_json $$
+CREATE FUNCTION _pb_source_code_info_location_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.SourceCodeInfo.Location', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_to_message $$
+CREATE FUNCTION _pb_source_code_info_location_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.SourceCodeInfo.Location', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_all_path $$
+CREATE FUNCTION _pb_source_code_info_location_get_all_path(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_all_path $$
+CREATE FUNCTION _pb_source_code_info_location_set_all_path(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."1"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_clear_path $$
+CREATE FUNCTION _pb_source_code_info_location_clear_path(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_add_path $$
+CREATE FUNCTION _pb_source_code_info_location_add_path(proto_data JSON, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_count_path $$
+CREATE FUNCTION _pb_source_code_info_location_count_path(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_path $$
+CREATE FUNCTION _pb_source_code_info_location_get_path(proto_data JSON, index_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN 0;
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_path $$
+CREATE FUNCTION _pb_source_code_info_location_set_path(proto_data JSON, index_value INT, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_insert_path $$
+CREATE FUNCTION _pb_source_code_info_location_insert_path(proto_data JSON, index_value INT, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_remove_path $$
+CREATE FUNCTION _pb_source_code_info_location_remove_path(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_all_span $$
+CREATE FUNCTION _pb_source_code_info_location_get_all_span(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."2"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_all_span $$
+CREATE FUNCTION _pb_source_code_info_location_set_all_span(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."2"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."2"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_clear_span $$
+CREATE FUNCTION _pb_source_code_info_location_clear_span(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_add_span $$
+CREATE FUNCTION _pb_source_code_info_location_add_span(proto_data JSON, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."2"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."2"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_count_span $$
+CREATE FUNCTION _pb_source_code_info_location_count_span(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_span $$
+CREATE FUNCTION _pb_source_code_info_location_get_span(proto_data JSON, index_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN 0;
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_span $$
+CREATE FUNCTION _pb_source_code_info_location_set_span(proto_data JSON, index_value INT, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."2"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_insert_span $$
+CREATE FUNCTION _pb_source_code_info_location_insert_span(proto_data JSON, index_value INT, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_remove_span $$
+CREATE FUNCTION _pb_source_code_info_location_remove_span(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."2"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_leading_comments $$
+CREATE FUNCTION _pb_source_code_info_location_get_leading_comments(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_leading_comments $$
+CREATE FUNCTION _pb_source_code_info_location_set_leading_comments(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_has_leading_comments $$
+CREATE FUNCTION _pb_source_code_info_location_has_leading_comments(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_clear_leading_comments $$
+CREATE FUNCTION _pb_source_code_info_location_clear_leading_comments(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_trailing_comments $$
+CREATE FUNCTION _pb_source_code_info_location_get_trailing_comments(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_trailing_comments $$
+CREATE FUNCTION _pb_source_code_info_location_set_trailing_comments(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."4"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_has_trailing_comments $$
+CREATE FUNCTION _pb_source_code_info_location_has_trailing_comments(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_clear_trailing_comments $$
+CREATE FUNCTION _pb_source_code_info_location_clear_trailing_comments(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_all_leading_detached_comments $$
+CREATE FUNCTION _pb_source_code_info_location_get_all_leading_detached_comments(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."6"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_all_leading_detached_comments $$
+CREATE FUNCTION _pb_source_code_info_location_set_all_leading_detached_comments(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."6"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."6"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."6"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_clear_leading_detached_comments $$
+CREATE FUNCTION _pb_source_code_info_location_clear_leading_detached_comments(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."6"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_add_leading_detached_comments $$
+CREATE FUNCTION _pb_source_code_info_location_add_leading_detached_comments(proto_data JSON, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."6"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."6"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_count_leading_detached_comments $$
+CREATE FUNCTION _pb_source_code_info_location_count_leading_detached_comments(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_leading_detached_comments $$
+CREATE FUNCTION _pb_source_code_info_location_get_leading_detached_comments(proto_data JSON, index_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN '';
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN JSON_UNQUOTE(element_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_leading_detached_comments $$
+CREATE FUNCTION _pb_source_code_info_location_set_leading_detached_comments(proto_data JSON, index_value INT, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."6"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_insert_leading_detached_comments $$
+CREATE FUNCTION _pb_source_code_info_location_insert_leading_detached_comments(proto_data JSON, index_value INT, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."6"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_remove_leading_detached_comments $$
+CREATE FUNCTION _pb_source_code_info_location_remove_leading_detached_comments(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."6"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_new $$
+CREATE FUNCTION _pb_generated_code_info_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_from_json $$
+CREATE FUNCTION _pb_generated_code_info_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.GeneratedCodeInfo', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_from_message $$
+CREATE FUNCTION _pb_generated_code_info_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.GeneratedCodeInfo', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_to_json $$
+CREATE FUNCTION _pb_generated_code_info_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.GeneratedCodeInfo', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_to_message $$
+CREATE FUNCTION _pb_generated_code_info_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.GeneratedCodeInfo', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_get_all_annotation $$
+CREATE FUNCTION _pb_generated_code_info_get_all_annotation(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_set_all_annotation $$
+CREATE FUNCTION _pb_generated_code_info_set_all_annotation(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."1"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_clear_annotation $$
+CREATE FUNCTION _pb_generated_code_info_clear_annotation(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_add_annotation $$
+CREATE FUNCTION _pb_generated_code_info_add_annotation(proto_data JSON, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_count_annotation $$
+CREATE FUNCTION _pb_generated_code_info_count_annotation(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_get_annotation $$
+CREATE FUNCTION _pb_generated_code_info_get_annotation(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_set_annotation $$
+CREATE FUNCTION _pb_generated_code_info_set_annotation(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_insert_annotation $$
+CREATE FUNCTION _pb_generated_code_info_insert_annotation(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_remove_annotation $$
+CREATE FUNCTION _pb_generated_code_info_remove_annotation(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_new $$
+CREATE FUNCTION _pb_generated_code_info_annotation_new() RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_OBJECT();
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_from_json $$
+CREATE FUNCTION _pb_generated_code_info_annotation_from_json(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_json_to_number_json(_pb_descriptor_proto(), '.google.protobuf.GeneratedCodeInfo.Annotation', json_data, json_unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_from_message $$
+CREATE FUNCTION _pb_generated_code_info_annotation_from_message(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_message_to_number_json(_pb_descriptor_proto(), '.google.protobuf.GeneratedCodeInfo.Annotation', message_data, unmarshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_to_json $$
+CREATE FUNCTION _pb_generated_code_info_annotation_to_json(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_json(_pb_descriptor_proto(), '.google.protobuf.GeneratedCodeInfo.Annotation', proto_data, json_marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_to_message $$
+CREATE FUNCTION _pb_generated_code_info_annotation_to_message(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    RETURN _pb_number_json_to_message(_pb_descriptor_proto(), '.google.protobuf.GeneratedCodeInfo.Annotation', proto_data, marshal_options);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_all_path $$
+CREATE FUNCTION _pb_generated_code_info_annotation_get_all_path(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_ARRAY());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_all_path $$
+CREATE FUNCTION _pb_generated_code_info_annotation_set_all_path(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_length INT;
+    DECLARE i INT DEFAULT 0;
+    DECLARE element_value JSON;
+    DECLARE converted_array JSON DEFAULT JSON_ARRAY();
+
+    IF field_value IS NULL THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    SET array_length = JSON_LENGTH(field_value);
+
+    -- Handle empty array case
+    IF array_length = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
+
+    -- Convert each element to internal format
+    WHILE i < array_length DO
+        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));
+        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);
+        SET i = i + 1;
+    END WHILE;
+
+    RETURN JSON_SET(proto_data, '$."1"', converted_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_clear_path $$
+CREATE FUNCTION _pb_generated_code_info_annotation_clear_path(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_add_path $$
+CREATE FUNCTION _pb_generated_code_info_annotation_add_path(proto_data JSON, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE current_array JSON;
+    SET current_array = JSON_EXTRACT(proto_data, '$."1"');
+    IF current_array IS NULL THEN
+        SET current_array = JSON_ARRAY();
+    END IF;
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    RETURN JSON_SET(proto_data, '$."1"', current_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_count_path $$
+CREATE FUNCTION _pb_generated_code_info_annotation_count_path(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_path $$
+CREATE FUNCTION _pb_generated_code_info_annotation_get_path(proto_data JSON, index_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN 0;
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_path $$
+CREATE FUNCTION _pb_generated_code_info_annotation_set_path(proto_data JSON, index_value INT, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_insert_path $$
+CREATE FUNCTION _pb_generated_code_info_annotation_insert_path(proto_data JSON, index_value INT, element_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_remove_path $$
+CREATE FUNCTION _pb_generated_code_info_annotation_remove_path(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_source_file $$
+CREATE FUNCTION _pb_generated_code_info_annotation_get_source_file(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
+        RETURN '';
+    END IF;
+    RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_source_file $$
+CREATE FUNCTION _pb_generated_code_info_annotation_set_source_file(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."2"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_has_source_file $$
+CREATE FUNCTION _pb_generated_code_info_annotation_has_source_file(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_clear_source_file $$
+CREATE FUNCTION _pb_generated_code_info_annotation_clear_source_file(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."2"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_begin $$
+CREATE FUNCTION _pb_generated_code_info_annotation_get_begin(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_begin $$
+CREATE FUNCTION _pb_generated_code_info_annotation_set_begin(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."3"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_has_begin $$
+CREATE FUNCTION _pb_generated_code_info_annotation_has_begin(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_clear_begin $$
+CREATE FUNCTION _pb_generated_code_info_annotation_clear_begin(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."3"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_end $$
+CREATE FUNCTION _pb_generated_code_info_annotation_get_end(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_end $$
+CREATE FUNCTION _pb_generated_code_info_annotation_set_end(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."4"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_has_end $$
+CREATE FUNCTION _pb_generated_code_info_annotation_has_end(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_clear_end $$
+CREATE FUNCTION _pb_generated_code_info_annotation_clear_end(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."4"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_semantic $$
+CREATE FUNCTION _pb_generated_code_info_annotation_get_semantic(proto_data JSON) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NULL THEN
+        RETURN 0;
+    END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_semantic $$
+CREATE FUNCTION _pb_generated_code_info_annotation_set_semantic(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_SET(proto_data, '$."5"', field_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_has_semantic $$
+CREATE FUNCTION _pb_generated_code_info_annotation_has_semantic(proto_data JSON) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    RETURN JSON_CONTAINS_PATH(proto_data, 'one', '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_clear_semantic $$
+CREATE FUNCTION _pb_generated_code_info_annotation_clear_semantic(proto_data JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    RETURN JSON_REMOVE(proto_data, '$."5"');
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_semantic_from_string $$
+CREATE FUNCTION _pb_generated_code_info_annotation_semantic_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'NONE' THEN RETURN 0;
+        WHEN 'SET' THEN RETURN 1;
+        WHEN 'ALIAS' THEN RETURN 2;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_semantic_to_string $$
+CREATE FUNCTION _pb_generated_code_info_annotation_semantic_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'NONE';
+        WHEN 1 THEN RETURN 'SET';
+        WHEN 2 THEN RETURN 'ALIAS';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_edition_from_string $$
+CREATE FUNCTION _pb_edition_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
+BEGIN
+    CASE enum_name
+        WHEN 'EDITION_UNKNOWN' THEN RETURN 0;
+        WHEN 'EDITION_LEGACY' THEN RETURN 900;
+        WHEN 'EDITION_PROTO2' THEN RETURN 998;
+        WHEN 'EDITION_PROTO3' THEN RETURN 999;
+        WHEN 'EDITION_2023' THEN RETURN 1000;
+        WHEN 'EDITION_2024' THEN RETURN 1001;
+        WHEN 'EDITION_1_TEST_ONLY' THEN RETURN 1;
+        WHEN 'EDITION_2_TEST_ONLY' THEN RETURN 2;
+        WHEN 'EDITION_99997_TEST_ONLY' THEN RETURN 99997;
+        WHEN 'EDITION_99998_TEST_ONLY' THEN RETURN 99998;
+        WHEN 'EDITION_99999_TEST_ONLY' THEN RETURN 99999;
+        WHEN 'EDITION_MAX' THEN RETURN 2147483647;
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_edition_to_string $$
+CREATE FUNCTION _pb_edition_to_string(enum_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    CASE enum_value
+        WHEN 0 THEN RETURN 'EDITION_UNKNOWN';
+        WHEN 900 THEN RETURN 'EDITION_LEGACY';
+        WHEN 998 THEN RETURN 'EDITION_PROTO2';
+        WHEN 999 THEN RETURN 'EDITION_PROTO3';
+        WHEN 1000 THEN RETURN 'EDITION_2023';
+        WHEN 1001 THEN RETURN 'EDITION_2024';
+        WHEN 1 THEN RETURN 'EDITION_1_TEST_ONLY';
+        WHEN 2 THEN RETURN 'EDITION_2_TEST_ONLY';
+        WHEN 99997 THEN RETURN 'EDITION_99997_TEST_ONLY';
+        WHEN 99998 THEN RETURN 'EDITION_99998_TEST_ONLY';
+        WHEN 99999 THEN RETURN 'EDITION_99999_TEST_ONLY';
+        WHEN 2147483647 THEN RETURN 'EDITION_MAX';
+        ELSE RETURN NULL;
+    END CASE;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_wkt_struct_proto $$
 CREATE FUNCTION _pb_wkt_struct_proto() RETURNS JSON DETERMINISTIC
 BEGIN
@@ -4471,14 +15998,14 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.Struct', proto_data, marshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_struct_get_fields $$
-CREATE FUNCTION pb_wkt_struct_get_fields(proto_data JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_struct_get_all_fields $$
+CREATE FUNCTION pb_wkt_struct_get_all_fields(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_ARRAY());
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_struct_set_fields $$
-CREATE FUNCTION pb_wkt_struct_set_fields(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_struct_set_all_fields $$
+CREATE FUNCTION pb_wkt_struct_set_all_fields(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     IF field_value IS NULL THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
@@ -4490,6 +16017,71 @@ DROP FUNCTION IF EXISTS pb_wkt_struct_clear_fields $$
 CREATE FUNCTION pb_wkt_struct_clear_fields(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN JSON_REMOVE(proto_data, '$."1"');
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_get_fields $$
+CREATE FUNCTION pb_wkt_struct_get_fields(proto_data JSON, key_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE map_value JSON;
+    DECLARE element_value JSON;
+    SET map_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF map_value IS NULL THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', JSON_QUOTE(key_value)));
+    IF element_value IS NULL THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_contains_fields $$
+CREATE FUNCTION pb_wkt_struct_contains_fields(proto_data JSON, key_value LONGTEXT) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE map_value JSON;
+    SET map_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF map_value IS NULL THEN
+        RETURN FALSE;
+    END IF;
+    RETURN JSON_CONTAINS_PATH(map_value, 'one', CONCAT('$.', JSON_QUOTE(key_value)));
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_put_fields $$
+CREATE FUNCTION pb_wkt_struct_put_fields(proto_data JSON, key_value LONGTEXT, value_param JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE map_value JSON;
+    SET map_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF map_value IS NULL THEN
+        SET map_value = JSON_OBJECT();
+    END IF;
+    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), CAST(value_param AS JSON));
+    RETURN JSON_SET(proto_data, '$."1"', map_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_put_all_fields $$
+CREATE FUNCTION pb_wkt_struct_put_all_fields(proto_data JSON, new_entries JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE map_value JSON;
+    SET map_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF map_value IS NULL THEN
+        SET map_value = JSON_OBJECT();
+    END IF;
+    IF new_entries IS NOT NULL THEN
+        SET map_value = JSON_MERGE_PATCH(map_value, new_entries);
+    END IF;
+    RETURN JSON_SET(proto_data, '$."1"', map_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_struct_remove_fields $$
+CREATE FUNCTION pb_wkt_struct_remove_fields(proto_data JSON, key_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE map_value JSON;
+    SET map_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF map_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET map_value = JSON_REMOVE(map_value, CONCAT('$.', JSON_QUOTE(key_value)));
+    RETURN JSON_SET(proto_data, '$."1"', map_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_new $$
@@ -4885,14 +16477,14 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_struct_proto(), '.google.protobuf.ListValue', proto_data, marshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_list_value_get_values $$
-CREATE FUNCTION pb_wkt_list_value_get_values(proto_data JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_list_value_get_all_values $$
+CREATE FUNCTION pb_wkt_list_value_get_all_values(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_ARRAY());
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_list_value_set_values $$
-CREATE FUNCTION pb_wkt_list_value_set_values(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_list_value_set_all_values $$
+CREATE FUNCTION pb_wkt_list_value_set_all_values(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     DECLARE array_length INT;
     DECLARE i INT DEFAULT 0;
@@ -4949,6 +16541,100 @@ BEGIN
     RETURN JSON_LENGTH(array_value);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_list_value_get_values $$
+CREATE FUNCTION pb_wkt_list_value_get_values(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN JSON_OBJECT();
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN CAST(element_value AS SIGNED);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_list_value_set_values $$
+CREATE FUNCTION pb_wkt_list_value_set_values(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_list_value_insert_values $$
+CREATE FUNCTION pb_wkt_list_value_insert_values(proto_data JSON, index_value INT, element_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_list_value_remove_values $$
+CREATE FUNCTION pb_wkt_list_value_remove_values(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_null_value_from_string $$
 CREATE FUNCTION pb_wkt_null_value_from_string(enum_name LONGTEXT) RETURNS INT DETERMINISTIC
 BEGIN
@@ -5003,14 +16689,14 @@ BEGIN
     RETURN _pb_number_json_to_message(_pb_wkt_field_mask_proto(), '.google.protobuf.FieldMask', proto_data, marshal_options);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_field_mask_get_paths $$
-CREATE FUNCTION pb_wkt_field_mask_get_paths(proto_data JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_field_mask_get_all_paths $$
+CREATE FUNCTION pb_wkt_field_mask_get_all_paths(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_ARRAY());
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_field_mask_set_paths $$
-CREATE FUNCTION pb_wkt_field_mask_set_paths(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_field_mask_set_all_paths $$
+CREATE FUNCTION pb_wkt_field_mask_set_all_paths(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     DECLARE array_length INT;
     DECLARE i INT DEFAULT 0;
@@ -5065,6 +16751,100 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN JSON_LENGTH(array_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_field_mask_get_paths $$
+CREATE FUNCTION pb_wkt_field_mask_get_paths(proto_data JSON, index_value INT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE element_value JSON;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
+        RETURN '';
+    END IF;
+    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
+    RETURN JSON_UNQUOTE(element_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_field_mask_set_paths $$
+CREATE FUNCTION pb_wkt_field_mask_set_paths(proto_data JSON, index_value INT, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data; -- Cannot set at index in non-existent array
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_field_mask_insert_paths $$
+CREATE FUNCTION pb_wkt_field_mask_insert_paths(proto_data JSON, index_value INT, element_value LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY();
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 THEN
+        SET index_value = 0;
+    END IF;
+    IF index_value > array_length THEN
+        SET index_value = array_length;
+    END IF;
+    
+    -- Copy elements before insert position
+    WHILE i < index_value DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    -- Insert new element
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    
+    -- Copy remaining elements after insert position
+    WHILE i < array_length DO
+        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_field_mask_remove_paths $$
+CREATE FUNCTION pb_wkt_field_mask_remove_paths(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE array_value JSON;
+    DECLARE array_length INT;
+    DECLARE new_array JSON DEFAULT JSON_ARRAY();
+    DECLARE i INT DEFAULT 0;
+    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF array_value IS NULL THEN
+        RETURN proto_data;
+    END IF;
+    SET array_length = JSON_LENGTH(array_value);
+    IF index_value < 0 OR index_value >= array_length THEN
+        RETURN proto_data; -- Index out of bounds
+    END IF;
+    
+    -- Copy all elements except the one to remove
+    WHILE i < array_length DO
+        IF i != index_value THEN
+            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
+        END IF;
+        SET i = i + 1;
+    END WHILE;
+    
+    RETURN JSON_SET(proto_data, '$."1"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_wkt_wrappers_proto $$

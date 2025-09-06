@@ -483,28 +483,28 @@ func TestGeneratedOpaqueApiRepeatedFields(t *testing.T) {
 
 		t.Run("empty_array", func(t *testing.T) {
 			RunTestThatExpression(t, "test_count_items(test_new())").IsEqualToInt(0)
-			RunTestThatExpression(t, "test_get_items(test_new())").IsEqualToJsonString("[]")
+			RunTestThatExpression(t, "test_get_all_items(test_new())").IsEqualToJsonString("[]")
 		})
 
 		t.Run("add_elements", func(t *testing.T) {
 			// Add single element
 			RunTestThatExpression(t, "test_count_items(test_add_items(test_new(), 42))").IsEqualToInt(1)
-			RunTestThatExpression(t, "test_get_items(test_add_items(test_new(), 42))").IsEqualToJsonString("[42]")
+			RunTestThatExpression(t, "test_get_all_items(test_add_items(test_new(), 42))").IsEqualToJsonString("[42]")
 
 			// Add multiple elements
 			obj := "test_add_items(test_add_items(test_add_items(test_new(), 1), 2), 3)"
 			RunTestThatExpression(t, fmt.Sprintf("test_count_items(%s)", obj)).IsEqualToInt(3)
-			RunTestThatExpression(t, fmt.Sprintf("test_get_items(%s)", obj)).IsEqualToJsonString("[1, 2, 3]")
+			RunTestThatExpression(t, fmt.Sprintf("test_get_all_items(%s)", obj)).IsEqualToJsonString("[1, 2, 3]")
 		})
 
 		t.Run("set_entire_array", func(t *testing.T) {
-			RunTestThatExpression(t, "test_get_items(test_set_items(test_new(), JSON_ARRAY(10, 20, 30)))").IsEqualToJsonString("[10, 20, 30]")
+			RunTestThatExpression(t, "test_get_all_items(test_set_all_items(test_new(), JSON_ARRAY(10, 20, 30)))").IsEqualToJsonString("[10, 20, 30]")
 		})
 
 		t.Run("clear_array", func(t *testing.T) {
 			obj := "test_add_items(test_add_items(test_new(), 1), 2)"
 			RunTestThatExpression(t, fmt.Sprintf("test_count_items(test_clear_items(%s))", obj)).IsEqualToInt(0)
-			RunTestThatExpression(t, fmt.Sprintf("test_get_items(test_clear_items(%s))", obj)).IsEqualToJsonString("[]")
+			RunTestThatExpression(t, fmt.Sprintf("test_get_all_items(test_clear_items(%s))", obj)).IsEqualToJsonString("[]")
 		})
 	})
 
@@ -521,7 +521,7 @@ func TestGeneratedOpaqueApiRepeatedFields(t *testing.T) {
 		t.Run("add_string_elements", func(t *testing.T) {
 			obj := "test_add_names(test_add_names(test_new(), 'alice'), 'bob')"
 			RunTestThatExpression(t, fmt.Sprintf("test_count_names(%s)", obj)).IsEqualToInt(2)
-			RunTestThatExpression(t, fmt.Sprintf("test_get_names(%s)", obj)).IsEqualToJsonString(`["alice", "bob"]`)
+			RunTestThatExpression(t, fmt.Sprintf("test_get_all_names(%s)", obj)).IsEqualToJsonString(`["alice", "bob"]`)
 		})
 	})
 
@@ -538,7 +538,7 @@ func TestGeneratedOpaqueApiRepeatedFields(t *testing.T) {
 		t.Run("add_bool_elements", func(t *testing.T) {
 			obj := "test_add_flags(test_add_flags(test_new(), TRUE), FALSE)"
 			RunTestThatExpression(t, fmt.Sprintf("test_count_flags(%s)", obj)).IsEqualToInt(2)
-			RunTestThatExpression(t, fmt.Sprintf("test_get_flags(%s)", obj)).IsEqualToJsonString(`[true, false]`)
+			RunTestThatExpression(t, fmt.Sprintf("test_get_all_flags(%s)", obj)).IsEqualToJsonString(`[true, false]`)
 		})
 	})
 
@@ -560,7 +560,7 @@ func TestGeneratedOpaqueApiRepeatedFields(t *testing.T) {
 			obj2 := "JSON_OBJECT('1', 100)"
 			expr := fmt.Sprintf("test_add_items(test_add_items(test_new(), %s), %s)", obj1, obj2)
 			RunTestThatExpression(t, fmt.Sprintf("test_count_items(%s)", expr)).IsEqualToInt(2)
-			RunTestThatExpression(t, fmt.Sprintf("test_get_items(%s)", expr)).IsEqualToJsonString(`[{"1": 42}, {"1": 100}]`)
+			RunTestThatExpression(t, fmt.Sprintf("test_get_all_items(%s)", expr)).IsEqualToJsonString(`[{"1": 42}, {"1": 100}]`)
 		})
 	})
 }
@@ -887,19 +887,19 @@ func TestGeneratedOpaqueApiPresence(t *testing.T) {
 		t.Run("empty_array_presence", func(t *testing.T) {
 			// Repeated fields are always "present" but may be empty
 			RunTestThatExpression(t, "test_count_items(test_new())").IsEqualToInt(0)
-			RunTestThatExpression(t, "test_get_items(test_new())").IsEqualToJsonString("[]")
+			RunTestThatExpression(t, "test_get_all_items(test_new())").IsEqualToJsonString("[]")
 		})
 
 		t.Run("non_empty_array_presence", func(t *testing.T) {
 			obj := "test_add_items(test_new(), 42)"
 			RunTestThatExpression(t, fmt.Sprintf("test_count_items(%s)", obj)).IsEqualToInt(1)
-			RunTestThatExpression(t, fmt.Sprintf("test_get_items(%s)", obj)).IsEqualToJsonString("[42]")
+			RunTestThatExpression(t, fmt.Sprintf("test_get_all_items(%s)", obj)).IsEqualToJsonString("[42]")
 		})
 
 		t.Run("cleared_array_presence", func(t *testing.T) {
 			obj := "test_clear_items(test_add_items(test_new(), 42))"
 			RunTestThatExpression(t, fmt.Sprintf("test_count_items(%s)", obj)).IsEqualToInt(0)
-			RunTestThatExpression(t, fmt.Sprintf("test_get_items(%s)", obj)).IsEqualToJsonString("[]")
+			RunTestThatExpression(t, fmt.Sprintf("test_get_all_items(%s)", obj)).IsEqualToJsonString("[]")
 		})
 	})
 }
@@ -929,24 +929,24 @@ func TestGeneratedOpaqueApiMapFields(t *testing.T) {
 		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
 
 		// Test all key types with int32 values - use JSON objects for map values
-		RunTestThatExpression(t, "test_set_int32_to_int32_map(test_new(), JSON_OBJECT('42', 100))").IsEqualToJsonString(`{"1": {"42": 100}}`)
-		RunTestThatExpression(t, "test_set_int64_to_int32_map(test_new(), JSON_OBJECT('9223372036854775807', 200))").IsEqualToJsonString(`{"2": {"9223372036854775807": 200}}`)
-		RunTestThatExpression(t, "test_set_uint32_to_int32_map(test_new(), JSON_OBJECT('4294967295', 300))").IsEqualToJsonString(`{"3": {"4294967295": 300}}`)
-		RunTestThatExpression(t, "test_set_uint64_to_int32_map(test_new(), JSON_OBJECT('18446744073709551615', 400))").IsEqualToJsonString(`{"4": {"18446744073709551615": 400}}`)
-		RunTestThatExpression(t, "test_set_sint32_to_int32_map(test_new(), JSON_OBJECT('-1', 500))").IsEqualToJsonString(`{"5": {"-1": 500}}`)
-		RunTestThatExpression(t, "test_set_sint64_to_int32_map(test_new(), JSON_OBJECT('-9223372036854775808', 600))").IsEqualToJsonString(`{"6": {"-9223372036854775808": 600}}`)
-		RunTestThatExpression(t, "test_set_fixed32_to_int32_map(test_new(), JSON_OBJECT('4294967295', 700))").IsEqualToJsonString(`{"7": {"4294967295": 700}}`)
-		RunTestThatExpression(t, "test_set_fixed64_to_int32_map(test_new(), JSON_OBJECT('18446744073709551615', 800))").IsEqualToJsonString(`{"8": {"18446744073709551615": 800}}`)
-		RunTestThatExpression(t, "test_set_sfixed32_to_int32_map(test_new(), JSON_OBJECT('-2147483648', 900))").IsEqualToJsonString(`{"9": {"-2147483648": 900}}`)
-		RunTestThatExpression(t, "test_set_sfixed64_to_int32_map(test_new(), JSON_OBJECT('-9223372036854775808', 1000))").IsEqualToJsonString(`{"10": {"-9223372036854775808": 1000}}`)
-		RunTestThatExpression(t, "test_set_bool_to_int32_map(test_new(), JSON_OBJECT('true', 1100))").IsEqualToJsonString(`{"11": {"true": 1100}}`)
-		RunTestThatExpression(t, "test_set_string_to_int32_map(test_new(), JSON_OBJECT('key', 1200))").IsEqualToJsonString(`{"12": {"key": 1200}}`)
+		RunTestThatExpression(t, "test_set_all_int32_to_int32_map(test_new(), JSON_OBJECT('42', 100))").IsEqualToJsonString(`{"1": {"42": 100}}`)
+		RunTestThatExpression(t, "test_set_all_int64_to_int32_map(test_new(), JSON_OBJECT('9223372036854775807', 200))").IsEqualToJsonString(`{"2": {"9223372036854775807": 200}}`)
+		RunTestThatExpression(t, "test_set_all_uint32_to_int32_map(test_new(), JSON_OBJECT('4294967295', 300))").IsEqualToJsonString(`{"3": {"4294967295": 300}}`)
+		RunTestThatExpression(t, "test_set_all_uint64_to_int32_map(test_new(), JSON_OBJECT('18446744073709551615', 400))").IsEqualToJsonString(`{"4": {"18446744073709551615": 400}}`)
+		RunTestThatExpression(t, "test_set_all_sint32_to_int32_map(test_new(), JSON_OBJECT('-1', 500))").IsEqualToJsonString(`{"5": {"-1": 500}}`)
+		RunTestThatExpression(t, "test_set_all_sint64_to_int32_map(test_new(), JSON_OBJECT('-9223372036854775808', 600))").IsEqualToJsonString(`{"6": {"-9223372036854775808": 600}}`)
+		RunTestThatExpression(t, "test_set_all_fixed32_to_int32_map(test_new(), JSON_OBJECT('4294967295', 700))").IsEqualToJsonString(`{"7": {"4294967295": 700}}`)
+		RunTestThatExpression(t, "test_set_all_fixed64_to_int32_map(test_new(), JSON_OBJECT('18446744073709551615', 800))").IsEqualToJsonString(`{"8": {"18446744073709551615": 800}}`)
+		RunTestThatExpression(t, "test_set_all_sfixed32_to_int32_map(test_new(), JSON_OBJECT('-2147483648', 900))").IsEqualToJsonString(`{"9": {"-2147483648": 900}}`)
+		RunTestThatExpression(t, "test_set_all_sfixed64_to_int32_map(test_new(), JSON_OBJECT('-9223372036854775808', 1000))").IsEqualToJsonString(`{"10": {"-9223372036854775808": 1000}}`)
+		RunTestThatExpression(t, "test_set_all_bool_to_int32_map(test_new(), JSON_OBJECT('true', 1100))").IsEqualToJsonString(`{"11": {"true": 1100}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_int32_map(test_new(), JSON_OBJECT('key', 1200))").IsEqualToJsonString(`{"12": {"key": 1200}}`)
 
 		// Test multiple entries in same map
-		RunTestThatExpression(t, "test_set_string_to_int32_map(test_new(), JSON_OBJECT('first', 10, 'second', 20))").IsEqualToJsonString(`{"12": {"first": 10, "second": 20}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_int32_map(test_new(), JSON_OBJECT('first', 10, 'second', 20))").IsEqualToJsonString(`{"12": {"first": 10, "second": 20}}`)
 
 		// Test overwriting existing map (replaces entire map)
-		RunTestThatExpression(t, "test_set_string_to_int32_map(test_set_string_to_int32_map(test_new(), JSON_OBJECT('old', 100)), JSON_OBJECT('new', 200))").IsEqualToJsonString(`{"12": {"new": 200}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_int32_map(test_set_all_string_to_int32_map(test_new(), JSON_OBJECT('old', 100)), JSON_OBJECT('new', 200))").IsEqualToJsonString(`{"12": {"new": 200}}`)
 	})
 
 	// Test all possible value types with a fixed key type (string)
@@ -986,25 +986,25 @@ func TestGeneratedOpaqueApiMapFields(t *testing.T) {
 		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
 
 		// Test all value types with string keys - use JSON objects for map values
-		RunTestThatExpression(t, "test_set_string_to_double_map(test_new(), JSON_OBJECT('pi', 'binary64:0x400921fb54442d18'))").IsEqualToJsonString(`{"1": {"pi": "binary64:0x400921fb54442d18"}}`)
-		RunTestThatExpression(t, "test_set_string_to_float_map(test_new(), JSON_OBJECT('pi_float', 'binary32:0x4048f5c3'))").IsEqualToJsonString(`{"2": {"pi_float": "binary32:0x4048f5c3"}}`)
-		RunTestThatExpression(t, "test_set_string_to_int32_map(test_new(), JSON_OBJECT('answer', 42))").IsEqualToJsonString(`{"3": {"answer": 42}}`)
-		RunTestThatExpression(t, "test_set_string_to_int64_map(test_new(), JSON_OBJECT('big', 9223372036854775807))").IsEqualToJsonString(`{"4": {"big": 9223372036854775807}}`)
-		RunTestThatExpression(t, "test_set_string_to_uint32_map(test_new(), JSON_OBJECT('max32', 4294967295))").IsEqualToJsonString(`{"5": {"max32": 4294967295}}`)
-		RunTestThatExpression(t, "test_set_string_to_uint64_map(test_new(), JSON_OBJECT('max64', 18446744073709551615))").IsEqualToJsonString(`{"6": {"max64": 18446744073709551615}}`)
-		RunTestThatExpression(t, "test_set_string_to_sint32_map(test_new(), JSON_OBJECT('neg', -1))").IsEqualToJsonString(`{"7": {"neg": -1}}`)
-		RunTestThatExpression(t, "test_set_string_to_sint64_map(test_new(), JSON_OBJECT('min64', -9223372036854775808))").IsEqualToJsonString(`{"8": {"min64": -9223372036854775808}}`)
-		RunTestThatExpression(t, "test_set_string_to_fixed32_map(test_new(), JSON_OBJECT('fixed', 4294967295))").IsEqualToJsonString(`{"9": {"fixed": 4294967295}}`)
-		RunTestThatExpression(t, "test_set_string_to_fixed64_map(test_new(), JSON_OBJECT('fixed64', 18446744073709551615))").IsEqualToJsonString(`{"10": {"fixed64": 18446744073709551615}}`)
-		RunTestThatExpression(t, "test_set_string_to_sfixed32_map(test_new(), JSON_OBJECT('sfixed', -2147483648))").IsEqualToJsonString(`{"11": {"sfixed": -2147483648}}`)
-		RunTestThatExpression(t, "test_set_string_to_sfixed64_map(test_new(), JSON_OBJECT('sfixed64', -9223372036854775808))").IsEqualToJsonString(`{"12": {"sfixed64": -9223372036854775808}}`)
-		RunTestThatExpression(t, "test_set_string_to_bool_map(test_new(), JSON_OBJECT('flag', true))").IsEqualToJsonString(`{"13": {"flag": true}}`)
-		RunTestThatExpression(t, "test_set_string_to_string_map(test_new(), JSON_OBJECT('greeting', 'hello'))").IsEqualToJsonString(`{"14": {"greeting": "hello"}}`)
-		RunTestThatExpression(t, "test_set_string_to_bytes_map(test_new(), JSON_OBJECT('data', 'aGVsbG8='))").IsEqualToJsonString(`{"15": {"data": "aGVsbG8="}}`)
-		RunTestThatExpression(t, "test_set_string_to_enum_map(test_new(), JSON_OBJECT('status', 1))").IsEqualToJsonString(`{"16": {"status": 1}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_double_map(test_new(), JSON_OBJECT('pi', 'binary64:0x400921fb54442d18'))").IsEqualToJsonString(`{"1": {"pi": "binary64:0x400921fb54442d18"}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_float_map(test_new(), JSON_OBJECT('pi_float', 'binary32:0x4048f5c3'))").IsEqualToJsonString(`{"2": {"pi_float": "binary32:0x4048f5c3"}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_int32_map(test_new(), JSON_OBJECT('answer', 42))").IsEqualToJsonString(`{"3": {"answer": 42}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_int64_map(test_new(), JSON_OBJECT('big', 9223372036854775807))").IsEqualToJsonString(`{"4": {"big": 9223372036854775807}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_uint32_map(test_new(), JSON_OBJECT('max32', 4294967295))").IsEqualToJsonString(`{"5": {"max32": 4294967295}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_uint64_map(test_new(), JSON_OBJECT('max64', 18446744073709551615))").IsEqualToJsonString(`{"6": {"max64": 18446744073709551615}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_sint32_map(test_new(), JSON_OBJECT('neg', -1))").IsEqualToJsonString(`{"7": {"neg": -1}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_sint64_map(test_new(), JSON_OBJECT('min64', -9223372036854775808))").IsEqualToJsonString(`{"8": {"min64": -9223372036854775808}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_fixed32_map(test_new(), JSON_OBJECT('fixed', 4294967295))").IsEqualToJsonString(`{"9": {"fixed": 4294967295}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_fixed64_map(test_new(), JSON_OBJECT('fixed64', 18446744073709551615))").IsEqualToJsonString(`{"10": {"fixed64": 18446744073709551615}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_sfixed32_map(test_new(), JSON_OBJECT('sfixed', -2147483648))").IsEqualToJsonString(`{"11": {"sfixed": -2147483648}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_sfixed64_map(test_new(), JSON_OBJECT('sfixed64', -9223372036854775808))").IsEqualToJsonString(`{"12": {"sfixed64": -9223372036854775808}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_bool_map(test_new(), JSON_OBJECT('flag', true))").IsEqualToJsonString(`{"13": {"flag": true}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_string_map(test_new(), JSON_OBJECT('greeting', 'hello'))").IsEqualToJsonString(`{"14": {"greeting": "hello"}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_bytes_map(test_new(), JSON_OBJECT('data', 'aGVsbG8='))").IsEqualToJsonString(`{"15": {"data": "aGVsbG8="}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_enum_map(test_new(), JSON_OBJECT('status', 1))").IsEqualToJsonString(`{"16": {"status": 1}}`)
 
 		// Test message value
-		RunTestThatExpression(t, "test_set_string_to_message_map(test_new(), JSON_OBJECT('nested', JSON_OBJECT('1', 'test', '2', 42)))").IsEqualToJsonString(`{"17": {"nested": {"1": "test", "2": 42}}}`)
+		RunTestThatExpression(t, "test_set_all_string_to_message_map(test_new(), JSON_OBJECT('nested', JSON_OBJECT('1', 'test', '2', 42)))").IsEqualToJsonString(`{"17": {"nested": {"1": "test", "2": 42}}}`)
 	})
 
 	// Test map getter functions (return entire map)
@@ -1019,11 +1019,11 @@ func TestGeneratedOpaqueApiMapFields(t *testing.T) {
 		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
 
 		// Test getter returns entire map
-		obj := "test_set_data(test_new(), JSON_OBJECT('key1', 10, 'key2', 20))"
-		RunTestThatExpression(t, fmt.Sprintf("test_get_data(%s)", obj)).IsEqualToJsonString(`{"key1": 10, "key2": 20}`)
+		obj := "test_set_all_data(test_new(), JSON_OBJECT('key1', 10, 'key2', 20))"
+		RunTestThatExpression(t, fmt.Sprintf("test_get_all_data(%s)", obj)).IsEqualToJsonString(`{"key1": 10, "key2": 20}`)
 
 		// Test getter returns empty for new object
-		RunTestThatExpression(t, "test_get_data(test_new())").IsEqualToJsonString("[]")
+		RunTestThatExpression(t, "test_get_all_data(test_new())").IsEqualToJsonString("[]")
 	})
 
 	// Test map operations (clear, count)
@@ -1038,7 +1038,7 @@ func TestGeneratedOpaqueApiMapFields(t *testing.T) {
 		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
 
 		// Test map with multiple entries
-		obj := "test_set_data(test_new(), JSON_OBJECT('key1', 10, 'key2', 20))"
+		obj := "test_set_all_data(test_new(), JSON_OBJECT('key1', 10, 'key2', 20))"
 
 		// Test map count operation
 		RunTestThatExpression(t, "test_count_data(test_new())").IsEqualToInt(0)
@@ -1047,7 +1047,7 @@ func TestGeneratedOpaqueApiMapFields(t *testing.T) {
 		// Test map clear operation
 		objAfterClear := fmt.Sprintf("test_clear_data(%s)", obj)
 		RunTestThatExpression(t, fmt.Sprintf("test_count_data(%s)", objAfterClear)).IsEqualToInt(0)
-		RunTestThatExpression(t, fmt.Sprintf("test_get_data(%s)", objAfterClear)).IsEqualToJsonString("[]")
+		RunTestThatExpression(t, fmt.Sprintf("test_get_all_data(%s)", objAfterClear)).IsEqualToJsonString("[]")
 	})
 
 	// Test map internal representation format
@@ -1063,10 +1063,10 @@ func TestGeneratedOpaqueApiMapFields(t *testing.T) {
 
 		// Verify that maps are stored as nested JSON objects
 		// Map field 1 contains a JSON object where keys are string representations of the map keys
-		RunTestThatExpression(t, "test_set_int_to_string_map(test_new(), JSON_OBJECT('1', 'one', '2', 'two'))").IsEqualToJsonString(`{"1": {"1": "one", "2": "two"}}`)
+		RunTestThatExpression(t, "test_set_all_int_to_string_map(test_new(), JSON_OBJECT('1', 'one', '2', 'two'))").IsEqualToJsonString(`{"1": {"1": "one", "2": "two"}}`)
 
 		// Verify field number keys are used for the map field itself
-		RunTestThatExpression(t, "test_set_int_to_string_map(test_new(), JSON_OBJECT('42', 'answer'))").IsEqualToJsonString(`{"1": {"42": "answer"}}`)
+		RunTestThatExpression(t, "test_set_all_int_to_string_map(test_new(), JSON_OBJECT('42', 'answer'))").IsEqualToJsonString(`{"1": {"42": "answer"}}`)
 	})
 
 	// Test empty and default values in maps
@@ -1084,10 +1084,10 @@ func TestGeneratedOpaqueApiMapFields(t *testing.T) {
 		generateAndLoadOpaqueApiSQL(t, protoContent, schemaName)
 
 		// Maps can store default/zero values (unlike regular proto3 fields without presence)
-		RunTestThatExpression(t, "test_set_int_map(test_new(), JSON_OBJECT('zero', 0))").IsEqualToJsonString(`{"1": {"zero": 0}}`)
-		RunTestThatExpression(t, "test_set_string_map(test_new(), JSON_OBJECT('empty', ''))").IsEqualToJsonString(`{"2": {"empty": ""}}`)
-		RunTestThatExpression(t, "test_set_bool_map(test_new(), JSON_OBJECT('false', false))").IsEqualToJsonString(`{"3": {"false": false}}`)
-		RunTestThatExpression(t, "test_set_bytes_map(test_new(), JSON_OBJECT('empty', ''))").IsEqualToJsonString(`{"4": {"empty": ""}}`)
+		RunTestThatExpression(t, "test_set_all_int_map(test_new(), JSON_OBJECT('zero', 0))").IsEqualToJsonString(`{"1": {"zero": 0}}`)
+		RunTestThatExpression(t, "test_set_all_string_map(test_new(), JSON_OBJECT('empty', ''))").IsEqualToJsonString(`{"2": {"empty": ""}}`)
+		RunTestThatExpression(t, "test_set_all_bool_map(test_new(), JSON_OBJECT('false', false))").IsEqualToJsonString(`{"3": {"false": false}}`)
+		RunTestThatExpression(t, "test_set_all_bytes_map(test_new(), JSON_OBJECT('empty', ''))").IsEqualToJsonString(`{"4": {"empty": ""}}`)
 	})
 }
 
@@ -1408,7 +1408,7 @@ func TestGeneratedOpaqueApiTypeSpecific(t *testing.T) {
 			RunTestThatExpression(t, fmt.Sprintf("test_count_items(%s)", obj)).IsEqualToInt(1)
 
 			// Test that the nested structure is accessible (simplified test)
-			itemExpr := fmt.Sprintf("JSON_UNQUOTE(JSON_EXTRACT(test_get_items(%s), '$[0].\"1\"'))", obj)
+			itemExpr := fmt.Sprintf("JSON_UNQUOTE(JSON_EXTRACT(test_get_all_items(%s), '$[0].\"1\"'))", obj)
 			RunTestThatExpression(t, itemExpr).IsEqualToString("item1")
 		})
 	})

@@ -49,13 +49,13 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_double(?, 1.0)", `{"1": ["binary64:0x400921fb54442d18"]}`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}`)
 
 		// Test get operations return actual numeric arrays
-		RunTestThatExpression(t, `test_get_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}')`).IsEqualToJsonString(`[3.141592653589793, 1.0]`)
-		RunTestThatExpression(t, `test_get_repeated_double('{"1": []}')`).IsEqualToJsonString(`[]`) // Empty array
-		RunTestThatExpression(t, `test_get_repeated_double('{}')`).IsEqualToJsonString(`[]`)        // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}')`).IsEqualToJsonString(`[3.141592653589793, 1.0]`)
+		RunTestThatExpression(t, `test_get_all_repeated_double('{"1": []}')`).IsEqualToJsonString(`[]`) // Empty array
+		RunTestThatExpression(t, `test_get_all_repeated_double('{}')`).IsEqualToJsonString(`[]`)        // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_double(?, '[3.141592653589793, 1.0]')`, `{}`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}`)
-		RunTestThatExpression(t, `test_set_repeated_double(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_double(?, '[3.141592653589793, 1.0]')`, `{}`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_double(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}')`).IsEqualToJsonString(`{}`)
@@ -73,13 +73,13 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_float(?, 1.0)", `{"2": ["binary32:0x4048f5c3"]}`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}`)
 
 		// Test get operations return actual numeric arrays
-		RunTestThatExpression(t, `test_get_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}')`).IsEqualToJsonString(`[3.140000104904175, 1.0]`) // CAST(CAST(3.14 AS FLOAT) AS DOUBLE) => 3.140000104904175
-		RunTestThatExpression(t, `test_get_repeated_float('{"2": []}')`).IsEqualToJsonString(`[]`)                                                                   // Empty array
-		RunTestThatExpression(t, `test_get_repeated_float('{}')`).IsEqualToJsonString(`[]`)                                                                          // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}')`).IsEqualToJsonString(`[3.140000104904175, 1.0]`) // CAST(CAST(3.14 AS FLOAT) AS DOUBLE) => 3.140000104904175
+		RunTestThatExpression(t, `test_get_all_repeated_float('{"2": []}')`).IsEqualToJsonString(`[]`)                                                                   // Empty array
+		RunTestThatExpression(t, `test_get_all_repeated_float('{}')`).IsEqualToJsonString(`[]`)                                                                          // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_float(?, '[3.14, 1.0]')`, `{}`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}`)
-		RunTestThatExpression(t, `test_set_repeated_float(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_float(?, '[3.14, 1.0]')`, `{}`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_float(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}')`).IsEqualToJsonString(`{}`)
@@ -97,12 +97,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_int32(?, -2147483648)", `{"3": [42]}`).IsEqualToJsonString(`{"3": [42, -2147483648]}`)
 
 		// Test get operations return actual numeric arrays
-		RunTestThatExpression(t, `test_get_repeated_int32('{"3": [42, -2147483648]}')`).IsEqualToJsonString(`[42, -2147483648]`)
-		RunTestThatExpression(t, `test_get_repeated_int32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_int32('{"3": [42, -2147483648]}')`).IsEqualToJsonString(`[42, -2147483648]`)
+		RunTestThatExpression(t, `test_get_all_repeated_int32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_int32(?, '[42, -2147483648]')`, `{}`).IsEqualToJsonString(`{"3": [42, -2147483648]}`)
-		RunTestThatExpression(t, `test_set_repeated_int32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_int32(?, '[42, -2147483648]')`, `{}`).IsEqualToJsonString(`{"3": [42, -2147483648]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_int32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_int32('{"3": [42, -2147483648]}')`).IsEqualToJsonString(`{}`)
@@ -120,12 +120,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_int64(?, -9223372036854775808)", `{"4": [9223372036854775807]}`).IsEqualToJsonString(`{"4": [9223372036854775807, -9223372036854775808]}`)
 
 		// Test get operations return actual numeric arrays
-		RunTestThatExpression(t, `test_get_repeated_int64('{"4": [9223372036854775807, -9223372036854775808]}')`).IsEqualToJsonString(`[9223372036854775807, -9223372036854775808]`)
-		RunTestThatExpression(t, `test_get_repeated_int64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_int64('{"4": [9223372036854775807, -9223372036854775808]}')`).IsEqualToJsonString(`[9223372036854775807, -9223372036854775808]`)
+		RunTestThatExpression(t, `test_get_all_repeated_int64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_int64(?, '[9223372036854775807, -9223372036854775808]')`, `{}`).IsEqualToJsonString(`{"4": [9223372036854775807, -9223372036854775808]}`)
-		RunTestThatExpression(t, `test_set_repeated_int64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_int64(?, '[9223372036854775807, -9223372036854775808]')`, `{}`).IsEqualToJsonString(`{"4": [9223372036854775807, -9223372036854775808]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_int64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_int64('{"4": [9223372036854775807, -9223372036854775808]}')`).IsEqualToJsonString(`{}`)
@@ -143,12 +143,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_uint32(?, 42)", `{"5": [4294967295]}`).IsEqualToJsonString(`{"5": [4294967295, 42]}`)
 
 		// Test get operations return actual numeric arrays
-		RunTestThatExpression(t, `test_get_repeated_uint32('{"5": [4294967295, 42]}')`).IsEqualToJsonString(`[4294967295, 42]`)
-		RunTestThatExpression(t, `test_get_repeated_uint32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_uint32('{"5": [4294967295, 42]}')`).IsEqualToJsonString(`[4294967295, 42]`)
+		RunTestThatExpression(t, `test_get_all_repeated_uint32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_uint32(?, '[4294967295, 42]')`, `{}`).IsEqualToJsonString(`{"5": [4294967295, 42]}`)
-		RunTestThatExpression(t, `test_set_repeated_uint32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_uint32(?, '[4294967295, 42]')`, `{}`).IsEqualToJsonString(`{"5": [4294967295, 42]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_uint32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_uint32('{"5": [4294967295, 42]}')`).IsEqualToJsonString(`{}`)
@@ -166,12 +166,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_uint64(?, 100)", `{"6": [18446744073709551615]}`).IsEqualToJsonString(`{"6": [18446744073709551615, 100]}`)
 
 		// Test get operations return actual numeric arrays
-		RunTestThatExpression(t, `test_get_repeated_uint64('{"6": [18446744073709551615, 100]}')`).IsEqualToJsonString(`[18446744073709551615, 100]`)
-		RunTestThatExpression(t, `test_get_repeated_uint64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_uint64('{"6": [18446744073709551615, 100]}')`).IsEqualToJsonString(`[18446744073709551615, 100]`)
+		RunTestThatExpression(t, `test_get_all_repeated_uint64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_uint64(?, '[18446744073709551615, 100]')`, `{}`).IsEqualToJsonString(`{"6": [18446744073709551615, 100]}`)
-		RunTestThatExpression(t, `test_set_repeated_uint64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_uint64(?, '[18446744073709551615, 100]')`, `{}`).IsEqualToJsonString(`{"6": [18446744073709551615, 100]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_uint64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_uint64('{"6": [18446744073709551615, 100]}')`).IsEqualToJsonString(`{}`)
@@ -189,12 +189,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_sint32(?, 42)", `{"7": [-1]}`).IsEqualToJsonString(`{"7": [-1, 42]}`)
 
 		// Test get operations return actual numeric arrays
-		RunTestThatExpression(t, `test_get_repeated_sint32('{"7": [-1, 42]}')`).IsEqualToJsonString(`[-1, 42]`)
-		RunTestThatExpression(t, `test_get_repeated_sint32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_sint32('{"7": [-1, 42]}')`).IsEqualToJsonString(`[-1, 42]`)
+		RunTestThatExpression(t, `test_get_all_repeated_sint32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_sint32(?, '[-1, 42]')`, `{}`).IsEqualToJsonString(`{"7": [-1, 42]}`)
-		RunTestThatExpression(t, `test_set_repeated_sint32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_sint32(?, '[-1, 42]')`, `{}`).IsEqualToJsonString(`{"7": [-1, 42]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_sint32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_sint32('{"7": [-1, 42]}')`).IsEqualToJsonString(`{}`)
@@ -212,12 +212,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_sint64(?, 100)", `{"8": [-1]}`).IsEqualToJsonString(`{"8": [-1, 100]}`)
 
 		// Test get operations return actual numeric arrays
-		RunTestThatExpression(t, `test_get_repeated_sint64('{"8": [-1, 100]}')`).IsEqualToJsonString(`[-1, 100]`)
-		RunTestThatExpression(t, `test_get_repeated_sint64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_sint64('{"8": [-1, 100]}')`).IsEqualToJsonString(`[-1, 100]`)
+		RunTestThatExpression(t, `test_get_all_repeated_sint64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_sint64(?, '[-1, 100]')`, `{}`).IsEqualToJsonString(`{"8": [-1, 100]}`)
-		RunTestThatExpression(t, `test_set_repeated_sint64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_sint64(?, '[-1, 100]')`, `{}`).IsEqualToJsonString(`{"8": [-1, 100]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_sint64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_sint64('{"8": [-1, 100]}')`).IsEqualToJsonString(`{}`)
@@ -235,12 +235,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_fixed32(?, 42)", `{"9": [4294967295]}`).IsEqualToJsonString(`{"9": [4294967295, 42]}`)
 
 		// Test get operations return actual numeric arrays
-		RunTestThatExpression(t, `test_get_repeated_fixed32('{"9": [4294967295, 42]}')`).IsEqualToJsonString(`[4294967295, 42]`)
-		RunTestThatExpression(t, `test_get_repeated_fixed32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_fixed32('{"9": [4294967295, 42]}')`).IsEqualToJsonString(`[4294967295, 42]`)
+		RunTestThatExpression(t, `test_get_all_repeated_fixed32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_fixed32(?, '[4294967295, 42]')`, `{}`).IsEqualToJsonString(`{"9": [4294967295, 42]}`)
-		RunTestThatExpression(t, `test_set_repeated_fixed32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_fixed32(?, '[4294967295, 42]')`, `{}`).IsEqualToJsonString(`{"9": [4294967295, 42]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_fixed32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_fixed32('{"9": [4294967295, 42]}')`).IsEqualToJsonString(`{}`)
@@ -258,12 +258,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_fixed64(?, 100)", `{"10": [18446744073709551615]}`).IsEqualToJsonString(`{"10": [18446744073709551615, 100]}`)
 
 		// Test get operations return actual numeric arrays
-		RunTestThatExpression(t, `test_get_repeated_fixed64('{"10": [18446744073709551615, 100]}')`).IsEqualToJsonString(`[18446744073709551615, 100]`)
-		RunTestThatExpression(t, `test_get_repeated_fixed64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_fixed64('{"10": [18446744073709551615, 100]}')`).IsEqualToJsonString(`[18446744073709551615, 100]`)
+		RunTestThatExpression(t, `test_get_all_repeated_fixed64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_fixed64(?, '[18446744073709551615, 100]')`, `{}`).IsEqualToJsonString(`{"10": [18446744073709551615, 100]}`)
-		RunTestThatExpression(t, `test_set_repeated_fixed64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_fixed64(?, '[18446744073709551615, 100]')`, `{}`).IsEqualToJsonString(`{"10": [18446744073709551615, 100]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_fixed64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_fixed64('{"10": [18446744073709551615, 100]}')`).IsEqualToJsonString(`{}`)
@@ -281,12 +281,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_sfixed32(?, 42)", `{"11": [-2147483648]}`).IsEqualToJsonString(`{"11": [-2147483648, 42]}`)
 
 		// Test get operations return actual numeric arrays
-		RunTestThatExpression(t, `test_get_repeated_sfixed32('{"11": [-2147483648, 42]}')`).IsEqualToJsonString(`[-2147483648, 42]`)
-		RunTestThatExpression(t, `test_get_repeated_sfixed32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_sfixed32('{"11": [-2147483648, 42]}')`).IsEqualToJsonString(`[-2147483648, 42]`)
+		RunTestThatExpression(t, `test_get_all_repeated_sfixed32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_sfixed32(?, '[-2147483648, 42]')`, `{}`).IsEqualToJsonString(`{"11": [-2147483648, 42]}`)
-		RunTestThatExpression(t, `test_set_repeated_sfixed32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_sfixed32(?, '[-2147483648, 42]')`, `{}`).IsEqualToJsonString(`{"11": [-2147483648, 42]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_sfixed32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_sfixed32('{"11": [-2147483648, 42]}')`).IsEqualToJsonString(`{}`)
@@ -304,12 +304,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_sfixed64(?, 100)", `{"12": [-9223372036854775808]}`).IsEqualToJsonString(`{"12": [-9223372036854775808, 100]}`)
 
 		// Test get operations return actual numeric arrays
-		RunTestThatExpression(t, `test_get_repeated_sfixed64('{"12": [-9223372036854775808, 100]}')`).IsEqualToJsonString(`[-9223372036854775808, 100]`)
-		RunTestThatExpression(t, `test_get_repeated_sfixed64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_sfixed64('{"12": [-9223372036854775808, 100]}')`).IsEqualToJsonString(`[-9223372036854775808, 100]`)
+		RunTestThatExpression(t, `test_get_all_repeated_sfixed64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_sfixed64(?, '[-9223372036854775808, 100]')`, `{}`).IsEqualToJsonString(`{"12": [-9223372036854775808, 100]}`)
-		RunTestThatExpression(t, `test_set_repeated_sfixed64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_sfixed64(?, '[-9223372036854775808, 100]')`, `{}`).IsEqualToJsonString(`{"12": [-9223372036854775808, 100]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_sfixed64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_sfixed64('{"12": [-9223372036854775808, 100]}')`).IsEqualToJsonString(`{}`)
@@ -327,12 +327,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_bool(?, FALSE)", `{"13": [true]}`).IsEqualToJsonString(`{"13": [true, false]}`)
 
 		// Test get operations return actual boolean arrays
-		RunTestThatExpression(t, `test_get_repeated_bool('{"13": [true, false]}')`).IsEqualToJsonString(`[true, false]`)
-		RunTestThatExpression(t, `test_get_repeated_bool('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_bool('{"13": [true, false]}')`).IsEqualToJsonString(`[true, false]`)
+		RunTestThatExpression(t, `test_get_all_repeated_bool('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_bool(?, '[true, false]')`, `{}`).IsEqualToJsonString(`{"13": [true, false]}`)
-		RunTestThatExpression(t, `test_set_repeated_bool(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_bool(?, '[true, false]')`, `{}`).IsEqualToJsonString(`{"13": [true, false]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_bool(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_bool('{"13": [true, false]}')`).IsEqualToJsonString(`{}`)
@@ -350,12 +350,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_string(?, 'world')", `{"14": ["hello"]}`).IsEqualToJsonString(`{"14": ["hello", "world"]}`)
 
 		// Test get operations return actual string arrays
-		RunTestThatExpression(t, `test_get_repeated_string('{"14": ["hello", "world"]}')`).IsEqualToJsonString(`["hello", "world"]`)
-		RunTestThatExpression(t, `test_get_repeated_string('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_string('{"14": ["hello", "world"]}')`).IsEqualToJsonString(`["hello", "world"]`)
+		RunTestThatExpression(t, `test_get_all_repeated_string('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_string(?, '["hello", "world"]')`, `{}`).IsEqualToJsonString(`{"14": ["hello", "world"]}`)
-		RunTestThatExpression(t, `test_set_repeated_string(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_string(?, '["hello", "world"]')`, `{}`).IsEqualToJsonString(`{"14": ["hello", "world"]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_string(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_string('{"14": ["hello", "world"]}')`).IsEqualToJsonString(`{}`)
@@ -373,12 +373,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_bytes(?, ?)", `{"15": ["aGVsbG8="]}`, []byte("world")).IsEqualToJsonString(`{"15": ["aGVsbG8=", "d29ybGQ="]}`)
 
 		// Test get operations convert from base64 back to actual byte arrays (but returned as base64 JSON)
-		RunTestThatExpression(t, `test_get_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ="]}')`).IsEqualToJsonString(`["aGVsbG8=", "d29ybGQ="]`) // Returns base64 strings in array
-		RunTestThatExpression(t, `test_get_repeated_bytes('{}')`).IsEqualToJsonString(`[]`)                                                     // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ="]}')`).IsEqualToJsonString(`["aGVsbG8=", "d29ybGQ="]`) // Returns base64 strings in array
+		RunTestThatExpression(t, `test_get_all_repeated_bytes('{}')`).IsEqualToJsonString(`[]`)                                                     // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_bytes(?, '["aGVsbG8=", "d29ybGQ="]')`, `{}`).IsEqualToJsonString(`{"15": ["aGVsbG8=", "d29ybGQ="]}`)
-		RunTestThatExpression(t, `test_set_repeated_bytes(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_bytes(?, '["aGVsbG8=", "d29ybGQ="]')`, `{}`).IsEqualToJsonString(`{"15": ["aGVsbG8=", "d29ybGQ="]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_bytes(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ="]}')`).IsEqualToJsonString(`{}`)
@@ -396,12 +396,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "test_add_repeated_enum(?, 2)", `{"16": [1]}`).IsEqualToJsonString(`{"16": [1, 2]}`)
 
 		// Test get operations return actual integer arrays
-		RunTestThatExpression(t, `test_get_repeated_enum('{"16": [1, 2]}')`).IsEqualToJsonString(`[1, 2]`)
-		RunTestThatExpression(t, `test_get_repeated_enum('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_enum('{"16": [1, 2]}')`).IsEqualToJsonString(`[1, 2]`)
+		RunTestThatExpression(t, `test_get_all_repeated_enum('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_enum(?, '[1, 2]')`, `{}`).IsEqualToJsonString(`{"16": [1, 2]}`)
-		RunTestThatExpression(t, `test_set_repeated_enum(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_enum(?, '[1, 2]')`, `{}`).IsEqualToJsonString(`{"16": [1, 2]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_enum(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_enum('{"16": [1, 2]}')`).IsEqualToJsonString(`{}`)
@@ -421,12 +421,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, fmt.Sprintf("test_add_repeated_message(?, %s)", nested2), `{"17": [{"1": "first"}]}`).IsEqualToJsonString(`{"17": [{"1": "first"}, {"1": "second", "2": 42}]}`)
 
 		// Test get operations return actual nested object arrays
-		RunTestThatExpression(t, `test_get_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}')`).IsEqualToJsonString(`[{"1": "first"}, {"1": "second", "2": 42}]`)
-		RunTestThatExpression(t, `test_get_repeated_message('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+		RunTestThatExpression(t, `test_get_all_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}')`).IsEqualToJsonString(`[{"1": "first"}, {"1": "second", "2": 42}]`)
+		RunTestThatExpression(t, `test_get_all_repeated_message('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
 
 		// Test set operations create correct internal format
-		RunTestThatExpression(t, `test_set_repeated_message(?, '[{"1": "first"}, {"1": "second", "2": 42}]')`, `{}`).IsEqualToJsonString(`{"17": [{"1": "first"}, {"1": "second", "2": 42}]}`)
-		RunTestThatExpression(t, `test_set_repeated_message(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+		RunTestThatExpression(t, `test_set_all_repeated_message(?, '[{"1": "first"}, {"1": "second", "2": 42}]')`, `{}`).IsEqualToJsonString(`{"17": [{"1": "first"}, {"1": "second", "2": 42}]}`)
+		RunTestThatExpression(t, `test_set_all_repeated_message(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
 
 		// Test clear operations remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}')`).IsEqualToJsonString(`{}`)
