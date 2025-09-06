@@ -18,7 +18,7 @@ start-mysql: download-mysql
 	if test -f mysql.pid; then echo "MySQL is already running. Delete mysql.pid if you are sure MySQL is stopped."; exit 1; fi
 	$(RM) -r $(MYSQL_DATADIR)
 	$(MYSQLD_BIN) --console --initialize-insecure --datadir=$(MYSQL_DATADIR)
-	nohup $(MYSQLD_BIN) --datadir=$(MYSQL_DATADIR) --bind-address=$(MYSQL_BIND_ADDRESS) --port=$(MYSQL_PORT) --performance-schema-events-statements-history-long-size=1000000 --stored_program_cache=1024 > mysql.out & echo $$! > mysql.pid
+	nohup $(MYSQLD_BIN) --datadir=$(MYSQL_DATADIR) --bind-address=$(MYSQL_BIND_ADDRESS) --port=$(MYSQL_PORT) --performance-schema-events-statements-history-long-size=1000000 --stored_program_cache=2048 > mysql.out & echo $$! > mysql.pid
 	set -euxo pipefail; \
 	until $(MYSQL_COMMAND_NO_DB) -e 'select 1'; do \
 		sleep 1; \
