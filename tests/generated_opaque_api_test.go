@@ -217,9 +217,9 @@ func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
 		// Test double field (IEEE 754 binary64 format)
 		t.Run("double_field", func(t *testing.T) {
 			// Test setters create correct internal format
-			RunTestThatExpression(t, "test_set_double_field(test_new(), 3.141592653589793)").IsEqualToJsonString(`{"1": "binary64:0x400921fb54442d18"}`)
-			RunTestThatExpression(t, "test_set_double_field(test_new(), 1.0)").IsEqualToJsonString(`{"1": "binary64:0x3ff0000000000000"}`)
-			RunTestThatExpression(t, "test_set_double_field(test_new(), 0.0)").IsEqualToJsonString(`{}`) // Zero omitted
+			RunTestThatExpression(t, "test_set_double_field(?, 3.141592653589793)", `{}`).IsEqualToJsonString(`{"1": "binary64:0x400921fb54442d18"}`)
+			RunTestThatExpression(t, "test_set_double_field(?, 1.0)", `{}`).IsEqualToJsonString(`{"1": "binary64:0x3ff0000000000000"}`)
+			RunTestThatExpression(t, "test_set_double_field(?, 0.0)", `{}`).IsEqualToJsonString(`{}`) // Zero omitted
 
 			// Test getters convert from binary64 format back to actual double
 			RunTestThatExpression(t, `test_get_double_field('{"1": "binary64:0x400921fb54442d18"}')`).IsEqualTo(3.141592653589793)
@@ -230,9 +230,9 @@ func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
 		// Test float field (IEEE 754 binary32 format)
 		t.Run("float_field", func(t *testing.T) {
 			// Test setters create correct internal format
-			RunTestThatExpression(t, "test_set_float_field(test_new(), 3.14)").IsEqualToJsonString(`{"2": "binary32:0x4048f5c3"}`)
-			RunTestThatExpression(t, "test_set_float_field(test_new(), 1.0)").IsEqualToJsonString(`{"2": "binary32:0x3f800000"}`)
-			RunTestThatExpression(t, "test_set_float_field(test_new(), 0.0)").IsEqualToJsonString(`{}`) // Zero omitted
+			RunTestThatExpression(t, "test_set_float_field(?, 3.14)", `{}`).IsEqualToJsonString(`{"2": "binary32:0x4048f5c3"}`)
+			RunTestThatExpression(t, "test_set_float_field(?, 1.0)", `{}`).IsEqualToJsonString(`{"2": "binary32:0x3f800000"}`)
+			RunTestThatExpression(t, "test_set_float_field(?, 0.0)", `{}`).IsEqualToJsonString(`{}`) // Zero omitted
 
 			// Test getters convert from binary32 format back to actual float
 			RunTestThatExpression(t, `test_get_float_field('{"2": "binary32:0x4048f5c3"}')`).IsEqualTo(3.14) // MySQL returns 3.14 for float precision
@@ -243,9 +243,9 @@ func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
 		// Test int32 field (JSON numbers)
 		t.Run("int32_field", func(t *testing.T) {
 			// Test setters create correct internal format
-			RunTestThatExpression(t, "test_set_int32_field(test_new(), 42)").IsEqualToJsonString(`{"3": 42}`)
-			RunTestThatExpression(t, "test_set_int32_field(test_new(), -2147483648)").IsEqualToJsonString(`{"3": -2147483648}`)
-			RunTestThatExpression(t, "test_set_int32_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+			RunTestThatExpression(t, "test_set_int32_field(?, 42)", `{}`).IsEqualToJsonString(`{"3": 42}`)
+			RunTestThatExpression(t, "test_set_int32_field(?, -2147483648)", `{}`).IsEqualToJsonString(`{"3": -2147483648}`)
+			RunTestThatExpression(t, "test_set_int32_field(?, 0)", `{}`).IsEqualToJsonString(`{}`) // Zero omitted
 
 			// Test getters return values directly (no conversion needed)
 			RunTestThatExpression(t, `test_get_int32_field('{"3": 42}')`).IsEqualTo(42)
@@ -256,9 +256,9 @@ func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
 		// Test int64 field (JSON numbers, not strings per protonumberjson spec)
 		t.Run("int64_field", func(t *testing.T) {
 			// Test setters create correct internal format
-			RunTestThatExpression(t, "test_set_int64_field(test_new(), 9223372036854775807)").IsEqualToJsonString(`{"4": 9223372036854775807}`)
-			RunTestThatExpression(t, "test_set_int64_field(test_new(), -9223372036854775808)").IsEqualToJsonString(`{"4": -9223372036854775808}`)
-			RunTestThatExpression(t, "test_set_int64_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+			RunTestThatExpression(t, "test_set_int64_field(?, 9223372036854775807)", `{}`).IsEqualToJsonString(`{"4": 9223372036854775807}`)
+			RunTestThatExpression(t, "test_set_int64_field(?, -9223372036854775808)", `{}`).IsEqualToJsonString(`{"4": -9223372036854775808}`)
+			RunTestThatExpression(t, "test_set_int64_field(?, 0)", `{}`).IsEqualToJsonString(`{}`) // Zero omitted
 
 			// Test getters
 			RunTestThatExpression(t, `test_get_int64_field('{"4": 9223372036854775807}')`).IsEqualTo(int64(9223372036854775807))
@@ -268,57 +268,57 @@ func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
 
 		// Test remaining integer types
 		t.Run("uint32_field", func(t *testing.T) {
-			RunTestThatExpression(t, "test_set_uint32_field(test_new(), 4294967295)").IsEqualToJsonString(`{"5": 4294967295}`)
-			RunTestThatExpression(t, "test_set_uint32_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+			RunTestThatExpression(t, "test_set_uint32_field(?, 4294967295)", `{}`).IsEqualToJsonString(`{"5": 4294967295}`)
+			RunTestThatExpression(t, "test_set_uint32_field(?, 0)", `{}`).IsEqualToJsonString(`{}`) // Zero omitted
 			RunTestThatExpression(t, `test_get_uint32_field('{"5": 4294967295}')`).IsEqualTo(uint32(4294967295))
 			RunTestThatExpression(t, `test_get_uint32_field('{}')`).IsEqualTo(uint32(0)) // Missing field returns default
 		})
 
 		t.Run("uint64_field", func(t *testing.T) {
-			RunTestThatExpression(t, "test_set_uint64_field(test_new(), 18446744073709551615)").IsEqualToJsonString(`{"6": 18446744073709551615}`)
-			RunTestThatExpression(t, "test_set_uint64_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+			RunTestThatExpression(t, "test_set_uint64_field(?, 18446744073709551615)", `{}`).IsEqualToJsonString(`{"6": 18446744073709551615}`)
+			RunTestThatExpression(t, "test_set_uint64_field(?, 0)", `{}`).IsEqualToJsonString(`{}`) // Zero omitted
 			RunTestThatExpression(t, `test_get_uint64_field('{"6": 18446744073709551615}')`).IsEqualTo(uint64(18446744073709551615))
 			RunTestThatExpression(t, `test_get_uint64_field('{}')`).IsEqualTo(uint64(0)) // Missing field returns default
 		})
 
 		t.Run("sint32_field", func(t *testing.T) {
-			RunTestThatExpression(t, "test_set_sint32_field(test_new(), -1)").IsEqualToJsonString(`{"7": -1}`)
-			RunTestThatExpression(t, "test_set_sint32_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+			RunTestThatExpression(t, "test_set_sint32_field(?, -1)", `{}`).IsEqualToJsonString(`{"7": -1}`)
+			RunTestThatExpression(t, "test_set_sint32_field(?, 0)", `{}`).IsEqualToJsonString(`{}`) // Zero omitted
 			RunTestThatExpression(t, `test_get_sint32_field('{"7": -1}')`).IsEqualTo(-1)
 			RunTestThatExpression(t, `test_get_sint32_field('{}')`).IsEqualTo(0) // Missing field returns default
 		})
 
 		t.Run("sint64_field", func(t *testing.T) {
-			RunTestThatExpression(t, "test_set_sint64_field(test_new(), -1)").IsEqualToJsonString(`{"8": -1}`)
-			RunTestThatExpression(t, "test_set_sint64_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+			RunTestThatExpression(t, "test_set_sint64_field(?, -1)", `{}`).IsEqualToJsonString(`{"8": -1}`)
+			RunTestThatExpression(t, "test_set_sint64_field(?, 0)", `{}`).IsEqualToJsonString(`{}`) // Zero omitted
 			RunTestThatExpression(t, `test_get_sint64_field('{"8": -1}')`).IsEqualTo(int64(-1))
 			RunTestThatExpression(t, `test_get_sint64_field('{}')`).IsEqualTo(int64(0)) // Missing field returns default
 		})
 
 		t.Run("fixed32_field", func(t *testing.T) {
-			RunTestThatExpression(t, "test_set_fixed32_field(test_new(), 4294967295)").IsEqualToJsonString(`{"9": 4294967295}`)
-			RunTestThatExpression(t, "test_set_fixed32_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+			RunTestThatExpression(t, "test_set_fixed32_field(?, 4294967295)", `{}`).IsEqualToJsonString(`{"9": 4294967295}`)
+			RunTestThatExpression(t, "test_set_fixed32_field(?, 0)", `{}`).IsEqualToJsonString(`{}`) // Zero omitted
 			RunTestThatExpression(t, `test_get_fixed32_field('{"9": 4294967295}')`).IsEqualTo(uint32(4294967295))
 			RunTestThatExpression(t, `test_get_fixed32_field('{}')`).IsEqualTo(uint32(0)) // Missing field returns default
 		})
 
 		t.Run("fixed64_field", func(t *testing.T) {
-			RunTestThatExpression(t, "test_set_fixed64_field(test_new(), 18446744073709551615)").IsEqualToJsonString(`{"10": 18446744073709551615}`)
-			RunTestThatExpression(t, "test_set_fixed64_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+			RunTestThatExpression(t, "test_set_fixed64_field(?, 18446744073709551615)", `{}`).IsEqualToJsonString(`{"10": 18446744073709551615}`)
+			RunTestThatExpression(t, "test_set_fixed64_field(?, 0)", `{}`).IsEqualToJsonString(`{}`) // Zero omitted
 			RunTestThatExpression(t, `test_get_fixed64_field('{"10": 18446744073709551615}')`).IsEqualTo(uint64(18446744073709551615))
 			RunTestThatExpression(t, `test_get_fixed64_field('{}')`).IsEqualTo(uint64(0)) // Missing field returns default
 		})
 
 		t.Run("sfixed32_field", func(t *testing.T) {
-			RunTestThatExpression(t, "test_set_sfixed32_field(test_new(), -2147483648)").IsEqualToJsonString(`{"11": -2147483648}`)
-			RunTestThatExpression(t, "test_set_sfixed32_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+			RunTestThatExpression(t, "test_set_sfixed32_field(?, -2147483648)", `{}`).IsEqualToJsonString(`{"11": -2147483648}`)
+			RunTestThatExpression(t, "test_set_sfixed32_field(?, 0)", `{}`).IsEqualToJsonString(`{}`) // Zero omitted
 			RunTestThatExpression(t, `test_get_sfixed32_field('{"11": -2147483648}')`).IsEqualTo(-2147483648)
 			RunTestThatExpression(t, `test_get_sfixed32_field('{}')`).IsEqualTo(0) // Missing field returns default
 		})
 
 		t.Run("sfixed64_field", func(t *testing.T) {
-			RunTestThatExpression(t, "test_set_sfixed64_field(test_new(), -9223372036854775808)").IsEqualToJsonString(`{"12": -9223372036854775808}`)
-			RunTestThatExpression(t, "test_set_sfixed64_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero omitted
+			RunTestThatExpression(t, "test_set_sfixed64_field(?, -9223372036854775808)", `{}`).IsEqualToJsonString(`{"12": -9223372036854775808}`)
+			RunTestThatExpression(t, "test_set_sfixed64_field(?, 0)", `{}`).IsEqualToJsonString(`{}`) // Zero omitted
 			RunTestThatExpression(t, `test_get_sfixed64_field('{"12": -9223372036854775808}')`).IsEqualTo(int64(-9223372036854775808))
 			RunTestThatExpression(t, `test_get_sfixed64_field('{}')`).IsEqualTo(int64(0)) // Missing field returns default
 		})
@@ -326,8 +326,8 @@ func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
 		// Test bool field (JSON booleans, not 1/0)
 		t.Run("bool_field", func(t *testing.T) {
 			// Test setters create correct internal format
-			RunTestThatExpression(t, "test_set_bool_field(test_new(), TRUE)").IsEqualToJsonString(`{"13": true}`)
-			RunTestThatExpression(t, "test_set_bool_field(test_new(), FALSE)").IsEqualToJsonString(`{}`) // False omitted
+			RunTestThatExpression(t, "test_set_bool_field(?, TRUE)", `{}`).IsEqualToJsonString(`{"13": true}`)
+			RunTestThatExpression(t, "test_set_bool_field(?, FALSE)", `{}`).IsEqualToJsonString(`{}`) // False omitted
 
 			// Test getters return actual boolean from JSON boolean
 			RunTestThatExpression(t, `test_get_bool_field('{"13": true}')`).IsTrue()
@@ -338,8 +338,8 @@ func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
 		// Test string field
 		t.Run("string_field", func(t *testing.T) {
 			// Test setters create correct internal format
-			RunTestThatExpression(t, "test_set_string_field(test_new(), 'hello world')").IsEqualToJsonString(`{"14": "hello world"}`)
-			RunTestThatExpression(t, "test_set_string_field(test_new(), '')").IsEqualToJsonString(`{}`) // Empty string omitted
+			RunTestThatExpression(t, "test_set_string_field(?, 'hello world')", `{}`).IsEqualToJsonString(`{"14": "hello world"}`)
+			RunTestThatExpression(t, "test_set_string_field(?, '')", `{}`).IsEqualToJsonString(`{}`) // Empty string omitted
 
 			// Test getters return actual string
 			RunTestThatExpression(t, `test_get_string_field('{"14": "hello world"}')`).IsEqualTo("hello world")
@@ -350,9 +350,9 @@ func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
 		// Test bytes field (base64 encoded)
 		t.Run("bytes_field", func(t *testing.T) {
 			// Test setters create correct internal format
-			RunTestThatExpression(t, "test_set_bytes_field(test_new(), ?)", []byte("hello world")).IsEqualToJsonString(`{"15": "aGVsbG8gd29ybGQ="}`)
-			RunTestThatExpression(t, "test_set_bytes_field(test_new(), ?)", []byte{0xDE, 0xAD, 0xBE, 0xEF}).IsEqualToJsonString(`{"15": "3q2+7w=="}`)
-			RunTestThatExpression(t, "test_set_bytes_field(test_new(), ?)", []byte{}).IsEqualToJsonString(`{}`) // Empty bytes omitted
+			RunTestThatExpression(t, "test_set_bytes_field(?, ?)", `{}`, []byte("hello world")).IsEqualToJsonString(`{"15": "aGVsbG8gd29ybGQ="}`)
+			RunTestThatExpression(t, "test_set_bytes_field(?, ?)", `{}`, []byte{0xDE, 0xAD, 0xBE, 0xEF}).IsEqualToJsonString(`{"15": "3q2+7w=="}`)
+			RunTestThatExpression(t, "test_set_bytes_field(?, ?)", `{}`, []byte{}).IsEqualToJsonString(`{}`) // Empty bytes omitted
 
 			// Test getters convert from base64 back to actual bytes
 			RunTestThatExpression(t, `test_get_bytes_field('{"15": "aGVsbG8gd29ybGQ="}')`).IsEqualTo([]byte("hello world"))
@@ -364,9 +364,9 @@ func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
 		// Test enum field (stored as numbers, not string names)
 		t.Run("enum_field", func(t *testing.T) {
 			// Test setters create correct internal format
-			RunTestThatExpression(t, "test_set_enum_field(test_new(), 1)").IsEqualToJsonString(`{"16": 1}`)
-			RunTestThatExpression(t, "test_set_enum_field(test_new(), 2)").IsEqualToJsonString(`{"16": 2}`)
-			RunTestThatExpression(t, "test_set_enum_field(test_new(), 0)").IsEqualToJsonString(`{}`) // Zero enum omitted
+			RunTestThatExpression(t, "test_set_enum_field(?, 1)", `{}`).IsEqualToJsonString(`{"16": 1}`)
+			RunTestThatExpression(t, "test_set_enum_field(?, 2)", `{}`).IsEqualToJsonString(`{"16": 2}`)
+			RunTestThatExpression(t, "test_set_enum_field(?, 0)", `{}`).IsEqualToJsonString(`{}`) // Zero enum omitted
 
 			// Test getters return actual integer value
 			RunTestThatExpression(t, `test_get_enum_field('{"16": 1}')`).IsEqualTo(1)
@@ -378,8 +378,8 @@ func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
 		t.Run("message_field", func(t *testing.T) {
 			// Test setters create correct internal format
 			nestedObj := "nested_set_value(nested_set_name(nested_new(), 'test'), 42)"
-			RunTestThatExpression(t, fmt.Sprintf("test_set_message_field(test_new(), %s)", nestedObj)).IsEqualToJsonString(`{"17": {"1": "test", "2": 42}}`)
-			RunTestThatExpression(t, "test_set_message_field(test_new(), nested_new())").IsEqualToJsonString(`{"17": {}}`) // Empty message is stored
+			RunTestThatExpression(t, fmt.Sprintf("test_set_message_field(?, %s)", nestedObj), `{}`).IsEqualToJsonString(`{"17": {"1": "test", "2": 42}}`)
+			RunTestThatExpression(t, "test_set_message_field(?, nested_new())", `{}`).IsEqualToJsonString(`{"17": {}}`) // Empty message is stored
 
 			// Test getters return actual nested message as JSON object
 			RunTestThatExpression(t, `test_get_message_field('{"17": {"1": "test", "2": 42}}')`).IsEqualToJsonString(`{"1": "test", "2": 42}`)
