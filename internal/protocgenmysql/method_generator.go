@@ -264,8 +264,8 @@ func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTyp
 		// For repeated fields, return JSON array or empty array if not present
 		content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_ARRAY());\n", field.Number()))
 	case isMessage:
-		// For message fields, return JSON object or NULL if not present
-		content.WriteString(fmt.Sprintf("    RETURN JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+		// For message fields, return JSON object or empty object if not present
+		content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_OBJECT());\n", field.Number()))
 	case fieldType == protoreflect.BoolKind:
 		// For boolean fields, use _pb_json_parse_bool if the field exists
 		defaultValue := getFieldDefaultValueFromReflection(field)

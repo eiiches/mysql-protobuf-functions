@@ -4575,7 +4575,7 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_get_value $$
 CREATE FUNCTION pb_wkt_struct_fields_entry_get_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."2"');
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."2"'), JSON_OBJECT());
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_set_value $$
@@ -4776,7 +4776,7 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_value_get_struct_value $$
 CREATE FUNCTION pb_wkt_value_get_struct_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."5"');
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."5"'), JSON_OBJECT());
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_struct_value $$
@@ -4810,7 +4810,7 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_value_get_list_value $$
 CREATE FUNCTION pb_wkt_value_get_list_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_EXTRACT(proto_data, '$."6"');
+    RETURN COALESCE(JSON_EXTRACT(proto_data, '$."6"'), JSON_OBJECT());
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_list_value $$
