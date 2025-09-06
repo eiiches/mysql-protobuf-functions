@@ -261,8 +261,35 @@ func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTyp
 
 	switch {
 	case isRepeated:
-		// For repeated fields, return JSON array or empty array if not present
-		content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_ARRAY());\n", field.Number()))
+		// For repeated fields, special handling for float and double to convert from binary format
+		if fieldType == protoreflect.FloatKind || fieldType == protoreflect.DoubleKind {
+			content.WriteString("    DECLARE result_array JSON DEFAULT JSON_ARRAY();\n")
+			content.WriteString("    DECLARE raw_array JSON;\n")
+			content.WriteString("    DECLARE array_length INT;\n")
+			content.WriteString("    DECLARE i INT DEFAULT 0;\n")
+			content.WriteString("    DECLARE element_value JSON;\n")
+			content.WriteString("\n")
+			content.WriteString(fmt.Sprintf("    SET raw_array = COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_ARRAY());\n", field.Number()))
+			content.WriteString("    SET array_length = JSON_LENGTH(raw_array);\n")
+			content.WriteString("\n")
+			content.WriteString("    WHILE i < array_length DO\n")
+			content.WriteString("        SET element_value = JSON_EXTRACT(raw_array, CONCAT('$[', i, ']'));\n")
+			
+			// Use the appropriate conversion function based on field type
+			if fieldType == protoreflect.FloatKind {
+				content.WriteString("        SET result_array = JSON_ARRAY_APPEND(result_array, '$', _pb_util_reinterpret_uint32_as_float(_pb_json_parse_float_as_uint32(element_value, TRUE)));\n")
+			} else { // DoubleKind
+				content.WriteString("        SET result_array = JSON_ARRAY_APPEND(result_array, '$', _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(element_value, TRUE)));\n")
+			}
+			
+			content.WriteString("        SET i = i + 1;\n")
+			content.WriteString("    END WHILE;\n")
+			content.WriteString("\n")
+			content.WriteString("    RETURN result_array;\n")
+		} else {
+			// For other repeated fields, return JSON array or empty array if not present
+			content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_ARRAY());\n", field.Number()))
+		}
 	case isMessage:
 		// For message fields, return JSON object or empty object if not present
 		content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_OBJECT());\n", field.Number()))
