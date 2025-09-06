@@ -141,7 +141,6 @@ proc: BEGIN
 	DECLARE json_name TEXT;
 	DECLARE proto3_optional BOOLEAN;
 	DECLARE oneof_index INT;
-	DECLARE default_value TEXT;
 
 	-- Processing variables
 	DECLARE is_repeated BOOLEAN;
@@ -207,160 +206,160 @@ proc: BEGIN
 
 	SET result = JSON_OBJECT();
 
-	-- Get fields array (field 2 in DescriptorProto)
-	SET fields = JSON_EXTRACT(message_descriptor, '$."2"');
+	-- Process each field in the message descriptor
+	SET field_index = 0;
+	SET field_count = _pb_descriptor_proto_count_field(message_descriptor);
+	WHILE field_index < field_count DO
+		SET field_descriptor = _pb_descriptor_proto_get_field(message_descriptor, field_index);
 
-	IF fields IS NOT NULL THEN
-		SET field_count = JSON_LENGTH(fields);
-		SET field_index = 0;
+		-- Extract field properties from FieldDescriptorProto
+		SET field_number = _pb_field_descriptor_proto_get_number(field_descriptor);
+		SET field_name = _pb_field_descriptor_proto_get_name(field_descriptor);
+		SET field_label = _pb_field_descriptor_proto_get_label(field_descriptor);
+		SET field_type = _pb_field_descriptor_proto_get_type(field_descriptor);
+		IF _pb_field_descriptor_proto_has_type_name(field_descriptor) THEN
+			SET field_type_name = _pb_field_descriptor_proto_get_type_name(field_descriptor);
+		END IF;
+		IF _pb_field_descriptor_proto_has_json_name(field_descriptor) THEN
+			SET json_name = _pb_field_descriptor_proto_get_json_name(field_descriptor);
+		END IF;
+		SET proto3_optional = _pb_field_descriptor_proto_get_proto3_optional(field_descriptor);
+		IF _pb_field_descriptor_proto_has_oneof_index(field_descriptor) THEN
+			SET oneof_index = _pb_field_descriptor_proto_get_oneof_index(field_descriptor);
+		END IF;
 
-		WHILE field_index < field_count DO
-			SET field_descriptor = JSON_EXTRACT(fields, CONCAT('$[', field_index, ']'));
+		SET is_repeated = (field_label = 3); -- LABEL_REPEATED
 
-			-- Extract field properties from FieldDescriptorProto
-			SET field_number = JSON_EXTRACT(field_descriptor, '$."3"'); -- number
-			SET field_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."1"')); -- name
-			SET field_label = JSON_EXTRACT(field_descriptor, '$."4"'); -- label
-			SET field_type = JSON_EXTRACT(field_descriptor, '$."5"'); -- type
-			SET field_type_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."6"')); -- type_name
-			SET json_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."10"')); -- json_name
-			SET proto3_optional = COALESCE(CAST(JSON_EXTRACT(field_descriptor, '$."17"') AS UNSIGNED), FALSE); -- proto3_optional
-			SET oneof_index = JSON_EXTRACT(field_descriptor, '$."9"'); -- oneof_index
-			SET default_value = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."7"')); -- default_value
+		-- Check if this is a map field
+		SET is_map = FALSE;
+		IF field_type = 11 AND field_type_name IS NOT NULL THEN -- TYPE_MESSAGE
+			SET map_entry_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, field_type_name);
+			SET is_map = COALESCE(CAST(JSON_EXTRACT(map_entry_descriptor, '$."7"."7"') AS UNSIGNED), FALSE); -- map_entry
+		END IF;
 
-			SET is_repeated = (field_label = 3); -- LABEL_REPEATED
+		-- Determine field presence
+		SET has_field_presence =
+			(syntax = 'proto2' AND field_label <> 3) -- proto2: all non-repeated fields
+			OR (syntax = 'proto3'
+				AND (
+					(field_label = 1 AND proto3_optional) -- proto3 optional
+					OR (field_label <> 3 AND field_type = 11) -- message fields
+					OR (oneof_index IS NOT NULL) -- oneof fields
+				));
 
-			-- Check if this is a map field
-			SET is_map = FALSE;
-			IF field_type = 11 AND field_type_name IS NOT NULL THEN -- TYPE_MESSAGE
-				SET map_entry_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, field_type_name);
-				SET is_map = COALESCE(CAST(JSON_EXTRACT(map_entry_descriptor, '$."7"."7"') AS UNSIGNED), FALSE); -- map_entry
-			END IF;
+		-- Determine packed encoding for repeated fields
+		-- Check field options for explicit packed setting (field 8.2 in FieldDescriptorProto)
+		SET use_packed = CAST(JSON_EXTRACT(field_descriptor, '$."8"."2"') AS UNSIGNED);
 
-			-- Determine field presence
-			SET has_field_presence =
-				(syntax = 'proto2' AND field_label <> 3) -- proto2: all non-repeated fields
-				OR (syntax = 'proto3'
-					AND (
-						(field_label = 1 AND proto3_optional) -- proto3 optional
-						OR (field_label <> 3 AND field_type = 11) -- message fields
-						OR (oneof_index IS NOT NULL) -- oneof fields
-					));
+		-- Use syntax default if field option not set
+		IF use_packed IS NULL THEN
+			-- Proto3: packed by default, Proto2: unpacked by default
+			SET use_packed = (syntax = 'proto3');
+		END IF;
 
-			-- Determine packed encoding for repeated fields
-			-- Check field options for explicit packed setting (field 8.2 in FieldDescriptorProto)
-			SET use_packed = CAST(JSON_EXTRACT(field_descriptor, '$."8"."2"') AS UNSIGNED);
+		SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', field_number, '"'));
 
-			-- Use syntax default if field option not set
-			IF use_packed IS NULL THEN
-				-- Proto3: packed by default, Proto2: unpacked by default
-				SET use_packed = (syntax = 'proto3');
-			END IF;
+		-- Process field if it exists in JSON
+		IF field_json_value IS NOT NULL THEN
+			CASE field_type
+			WHEN 10 THEN -- TYPE_GROUP (unsupported)
+				SET message_text = CONCAT('_pb_json_to_wire_json: unsupported field_type `', field_type, '` for field `', field_name, '` (', field_number, ').');
+				SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
 
-			SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', field_number, '"'));
+			WHEN 11 THEN -- TYPE_MESSAGE
+				IF is_map THEN
+					-- Handle map fields - convert JSON object to repeated message entries
+					SET map_keys = JSON_KEYS(field_json_value);
+					SET map_key_count = JSON_LENGTH(map_keys);
+					SET map_key_index = 0;
 
-			-- Process field if it exists in JSON
-			IF field_json_value IS NOT NULL THEN
-				CASE field_type
-				WHEN 10 THEN -- TYPE_GROUP (unsupported)
-					SET message_text = CONCAT('_pb_json_to_wire_json: unsupported field_type `', field_type, '` for field `', field_name, '` (', field_number, ').');
-					SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
+					-- Get map key/value field descriptors
+					SET map_key_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- first field (key)
+					SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value)
+					SET map_key_type = JSON_EXTRACT(map_key_field, '$."5"');
+					SET map_value_type = JSON_EXTRACT(map_value_field, '$."5"');
+					SET map_value_type_name = JSON_UNQUOTE(JSON_EXTRACT(map_value_field, '$."6"'));
 
-				WHEN 11 THEN -- TYPE_MESSAGE
-					IF is_map THEN
-						-- Handle map fields - convert JSON object to repeated message entries
-						SET map_keys = JSON_KEYS(field_json_value);
-						SET map_key_count = JSON_LENGTH(map_keys);
-						SET map_key_index = 0;
+					WHILE map_key_index < map_key_count DO
+						SET map_key_name = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', map_key_index, ']')));
+						SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$."', map_key_name, '"'));
 
-						-- Get map key/value field descriptors
-						SET map_key_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- first field (key)
-						SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value)
-						SET map_key_type = JSON_EXTRACT(map_key_field, '$."5"');
-						SET map_value_type = JSON_EXTRACT(map_value_field, '$."5"');
-						SET map_value_type_name = JSON_UNQUOTE(JSON_EXTRACT(map_value_field, '$."6"'));
+						-- Create map entry with key=1, value=2
+						SET map_entry_wire_json = JSON_OBJECT();
 
-						WHILE map_key_index < map_key_count DO
-							SET map_key_name = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', map_key_index, ']')));
-							SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$."', map_key_name, '"'));
+						-- Add key field (always field 1)
+						-- Convert map key to proper JSON type based on key type
+						-- Map keys always have presence and should always be encoded
+						CASE map_key_type
+						WHEN 8 THEN -- bool
+							CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 1, map_key_type, FALSE, CAST((map_key_name = 'true') AS JSON), FALSE, syntax, TRUE, map_entry_wire_json);
+						ELSE
+							CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 1, map_key_type, FALSE, JSON_QUOTE(map_key_name), FALSE, syntax, TRUE, map_entry_wire_json);
+						END CASE;
 
-							-- Create map entry with key=1, value=2
-							SET map_entry_wire_json = JSON_OBJECT();
-
-							-- Add key field (always field 1)
-							-- Convert map key to proper JSON type based on key type
-							-- Map keys always have presence and should always be encoded
-							CASE map_key_type
-							WHEN 8 THEN -- bool
-								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 1, map_key_type, FALSE, CAST((map_key_name = 'true') AS JSON), FALSE, syntax, TRUE, map_entry_wire_json);
-							ELSE
-								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 1, map_key_type, FALSE, JSON_QUOTE(map_key_name), FALSE, syntax, TRUE, map_entry_wire_json);
-							END CASE;
-
-							-- Add value field (always field 2)
-							IF map_value_type = 11 THEN -- message
-								CALL _pb_number_json_to_wire_json_proc(descriptor_set_json, map_value_type_name, map_value_json, map_value_wire_json);
-								SET map_entry_wire_json = pb_wire_json_set_message_field(map_entry_wire_json, 2, pb_wire_json_to_message(map_value_wire_json));
-							ELSEIF map_value_type = 14 THEN -- enum
-								SET enum_number = _pb_convert_json_enum_to_number(descriptor_set_json, map_value_type_name, map_value_json, FALSE);
-								SET map_entry_wire_json = pb_wire_json_set_enum_field(map_entry_wire_json, 2, enum_number);
-							ELSE
-								-- Map values also always have presence in map entries
-								CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 2, map_value_type, FALSE, map_value_json, FALSE, syntax, TRUE, map_entry_wire_json);
-							END IF;
-
-							-- Add map entry to result
-							SET result = pb_wire_json_add_repeated_message_field_element(result, field_number, pb_wire_json_to_message(map_entry_wire_json));
-							SET map_key_index = map_key_index + 1;
-						END WHILE;
-
-					ELSEIF is_repeated THEN
-						-- Handle repeated message fields
-						SET element_count = JSON_LENGTH(field_json_value);
-						SET element_index = 0;
-
-						WHILE element_index < element_count DO
-							SET element = JSON_EXTRACT(field_json_value, CONCAT('$[', element_index, ']'));
-							CALL _pb_number_json_to_wire_json_proc(descriptor_set_json, field_type_name, element, nested_wire_json);
-							SET result = pb_wire_json_add_repeated_message_field_element(result, field_number, pb_wire_json_to_message(nested_wire_json));
-							SET element_index = element_index + 1;
-						END WHILE;
-					ELSE
-						-- Handle singular message fields
-						CALL _pb_number_json_to_wire_json_proc(descriptor_set_json, field_type_name, field_json_value, nested_wire_json);
-						IF nested_wire_json IS NOT NULL THEN
-							SET result = pb_wire_json_set_message_field(result, field_number, pb_wire_json_to_message(nested_wire_json));
+						-- Add value field (always field 2)
+						IF map_value_type = 11 THEN -- message
+							CALL _pb_number_json_to_wire_json_proc(descriptor_set_json, map_value_type_name, map_value_json, map_value_wire_json);
+							SET map_entry_wire_json = pb_wire_json_set_message_field(map_entry_wire_json, 2, pb_wire_json_to_message(map_value_wire_json));
+						ELSEIF map_value_type = 14 THEN -- enum
+							SET enum_number = _pb_convert_json_enum_to_number(descriptor_set_json, map_value_type_name, map_value_json, FALSE);
+							SET map_entry_wire_json = pb_wire_json_set_enum_field(map_entry_wire_json, 2, enum_number);
+						ELSE
+							-- Map values also always have presence in map entries
+							CALL _pb_json_set_primitive_field_as_wire_json(map_entry_wire_json, 2, map_value_type, FALSE, map_value_json, FALSE, syntax, TRUE, map_entry_wire_json);
 						END IF;
-					END IF;
 
-				WHEN 14 THEN -- TYPE_ENUM
-					IF is_repeated THEN
-						SET element_count = JSON_LENGTH(field_json_value);
-						SET element_index = 0;
+						-- Add map entry to result
+						SET result = pb_wire_json_add_repeated_message_field_element(result, field_number, pb_wire_json_to_message(map_entry_wire_json));
+						SET map_key_index = map_key_index + 1;
+					END WHILE;
 
-						WHILE element_index < element_count DO
-							SET element = JSON_EXTRACT(field_json_value, CONCAT('$[', element_index, ']'));
-							SET enum_number = _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, element, FALSE);
-							SET result = pb_wire_json_add_repeated_enum_field_element(result, field_number, enum_number, use_packed);
-							SET element_index = element_index + 1;
-						END WHILE;
-					ELSE
-						SET enum_number = _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, field_json_value, FALSE);
-						-- Skip encoding proto3 default values for fields without explicit presence
-						IF NOT (syntax = 'proto3' AND NOT has_field_presence AND enum_number = 0) THEN
-							SET result = pb_wire_json_set_enum_field(result, field_number, enum_number);
-						END IF;
-					END IF;
+				ELSEIF is_repeated THEN
+					-- Handle repeated message fields
+					SET element_count = JSON_LENGTH(field_json_value);
+					SET element_index = 0;
 
+					WHILE element_index < element_count DO
+						SET element = JSON_EXTRACT(field_json_value, CONCAT('$[', element_index, ']'));
+						CALL _pb_number_json_to_wire_json_proc(descriptor_set_json, field_type_name, element, nested_wire_json);
+						SET result = pb_wire_json_add_repeated_message_field_element(result, field_number, pb_wire_json_to_message(nested_wire_json));
+						SET element_index = element_index + 1;
+					END WHILE;
 				ELSE
-					-- Handle primitive types
-					CALL _pb_json_set_primitive_field_as_wire_json(result, field_number, field_type, is_repeated, field_json_value, use_packed, syntax, has_field_presence, result);
-				END CASE;
-			END IF;
+					-- Handle singular message fields
+					CALL _pb_number_json_to_wire_json_proc(descriptor_set_json, field_type_name, field_json_value, nested_wire_json);
+					IF nested_wire_json IS NOT NULL THEN
+						SET result = pb_wire_json_set_message_field(result, field_number, pb_wire_json_to_message(nested_wire_json));
+					END IF;
+				END IF;
 
-			SET field_index = field_index + 1;
-		END WHILE;
-	END IF;
+			WHEN 14 THEN -- TYPE_ENUM
+				IF is_repeated THEN
+					SET element_count = JSON_LENGTH(field_json_value);
+					SET element_index = 0;
+
+					WHILE element_index < element_count DO
+						SET element = JSON_EXTRACT(field_json_value, CONCAT('$[', element_index, ']'));
+						SET enum_number = _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, element, FALSE);
+						SET result = pb_wire_json_add_repeated_enum_field_element(result, field_number, enum_number, use_packed);
+						SET element_index = element_index + 1;
+					END WHILE;
+				ELSE
+					SET enum_number = _pb_convert_json_enum_to_number(descriptor_set_json, field_type_name, field_json_value, FALSE);
+					-- Skip encoding proto3 default values for fields without explicit presence
+					IF NOT (syntax = 'proto3' AND NOT has_field_presence AND enum_number = 0) THEN
+						SET result = pb_wire_json_set_enum_field(result, field_number, enum_number);
+					END IF;
+				END IF;
+
+			ELSE
+				-- Handle primitive types
+				CALL _pb_json_set_primitive_field_as_wire_json(result, field_number, field_type, is_repeated, field_json_value, use_packed, syntax, has_field_presence, result);
+			END CASE;
+		END IF;
+
+		SET field_index = field_index + 1;
+	END WHILE;
 END $$
 
 -- Wrapper procedure for number JSON to wire_json conversion

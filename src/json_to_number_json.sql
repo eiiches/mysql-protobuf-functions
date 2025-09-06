@@ -254,7 +254,6 @@ proc: BEGIN
 	DECLARE message_descriptor JSON;
 	DECLARE file_descriptor JSON;
 	DECLARE syntax TEXT;
-	DECLARE fields JSON;
 	DECLARE field_count INT;
 	DECLARE field_index INT;
 	DECLARE field_descriptor JSON;
@@ -321,24 +320,21 @@ proc: BEGIN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
 
-	-- Get fields array (field 2 in DescriptorProto)
-	SET fields = _pb_descriptor_proto_get_all_field(message_descriptor);
-	SET field_count = JSON_LENGTH(fields);
-	SET field_index = 0;
-
 	-- Get file descriptor to determine syntax
 	SET file_descriptor = _pb_descriptor_set_get_file_descriptor(descriptor_set_json, full_type_name);
 	SET syntax = _pb_file_descriptor_proto_get_syntax(file_descriptor);
 
 	-- Process each field in the message descriptor
+	SET field_index = 0;
+	SET field_count = _pb_descriptor_proto_count_field(message_descriptor);
 	field_loop: WHILE field_index < field_count DO
-		SET field_descriptor = JSON_EXTRACT(fields, CONCAT('$[', field_index, ']'));
+		SET field_descriptor = _pb_descriptor_proto_get_field(message_descriptor, field_index);
 
 		-- Extract field metadata using protobuf field numbers
 		SET field_number = _pb_field_descriptor_proto_get_number(field_descriptor);
 		SET field_name = _pb_field_descriptor_proto_get_name(field_descriptor);
 		SET field_label = _pb_field_descriptor_proto_get_label(field_descriptor);
-		SET field_type = JSON_EXTRACT(field_descriptor, '$."5"'); -- type
+		SET field_type = _pb_field_descriptor_proto_get_type(field_descriptor);
 		IF _pb_field_descriptor_proto_has_type_name(field_descriptor) THEN
 			SET field_type_name = _pb_field_descriptor_proto_get_type_name(field_descriptor);
 		END IF;

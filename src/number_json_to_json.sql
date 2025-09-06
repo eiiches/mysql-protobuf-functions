@@ -281,23 +281,24 @@ proc: BEGIN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
 
-	-- Get fields array (field 2 in DescriptorProto)
-	SET fields = JSON_EXTRACT(message_descriptor, '$."2"');
-	SET field_count = JSON_LENGTH(fields);
-	SET field_index = 0;
-
 	-- Process each field in the message descriptor
+	SET field_index = 0;
+	SET field_count = _pb_descriptor_proto_count_field(message_descriptor);
 	field_loop: WHILE field_index < field_count DO
-		SET field_descriptor = JSON_EXTRACT(fields, CONCAT('$[', field_index, ']'));
+		SET field_descriptor = _pb_descriptor_proto_get_field(message_descriptor, field_index);
 
 		-- Extract field metadata using protobuf field numbers
-		SET field_number = JSON_EXTRACT(field_descriptor, '$."3"'); -- number
-		SET field_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."1"')); -- name
-		SET field_label = COALESCE(JSON_EXTRACT(field_descriptor, '$."4"'), 1); -- label
-		SET field_type = JSON_EXTRACT(field_descriptor, '$."5"'); -- type
-		SET field_type_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."6"')); -- type_name
-		SET json_name = JSON_UNQUOTE(JSON_EXTRACT(field_descriptor, '$."10"')); -- json_name
-		SET proto3_optional = COALESCE(CAST(JSON_EXTRACT(field_descriptor, '$."17"') AS UNSIGNED), FALSE); -- proto3_optional
+		SET field_number = _pb_field_descriptor_proto_get_number(field_descriptor);
+		SET field_name = _pb_field_descriptor_proto_get_name(field_descriptor);
+		SET field_label = _pb_field_descriptor_proto_get_label(field_descriptor);
+		SET field_type = _pb_field_descriptor_proto_get_type(field_descriptor);
+		IF _pb_field_descriptor_proto_has_type_name(field_descriptor) THEN
+			SET field_type_name = _pb_field_descriptor_proto_get_type_name(field_descriptor);
+		END IF;
+		IF _pb_field_descriptor_proto_has_json_name(field_descriptor) THEN
+			SET json_name = _pb_field_descriptor_proto_get_json_name(field_descriptor);
+		END IF;
+		SET proto3_optional = _pb_field_descriptor_proto_get_proto3_optional(field_descriptor);
 
 		-- Determine target field name (json_name takes precedence over field_name)
 		SET target_field_name = COALESCE(json_name, field_name);
