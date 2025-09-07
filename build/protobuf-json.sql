@@ -20373,25 +20373,25 @@ BEGIN
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_which_kind $$
-CREATE FUNCTION pb_wkt_value_which_kind(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+CREATE FUNCTION pb_wkt_value_which_kind(proto_data JSON) RETURNS INT DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        RETURN 'null_value';
+    IF JSON_EXTRACT(proto_data, '$."1"') IS NOT NULL THEN
+        RETURN 1;
     END IF;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        RETURN 'number_value';
+    IF JSON_EXTRACT(proto_data, '$."2"') IS NOT NULL THEN
+        RETURN 2;
     END IF;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        RETURN 'string_value';
+    IF JSON_EXTRACT(proto_data, '$."3"') IS NOT NULL THEN
+        RETURN 3;
     END IF;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        RETURN 'bool_value';
+    IF JSON_EXTRACT(proto_data, '$."4"') IS NOT NULL THEN
+        RETURN 4;
     END IF;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        RETURN 'struct_value';
+    IF JSON_EXTRACT(proto_data, '$."5"') IS NOT NULL THEN
+        RETURN 5;
     END IF;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
-        RETURN 'list_value';
+    IF JSON_EXTRACT(proto_data, '$."6"') IS NOT NULL THEN
+        RETURN 6;
     END IF;
     RETURN NULL; -- No field is set in this oneOf group
 END $$

@@ -123,7 +123,7 @@ func TestProtocGenOneofField(t *testing.T) {
 
 		// Test which oneof method
 		RunTestThatExpression(t, "test_which_choice(?)", `{}`).IsNull() // No field set
-		RunTestThatExpression(t, "test_which_choice(?)", `{"1": "binary64:0x400921fb54442d18"}`).IsEqualToString("double_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"1": "binary64:0x400921fb54442d18"}`).IsEqualToInt(1)
 
 		// Test clear field methods
 		RunTestThatExpression(t, "test_clear_double_field(?)", `{"1": "binary64:0x400921fb54442d18"}`).IsEqualToJsonString(`{}`)
@@ -146,7 +146,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_float_field(?)", `{"2": "binary32:0x00000000"}`).IsTrue()
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"2": "binary32:0x4048f5c3"}`).IsEqualToString("float_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"2": "binary32:0x4048f5c3"}`).IsEqualToInt(2)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_float_field(?)", `{"2": "binary32:0x4048f5c3"}`).IsEqualToJsonString(`{}`)
@@ -165,7 +165,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_int32_field(?)", `{"3": 0}`).IsTrue() // Even zero value has presence in oneof
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"3": 42}`).IsEqualToString("int32_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"3": 42}`).IsEqualToInt(3)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_int32_field(?)", `{"3": 42}`).IsEqualToJsonString(`{}`)
@@ -183,7 +183,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_int64_field(?)", `{"4": 0}`).IsTrue()
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"4": 9223372036854775807}`).IsEqualToString("int64_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"4": 9223372036854775807}`).IsEqualToInt(4)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_int64_field(?)", `{"4": 9223372036854775807}`).IsEqualToJsonString(`{}`)
@@ -201,7 +201,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_uint32_field(?)", `{"5": 0}`).IsTrue()
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"5": 4294967295}`).IsEqualToString("uint32_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"5": 4294967295}`).IsEqualToInt(5)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_uint32_field(?)", `{"5": 4294967295}`).IsEqualToJsonString(`{}`)
@@ -219,7 +219,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_uint64_field(?)", `{"6": 0}`).IsTrue()
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"6": 18446744073709551615}`).IsEqualToString("uint64_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"6": 18446744073709551615}`).IsEqualToInt(6)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_uint64_field(?)", `{"6": 18446744073709551615}`).IsEqualToJsonString(`{}`)
@@ -237,7 +237,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_sint32_field(?)", `{"7": 0}`).IsTrue()
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"7": -1}`).IsEqualToString("sint32_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"7": -1}`).IsEqualToInt(7)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_sint32_field(?)", `{"7": -1}`).IsEqualToJsonString(`{}`)
@@ -255,7 +255,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_sint64_field(?)", `{"8": 0}`).IsTrue()
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"8": -9223372036854775808}`).IsEqualToString("sint64_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"8": -9223372036854775808}`).IsEqualToInt(8)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_sint64_field(?)", `{"8": -9223372036854775808}`).IsEqualToJsonString(`{}`)
@@ -273,7 +273,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_fixed32_field(?)", `{"9": 0}`).IsTrue()
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"9": 4294967295}`).IsEqualToString("fixed32_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"9": 4294967295}`).IsEqualToInt(9)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_fixed32_field(?)", `{"9": 4294967295}`).IsEqualToJsonString(`{}`)
@@ -291,7 +291,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_fixed64_field(?)", `{"10": 0}`).IsTrue()
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"10": 18446744073709551615}`).IsEqualToString("fixed64_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"10": 18446744073709551615}`).IsEqualToInt(10)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_fixed64_field(?)", `{"10": 18446744073709551615}`).IsEqualToJsonString(`{}`)
@@ -309,7 +309,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_sfixed32_field(?)", `{"11": 0}`).IsTrue()
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"11": -2147483648}`).IsEqualToString("sfixed32_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"11": -2147483648}`).IsEqualToInt(11)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_sfixed32_field(?)", `{"11": -2147483648}`).IsEqualToJsonString(`{}`)
@@ -327,7 +327,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_sfixed64_field(?)", `{"12": 0}`).IsTrue()
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"12": -9223372036854775808}`).IsEqualToString("sfixed64_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"12": -9223372036854775808}`).IsEqualToInt(12)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_sfixed64_field(?)", `{"12": -9223372036854775808}`).IsEqualToJsonString(`{}`)
@@ -347,7 +347,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_bool_field(?)", `{"13": false}`).IsTrue() // Even false value has presence in oneof
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"13": true}`).IsEqualToString("bool_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"13": true}`).IsEqualToInt(13)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_bool_field(?)", `{"13": true}`).IsEqualToJsonString(`{}`)
@@ -367,7 +367,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_string_field(?)", `{"14": ""}`).IsTrue() // Even empty string has presence in oneof
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"14": "hello world"}`).IsEqualToString("string_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"14": "hello world"}`).IsEqualToInt(14)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_string_field(?)", `{"14": "hello world"}`).IsEqualToJsonString(`{}`)
@@ -387,7 +387,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_bytes_field(?)", `{"15": ""}`).IsTrue() // Even empty bytes has presence in oneof
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"15": "aGVsbG8="}`).IsEqualToString("bytes_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"15": "aGVsbG8="}`).IsEqualToInt(15)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_bytes_field(?)", `{"15": "aGVsbG8="}`).IsEqualToJsonString(`{}`)
@@ -407,7 +407,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_enum_field(?)", `{"16": 0}`).IsTrue() // Even default enum value has presence in oneof
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"16": 1}`).IsEqualToString("enum_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"16": 1}`).IsEqualToInt(16)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_enum_field(?)", `{"16": 1}`).IsEqualToJsonString(`{}`)
@@ -429,7 +429,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_message_field(?)", `{"17": {}}`).IsTrue() // Set field present (even empty message) in oneof
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{"17": {"1": "test", "2": 42}}`).IsEqualToString("message_field")
+		RunTestThatExpression(t, "test_which_choice(?)", `{"17": {"1": "test", "2": 42}}`).IsEqualToInt(17)
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_message_field(?)", `{"17": {"1": "test", "2": 42}}`).IsEqualToJsonString(`{}`)
@@ -439,7 +439,7 @@ func TestProtocGenOneofField(t *testing.T) {
 	t.Run("mutual_exclusion", func(t *testing.T) {
 		// Setting different fields should clear previous ones
 		RunTestThatExpression(t, "test_set_string_field(test_set_int32_field(test_new(), 42), 'hello')").IsEqualToJsonString(`{"14": "hello"}`)
-		RunTestThatExpression(t, "test_which_choice(test_set_string_field(test_set_int32_field(test_new(), 42), 'hello'))").IsEqualToString("string_field")
+		RunTestThatExpression(t, "test_which_choice(test_set_string_field(test_set_int32_field(test_new(), 42), 'hello'))").IsEqualToInt(14)
 
 		// Previous field should return default value after being cleared
 		RunTestThatExpression(t, "test_get_int32_field(test_set_string_field(test_set_int32_field(test_new(), 42), 'hello'))").IsEqualToInt(0)
@@ -448,7 +448,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		// Test complex mutual exclusion chain
 		expr := "test_set_bool_field(test_set_enum_field(test_set_string_field(test_set_int32_field(test_new(), 42), 'hello'), 1), TRUE)"
 		RunTestThatExpression(t, expr).IsEqualToJsonString(`{"13": true}`)
-		RunTestThatExpression(t, fmt.Sprintf("test_which_choice(%s)", expr)).IsEqualToString("bool_field")
+		RunTestThatExpression(t, fmt.Sprintf("test_which_choice(%s)", expr)).IsEqualToInt(13)
 		RunTestThatExpression(t, fmt.Sprintf("test_get_int32_field(%s)", expr)).IsEqualToInt(0)      // cleared
 		RunTestThatExpression(t, fmt.Sprintf("test_get_string_field(%s)", expr)).IsEqualToString("") // cleared
 		RunTestThatExpression(t, fmt.Sprintf("test_get_enum_field(%s)", expr)).IsEqualToInt(0)       // cleared

@@ -1211,15 +1211,14 @@ func generateOneOfMethods(content *strings.Builder, messageDesc protoreflect.Mes
 		}
 
 		content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", whichFuncName))
-		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC\n", whichFuncName))
+		content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS INT DETERMINISTIC\n", whichFuncName))
 		content.WriteString("BEGIN\n")
 
-		// Check each field in the oneOf group
+		// Check each field in the oneOf group using optimized JSON_EXTRACT
 		fields := oneof.Fields()
 		for field := range protoreflectutils.Iterate(fields) {
-			fieldName := string(field.Name())
-			content.WriteString(fmt.Sprintf("    IF JSON_CONTAINS_PATH(proto_data, 'one', '$.\"%.d\"') THEN\n", field.Number()))
-			content.WriteString(fmt.Sprintf("        RETURN '%s';\n", fieldName))
+			content.WriteString(fmt.Sprintf("    IF JSON_EXTRACT(proto_data, '$.\"%.d\"') IS NOT NULL THEN\n", field.Number()))
+			content.WriteString(fmt.Sprintf("        RETURN %d;\n", field.Number()))
 			content.WriteString("    END IF;\n")
 		}
 
