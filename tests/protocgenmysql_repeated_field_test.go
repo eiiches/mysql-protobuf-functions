@@ -68,7 +68,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test index-based operations
 		RunTestThatExpression(t, `test_get_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}', 0)`).IsEqualToFloat(3.141592653589793)
 		RunTestThatExpression(t, `test_get_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}', 1)`).IsEqualToFloat(1.0)
-		RunTestThatExpression(t, `test_get_repeated_double('{"1": ["binary64:0x400921fb54442d18"]}', 1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_double('{"1": ["binary64:0x400921fb54442d18"]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `test_set_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}', 0, 2.5)`).IsEqualToJsonString(`{"1": ["binary64:0x4004000000000000", "binary64:0x3ff0000000000000"]}`)
 		RunTestThatExpression(t, `test_insert_repeated_double('{"1": ["binary64:0x3ff0000000000000"]}', 0, 3.141592653589793)`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}`)
 		RunTestThatExpression(t, `test_remove_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}', 0)`).IsEqualToJsonString(`{"1": ["binary64:0x3ff0000000000000"]}`)
@@ -101,7 +101,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test index-based operations
 		RunTestThatExpression(t, `test_get_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}', 0)`).IsEqualToFloat(3.140000104904175) // CAST(CAST(3.14 AS FLOAT) AS DOUBLE)
 		RunTestThatExpression(t, `test_get_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}', 1)`).IsEqualToFloat(1.0)
-		RunTestThatExpression(t, `test_get_repeated_float('{"2": ["binary32:0x4048f5c3"]}', 1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_float('{"2": ["binary32:0x4048f5c3"]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `test_set_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}', 1, 2.5)`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x40200000"]}`)
 		RunTestThatExpression(t, `test_insert_repeated_float('{"2": ["binary32:0x3f800000"]}', 0, 3.14)`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}`)
 		RunTestThatExpression(t, `test_remove_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}', 0)`).IsEqualToJsonString(`{"2": ["binary32:0x3f800000"]}`)
@@ -135,18 +135,18 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `test_get_repeated_int32('{"3": [10, 20, 30]}', 1)`).IsEqualToInt(20)
 		RunTestThatExpression(t, `test_get_repeated_int32('{"3": [10, 20, 30]}', 2)`).IsEqualToInt(30)
 		// Test out of bounds index returns NULL
-		RunTestThatExpression(t, `test_get_repeated_int32('{"3": [10, 20, 30]}', 3)`).IsNull()
-		RunTestThatExpression(t, `test_get_repeated_int32('{"3": [10, 20, 30]}', -1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_int32('{"3": [10, 20, 30]}', 3)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `test_get_repeated_int32('{"3": [10, 20, 30]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		// Test empty array returns NULL
-		RunTestThatExpression(t, `test_get_repeated_int32('{}', 0)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_int32('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
 
 		// Test index-based set operations
 		RunTestThatExpression(t, `test_set_repeated_int32('{"3": [10, 20, 30]}', 0, 100)`).IsEqualToJsonString(`{"3": [100, 20, 30]}`)
 		RunTestThatExpression(t, `test_set_repeated_int32('{"3": [10, 20, 30]}', 1, 200)`).IsEqualToJsonString(`{"3": [10, 200, 30]}`)
 		RunTestThatExpression(t, `test_set_repeated_int32('{"3": [10, 20, 30]}', 2, 300)`).IsEqualToJsonString(`{"3": [10, 20, 300]}`)
-		// Test out of bounds index should not modify the array
-		RunTestThatExpression(t, `test_set_repeated_int32('{"3": [10, 20, 30]}', 3, 400)`).IsEqualToJsonString(`{"3": [10, 20, 30]}`)
-		RunTestThatExpression(t, `test_set_repeated_int32('{}', 0, 100)`).IsEqualToJsonString(`{}`)
+		// Test out of bounds index should fail
+		RunTestThatExpression(t, `test_set_repeated_int32('{"3": [10, 20, 30]}', 3, 400)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `test_set_repeated_int32('{}', 0, 100)`).ToFailWithSignalException("45000", "Array index out of bounds")
 
 		// Test insert operations
 		RunTestThatExpression(t, `test_insert_repeated_int32('{"3": [20, 30]}', 0, 10)`).IsEqualToJsonString(`{"3": [10, 20, 30]}`)
@@ -154,12 +154,17 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `test_insert_repeated_int32('{"3": [10, 20]}', 2, 30)`).IsEqualToJsonString(`{"3": [10, 20, 30]}`)
 		RunTestThatExpression(t, `test_insert_repeated_int32('{}', 0, 100)`).IsEqualToJsonString(`{"3": [100]}`)
 
+		// Test insert bounds checking
+		RunTestThatExpression(t, `test_insert_repeated_int32('{"3": [10, 20]}', -1, 5)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `test_insert_repeated_int32('{"3": [10, 20]}', 3, 30)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `test_insert_repeated_int32('{}', 1, 100)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+
 		// Test remove operations
 		RunTestThatExpression(t, `test_remove_repeated_int32('{"3": [10, 20, 30]}', 0)`).IsEqualToJsonString(`{"3": [20, 30]}`)
 		RunTestThatExpression(t, `test_remove_repeated_int32('{"3": [10, 20, 30]}', 1)`).IsEqualToJsonString(`{"3": [10, 30]}`)
 		RunTestThatExpression(t, `test_remove_repeated_int32('{"3": [10, 20, 30]}', 2)`).IsEqualToJsonString(`{"3": [10, 20]}`)
 		RunTestThatExpression(t, `test_remove_repeated_int32('{"3": [10]}', 0)`).IsEqualToJsonString(`{}`)
-		RunTestThatExpression(t, `test_remove_repeated_int32('{"3": [10, 20, 30]}', 3)`).IsEqualToJsonString(`{"3": [10, 20, 30]}`)
+		RunTestThatExpression(t, `test_remove_repeated_int32('{"3": [10, 20, 30]}', 3)`).ToFailWithSignalException("45000", "Array index out of bounds")
 
 		// Test add_all operations
 		RunTestThatExpression(t, `test_add_all_repeated_int32('{}', '[100, 200, 300]')`).IsEqualToJsonString(`{"3": [100, 200, 300]}`)
@@ -192,7 +197,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test index-based operations
 		RunTestThatExpression(t, `test_get_repeated_int64('{"4": [9223372036854775807, -9223372036854775808, 42]}', 0)`).IsEqualToInt(9223372036854775807)
 		RunTestThatExpression(t, `test_get_repeated_int64('{"4": [9223372036854775807, -9223372036854775808, 42]}', 2)`).IsEqualToInt(42)
-		RunTestThatExpression(t, `test_get_repeated_int64('{"4": [100]}', 1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_int64('{"4": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `test_set_repeated_int64('{"4": [100, 200]}', 1, -500)`).IsEqualToJsonString(`{"4": [100, -500]}`)
 		RunTestThatExpression(t, `test_insert_repeated_int64('{"4": [200]}', 0, 100)`).IsEqualToJsonString(`{"4": [100, 200]}`)
 		RunTestThatExpression(t, `test_remove_repeated_int64('{"4": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"4": [100, 300]}`)
@@ -223,7 +228,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test index-based operations
 		RunTestThatExpression(t, `test_get_repeated_uint32('{"5": [4294967295, 42, 100]}', 1)`).IsEqualToInt(42)
-		RunTestThatExpression(t, `test_get_repeated_uint32('{"5": [100]}', 1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_uint32('{"5": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `test_set_repeated_uint32('{"5": [100, 200]}', 0, 999)`).IsEqualToJsonString(`{"5": [999, 200]}`)
 		RunTestThatExpression(t, `test_insert_repeated_uint32('{"5": [200]}', 0, 100)`).IsEqualToJsonString(`{"5": [100, 200]}`)
 		RunTestThatExpression(t, `test_remove_repeated_uint32('{"5": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"5": [100, 300]}`)
@@ -254,7 +259,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test index-based operations
 		RunTestThatExpression(t, `test_get_repeated_uint64('{"6": [18446744073709551615, 100, 42]}', 1)`).IsEqualToInt(100)
-		RunTestThatExpression(t, `test_get_repeated_uint64('{"6": [100]}', 1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_uint64('{"6": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `test_set_repeated_uint64('{"6": [100, 200]}', 0, 999)`).IsEqualToJsonString(`{"6": [999, 200]}`)
 		RunTestThatExpression(t, `test_insert_repeated_uint64('{"6": [100]}', 0, 50)`).IsEqualToJsonString(`{"6": [50, 100]}`)
 		RunTestThatExpression(t, `test_remove_repeated_uint64('{"6": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"6": [100, 300]}`)
@@ -285,7 +290,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test index-based operations
 		RunTestThatExpression(t, `test_get_repeated_sint32('{"7": [-1, 42, 100]}', 0)`).IsEqualToInt(-1)
-		RunTestThatExpression(t, `test_get_repeated_sint32('{"7": [-1]}', 1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_sint32('{"7": [-1]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `test_set_repeated_sint32('{"7": [-1, 42]}', 1, 100)`).IsEqualToJsonString(`{"7": [-1, 100]}`)
 		RunTestThatExpression(t, `test_insert_repeated_sint32('{"7": [42]}', 0, -1)`).IsEqualToJsonString(`{"7": [-1, 42]}`)
 		RunTestThatExpression(t, `test_remove_repeated_sint32('{"7": [-1, 42, 100]}', 1)`).IsEqualToJsonString(`{"7": [-1, 100]}`)
@@ -316,7 +321,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test index-based operations
 		RunTestThatExpression(t, `test_get_repeated_sint64('{"8": [-1, 100, 200]}', 1)`).IsEqualToInt(100)
-		RunTestThatExpression(t, `test_get_repeated_sint64('{"8": [-1]}', 1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_sint64('{"8": [-1]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `test_set_repeated_sint64('{"8": [-1, 100]}', 0, -999)`).IsEqualToJsonString(`{"8": [-999, 100]}`)
 		RunTestThatExpression(t, `test_insert_repeated_sint64('{"8": [100]}', 0, -1)`).IsEqualToJsonString(`{"8": [-1, 100]}`)
 		RunTestThatExpression(t, `test_remove_repeated_sint64('{"8": [-1, 100, 200]}', 1)`).IsEqualToJsonString(`{"8": [-1, 200]}`)
@@ -347,7 +352,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test index-based operations
 		RunTestThatExpression(t, `test_get_repeated_fixed32('{"9": [4294967295, 42]}', 0)`).IsEqualToInt(4294967295)
-		RunTestThatExpression(t, `test_get_repeated_fixed32('{"9": [100]}', 1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_fixed32('{"9": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `test_set_repeated_fixed32('{"9": [100, 200]}', 1, 999)`).IsEqualToJsonString(`{"9": [100, 999]}`)
 		RunTestThatExpression(t, `test_insert_repeated_fixed32('{"9": [200]}', 0, 100)`).IsEqualToJsonString(`{"9": [100, 200]}`)
 		RunTestThatExpression(t, `test_remove_repeated_fixed32('{"9": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"9": [100, 300]}`)
@@ -378,7 +383,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test index-based operations
 		RunTestThatExpression(t, `test_get_repeated_fixed64('{"10": [18446744073709551615, 100]}', 1)`).IsEqualToInt(100)
-		RunTestThatExpression(t, `test_get_repeated_fixed64('{"10": [100]}', 1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_fixed64('{"10": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `test_set_repeated_fixed64('{"10": [100, 200]}', 0, 999)`).IsEqualToJsonString(`{"10": [999, 200]}`)
 		RunTestThatExpression(t, `test_insert_repeated_fixed64('{"10": [200]}', 0, 100)`).IsEqualToJsonString(`{"10": [100, 200]}`)
 		RunTestThatExpression(t, `test_remove_repeated_fixed64('{"10": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"10": [100, 300]}`)
@@ -409,7 +414,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test index-based operations
 		RunTestThatExpression(t, `test_get_repeated_sfixed32('{"11": [-2147483648, 42]}', 0)`).IsEqualToInt(-2147483648)
-		RunTestThatExpression(t, `test_get_repeated_sfixed32('{"11": [42]}', 1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_sfixed32('{"11": [42]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `test_set_repeated_sfixed32('{"11": [-100, 42]}', 1, 999)`).IsEqualToJsonString(`{"11": [-100, 999]}`)
 		RunTestThatExpression(t, `test_insert_repeated_sfixed32('{"11": [42]}', 0, -100)`).IsEqualToJsonString(`{"11": [-100, 42]}`)
 		RunTestThatExpression(t, `test_remove_repeated_sfixed32('{"11": [-100, 42, 100]}', 1)`).IsEqualToJsonString(`{"11": [-100, 100]}`)
@@ -440,7 +445,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test index-based operations
 		RunTestThatExpression(t, `test_get_repeated_sfixed64('{"12": [-9223372036854775808, 100]}', 1)`).IsEqualToInt(100)
-		RunTestThatExpression(t, `test_get_repeated_sfixed64('{"12": [100]}', 1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_sfixed64('{"12": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `test_set_repeated_sfixed64('{"12": [-100, 100]}', 0, -999)`).IsEqualToJsonString(`{"12": [-999, 100]}`)
 		RunTestThatExpression(t, `test_insert_repeated_sfixed64('{"12": [100]}', 0, -100)`).IsEqualToJsonString(`{"12": [-100, 100]}`)
 		RunTestThatExpression(t, `test_remove_repeated_sfixed64('{"12": [-100, 100, 200]}', 1)`).IsEqualToJsonString(`{"12": [-100, 200]}`)
@@ -473,7 +478,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `test_get_repeated_bool('{"13": [true, false, true]}', 0)`).IsEqualToBool(true)
 		RunTestThatExpression(t, `test_get_repeated_bool('{"13": [true, false, true]}', 1)`).IsEqualToBool(false)
 		RunTestThatExpression(t, `test_get_repeated_bool('{"13": [true, false, true]}', 2)`).IsEqualToBool(true)
-		RunTestThatExpression(t, `test_get_repeated_bool('{"13": [true, false]}', 2)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_bool('{"13": [true, false]}', 2)`).ToFailWithSignalException("45000", "Array index out of bounds")
 
 		// Test index-based set operations
 		RunTestThatExpression(t, `test_set_repeated_bool('{"13": [true, false]}', 0, false)`).IsEqualToJsonString(`{"13": [false, false]}`)
@@ -516,13 +521,13 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `test_get_repeated_string('{"14": ["hello", "world", "test"]}', 0)`).IsEqualToString("hello")
 		RunTestThatExpression(t, `test_get_repeated_string('{"14": ["hello", "world", "test"]}', 1)`).IsEqualToString("world")
 		RunTestThatExpression(t, `test_get_repeated_string('{"14": ["hello", "world", "test"]}', 2)`).IsEqualToString("test")
-		RunTestThatExpression(t, `test_get_repeated_string('{"14": ["hello", "world"]}', 2)`).IsNull()
-		RunTestThatExpression(t, `test_get_repeated_string('{}', 0)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_string('{"14": ["hello", "world"]}', 2)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `test_get_repeated_string('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
 
 		// Test index-based set operations
 		RunTestThatExpression(t, `test_set_repeated_string('{"14": ["hello", "world"]}', 0, "hi")`).IsEqualToJsonString(`{"14": ["hi", "world"]}`)
 		RunTestThatExpression(t, `test_set_repeated_string('{"14": ["hello", "world"]}', 1, "universe")`).IsEqualToJsonString(`{"14": ["hello", "universe"]}`)
-		RunTestThatExpression(t, `test_set_repeated_string('{"14": ["hello", "world"]}', 2, "test")`).IsEqualToJsonString(`{"14": ["hello", "world"]}`)
+		RunTestThatExpression(t, `test_set_repeated_string('{"14": ["hello", "world"]}', 2, "test")`).ToFailWithSignalException("45000", "Array index out of bounds")
 
 		// Test insert operations
 		RunTestThatExpression(t, `test_insert_repeated_string('{"14": ["world"]}', 0, "hello")`).IsEqualToJsonString(`{"14": ["hello", "world"]}`)
@@ -563,7 +568,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test index-based get operations
 		RunTestThatExpression(t, `test_get_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ=", "dGVzdA=="]}', 0)`).IsEqualToBytes([]byte("hello"))
 		RunTestThatExpression(t, `test_get_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ=", "dGVzdA=="]}', 1)`).IsEqualToBytes([]byte("world"))
-		RunTestThatExpression(t, `test_get_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ="]}', 2)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ="]}', 2)`).ToFailWithSignalException("45000", "Array index out of bounds")
 
 		// Test index-based set operations
 		RunTestThatExpression(t, "test_set_repeated_bytes(?, 0, ?)", `{"15": ["aGVsbG8=", "d29ybGQ="]}`, []byte("hi")).IsEqualToJsonString(`{"15": ["aGk=", "d29ybGQ="]}`)
@@ -606,7 +611,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `test_get_repeated_enum('{"16": [1, 2, 0]}', 0)`).IsEqualToInt(1)
 		RunTestThatExpression(t, `test_get_repeated_enum('{"16": [1, 2, 0]}', 1)`).IsEqualToInt(2)
 		RunTestThatExpression(t, `test_get_repeated_enum('{"16": [1, 2, 0]}', 2)`).IsEqualToInt(0)
-		RunTestThatExpression(t, `test_get_repeated_enum('{"16": [1, 2]}', 2)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_enum('{"16": [1, 2]}', 2)`).ToFailWithSignalException("45000", "Array index out of bounds")
 
 		// Test index-based set operations
 		RunTestThatExpression(t, `test_set_repeated_enum('{"16": [1, 2]}', 0, 0)`).IsEqualToJsonString(`{"16": [0, 2]}`)
@@ -650,7 +655,7 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test index-based get operations
 		RunTestThatExpression(t, `test_get_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}', 0)`).IsEqualToJsonString(`{"1": "first"}`)
 		RunTestThatExpression(t, `test_get_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}', 1)`).IsEqualToJsonString(`{"1": "second", "2": 42}`)
-		RunTestThatExpression(t, `test_get_repeated_message('{"17": [{"1": "first"}]}', 1)`).IsNull()
+		RunTestThatExpression(t, `test_get_repeated_message('{"17": [{"1": "first"}]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 
 		// Test index-based set operations
 		nestedSetUpdate := "nested_set_name(nested_new(), 'updated')"

@@ -4505,8 +4505,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -4519,11 +4522,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."1"', array_value);
@@ -4541,11 +4544,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -4575,11 +4575,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -4802,8 +4802,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN JSON_UNQUOTE(element_value);
@@ -4816,11 +4819,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."3"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."3"', array_value);
@@ -4838,11 +4841,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -4872,11 +4872,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."3"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -4987,8 +4987,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."10"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN CAST(element_value AS SIGNED);
@@ -5001,11 +5004,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."10"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."10"', array_value);
@@ -5023,11 +5026,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -5057,11 +5057,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."10"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -5172,8 +5172,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."11"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN CAST(element_value AS SIGNED);
@@ -5186,11 +5189,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."11"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."11"', array_value);
@@ -5208,11 +5211,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -5242,11 +5242,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."11"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -5357,8 +5357,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -5371,11 +5374,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."4"', array_value);
@@ -5393,11 +5396,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -5427,11 +5427,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -5542,8 +5542,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -5556,11 +5559,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."5"', array_value);
@@ -5578,11 +5581,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -5612,11 +5612,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -5727,8 +5727,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -5741,11 +5744,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."6"', array_value);
@@ -5763,11 +5766,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -5797,11 +5797,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -5912,8 +5912,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."7"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -5926,11 +5929,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."7"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."7"', array_value);
@@ -5948,11 +5951,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -5982,11 +5982,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."7"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -6378,8 +6378,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -6392,11 +6395,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."2"', array_value);
@@ -6414,11 +6417,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -6448,11 +6448,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -6563,8 +6563,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -6577,11 +6580,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."6"', array_value);
@@ -6599,11 +6602,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -6633,11 +6633,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -6748,8 +6748,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -6762,11 +6765,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."3"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."3"', array_value);
@@ -6784,11 +6787,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -6818,11 +6818,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."3"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -6933,8 +6933,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -6947,11 +6950,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."4"', array_value);
@@ -6969,11 +6972,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -7003,11 +7003,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -7118,8 +7118,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -7132,11 +7135,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."5"', array_value);
@@ -7154,11 +7157,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -7188,11 +7188,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -7303,8 +7303,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."8"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -7317,11 +7320,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."8"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."8"', array_value);
@@ -7339,11 +7342,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -7373,11 +7373,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."8"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -7527,8 +7527,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."9"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -7541,11 +7544,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."9"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."9"', array_value);
@@ -7563,11 +7566,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -7597,11 +7597,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."9"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -7712,8 +7712,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."10"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN JSON_UNQUOTE(element_value);
@@ -7726,11 +7729,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."10"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."10"', array_value);
@@ -7748,11 +7751,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -7782,11 +7782,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."10"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -8190,8 +8190,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -8204,11 +8207,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."999"', array_value);
@@ -8226,11 +8229,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -8260,11 +8260,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -8375,8 +8375,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -8389,11 +8392,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."2"', array_value);
@@ -8411,11 +8414,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -8445,11 +8445,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -9779,8 +9779,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -9793,11 +9796,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."2"', array_value);
@@ -9815,11 +9818,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -9849,11 +9849,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -10003,8 +10003,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -10017,11 +10020,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."4"', array_value);
@@ -10039,11 +10042,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -10073,11 +10073,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -10188,8 +10188,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN JSON_UNQUOTE(element_value);
@@ -10202,11 +10205,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."5"', array_value);
@@ -10224,11 +10227,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -10258,11 +10258,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -10707,8 +10707,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -10721,11 +10724,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."2"', array_value);
@@ -10743,11 +10746,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -10777,11 +10777,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -12103,8 +12103,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -12117,11 +12120,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."999"', array_value);
@@ -12139,11 +12142,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -12173,11 +12173,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -12585,8 +12585,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -12599,11 +12602,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."999"', array_value);
@@ -12621,11 +12624,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -12655,11 +12655,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -13319,8 +13319,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."19"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN CAST(element_value AS SIGNED);
@@ -13333,11 +13336,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."19"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."19"', array_value);
@@ -13355,11 +13358,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -13389,11 +13389,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."19"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -13504,8 +13504,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."20"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -13518,11 +13521,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."20"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."20"', array_value);
@@ -13540,11 +13543,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -13574,11 +13574,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."20"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -13767,8 +13767,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -13781,11 +13784,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."999"', array_value);
@@ -13803,11 +13806,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -13837,11 +13837,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -14629,8 +14629,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -14643,11 +14646,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."999"', array_value);
@@ -14665,11 +14668,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -14699,11 +14699,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -15006,8 +15006,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -15020,11 +15023,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."999"', array_value);
@@ -15042,11 +15045,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -15076,11 +15076,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -15381,8 +15381,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -15395,11 +15398,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."999"', array_value);
@@ -15417,11 +15420,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -15451,11 +15451,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -15676,8 +15676,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -15690,11 +15693,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."999"', array_value);
@@ -15712,11 +15715,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -15746,11 +15746,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -16062,8 +16062,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -16076,11 +16079,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."999"', array_value);
@@ -16098,11 +16101,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -16132,11 +16132,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -16299,8 +16299,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -16313,11 +16316,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."2"', array_value);
@@ -16335,11 +16338,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -16369,11 +16369,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -17695,8 +17695,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -17709,11 +17712,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."1"', array_value);
@@ -17731,11 +17734,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -17765,11 +17765,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -18291,8 +18291,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -18305,11 +18308,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."1"', array_value);
@@ -18327,11 +18330,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -18361,11 +18361,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -18506,8 +18506,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN CAST(element_value AS SIGNED);
@@ -18520,11 +18523,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."1"', array_value);
@@ -18542,11 +18545,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -18576,11 +18576,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -18691,8 +18691,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN CAST(element_value AS SIGNED);
@@ -18705,11 +18708,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."2"', array_value);
@@ -18727,11 +18730,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -18761,11 +18761,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -18958,8 +18958,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN JSON_UNQUOTE(element_value);
@@ -18972,11 +18975,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."6"', array_value);
@@ -18994,11 +18997,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -19028,11 +19028,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -19173,8 +19173,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -19187,11 +19190,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."1"', array_value);
@@ -19209,11 +19212,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -19243,11 +19243,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -19388,8 +19388,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN CAST(element_value AS SIGNED);
@@ -19402,11 +19405,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."1"', array_value);
@@ -19424,11 +19427,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -19458,11 +19458,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -20509,8 +20509,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN element_value;
@@ -20523,11 +20526,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."1"', array_value);
@@ -20545,11 +20548,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -20579,11 +20579,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
@@ -20748,8 +20748,11 @@ BEGIN
     DECLARE array_value JSON;
     DECLARE element_value JSON;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL OR JSON_LENGTH(array_value) <= index_value OR index_value < 0 THEN
-        RETURN NULL;
+    IF array_value IS NULL THEN
+        SET array_value = JSON_ARRAY(); -- Treat missing repeated field as empty array
+    END IF;
+    IF index_value < 0 OR index_value >= JSON_LENGTH(array_value) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
     RETURN JSON_UNQUOTE(element_value);
@@ -20762,11 +20765,11 @@ BEGIN
     DECLARE array_length INT;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data; -- Cannot set at index in non-existent array
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."1"', array_value);
@@ -20784,11 +20787,8 @@ BEGIN
         SET array_value = JSON_ARRAY();
     END IF;
     SET array_length = JSON_LENGTH(array_value);
-    IF index_value < 0 THEN
-        SET index_value = 0;
-    END IF;
-    IF index_value > array_length THEN
-        SET index_value = array_length;
+    IF index_value < 0 OR index_value > array_length THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
     -- Copy elements before insert position
@@ -20818,11 +20818,11 @@ BEGIN
     DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
-        RETURN proto_data;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
-        RETURN proto_data; -- Index out of bounds
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
     -- Copy all elements except the one to remove
