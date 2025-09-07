@@ -130,6 +130,11 @@ func TestProtocGenOneofField(t *testing.T) {
 
 		// Test clear oneof group
 		RunTestThatExpression(t, "test_clear_choice(?)", `{"1": "binary64:0x400921fb54442d18"}`).IsEqualToJsonString(`{}`)
+
+		// Test __or getter variant (oneof fields have presence semantics)
+		RunTestThatExpression(t, "test_get_double_field__or(?, 99.9)", `{"1": "binary64:0x400921fb54442d18"}`).IsEqualToDouble(3.141592653589793) // field present, return field value
+		RunTestThatExpression(t, "test_get_double_field__or(?, 99.9)", `{}`).IsEqualToDouble(99.9)                                                // field not present, return default
+		RunTestThatExpression(t, "test_get_double_field__or(?, 99.9)", `{"3": 42}`).IsEqualToDouble(99.9)                                         // different oneof field set, return default
 	})
 
 	// Test float field in oneof
@@ -150,6 +155,11 @@ func TestProtocGenOneofField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_float_field(?)", `{"2": "binary32:0x4048f5c3"}`).IsEqualToJsonString(`{}`)
+
+		// Test __or getter variant (oneof fields have presence semantics)
+		RunTestThatExpression(t, "test_get_float_field__or(?, 88.8)", `{"2": "binary32:0x4048f5c3"}`).IsEqualToFloat(3.14) // field present, return field value
+		RunTestThatExpression(t, "test_get_float_field__or(?, 88.8)", `{}`).IsEqualToFloat(88.8)                           // field not present, return default
+		RunTestThatExpression(t, "test_get_float_field__or(?, 88.8)", `{"3": 42}`).IsEqualToFloat(88.8)                    // different oneof field set, return default
 	})
 
 	// Test integer fields
@@ -169,6 +179,11 @@ func TestProtocGenOneofField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_int32_field(?)", `{"3": 42}`).IsEqualToJsonString(`{}`)
+
+		// Test __or getter variant (oneof fields have presence semantics)
+		RunTestThatExpression(t, "test_get_int32_field__or(?, 999)", `{"3": 42}`).IsEqualToInt(42)        // field present, return field value
+		RunTestThatExpression(t, "test_get_int32_field__or(?, 999)", `{}`).IsEqualToInt(999)              // field not present, return default
+		RunTestThatExpression(t, "test_get_int32_field__or(?, 999)", `{"14": "hello"}`).IsEqualToInt(999) // different oneof field set, return default
 	})
 
 	t.Run("int64_field", func(t *testing.T) {
@@ -187,6 +202,11 @@ func TestProtocGenOneofField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_int64_field(?)", `{"4": 9223372036854775807}`).IsEqualToJsonString(`{}`)
+
+		// Test __or getter variant (oneof fields have presence semantics)
+		RunTestThatExpression(t, "test_get_int64_field__or(?, 777)", `{"4": 9223372036854775807}`).IsEqualToInt(9223372036854775807) // field present, return field value
+		RunTestThatExpression(t, "test_get_int64_field__or(?, 777)", `{}`).IsEqualToInt(777)                                         // field not present, return default
+		RunTestThatExpression(t, "test_get_int64_field__or(?, 777)", `{"3": 42}`).IsEqualToInt(777)                                  // different oneof field set, return default
 	})
 
 	t.Run("uint32_field", func(t *testing.T) {
@@ -223,6 +243,11 @@ func TestProtocGenOneofField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_uint64_field(?)", `{"6": 18446744073709551615}`).IsEqualToJsonString(`{}`)
+
+		// Test __or getter variant (oneof fields have presence semantics)
+		RunTestThatExpression(t, "test_get_uint64_field__or(?, 888)", `{"6": 18446744073709551615}`).IsEqualToUint(18446744073709551615) // field present, return field value
+		RunTestThatExpression(t, "test_get_uint64_field__or(?, 888)", `{}`).IsEqualToUint(888)                                           // field not present, return default
+		RunTestThatExpression(t, "test_get_uint64_field__or(?, 888)", `{"3": 42}`).IsEqualToUint(888)                                    // different oneof field set, return default
 	})
 
 	t.Run("sint32_field", func(t *testing.T) {
@@ -351,6 +376,11 @@ func TestProtocGenOneofField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_bool_field(?)", `{"13": true}`).IsEqualToJsonString(`{}`)
+
+		// Test __or getter variant (oneof fields have presence semantics)
+		RunTestThatExpression(t, "test_get_bool_field__or(?, TRUE)", `{"13": false}`).IsEqualToBool(false) // field present with false value, return field value
+		RunTestThatExpression(t, "test_get_bool_field__or(?, TRUE)", `{}`).IsEqualToBool(true)             // field not present, return default
+		RunTestThatExpression(t, "test_get_bool_field__or(?, TRUE)", `{"3": 42}`).IsEqualToBool(true)      // different oneof field set, return default
 	})
 
 	// Test string field in oneof
@@ -371,6 +401,11 @@ func TestProtocGenOneofField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_string_field(?)", `{"14": "hello world"}`).IsEqualToJsonString(`{}`)
+
+		// Test __or getter variant (oneof fields have presence semantics)
+		RunTestThatExpression(t, "test_get_string_field__or(?, 'default')", `{"14": "hello world"}`).IsEqualToString("hello world") // field present, return field value
+		RunTestThatExpression(t, "test_get_string_field__or(?, 'default')", `{}`).IsEqualToString("default")                        // field not present, return default
+		RunTestThatExpression(t, "test_get_string_field__or(?, 'default')", `{"3": 42}`).IsEqualToString("default")                 // different oneof field set, return default
 	})
 
 	// Test bytes field in oneof
@@ -391,6 +426,11 @@ func TestProtocGenOneofField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_bytes_field(?)", `{"15": "aGVsbG8="}`).IsEqualToJsonString(`{}`)
+
+		// Test __or getter variant (oneof fields have presence semantics)
+		RunTestThatExpression(t, "test_get_bytes_field__or(?, ?)", `{"15": "aGVsbG8="}`, []byte("default")).IsEqualToBytes([]byte("hello")) // field present, return field value
+		RunTestThatExpression(t, "test_get_bytes_field__or(?, ?)", `{}`, []byte("default")).IsEqualToBytes([]byte("default"))               // field not present, return default
+		RunTestThatExpression(t, "test_get_bytes_field__or(?, ?)", `{"3": 42}`, []byte("default")).IsEqualToBytes([]byte("default"))        // different oneof field set, return default
 	})
 
 	// Test enum field in oneof
@@ -411,6 +451,11 @@ func TestProtocGenOneofField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_enum_field(?)", `{"16": 1}`).IsEqualToJsonString(`{}`)
+
+		// Test __or getter variant (oneof fields have presence semantics)
+		RunTestThatExpression(t, "test_get_enum_field__or(?, 999)", `{"16": 1}`).IsEqualToInt(1)   // field present, return field value
+		RunTestThatExpression(t, "test_get_enum_field__or(?, 999)", `{}`).IsEqualToInt(999)        // field not present, return default
+		RunTestThatExpression(t, "test_get_enum_field__or(?, 999)", `{"3": 42}`).IsEqualToInt(999) // different oneof field set, return default
 	})
 
 	// Test message field in oneof
@@ -433,6 +478,12 @@ func TestProtocGenOneofField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_message_field(?)", `{"17": {"1": "test", "2": 42}}`).IsEqualToJsonString(`{}`)
+
+		// Test __or getter variant (oneof fields have presence semantics)
+		defaultMessage := `{"1": "default", "2": 0}`
+		RunTestThatExpression(t, "test_get_message_field__or(?, ?)", `{"17": {"1": "test", "2": 42}}`, defaultMessage).IsEqualToJsonString(`{"1": "test", "2": 42}`) // field present, return field value
+		RunTestThatExpression(t, "test_get_message_field__or(?, ?)", `{}`, defaultMessage).IsEqualToJsonString(defaultMessage)                                       // field not present, return default
+		RunTestThatExpression(t, "test_get_message_field__or(?, ?)", `{"3": 42}`, defaultMessage).IsEqualToJsonString(defaultMessage)                                // different oneof field set, return default
 	})
 
 	// Test oneof mutual exclusion behavior
