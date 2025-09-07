@@ -1212,6 +1212,11 @@ func generateMapKeyNullableGetter(content *strings.Builder, funcPrefix string, f
 	keyMySQLType, _ := getMySQLTypesForFieldFromReflection(keyType, false)
 	_, valueMySQLType := getMySQLTypesForFieldFromReflection(valueType, false)
 
+	// For float/double types, use LONGTEXT to accept binary format strings
+	if valueType == protoreflect.FloatKind || valueType == protoreflect.DoubleKind {
+		valueMySQLType = "LONGTEXT"
+	}
+
 	// Create function name with __or modifier for individual key access
 	getterFuncName := fmt.Sprintf("%s_get_%s__or", funcPrefix, fieldName)
 
@@ -1238,8 +1243,11 @@ func generateMapKeyNullableGetter(content *strings.Builder, funcPrefix string, f
 	// Get the element from the map using the key
 	if keyType == protoreflect.StringKind {
 		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', JSON_QUOTE(key_value)));\n")
+	} else if keyType == protoreflect.BoolKind {
+		// Boolean keys need special handling: JSON uses "true"/"false" but CAST(bool AS CHAR) produces "1"/"0"
+		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.\"', IF(key_value, 'true', 'false'), '\"'));\n")
 	} else {
-		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', CAST(key_value AS CHAR)));\n")
+		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.\"', CAST(key_value AS CHAR), '\"'));\n")
 	}
 
 	content.WriteString("    IF element_value IS NULL THEN\n")
@@ -1253,14 +1261,17 @@ func generateMapKeyNullableGetter(content *strings.Builder, funcPrefix string, f
 		// For primitive types, cast appropriately
 		switch valueType {
 		case protoreflect.BoolKind:
-			content.WriteString("    RETURN CAST(element_value AS UNSIGNED);\n")
+			content.WriteString("    RETURN _pb_json_parse_bool(element_value);\n")
 		case protoreflect.StringKind:
 			content.WriteString("    RETURN JSON_UNQUOTE(element_value);\n")
 		case protoreflect.BytesKind:
 			content.WriteString("    RETURN FROM_BASE64(JSON_UNQUOTE(element_value));\n")
+		case protoreflect.FloatKind, protoreflect.DoubleKind:
+			// For float/double, return the binary format string directly
+			content.WriteString("    RETURN JSON_UNQUOTE(element_value);\n")
 		default:
-			// Numeric types
-			if valueMySQLType == "BIGINT" || valueMySQLType == "BIGINT UNSIGNED" {
+			// Numeric types - cast based on whether the type is signed or unsigned
+			if strings.Contains(valueMySQLType, "UNSIGNED") {
 				content.WriteString("    RETURN CAST(element_value AS UNSIGNED);\n")
 			} else {
 				content.WriteString("    RETURN CAST(element_value AS SIGNED);\n")
