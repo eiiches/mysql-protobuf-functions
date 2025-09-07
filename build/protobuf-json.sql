@@ -4665,8 +4665,8 @@ DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_name__or $$
 CREATE FUNCTION _pb_file_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -4706,8 +4706,8 @@ DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_package__or $$
 CREATE FUNCTION _pb_file_descriptor_proto_get_package__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -6036,8 +6036,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_file_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."8"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."8"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -6073,8 +6075,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_source_code_info__or $$
 CREATE FUNCTION _pb_file_descriptor_proto_get_source_code_info__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."9"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."9"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."9"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -6116,8 +6120,8 @@ DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_syntax__or $$
 CREATE FUNCTION _pb_file_descriptor_proto_get_syntax__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."12"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."12"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."12"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -6157,8 +6161,8 @@ DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_edition__or $$
 CREATE FUNCTION _pb_file_descriptor_proto_get_edition__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."14"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."14"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."14"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -6187,8 +6191,8 @@ CREATE FUNCTION _pb_file_descriptor_proto_get_edition__as_name_or(proto_data JSO
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."14"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."14"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."14"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_edition_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -6278,8 +6282,8 @@ DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_name__or $$
 CREATE FUNCTION _pb_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -7423,8 +7427,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."7"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -7866,8 +7872,8 @@ DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_get_start__or $$
 CREATE FUNCTION _pb_descriptor_proto_extension_range_get_start__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -7907,8 +7913,8 @@ DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_get_end__or $$
 CREATE FUNCTION _pb_descriptor_proto_extension_range_get_end__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -7942,8 +7948,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_get_options__or $$
 CREATE FUNCTION _pb_descriptor_proto_extension_range_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."3"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -8015,8 +8023,8 @@ DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_get_start__or $$
 CREATE FUNCTION _pb_descriptor_proto_reserved_range_get_start__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -8056,8 +8064,8 @@ DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_get_end__or $$
 CREATE FUNCTION _pb_descriptor_proto_reserved_range_get_end__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -8491,8 +8499,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_extension_range_options_get_features__or $$
 CREATE FUNCTION _pb_extension_range_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."50"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."50"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."50"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -8534,8 +8544,8 @@ DROP FUNCTION IF EXISTS _pb_extension_range_options_get_verification__or $$
 CREATE FUNCTION _pb_extension_range_options_get_verification__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -8564,8 +8574,8 @@ CREATE FUNCTION _pb_extension_range_options_get_verification__as_name_or(proto_d
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_extension_range_options_verification_state_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -8655,8 +8665,8 @@ DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_number__or $
 CREATE FUNCTION _pb_extension_range_options_declaration_get_number__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -8696,8 +8706,8 @@ DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_full_name__o
 CREATE FUNCTION _pb_extension_range_options_declaration_get_full_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -8737,8 +8747,8 @@ DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_type__or $$
 CREATE FUNCTION _pb_extension_range_options_declaration_get_type__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -8778,8 +8788,8 @@ DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_reserved__or
 CREATE FUNCTION _pb_extension_range_options_declaration_get_reserved__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -8819,8 +8829,8 @@ DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_repeated__or
 CREATE FUNCTION _pb_extension_range_options_declaration_get_repeated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -8910,8 +8920,8 @@ DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_name__or $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -8951,8 +8961,8 @@ DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_number__or $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_number__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -8992,8 +9002,8 @@ DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_label__or $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_label__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -9022,8 +9032,8 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_label__as_name_or(proto_data JSON
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_field_descriptor_proto_label_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -9083,8 +9093,8 @@ DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_type__or $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_type__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -9113,8 +9123,8 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_type__as_name_or(proto_data JSON,
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_field_descriptor_proto_type_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -9174,8 +9184,8 @@ DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_type_name__or $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_type_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -9215,8 +9225,8 @@ DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_extendee__or $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_extendee__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -9256,8 +9266,8 @@ DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_default_value__or $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_default_value__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -9297,8 +9307,8 @@ DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_oneof_index__or $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_oneof_index__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."9"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."9"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."9"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -9338,8 +9348,8 @@ DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_json_name__or $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_json_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."10"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."10"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -9373,8 +9383,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."8"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."8"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -9416,8 +9428,8 @@ DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_proto3_optional__or $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_proto3_optional__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."17"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."17"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."17"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -9561,8 +9573,8 @@ DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_get_name__or $$
 CREATE FUNCTION _pb_oneof_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -9596,8 +9608,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_oneof_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."2"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -9669,8 +9683,8 @@ DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_name__or $$
 CREATE FUNCTION _pb_enum_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -9889,8 +9903,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_enum_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."3"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -10332,8 +10348,8 @@ DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_get_start_
 CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_get_start__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -10373,8 +10389,8 @@ DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_get_end__o
 CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_get_end__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -10444,8 +10460,8 @@ DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_get_name__or $$
 CREATE FUNCTION _pb_enum_value_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -10485,8 +10501,8 @@ DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_get_number__or $$
 CREATE FUNCTION _pb_enum_value_descriptor_proto_get_number__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -10520,8 +10536,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_enum_value_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."3"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -10593,8 +10611,8 @@ DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_get_name__or $$
 CREATE FUNCTION _pb_service_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -10813,8 +10831,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_service_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."3"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -10886,8 +10906,8 @@ DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_name__or $$
 CREATE FUNCTION _pb_method_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -10927,8 +10947,8 @@ DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_input_type__or $$
 CREATE FUNCTION _pb_method_descriptor_proto_get_input_type__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -10968,8 +10988,8 @@ DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_output_type__or $$
 CREATE FUNCTION _pb_method_descriptor_proto_get_output_type__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -11003,8 +11023,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_method_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."4"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -11046,8 +11068,8 @@ DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_client_streaming__or $$
 CREATE FUNCTION _pb_method_descriptor_proto_get_client_streaming__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -11087,8 +11109,8 @@ DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_server_streaming__or $$
 CREATE FUNCTION _pb_method_descriptor_proto_get_server_streaming__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -11158,8 +11180,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_java_package__or $$
 CREATE FUNCTION _pb_file_options_get_java_package__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -11199,8 +11221,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_java_outer_classname__or $$
 CREATE FUNCTION _pb_file_options_get_java_outer_classname__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."8"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."8"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -11240,8 +11262,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_java_multiple_files__or $$
 CREATE FUNCTION _pb_file_options_get_java_multiple_files__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."10"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."10"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -11281,8 +11303,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_java_generate_equals_and_hash__or $
 CREATE FUNCTION _pb_file_options_get_java_generate_equals_and_hash__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."20"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."20"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."20"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -11322,8 +11344,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_java_string_check_utf8__or $$
 CREATE FUNCTION _pb_file_options_get_java_string_check_utf8__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."27"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."27"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."27"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -11363,8 +11385,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_optimize_for__or $$
 CREATE FUNCTION _pb_file_options_get_optimize_for__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."9"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."9"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."9"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -11393,8 +11415,8 @@ CREATE FUNCTION _pb_file_options_get_optimize_for__as_name_or(proto_data JSON, d
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."9"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."9"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."9"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_file_options_optimize_mode_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -11454,8 +11476,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_go_package__or $$
 CREATE FUNCTION _pb_file_options_get_go_package__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."11"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."11"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."11"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -11495,8 +11517,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_cc_generic_services__or $$
 CREATE FUNCTION _pb_file_options_get_cc_generic_services__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."16"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."16"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."16"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -11536,8 +11558,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_java_generic_services__or $$
 CREATE FUNCTION _pb_file_options_get_java_generic_services__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."17"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."17"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."17"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -11577,8 +11599,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_py_generic_services__or $$
 CREATE FUNCTION _pb_file_options_get_py_generic_services__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."18"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."18"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."18"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -11618,8 +11640,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_deprecated__or $$
 CREATE FUNCTION _pb_file_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."23"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."23"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."23"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -11659,8 +11681,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_cc_enable_arenas__or $$
 CREATE FUNCTION _pb_file_options_get_cc_enable_arenas__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."31"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."31"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."31"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -11700,8 +11722,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_objc_class_prefix__or $$
 CREATE FUNCTION _pb_file_options_get_objc_class_prefix__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."36"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."36"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."36"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -11741,8 +11763,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_csharp_namespace__or $$
 CREATE FUNCTION _pb_file_options_get_csharp_namespace__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."37"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."37"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."37"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -11782,8 +11804,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_swift_prefix__or $$
 CREATE FUNCTION _pb_file_options_get_swift_prefix__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."39"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."39"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."39"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -11823,8 +11845,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_php_class_prefix__or $$
 CREATE FUNCTION _pb_file_options_get_php_class_prefix__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."40"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."40"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."40"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -11864,8 +11886,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_php_namespace__or $$
 CREATE FUNCTION _pb_file_options_get_php_namespace__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."41"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."41"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."41"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -11905,8 +11927,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_php_metadata_namespace__or $$
 CREATE FUNCTION _pb_file_options_get_php_metadata_namespace__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."44"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."44"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."44"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -11946,8 +11968,8 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_ruby_package__or $$
 CREATE FUNCTION _pb_file_options_get_ruby_package__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."45"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."45"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."45"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -11981,8 +12003,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_get_features__or $$
 CREATE FUNCTION _pb_file_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."50"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."50"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."50"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -12261,8 +12285,8 @@ DROP FUNCTION IF EXISTS _pb_message_options_get_message_set_wire_format__or $$
 CREATE FUNCTION _pb_message_options_get_message_set_wire_format__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -12302,8 +12326,8 @@ DROP FUNCTION IF EXISTS _pb_message_options_get_no_standard_descriptor_accessor_
 CREATE FUNCTION _pb_message_options_get_no_standard_descriptor_accessor__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -12343,8 +12367,8 @@ DROP FUNCTION IF EXISTS _pb_message_options_get_deprecated__or $$
 CREATE FUNCTION _pb_message_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -12384,8 +12408,8 @@ DROP FUNCTION IF EXISTS _pb_message_options_get_map_entry__or $$
 CREATE FUNCTION _pb_message_options_get_map_entry__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -12426,8 +12450,8 @@ END $$
 -- SKIPPED: CREATE FUNCTION _pb_message_options_get_deprecated_legacy_json_field_conflicts__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 -- SKIPPED: BEGIN
 -- SKIPPED:     DECLARE json_value JSON;
--- SKIPPED:     IF JSON_CONTAINS_PATH(proto_data, 'one', '$."11"') THEN
--- SKIPPED:         SET json_value = JSON_EXTRACT(proto_data, '$."11"');
+-- SKIPPED:     SET json_value = JSON_EXTRACT(proto_data, '$."11"');
+-- SKIPPED:     IF json_value IS NOT NULL THEN
 -- SKIPPED:         RETURN _pb_json_parse_bool(json_value);
 -- SKIPPED:     ELSE
 -- SKIPPED:         RETURN default_value;
@@ -12461,8 +12485,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_message_options_get_features__or $$
 CREATE FUNCTION _pb_message_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."12"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."12"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."12"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -12719,8 +12745,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_get_ctype__or $$
 CREATE FUNCTION _pb_field_options_get_ctype__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -12749,8 +12775,8 @@ CREATE FUNCTION _pb_field_options_get_ctype__as_name_or(proto_data JSON, default
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_field_options_c_type_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -12810,8 +12836,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_get_packed__or $$
 CREATE FUNCTION _pb_field_options_get_packed__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -12851,8 +12877,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_get_jstype__or $$
 CREATE FUNCTION _pb_field_options_get_jstype__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -12881,8 +12907,8 @@ CREATE FUNCTION _pb_field_options_get_jstype__as_name_or(proto_data JSON, defaul
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."6"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."6"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_field_options_j_s_type_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -12942,8 +12968,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_get_lazy__or $$
 CREATE FUNCTION _pb_field_options_get_lazy__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -12983,8 +13009,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_get_unverified_lazy__or $$
 CREATE FUNCTION _pb_field_options_get_unverified_lazy__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."15"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."15"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."15"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -13024,8 +13050,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_get_deprecated__or $$
 CREATE FUNCTION _pb_field_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -13065,8 +13091,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_get_weak__or $$
 CREATE FUNCTION _pb_field_options_get_weak__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."10"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."10"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."10"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -13106,8 +13132,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_get_debug_redact__or $$
 CREATE FUNCTION _pb_field_options_get_debug_redact__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."16"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."16"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."16"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -13147,8 +13173,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_get_retention__or $$
 CREATE FUNCTION _pb_field_options_get_retention__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."17"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."17"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."17"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -13177,8 +13203,8 @@ CREATE FUNCTION _pb_field_options_get_retention__as_name_or(proto_data JSON, def
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."17"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."17"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."17"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_field_options_option_retention_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -13602,8 +13628,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_options_get_features__or $$
 CREATE FUNCTION _pb_field_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."21"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."21"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."21"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -13639,8 +13667,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_options_get_feature_support__or $$
 CREATE FUNCTION _pb_field_options_get_feature_support__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."22"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."22"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."22"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -13897,8 +13927,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_edition_default_get_edition__or $$
 CREATE FUNCTION _pb_field_options_edition_default_get_edition__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -13927,8 +13957,8 @@ CREATE FUNCTION _pb_field_options_edition_default_get_edition__as_name_or(proto_
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_edition_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -13988,8 +14018,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_edition_default_get_value__or $$
 CREATE FUNCTION _pb_field_options_edition_default_get_value__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -14059,8 +14089,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_introduced
 CREATE FUNCTION _pb_field_options_feature_support_get_edition_introduced__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -14089,8 +14119,8 @@ END $$
 -- BEGIN
 --     DECLARE enum_value INT;
 --     DECLARE enum_name LONGTEXT;
---     IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
---         SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+--     SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+--     IF enum_value IS NOT NULL THEN
 --         SET enum_name = _pb_edition_to_string(enum_value);
 --         IF enum_name IS NOT NULL THEN
 --             RETURN enum_name;
@@ -14150,8 +14180,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_deprecated
 CREATE FUNCTION _pb_field_options_feature_support_get_edition_deprecated__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -14180,8 +14210,8 @@ END $$
 -- BEGIN
 --     DECLARE enum_value INT;
 --     DECLARE enum_name LONGTEXT;
---     IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
---         SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."2"') AS SIGNED);
+--     SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."2"') AS SIGNED);
+--     IF enum_value IS NOT NULL THEN
 --         SET enum_name = _pb_edition_to_string(enum_value);
 --         IF enum_name IS NOT NULL THEN
 --             RETURN enum_name;
@@ -14241,8 +14271,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_deprecation_warnin
 CREATE FUNCTION _pb_field_options_feature_support_get_deprecation_warning__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -14282,8 +14312,8 @@ DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_removed__o
 CREATE FUNCTION _pb_field_options_feature_support_get_edition_removed__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -14312,8 +14342,8 @@ END $$
 -- BEGIN
 --     DECLARE enum_value INT;
 --     DECLARE enum_name LONGTEXT;
---     IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
---         SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+--     SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+--     IF enum_value IS NOT NULL THEN
 --         SET enum_name = _pb_edition_to_string(enum_value);
 --         IF enum_name IS NOT NULL THEN
 --             RETURN enum_name;
@@ -14499,8 +14529,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_oneof_options_get_features__or $$
 CREATE FUNCTION _pb_oneof_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."1"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -14757,8 +14789,8 @@ DROP FUNCTION IF EXISTS _pb_enum_options_get_allow_alias__or $$
 CREATE FUNCTION _pb_enum_options_get_allow_alias__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -14798,8 +14830,8 @@ DROP FUNCTION IF EXISTS _pb_enum_options_get_deprecated__or $$
 CREATE FUNCTION _pb_enum_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -14839,8 +14871,8 @@ DROP FUNCTION IF EXISTS _pb_enum_options_get_deprecated_legacy_json_field_confli
 CREATE FUNCTION _pb_enum_options_get_deprecated_legacy_json_field_conflicts__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -14874,8 +14906,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_options_get_features__or $$
 CREATE FUNCTION _pb_enum_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."7"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -15132,8 +15166,8 @@ DROP FUNCTION IF EXISTS _pb_enum_value_options_get_deprecated__or $$
 CREATE FUNCTION _pb_enum_value_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -15167,8 +15201,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_value_options_get_features__or $$
 CREATE FUNCTION _pb_enum_value_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."2"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -15210,8 +15246,8 @@ DROP FUNCTION IF EXISTS _pb_enum_value_options_get_debug_redact__or $$
 CREATE FUNCTION _pb_enum_value_options_get_debug_redact__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -15245,8 +15281,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_value_options_get_feature_support__or $$
 CREATE FUNCTION _pb_enum_value_options_get_feature_support__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."4"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -15497,8 +15535,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_service_options_get_features__or $$
 CREATE FUNCTION _pb_service_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."34"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."34"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."34"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -15540,8 +15580,8 @@ DROP FUNCTION IF EXISTS _pb_service_options_get_deprecated__or $$
 CREATE FUNCTION _pb_service_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."33"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."33"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."33"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -15796,8 +15836,8 @@ DROP FUNCTION IF EXISTS _pb_method_options_get_deprecated__or $$
 CREATE FUNCTION _pb_method_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."33"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."33"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."33"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -15837,8 +15877,8 @@ DROP FUNCTION IF EXISTS _pb_method_options_get_idempotency_level__or $$
 CREATE FUNCTION _pb_method_options_get_idempotency_level__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."34"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."34"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."34"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -15867,8 +15907,8 @@ CREATE FUNCTION _pb_method_options_get_idempotency_level__as_name_or(proto_data 
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."34"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."34"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."34"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_method_options_idempotency_level_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -15922,8 +15962,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_method_options_get_features__or $$
 CREATE FUNCTION _pb_method_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."35"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."35"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."35"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -16387,8 +16429,8 @@ DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_identifier_value__or $$
 CREATE FUNCTION _pb_uninterpreted_option_get_identifier_value__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -16428,8 +16470,8 @@ DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_positive_int_value__or $$
 CREATE FUNCTION _pb_uninterpreted_option_get_positive_int_value__or(proto_data JSON, default_value BIGINT UNSIGNED) RETURNS BIGINT UNSIGNED DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_unsigned_int(json_value);
     ELSE
         RETURN default_value;
@@ -16469,8 +16511,8 @@ DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_negative_int_value__or $$
 CREATE FUNCTION _pb_uninterpreted_option_get_negative_int_value__or(proto_data JSON, default_value BIGINT) RETURNS BIGINT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -16510,8 +16552,8 @@ DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_double_value__or $$
 CREATE FUNCTION _pb_uninterpreted_option_get_double_value__or(proto_data JSON, default_value DOUBLE) RETURNS DOUBLE DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
     ELSE
         RETURN default_value;
@@ -16551,8 +16593,8 @@ DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_string_value__or $$
 CREATE FUNCTION _pb_uninterpreted_option_get_string_value__or(proto_data JSON, default_value LONGBLOB) RETURNS LONGBLOB DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bytes(json_value);
     ELSE
         RETURN default_value;
@@ -16592,8 +16634,8 @@ DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_aggregate_value__or $$
 CREATE FUNCTION _pb_uninterpreted_option_get_aggregate_value__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."8"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."8"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -16663,8 +16705,8 @@ DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_get_name_part__or $$
 CREATE FUNCTION _pb_uninterpreted_option_name_part_get_name_part__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -16704,8 +16746,8 @@ DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_get_is_extension__or 
 CREATE FUNCTION _pb_uninterpreted_option_name_part_get_is_extension__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -16775,8 +16817,8 @@ DROP FUNCTION IF EXISTS _pb_feature_set_get_field_presence__or $$
 CREATE FUNCTION _pb_feature_set_get_field_presence__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -16805,8 +16847,8 @@ CREATE FUNCTION _pb_feature_set_get_field_presence__as_name_or(proto_data JSON, 
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_feature_set_field_presence_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -16866,8 +16908,8 @@ DROP FUNCTION IF EXISTS _pb_feature_set_get_enum_type__or $$
 CREATE FUNCTION _pb_feature_set_get_enum_type__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -16896,8 +16938,8 @@ CREATE FUNCTION _pb_feature_set_get_enum_type__as_name_or(proto_data JSON, defau
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."2"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."2"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_feature_set_enum_type_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -16957,8 +16999,8 @@ DROP FUNCTION IF EXISTS _pb_feature_set_get_repeated_field_encoding__or $$
 CREATE FUNCTION _pb_feature_set_get_repeated_field_encoding__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -16987,8 +17029,8 @@ CREATE FUNCTION _pb_feature_set_get_repeated_field_encoding__as_name_or(proto_da
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_feature_set_repeated_field_encoding_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -17048,8 +17090,8 @@ DROP FUNCTION IF EXISTS _pb_feature_set_get_utf8_validation__or $$
 CREATE FUNCTION _pb_feature_set_get_utf8_validation__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -17078,8 +17120,8 @@ CREATE FUNCTION _pb_feature_set_get_utf8_validation__as_name_or(proto_data JSON,
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_feature_set_utf8_validation_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -17139,8 +17181,8 @@ DROP FUNCTION IF EXISTS _pb_feature_set_get_message_encoding__or $$
 CREATE FUNCTION _pb_feature_set_get_message_encoding__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -17169,8 +17211,8 @@ CREATE FUNCTION _pb_feature_set_get_message_encoding__as_name_or(proto_data JSON
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_feature_set_message_encoding_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -17230,8 +17272,8 @@ DROP FUNCTION IF EXISTS _pb_feature_set_get_json_format__or $$
 CREATE FUNCTION _pb_feature_set_get_json_format__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -17260,8 +17302,8 @@ CREATE FUNCTION _pb_feature_set_get_json_format__as_name_or(proto_data JSON, def
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."6"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."6"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_feature_set_json_format_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -17321,8 +17363,8 @@ DROP FUNCTION IF EXISTS _pb_feature_set_get_enforce_naming_style__or $$
 CREATE FUNCTION _pb_feature_set_get_enforce_naming_style__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -17351,8 +17393,8 @@ CREATE FUNCTION _pb_feature_set_get_enforce_naming_style__as_name_or(proto_data 
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."7"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."7"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_feature_set_enforce_naming_style_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -17783,8 +17825,8 @@ DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_minimum_edition__or $$
 CREATE FUNCTION _pb_feature_set_defaults_get_minimum_edition__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -17813,8 +17855,8 @@ CREATE FUNCTION _pb_feature_set_defaults_get_minimum_edition__as_name_or(proto_d
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_edition_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -17874,8 +17916,8 @@ DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_maximum_edition__or $$
 CREATE FUNCTION _pb_feature_set_defaults_get_maximum_edition__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -17904,8 +17946,8 @@ CREATE FUNCTION _pb_feature_set_defaults_get_maximum_edition__as_name_or(proto_d
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_edition_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -17995,8 +18037,8 @@ DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_edition__or $$
 CREATE FUNCTION _pb_feature_set_edition_default_get_edition__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -18025,8 +18067,8 @@ CREATE FUNCTION _pb_feature_set_edition_default_get_edition__as_name_or(proto_da
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_edition_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -18080,8 +18122,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_overridable_features__or $$
 CREATE FUNCTION _pb_feature_set_edition_default_get_overridable_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."4"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -18117,8 +18161,10 @@ END $$
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_fixed_features__or $$
 CREATE FUNCTION _pb_feature_set_edition_default_get_fixed_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."5"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -18775,8 +18821,8 @@ DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_leading_comments__or $
 CREATE FUNCTION _pb_source_code_info_location_get_leading_comments__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -18816,8 +18862,8 @@ DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_trailing_comments__or 
 CREATE FUNCTION _pb_source_code_info_location_get_trailing_comments__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -19472,8 +19518,8 @@ DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_source_file__or $
 CREATE FUNCTION _pb_generated_code_info_annotation_get_source_file__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -19513,8 +19559,8 @@ DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_begin__or $$
 CREATE FUNCTION _pb_generated_code_info_annotation_get_begin__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -19554,8 +19600,8 @@ DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_end__or $$
 CREATE FUNCTION _pb_generated_code_info_annotation_get_end__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -19595,8 +19641,8 @@ DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_semantic__or $$
 CREATE FUNCTION _pb_generated_code_info_annotation_get_semantic__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -19625,8 +19671,8 @@ CREATE FUNCTION _pb_generated_code_info_annotation_get_semantic__as_name_or(prot
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = _pb_generated_code_info_annotation_semantic_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -19932,8 +19978,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_get_value__or $$
 CREATE FUNCTION pb_wkt_struct_fields_entry_get_value__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."2"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -20005,8 +20053,8 @@ DROP FUNCTION IF EXISTS pb_wkt_value_get_null_value__or $$
 CREATE FUNCTION pb_wkt_value_get_null_value__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
@@ -20035,8 +20083,8 @@ CREATE FUNCTION pb_wkt_value_get_null_value__as_name_or(proto_data JSON, default
 BEGIN
     DECLARE enum_value INT;
     DECLARE enum_name LONGTEXT;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
-        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+    IF enum_value IS NOT NULL THEN
         SET enum_name = pb_wkt_null_value_to_string(enum_value);
         IF enum_name IS NOT NULL THEN
             RETURN enum_name;
@@ -20103,8 +20151,8 @@ DROP FUNCTION IF EXISTS pb_wkt_value_get_number_value__or $$
 CREATE FUNCTION pb_wkt_value_get_number_value__or(proto_data JSON, default_value DOUBLE) RETURNS DOUBLE DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
     ELSE
         RETURN default_value;
@@ -20151,8 +20199,8 @@ DROP FUNCTION IF EXISTS pb_wkt_value_get_string_value__or $$
 CREATE FUNCTION pb_wkt_value_get_string_value__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_string(json_value);
     ELSE
         RETURN default_value;
@@ -20199,8 +20247,8 @@ DROP FUNCTION IF EXISTS pb_wkt_value_get_bool_value__or $$
 CREATE FUNCTION pb_wkt_value_get_bool_value__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
 BEGIN
     DECLARE json_value JSON;
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
-        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NOT NULL THEN
         RETURN _pb_json_parse_bool(json_value);
     ELSE
         RETURN default_value;
@@ -20241,8 +20289,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_value_get_struct_value__or $$
 CREATE FUNCTION pb_wkt_value_get_struct_value__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."5"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;
@@ -20285,8 +20335,10 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_value_get_list_value__or $$
 CREATE FUNCTION pb_wkt_value_get_list_value__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
-        RETURN JSON_EXTRACT(proto_data, '$."6"');
+    DECLARE field_value JSON;
+    SET field_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF field_value IS NOT NULL THEN
+        RETURN field_value;
     ELSE
         RETURN default_value;
     END IF;

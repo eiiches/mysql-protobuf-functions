@@ -414,23 +414,22 @@ func generateNullableGetter(content *strings.Builder, funcPrefix string, fullTyp
 		fieldType == protoreflect.DoubleKind ||
 		fieldType == protoreflect.EnumKind)
 
-	// Declare variables at the beginning of the function if needed
+	// Declare variables at the beginning of the function
 	if needsJsonParsing {
 		content.WriteString(fmt.Sprintf("%s    DECLARE json_value JSON;\n", commentPrefix))
 	}
 
-	// Check if field has presence
-	content.WriteString(fmt.Sprintf("%s    IF JSON_CONTAINS_PATH(proto_data, 'one', '$.\"%.d\"') THEN\n", commentPrefix, field.Number()))
-
+	// Get field value and check for presence using simpler IS NULL check
 	if needsJsonParsing {
-		content.WriteString(fmt.Sprintf("%s        SET json_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
+		content.WriteString(fmt.Sprintf("%s    SET json_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
+		content.WriteString(fmt.Sprintf("%s    IF json_value IS NOT NULL THEN\n", commentPrefix))
 		content.WriteString(fmt.Sprintf("%s        RETURN %s;\n", commentPrefix, getJsonParseFunction(fieldType)))
-	} else if isMessage {
-		// For message fields, return JSON object
-		content.WriteString(fmt.Sprintf("%s        RETURN JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
 	} else {
-		// Shouldn't reach here, but fallback
-		content.WriteString(fmt.Sprintf("%s        RETURN JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
+		// For message fields and others, extract directly and check for null
+		content.WriteString(fmt.Sprintf("%s    DECLARE field_value JSON;\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s    SET field_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
+		content.WriteString(fmt.Sprintf("%s    IF field_value IS NOT NULL THEN\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s        RETURN field_value;\n", commentPrefix))
 	}
 
 	// Field is not present, return provided default
@@ -462,6 +461,9 @@ func getJsonParseFunction(fieldType protoreflect.Kind) string {
 		return "_pb_util_reinterpret_uint32_as_float(_pb_json_parse_float_as_uint32(json_value, TRUE))"
 	case protoreflect.DoubleKind:
 		return "_pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE))"
+	case protoreflect.MessageKind:
+		// Message fields return JSON directly
+		return "json_value"
 	case protoreflect.GroupKind:
 		// Groups are deprecated but treated like messages (JSON)
 		return "json_value"
@@ -1498,39 +1500,43 @@ func generateEnumNameGetter(content *strings.Builder, funcPrefix string, fullTyp
 	content.WriteString(fmt.Sprintf("%s    DECLARE enum_value INT;\n", commentPrefix))
 	content.WriteString(fmt.Sprintf("%s    DECLARE enum_name LONGTEXT;\n", commentPrefix))
 
-	// For nullable variant, check presence first
-	if isNullableVariant {
-		content.WriteString(fmt.Sprintf("%s    IF JSON_CONTAINS_PATH(proto_data, 'one', '$.\"%.d\"') THEN\n", commentPrefix, field.Number()))
-	}
+	// Get the enum value first
+	content.WriteString(fmt.Sprintf("%s    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$.\"%.d\"') AS SIGNED);\n", commentPrefix, field.Number()))
 
-	// Get the enum value
-	var indent string
 	if isNullableVariant {
-		indent = "        " // Inside IF block
-		content.WriteString(fmt.Sprintf("%s%sSET enum_value = CAST(JSON_EXTRACT(proto_data, '$.\"%.d\"') AS SIGNED);\n", commentPrefix, indent, field.Number()))
+		// For nullable variant, check if field is present (enum_value IS NOT NULL)
+		content.WriteString(fmt.Sprintf("%s    IF enum_value IS NOT NULL THEN\n", commentPrefix))
 	} else {
-		indent = "    " // At top level
-		content.WriteString(fmt.Sprintf("%s%sSET enum_value = CAST(JSON_EXTRACT(proto_data, '$.\"%.d\"') AS SIGNED);\n", commentPrefix, indent, field.Number()))
 		// For non-nullable variant, handle missing field by using default (0)
-		content.WriteString(fmt.Sprintf("%s%sIF enum_value IS NULL THEN\n", commentPrefix, indent))
-		content.WriteString(fmt.Sprintf("%s%s    SET enum_value = 0;\n", commentPrefix, indent))
-		content.WriteString(fmt.Sprintf("%s%sEND IF;\n", commentPrefix, indent))
+		content.WriteString(fmt.Sprintf("%s    IF enum_value IS NULL THEN\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s        SET enum_value = 0;\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
 	}
 
-	// Use the enum's to_string function
-	content.WriteString(fmt.Sprintf("%s%sSET enum_name = %s(enum_value);\n", commentPrefix, indent, toStringFuncName))
-
-	// If the conversion was successful, return the name; otherwise return the number as string
-	content.WriteString(fmt.Sprintf("%s%sIF enum_name IS NOT NULL THEN\n", commentPrefix, indent))
-	content.WriteString(fmt.Sprintf("%s%s    RETURN enum_name;\n", commentPrefix, indent))
-	content.WriteString(fmt.Sprintf("%s%sELSE\n", commentPrefix, indent))
-	content.WriteString(fmt.Sprintf("%s%s    RETURN CAST(enum_value AS CHAR);\n", commentPrefix, indent))
-	content.WriteString(fmt.Sprintf("%s%sEND IF;\n", commentPrefix, indent))
-
 	if isNullableVariant {
-		// Close the presence check and return default
+		// Use the enum's to_string function
+		content.WriteString(fmt.Sprintf("%s        SET enum_name = %s(enum_value);\n", commentPrefix, toStringFuncName))
+
+		// If the conversion was successful, return the name; otherwise return the number as string
+		content.WriteString(fmt.Sprintf("%s        IF enum_name IS NOT NULL THEN\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s            RETURN enum_name;\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s        ELSE\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s            RETURN CAST(enum_value AS CHAR);\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s        END IF;\n", commentPrefix))
+
+		// Field absent, return default
 		content.WriteString(fmt.Sprintf("%s    ELSE\n", commentPrefix))
 		content.WriteString(fmt.Sprintf("%s        RETURN default_value;\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
+	} else {
+		// Use the enum's to_string function
+		content.WriteString(fmt.Sprintf("%s    SET enum_name = %s(enum_value);\n", commentPrefix, toStringFuncName))
+
+		// If the conversion was successful, return the name; otherwise return the number as string
+		content.WriteString(fmt.Sprintf("%s    IF enum_name IS NOT NULL THEN\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s        RETURN enum_name;\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s    ELSE\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s        RETURN CAST(enum_value AS CHAR);\n", commentPrefix))
 		content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
 	}
 
