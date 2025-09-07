@@ -284,7 +284,12 @@ func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTyp
 		return err
 	}
 
-	_, getterType := getMySQLTypesForFieldFromReflection(fieldType, isRepeated || isMapField)
+	var getterType string
+	if isRepeated || isMapField {
+		getterType = "JSON"
+	} else {
+		getterType = GetProtobufType(fieldType).GetSqlTypeName()
+	}
 
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", getterFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS %s DETERMINISTIC\n", getterFuncName, getterType))
@@ -331,12 +336,9 @@ func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTyp
 			content.WriteString("    WHILE i < array_length DO\n")
 			content.WriteString("        SET element_value = JSON_EXTRACT(raw_array, CONCAT('$[', i, ']'));\n")
 
-			// Use the appropriate conversion function based on field type
-			if fieldType == protoreflect.FloatKind {
-				content.WriteString("        SET result_array = JSON_ARRAY_APPEND(result_array, '$', _pb_util_reinterpret_uint32_as_float(_pb_json_parse_float_as_uint32(element_value, TRUE)));\n")
-			} else { // DoubleKind
-				content.WriteString("        SET result_array = JSON_ARRAY_APPEND(result_array, '$', _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(element_value, TRUE)));\n")
-			}
+			// Use unified conversion system for NumberJSON → SQL Type
+			convertedExpression := GetProtobufType(fieldType).GenerateNumberJsonToSqlExpression("element_value")
+			content.WriteString(fmt.Sprintf("        SET result_array = JSON_ARRAY_APPEND(result_array, '$', %s);\n", convertedExpression))
 
 			content.WriteString("        SET i = i + 1;\n")
 			content.WriteString("    END WHILE;\n")
@@ -349,22 +351,15 @@ func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTyp
 	case isMessage:
 		// For message fields, return JSON object or empty object if not present
 		content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_OBJECT());\n", field.Number()))
-	case fieldType == protoreflect.BoolKind:
-		// For boolean fields, use _pb_json_parse_bool if the field exists
-		defaultValue := getFieldDefaultValueFromReflection(field)
-		content.WriteString(fmt.Sprintf("    SET json_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
-		content.WriteString("    IF json_value IS NULL THEN\n")
-		content.WriteString(fmt.Sprintf("        RETURN %s;\n", defaultValue))
-		content.WriteString("    END IF;\n")
-		content.WriteString("    RETURN _pb_json_parse_bool(json_value);\n")
 	default:
-		// For scalar fields, use appropriate _pb_json_parse functions
-		defaultValue := getFieldDefaultValueFromReflection(field)
+		// For scalar fields, use unified type system for NumberJSON → SQL conversion
+		defaultValue := GetDefaultValue(field)
 		content.WriteString(fmt.Sprintf("    SET json_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
 		content.WriteString("    IF json_value IS NULL THEN\n")
 		content.WriteString(fmt.Sprintf("        RETURN %s;\n", defaultValue))
 		content.WriteString("    END IF;\n")
-		content.WriteString(fmt.Sprintf("    RETURN %s;\n", getJsonParseFunction(fieldType)))
+		expression := GetProtobufType(fieldType).GenerateNumberJsonToSqlExpression("json_value")
+		content.WriteString(fmt.Sprintf("    RETURN %s;\n", expression))
 	}
 
 	content.WriteString("END $$\n\n")
@@ -376,7 +371,7 @@ func generateNullableGetter(content *strings.Builder, funcPrefix string, fullTyp
 	// Create function name with __or modifier
 	getterFuncName := fmt.Sprintf("%s_get_%s__or", funcPrefix, fieldName)
 
-	_, getterType := getMySQLTypesForFieldFromReflection(fieldType, false)
+	getterType := GetProtobufType(fieldType).GetSqlTypeName()
 
 	// Determine how this function should be generated
 	decision := DecisionInclude
@@ -407,80 +402,23 @@ func generateNullableGetter(content *strings.Builder, funcPrefix string, fullTyp
 	content.WriteString(fmt.Sprintf("%sCREATE FUNCTION %s(proto_data JSON, default_value %s) RETURNS %s DETERMINISTIC\n", commentPrefix, getterFuncName, getterType, getterType))
 	content.WriteString(fmt.Sprintf("%sBEGIN\n", commentPrefix))
 
-	// Field is present, return actual value using same logic as regular getter
-	needsJsonParsing := !isMessage && (fieldType == protoreflect.BoolKind ||
-		fieldType == protoreflect.StringKind ||
-		fieldType == protoreflect.BytesKind ||
-		fieldType == protoreflect.Int64Kind ||
-		fieldType == protoreflect.Sint64Kind ||
-		fieldType == protoreflect.Sfixed64Kind ||
-		fieldType == protoreflect.Int32Kind ||
-		fieldType == protoreflect.Sint32Kind ||
-		fieldType == protoreflect.Sfixed32Kind ||
-		fieldType == protoreflect.Uint64Kind ||
-		fieldType == protoreflect.Fixed64Kind ||
-		fieldType == protoreflect.Uint32Kind ||
-		fieldType == protoreflect.Fixed32Kind ||
-		fieldType == protoreflect.FloatKind ||
-		fieldType == protoreflect.DoubleKind ||
-		fieldType == protoreflect.EnumKind)
-
-	// Declare variables at the beginning of the function
-	if needsJsonParsing {
-		content.WriteString(fmt.Sprintf("%s    DECLARE json_value JSON;\n", commentPrefix))
-	}
-
-	// Extract field value and return default if null
-	if needsJsonParsing {
-		content.WriteString(fmt.Sprintf("%s    SET json_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
-		content.WriteString(fmt.Sprintf("%s    IF json_value IS NULL THEN\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s        RETURN default_value;\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s    RETURN %s;\n", commentPrefix, getJsonParseFunction(fieldType)))
-	} else {
-		// For message fields and others, extract directly and check for null
-		content.WriteString(fmt.Sprintf("%s    DECLARE field_value JSON;\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s    SET field_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
-		content.WriteString(fmt.Sprintf("%s    IF field_value IS NULL THEN\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s        RETURN default_value;\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s    RETURN field_value;\n", commentPrefix))
-	}
+	// Use unified nullable getter logic
+	content.WriteString(fmt.Sprintf("%s    DECLARE json_value JSON;\n", commentPrefix))
+	content.WriteString(fmt.Sprintf("%s    SET json_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
+	content.WriteString(fmt.Sprintf("%s    IF json_value IS NULL THEN\n", commentPrefix))
+	content.WriteString(fmt.Sprintf("%s        RETURN default_value;\n", commentPrefix))
+	content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
+	expression := GetProtobufType(fieldType).GenerateNumberJsonToSqlExpression("json_value")
+	content.WriteString(fmt.Sprintf("%s    RETURN %s;\n", commentPrefix, expression))
 
 	content.WriteString(fmt.Sprintf("%sEND $$\n\n", commentPrefix))
 	return nil
 }
 
 // getJsonParseFunction returns the appropriate _pb_json_parse function for a field type
+// Deprecated: Use GetProtobufType().GenerateNumberJsonToSqlExpression instead
 func getJsonParseFunction(fieldType protoreflect.Kind) string {
-	switch fieldType {
-	case protoreflect.BoolKind:
-		return "_pb_json_parse_bool(json_value)"
-	case protoreflect.StringKind:
-		return "_pb_json_parse_string(json_value)"
-	case protoreflect.BytesKind:
-		return "_pb_json_parse_bytes(json_value)"
-	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind,
-		protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind,
-		protoreflect.EnumKind:
-		return "_pb_json_parse_signed_int(json_value)"
-	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind,
-		protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
-		return "_pb_json_parse_unsigned_int(json_value)"
-	case protoreflect.FloatKind:
-		return "_pb_util_reinterpret_uint32_as_float(_pb_json_parse_float_as_uint32(json_value, TRUE))"
-	case protoreflect.DoubleKind:
-		return "_pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE))"
-	case protoreflect.MessageKind:
-		// Message fields return JSON directly
-		return "json_value"
-	case protoreflect.GroupKind:
-		// Groups are deprecated but treated like messages (JSON)
-		return "json_value"
-	default:
-		// This should not happen since we check needsJsonParsing
-		return "json_value"
-	}
+	return GetProtobufType(fieldType).GenerateNumberJsonToSqlExpression("json_value")
 }
 
 // generateEnhancedSetter creates an enhanced setter with input validation
@@ -496,7 +434,12 @@ func generateEnhancedSetter(content *strings.Builder, funcPrefix string, fullTyp
 		return err
 	}
 
-	setterType, _ := getMySQLTypesForFieldFromReflection(fieldType, isRepeated || isMapField)
+	var setterType string
+	if isRepeated || isMapField {
+		setterType = "JSON"
+	} else {
+		setterType = GetProtobufType(fieldType).GetSqlTypeName()
+	}
 
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", setterFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, field_value %s) RETURNS JSON DETERMINISTIC\n", setterFuncName, setterType))
@@ -540,18 +483,9 @@ func generateEnhancedSetter(content *strings.Builder, funcPrefix string, fullTyp
 		content.WriteString("        SET element_value = JSON_EXTRACT(field_value, CONCAT('$[', i, ']'));\n")
 
 		// Handle type-specific conversions for proper internal format
-		switch fieldType {
-		case protoreflect.BoolKind:
-			content.WriteString("        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);\n")
-		case protoreflect.BytesKind:
-			content.WriteString("        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value); -- Expect base64 strings\n")
-		case protoreflect.FloatKind:
-			content.WriteString("        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(CAST(element_value AS DOUBLE))));\n")
-		case protoreflect.DoubleKind:
-			content.WriteString("        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(CAST(element_value AS DOUBLE))));\n")
-		default:
-			content.WriteString("        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', element_value);\n")
-		}
+		// Use unified JSON → NumberJSON conversion system
+		convertedExpression := GetProtobufType(fieldType).GenerateJsonToNumberJsonExpression("element_value")
+		content.WriteString(fmt.Sprintf("        SET converted_array = JSON_ARRAY_APPEND(converted_array, '$', %s);\n", convertedExpression))
 
 		content.WriteString("        SET i = i + 1;\n")
 		content.WriteString("    END WHILE;\n")
@@ -577,84 +511,21 @@ func generateEnhancedSetter(content *strings.Builder, funcPrefix string, fullTyp
 			}
 		}
 
-		// Set the new field value with proper JSON conversion for booleans, bytes, and floats
-		if fieldType == protoreflect.BoolKind {
-			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', CAST((field_value IS TRUE) AS JSON));\n", field.Number()))
-		} else if fieldType == protoreflect.BytesKind {
-			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', _pb_to_base64(field_value));\n", field.Number()))
-		} else if fieldType == protoreflect.FloatKind {
-			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(field_value)));\n", field.Number()))
-		} else if fieldType == protoreflect.DoubleKind {
-			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(field_value)));\n", field.Number()))
-		} else {
-			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', field_value);\n", field.Number()))
-		}
+		// Set the new field value with proper JSON conversion - use unified type system
+		jsonExpression := GetProtobufType(fieldType).GenerateSqlToNumberJsonExpression("field_value")
+		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(temp_data, '$.\"%.d\"', %s);\n", field.Number(), jsonExpression))
 	} else {
 		// Check if this is a proto3 field without presence and being set to default value
 		// According to protonumberjson spec, such fields should be omitted
 		if !field.HasPresence() && !isRepeated && !isMessage {
-			// For proto3 fields without presence, omit default values
+			// For proto3 fields without presence, omit default values - use unified type system
 			content.WriteString("    -- Proto3 field without presence: omit default values per protonumberjson spec\n")
-
-			switch fieldType {
-			case protoreflect.BoolKind:
-				content.WriteString("    IF field_value IS FALSE THEN\n")
-				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
-				content.WriteString("    END IF;\n")
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', CAST((field_value IS TRUE) AS JSON));\n", field.Number()))
-			case protoreflect.StringKind:
-				content.WriteString("    IF field_value = '' THEN\n")
-				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
-				content.WriteString("    END IF;\n")
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
-			case protoreflect.BytesKind:
-				content.WriteString("    IF field_value = _binary X'' THEN\n")
-				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
-				content.WriteString("    END IF;\n")
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', _pb_to_base64(field_value));\n", field.Number()))
-			case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind,
-				protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
-				content.WriteString("    IF field_value = 0 THEN\n")
-				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
-				content.WriteString("    END IF;\n")
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
-			case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind,
-				protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
-				content.WriteString("    IF field_value = 0 THEN\n")
-				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
-				content.WriteString("    END IF;\n")
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
-			case protoreflect.FloatKind:
-				content.WriteString("    IF field_value = 0.0 THEN\n")
-				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
-				content.WriteString("    END IF;\n")
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(field_value)));\n", field.Number()))
-			case protoreflect.DoubleKind:
-				content.WriteString("    IF field_value = 0.0 THEN\n")
-				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
-				content.WriteString("    END IF;\n")
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(field_value)));\n", field.Number()))
-			case protoreflect.EnumKind:
-				content.WriteString("    IF field_value = 0 THEN\n")
-				content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
-				content.WriteString("    END IF;\n")
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
-			default:
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
-			}
+			setterLogic := GetProtobufType(fieldType).GenerateSetterWithZeroValueRemoval(int32(field.Number()), "field_value")
+			content.WriteString("    " + setterLogic + "\n")
 		} else {
-			// Fields with presence: always set the value
-			if fieldType == protoreflect.BoolKind {
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', CAST((field_value IS TRUE) AS JSON));\n", field.Number()))
-			} else if fieldType == protoreflect.BytesKind {
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', _pb_to_base64(field_value));\n", field.Number()))
-			} else if fieldType == protoreflect.FloatKind {
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(field_value)));\n", field.Number()))
-			} else if fieldType == protoreflect.DoubleKind {
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(field_value)));\n", field.Number()))
-			} else {
-				content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
-			}
+			// Fields with presence: always set the value - use unified type system
+			jsonExpression := GetProtobufType(fieldType).GenerateSqlToNumberJsonExpression("field_value")
+			content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', %s);\n", field.Number(), jsonExpression))
 		}
 	}
 
@@ -703,7 +574,7 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 		return err
 	}
 
-	elementSetterType, _ := getMySQLTypesForFieldFromReflection(fieldType, false) // Get non-repeated type for element
+	elementSetterType := GetProtobufType(fieldType).GetSqlTypeName() // Get non-repeated type for element
 
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", addFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, element_value %s) RETURNS JSON DETERMINISTIC\n", addFuncName, elementSetterType))
@@ -714,19 +585,9 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("        SET current_array = JSON_ARRAY();\n")
 	content.WriteString("    END IF;\n")
 
-	// Handle type-specific conversions for proper protonumberjson format in arrays
-	switch fieldType {
-	case protoreflect.BoolKind:
-		content.WriteString("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST((element_value IS TRUE) AS JSON));\n")
-	case protoreflect.BytesKind:
-		content.WriteString("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', _pb_to_base64(element_value));\n")
-	case protoreflect.FloatKind:
-		content.WriteString("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(element_value)));\n")
-	case protoreflect.DoubleKind:
-		content.WriteString("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(element_value)));\n")
-	default:
-		content.WriteString("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);\n")
-	}
+	// Handle type-specific conversions for proper protonumberjson format in arrays - use unified type system
+	numberJsonExpression := GetProtobufType(fieldType).GenerateSqlToNumberJsonExpression("element_value")
+	content.WriteString(fmt.Sprintf("    SET current_array = JSON_ARRAY_APPEND(current_array, '$', %s);\n", numberJsonExpression))
 
 	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', current_array);\n", field.Number()))
 	content.WriteString("END $$\n\n")
@@ -754,7 +615,7 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 		return err
 	}
 
-	_, elementGetterType := getMySQLTypesForFieldFromReflection(fieldType, false) // Get non-repeated type for element
+	elementGetterType := GetProtobufType(fieldType).GetSqlTypeName() // Get non-repeated type for element
 
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", getIndexFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, index_value INT) RETURNS %s DETERMINISTIC\n", getIndexFuncName, elementGetterType))
@@ -770,24 +631,9 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("    END IF;\n")
 	content.WriteString("    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));\n")
 
-	// Handle type-specific parsing for return value
-	switch fieldType {
-	case protoreflect.BoolKind:
-		content.WriteString("    RETURN _pb_json_parse_bool(element_value);\n")
-	case protoreflect.StringKind:
-		content.WriteString("    RETURN JSON_UNQUOTE(element_value);\n")
-	case protoreflect.BytesKind:
-		content.WriteString("    RETURN FROM_BASE64(JSON_UNQUOTE(element_value));\n")
-	case protoreflect.DoubleKind:
-		content.WriteString("    RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(element_value, TRUE));\n")
-	case protoreflect.FloatKind:
-		content.WriteString("    RETURN _pb_util_reinterpret_uint32_as_float(_pb_json_parse_float_as_uint32(element_value, TRUE));\n")
-	case protoreflect.MessageKind:
-		content.WriteString("    RETURN element_value;\n")
-	default:
-		// For integers and enums, direct JSON parsing
-		content.WriteString("    RETURN CAST(element_value AS SIGNED);\n")
-	}
+	// Use unified array element return logic
+	expression := GetProtobufType(fieldType).GenerateNumberJsonToSqlExpression("element_value")
+	content.WriteString(fmt.Sprintf("    RETURN %s;\n", expression))
 
 	content.WriteString("END $$\n\n")
 
@@ -797,7 +643,7 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 		return err
 	}
 
-	elementSetterType, _ = getMySQLTypesForFieldFromReflection(fieldType, false) // Get non-repeated type for element
+	elementSetterType = GetProtobufType(fieldType).GetSqlTypeName() // Get non-repeated type for element
 
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", setIndexFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, index_value INT, element_value %s) RETURNS JSON DETERMINISTIC\n", setIndexFuncName, elementSetterType))
@@ -813,22 +659,9 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';\n")
 	content.WriteString("    END IF;\n")
 
-	// Handle type-specific conversions for setting
-	switch fieldType {
-	case protoreflect.BoolKind:
-		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST((element_value IS TRUE) AS JSON));\n")
-	case protoreflect.StringKind:
-		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);\n")
-	case protoreflect.BytesKind:
-		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), _pb_to_base64(element_value));\n")
-	case protoreflect.DoubleKind:
-		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(element_value)));\n")
-	case protoreflect.FloatKind:
-		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(element_value)));\n")
-	default:
-		// For integers and enums, direct JSON casting
-		content.WriteString("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));\n")
-	}
+	// Use unified array set logic
+	numberJsonExpression = GetProtobufType(fieldType).GenerateSqlToNumberJsonExpression("element_value")
+	content.WriteString(fmt.Sprintf("    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), %s);\n", numberJsonExpression))
 
 	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', array_value);\n", field.Number()))
 	content.WriteString("END $$\n\n")
@@ -864,21 +697,9 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("    -- Insert new element\n")
 
 	// Handle type-specific conversions for inserting
-	switch fieldType {
-	case protoreflect.BoolKind:
-		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST((element_value IS TRUE) AS JSON));\n")
-	case protoreflect.StringKind:
-		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);\n")
-	case protoreflect.BytesKind:
-		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', _pb_to_base64(element_value));\n")
-	case protoreflect.DoubleKind:
-		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(element_value)));\n")
-	case protoreflect.FloatKind:
-		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(element_value)));\n")
-	default:
-		// For integers and enums, direct JSON casting
-		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));\n")
-	}
+	// Use unified array append logic
+	numberJsonExpression = GetProtobufType(fieldType).GenerateSqlToNumberJsonExpression("element_value")
+	content.WriteString(fmt.Sprintf("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', %s);\n", numberJsonExpression))
 
 	content.WriteString("    \n")
 	content.WriteString("    -- Copy remaining elements after insert position\n")
@@ -950,19 +771,10 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("    WHILE i < elements_length DO\n")
 	content.WriteString("        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));\n")
 
-	// Handle type-specific conversions for adding elements
-	switch fieldType {
-	case protoreflect.BoolKind:
-		content.WriteString("        SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST((_pb_json_parse_bool(element_value) IS TRUE) AS JSON));\n")
-	case protoreflect.BytesKind:
-		content.WriteString("        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);\n") // Assume already base64 encoded
-	case protoreflect.FloatKind:
-		content.WriteString("        SET current_array = JSON_ARRAY_APPEND(current_array, '$', _pb_convert_float_uint32_to_number_json(_pb_util_reinterpret_float_as_uint32(CAST(element_value AS DOUBLE))));\n")
-	case protoreflect.DoubleKind:
-		content.WriteString("        SET current_array = JSON_ARRAY_APPEND(current_array, '$', _pb_convert_double_uint64_to_number_json(_pb_util_reinterpret_double_as_uint64(CAST(element_value AS DOUBLE))));\n")
-	default:
-		content.WriteString("        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);\n")
-	}
+	// Handle type-specific conversions for adding elements - use unified type system
+	// This is JSON→NumberJSON conversion since we expect element_value to be JSON format
+	numberJsonExpression = GetProtobufType(fieldType).GenerateJsonToNumberJsonExpression("element_value")
+	content.WriteString(fmt.Sprintf("        SET current_array = JSON_ARRAY_APPEND(current_array, '$', %s);\n", numberJsonExpression))
 
 	content.WriteString("        SET i = i + 1;\n")
 	content.WriteString("    END WHILE;\n")
@@ -978,9 +790,9 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 	valueType := field.MapValue().Kind()
 
 	// Get MySQL types for key and value
-	keySetterType, _ := getMySQLTypesForFieldFromReflection(keyType, false)
-	valueSetterType, _ := getMySQLTypesForFieldFromReflection(valueType, false)
-	_, valueGetterType := getMySQLTypesForFieldFromReflection(valueType, false)
+	keySetterType := GetProtobufType(keyType).GetSqlTypeName()
+	valueSetterType := GetProtobufType(valueType).GetSqlTypeName()
+	valueGetterType := GetProtobufType(valueType).GetSqlTypeName()
 
 	// Generate key-based get method for map fields
 	getKeyFuncName := fmt.Sprintf("%s_get_%s", funcPrefix, fieldName)
@@ -997,66 +809,30 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 	content.WriteString("    IF map_value IS NULL THEN\n")
 
 	// Return appropriate default value for the value type
-	switch valueType {
-	case protoreflect.BoolKind:
-		content.WriteString("        RETURN FALSE;\n")
-	case protoreflect.StringKind, protoreflect.BytesKind:
-		content.WriteString("        RETURN '';\n")
-	case protoreflect.EnumKind:
-		content.WriteString("        RETURN 0;\n")
-	case protoreflect.MessageKind:
-		content.WriteString("        RETURN JSON_OBJECT();\n")
-	default:
-		// All numeric types default to 0
-		content.WriteString("        RETURN 0;\n")
-	}
+	defaultValue := GetProtobufType(valueType).GetDefaultValueExpression()
+	content.WriteString(fmt.Sprintf("        RETURN %s;\n", defaultValue))
 
 	content.WriteString("    END IF;\n")
 
 	// Convert key to string for JSON access (all map keys are stored as strings in JSON)
-	switch keyType {
-	case protoreflect.StringKind:
+	if keyType == protoreflect.StringKind {
 		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', JSON_QUOTE(key_value)));\n")
-	default:
-		// For numeric keys, convert to string
-		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', CAST(key_value AS CHAR)));\n")
+	} else {
+		// For numeric keys, convert to string using unified type system
+		keyPathExpression := GetProtobufType(keyType).GenerateSqlToMapKeyExpression("key_value")
+		content.WriteString(fmt.Sprintf("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.\"', %s, '\"'));\n", keyPathExpression))
 	}
 
 	content.WriteString("    IF element_value IS NULL THEN\n")
 
 	// Return appropriate default value for the value type when key not found
-	switch valueType {
-	case protoreflect.BoolKind:
-		content.WriteString("        RETURN FALSE;\n")
-	case protoreflect.StringKind, protoreflect.BytesKind:
-		content.WriteString("        RETURN '';\n")
-	case protoreflect.EnumKind:
-		content.WriteString("        RETURN 0;\n")
-	case protoreflect.MessageKind:
-		content.WriteString("        RETURN JSON_OBJECT();\n")
-	default:
-		// All numeric types default to 0
-		content.WriteString("        RETURN 0;\n")
-	}
+	content.WriteString(fmt.Sprintf("        RETURN %s;\n", defaultValue))
 
 	content.WriteString("    END IF;\n")
 
 	// Handle type-specific parsing for return value
-	switch valueType {
-	case protoreflect.BoolKind:
-		content.WriteString("    RETURN _pb_json_parse_bool(element_value);\n")
-	case protoreflect.StringKind:
-		content.WriteString("    RETURN JSON_UNQUOTE(element_value);\n")
-	case protoreflect.BytesKind:
-		content.WriteString("    RETURN FROM_BASE64(JSON_UNQUOTE(element_value));\n")
-	case protoreflect.DoubleKind:
-		content.WriteString("    RETURN _pb_json_parse_double(element_value);\n")
-	case protoreflect.FloatKind:
-		content.WriteString("    RETURN _pb_json_parse_float(element_value);\n")
-	default:
-		// For integers and enums, direct JSON parsing
-		content.WriteString("    RETURN CAST(element_value AS SIGNED);\n")
-	}
+	conversionExpression := GetProtobufType(valueType).GenerateNumberJsonToSqlExpression("element_value")
+	content.WriteString(fmt.Sprintf("    RETURN %s;\n", conversionExpression))
 
 	content.WriteString("END $$\n\n")
 
@@ -1076,12 +852,12 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 	content.WriteString("    END IF;\n")
 
 	// Convert key to string for JSON access
-	switch keyType {
-	case protoreflect.StringKind:
+	if keyType == protoreflect.StringKind {
 		content.WriteString("    RETURN JSON_CONTAINS_PATH(map_value, 'one', CONCAT('$.', JSON_QUOTE(key_value)));\n")
-	default:
-		// For numeric keys, convert to string
-		content.WriteString("    RETURN JSON_CONTAINS_PATH(map_value, 'one', CONCAT('$.', CAST(key_value AS CHAR)));\n")
+	} else {
+		// For numeric keys, convert to string using unified type system
+		keyPathExpression := GetProtobufType(keyType).GenerateSqlToMapKeyExpression("key_value")
+		content.WriteString(fmt.Sprintf("    RETURN JSON_CONTAINS_PATH(map_value, 'one', CONCAT('$.\"', %s, '\"'));\n", keyPathExpression))
 	}
 
 	content.WriteString("END $$\n\n")
@@ -1102,42 +878,19 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 	content.WriteString("    END IF;\n")
 
 	// Convert key to string and handle value conversion
-	switch keyType {
-	case protoreflect.StringKind:
-		// Handle type-specific conversions for putting values
-		switch valueType {
-		case protoreflect.BoolKind:
-			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), CAST((value_param IS TRUE) AS JSON));\n")
-		case protoreflect.StringKind:
-			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), CAST(value_param AS JSON));\n")
-		case protoreflect.BytesKind:
-			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), CAST(TO_BASE64(value_param) AS JSON));\n")
-		case protoreflect.DoubleKind:
-			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), _pb_convert_double_to_number_json(value_param));\n")
-		case protoreflect.FloatKind:
-			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), _pb_convert_float_to_number_json(value_param));\n")
-		default:
-			// For integers and enums, direct JSON casting
-			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), CAST(value_param AS JSON));\n")
-		}
-	default:
-		// For numeric keys, convert to string
-		switch valueType {
-		case protoreflect.BoolKind:
-			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', CAST(key_value AS CHAR)), CAST((value_param IS TRUE) AS JSON));\n")
-		case protoreflect.StringKind:
-			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', CAST(key_value AS CHAR)), CAST(value_param AS JSON));\n")
-		case protoreflect.BytesKind:
-			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', CAST(key_value AS CHAR)), CAST(TO_BASE64(value_param) AS JSON));\n")
-		case protoreflect.DoubleKind:
-			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', CAST(key_value AS CHAR)), _pb_convert_double_to_number_json(value_param));\n")
-		case protoreflect.FloatKind:
-			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', CAST(key_value AS CHAR)), _pb_convert_float_to_number_json(value_param));\n")
-		default:
-			// For integers and enums, direct JSON casting
-			content.WriteString("    SET map_value = JSON_SET(map_value, CONCAT('$.', CAST(key_value AS CHAR)), CAST(value_param AS JSON));\n")
-		}
+	keyPathExpression := GetProtobufType(keyType).GenerateSqlToMapKeyExpression("key_value")
+	valueConversionExpression := GetProtobufType(valueType).GenerateSqlToNumberJsonExpression("value_param")
+
+	// Generate map key path based on key type
+	var keyPath string
+	if keyType == protoreflect.StringKind {
+		keyPath = "CONCAT('$.', JSON_QUOTE(key_value))"
+	} else {
+		// For numeric keys, quote them as JSON object keys
+		keyPath = fmt.Sprintf("CONCAT('$.\"', %s, '\"')", keyPathExpression)
 	}
+
+	content.WriteString(fmt.Sprintf("    SET map_value = JSON_SET(map_value, %s, %s);\n", keyPath, valueConversionExpression))
 
 	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', map_value);\n", field.Number()))
 	content.WriteString("END $$\n\n")
@@ -1149,15 +902,46 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 	}
 
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", putAllFuncName))
+	// For primitive value types that need conversion (float, double), we need to convert each value
+	protobufType := GetProtobufType(valueType)
+	jsonConversionExpr := protobufType.GenerateJsonToNumberJsonExpression("current_value")
+	needsConversion := jsonConversionExpr != "current_value"
+
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, new_entries JSON) RETURNS JSON DETERMINISTIC\n", putAllFuncName))
 	content.WriteString("BEGIN\n")
 	content.WriteString("    DECLARE map_value JSON;\n")
+	if needsConversion {
+		content.WriteString("    DECLARE json_keys JSON;\n")
+		content.WriteString("    DECLARE key_count INT;\n")
+		content.WriteString("    DECLARE i INT;\n")
+		content.WriteString("    DECLARE current_key VARCHAR(255);\n")
+		content.WriteString("    DECLARE current_value JSON;\n")
+		content.WriteString("    DECLARE converted_value JSON;\n")
+	}
 	content.WriteString(fmt.Sprintf("    SET map_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
 	content.WriteString("    IF map_value IS NULL THEN\n")
 	content.WriteString("        SET map_value = JSON_OBJECT();\n")
 	content.WriteString("    END IF;\n")
 	content.WriteString("    IF new_entries IS NOT NULL THEN\n")
-	content.WriteString("        SET map_value = JSON_MERGE_PATCH(map_value, new_entries);\n")
+
+	if needsConversion {
+		// Need to convert each JSON value to number_json format (for float, double)
+		content.WriteString("        SET json_keys = JSON_KEYS(new_entries);\n")
+		content.WriteString("        SET key_count = JSON_LENGTH(json_keys);\n")
+		content.WriteString("        SET i = 0;\n")
+		content.WriteString("        \n")
+		content.WriteString("        WHILE i < key_count DO\n")
+		content.WriteString("            SET current_key = JSON_UNQUOTE(JSON_EXTRACT(json_keys, CONCAT('$[', i, ']')));\n")
+		content.WriteString("            SET current_value = JSON_EXTRACT(new_entries, CONCAT('$.\"', current_key, '\"'));\n")
+		content.WriteString(fmt.Sprintf("            SET converted_value = %s;\n", jsonConversionExpr))
+		content.WriteString("            SET map_value = JSON_SET(map_value, CONCAT('$.\"', current_key, '\"'), converted_value);\n")
+		content.WriteString("            SET i = i + 1;\n")
+		content.WriteString("        END WHILE;\n")
+	} else {
+		// For types that don't need conversion (int32, string, etc.), use direct merge
+		content.WriteString("        SET map_value = JSON_MERGE_PATCH(map_value, new_entries);\n")
+	}
+
 	content.WriteString("    END IF;\n")
 	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', map_value);\n", field.Number()))
 	content.WriteString("END $$\n\n")
@@ -1178,14 +962,18 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 	content.WriteString("    END IF;\n")
 
 	// Convert key to string and remove
-	switch keyType {
-	case protoreflect.StringKind:
+	if keyType == protoreflect.StringKind {
 		content.WriteString("    SET map_value = JSON_REMOVE(map_value, CONCAT('$.', JSON_QUOTE(key_value)));\n")
-	default:
-		// For numeric keys, convert to string
-		content.WriteString("    SET map_value = JSON_REMOVE(map_value, CONCAT('$.', CAST(key_value AS CHAR)));\n")
+	} else {
+		// For numeric keys, convert to string using unified type system
+		keyPathExpression := GetProtobufType(keyType).GenerateSqlToMapKeyExpression("key_value")
+		content.WriteString(fmt.Sprintf("    SET map_value = JSON_REMOVE(map_value, CONCAT('$.\"', %s, '\"'));\n", keyPathExpression))
 	}
 
+	// If map becomes empty, remove the field entirely (proto3 default value omission)
+	content.WriteString("    IF JSON_LENGTH(map_value) = 0 THEN\n")
+	content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    END IF;\n")
 	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', map_value);\n", field.Number()))
 	content.WriteString("END $$\n\n")
 
@@ -1215,8 +1003,8 @@ func generateMapKeyNullableGetter(content *strings.Builder, funcPrefix string, f
 	valueType := field.MapValue().Kind()
 	isValueMessage := valueType == protoreflect.MessageKind
 
-	keyMySQLType, _ := getMySQLTypesForFieldFromReflection(keyType, false)
-	_, valueMySQLType := getMySQLTypesForFieldFromReflection(valueType, false)
+	keyMySQLType := GetProtobufType(keyType).GetSqlTypeName()
+	valueMySQLType := GetProtobufType(valueType).GetSqlTypeName()
 
 	// For float/double types, use LONGTEXT to accept binary format strings
 	if valueType == protoreflect.FloatKind || valueType == protoreflect.DoubleKind {
@@ -1249,11 +1037,10 @@ func generateMapKeyNullableGetter(content *strings.Builder, funcPrefix string, f
 	// Get the element from the map using the key
 	if keyType == protoreflect.StringKind {
 		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', JSON_QUOTE(key_value)));\n")
-	} else if keyType == protoreflect.BoolKind {
-		// Boolean keys need special handling: JSON uses "true"/"false" but CAST(bool AS CHAR) produces "1"/"0"
-		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.\"', IF(key_value, 'true', 'false'), '\"'));\n")
 	} else {
-		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.\"', CAST(key_value AS CHAR), '\"'));\n")
+		// For non-string keys, use unified type system for key path generation
+		keyPathExpression := GetProtobufType(keyType).GenerateSqlToMapKeyExpression("key_value")
+		content.WriteString(fmt.Sprintf("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.\"', %s, '\"'));\n", keyPathExpression))
 	}
 
 	content.WriteString("    IF element_value IS NULL THEN\n")
@@ -1264,25 +1051,9 @@ func generateMapKeyNullableGetter(content *strings.Builder, funcPrefix string, f
 	if isValueMessage {
 		content.WriteString("    RETURN element_value;\n")
 	} else {
-		// For primitive types, cast appropriately
-		switch valueType {
-		case protoreflect.BoolKind:
-			content.WriteString("    RETURN _pb_json_parse_bool(element_value);\n")
-		case protoreflect.StringKind:
-			content.WriteString("    RETURN JSON_UNQUOTE(element_value);\n")
-		case protoreflect.BytesKind:
-			content.WriteString("    RETURN FROM_BASE64(JSON_UNQUOTE(element_value));\n")
-		case protoreflect.FloatKind, protoreflect.DoubleKind:
-			// For float/double, return the binary format string directly
-			content.WriteString("    RETURN JSON_UNQUOTE(element_value);\n")
-		default:
-			// Numeric types - cast based on whether the type is signed or unsigned
-			if strings.Contains(valueMySQLType, "UNSIGNED") {
-				content.WriteString("    RETURN CAST(element_value AS UNSIGNED);\n")
-			} else {
-				content.WriteString("    RETURN CAST(element_value AS SIGNED);\n")
-			}
-		}
+		// For primitive types, use unified type conversion
+		conversionExpression := GetProtobufType(valueType).GenerateNumberJsonToSqlExpression("element_value")
+		content.WriteString(fmt.Sprintf("    RETURN %s;\n", conversionExpression))
 	}
 
 	content.WriteString("END $$\n\n")
@@ -1394,140 +1165,11 @@ func generateEnumMethods(content *strings.Builder, enumDesc protoreflect.EnumDes
 	return nil
 }
 
-// getMySQLTypesForFieldFromReflection returns the appropriate MySQL types for setter parameter and getter return value using protoreflect
-func getMySQLTypesForFieldFromReflection(fieldKind protoreflect.Kind, isRepeated bool) (setterType, getterType string) {
-	// For repeated fields and maps, always use JSON
-	if isRepeated {
-		return "JSON", "JSON"
-	}
 
-	// For scalar fields, map protobuf types to MySQL types
-	switch fieldKind {
-	case protoreflect.DoubleKind:
-		return "DOUBLE", "DOUBLE"
-	case protoreflect.FloatKind:
-		return "FLOAT", "FLOAT"
-	case protoreflect.Int64Kind:
-		return "BIGINT", "BIGINT"
-	case protoreflect.Uint64Kind:
-		return "BIGINT UNSIGNED", "BIGINT UNSIGNED"
-	case protoreflect.Int32Kind:
-		return "INT", "INT"
-	case protoreflect.Fixed64Kind:
-		return "BIGINT UNSIGNED", "BIGINT UNSIGNED"
-	case protoreflect.Fixed32Kind:
-		return "INT UNSIGNED", "INT UNSIGNED"
-	case protoreflect.BoolKind:
-		return "BOOLEAN", "BOOLEAN"
-	case protoreflect.StringKind:
-		return "LONGTEXT", "LONGTEXT"
-	case protoreflect.BytesKind:
-		return "LONGBLOB", "LONGBLOB"
-	case protoreflect.Uint32Kind:
-		return "INT UNSIGNED", "INT UNSIGNED"
-	case protoreflect.EnumKind:
-		return "INT", "INT"
-	case protoreflect.Sfixed32Kind:
-		return "INT", "INT"
-	case protoreflect.Sfixed64Kind:
-		return "BIGINT", "BIGINT"
-	case protoreflect.Sint32Kind:
-		return "INT", "INT"
-	case protoreflect.Sint64Kind:
-		return "BIGINT", "BIGINT"
-	case protoreflect.MessageKind:
-		// Messages are represented as JSON (ProtoNumberJSON format)
-		return "JSON", "JSON"
-	case protoreflect.GroupKind:
-		// Groups are deprecated but still need handling - represent as JSON
-		return "JSON", "JSON"
-	default:
-		// Fallback to JSON for unknown types
-		return "JSON", "JSON"
-	}
-}
-
-// getFieldDefaultValueFromReflection returns the appropriate default value for a field based on proto version and custom defaults using protoreflect
+// getFieldDefaultValueFromReflection returns the default value for a field
+// Deprecated: Use GetDefaultValue instead
 func getFieldDefaultValueFromReflection(field protoreflect.FieldDescriptor) string {
-	fieldKind := field.Kind()
-
-	// Check if field has a custom default value (proto2)
-	if field.HasDefault() {
-		defaultVal := field.Default()
-		switch fieldKind {
-		case protoreflect.StringKind:
-			// String defaults need to be quoted
-			return fmt.Sprintf("'%s'", strings.ReplaceAll(defaultVal.String(), "'", "''"))
-		case protoreflect.BytesKind:
-			// Bytes defaults need to be hex-encoded
-			return fmt.Sprintf("X'%X'", defaultVal.Bytes())
-		case protoreflect.BoolKind:
-			// Boolean defaults
-			if defaultVal.Bool() {
-				return "1"
-			}
-			return "0"
-		case protoreflect.EnumKind:
-			// Enum defaults
-			return fmt.Sprintf("%d", defaultVal.Enum())
-		case protoreflect.MessageKind:
-			// Messages don't have default values in proto2
-			return "NULL"
-		case protoreflect.GroupKind:
-			// Groups don't have default values
-			return "NULL"
-		default:
-			// Numeric defaults can be used directly
-			switch fieldKind {
-			case protoreflect.DoubleKind, protoreflect.FloatKind:
-				return fmt.Sprintf("%g", defaultVal.Float())
-			case protoreflect.Int64Kind, protoreflect.Sfixed64Kind, protoreflect.Sint64Kind,
-				protoreflect.Int32Kind, protoreflect.Sfixed32Kind, protoreflect.Sint32Kind:
-				return fmt.Sprintf("%d", defaultVal.Int())
-			case protoreflect.Uint64Kind, protoreflect.Fixed64Kind,
-				protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
-				return fmt.Sprintf("%d", defaultVal.Uint())
-			case protoreflect.BoolKind:
-				if defaultVal.Bool() {
-					return "1"
-				}
-				return "0"
-			case protoreflect.EnumKind:
-				return fmt.Sprintf("%d", defaultVal.Enum())
-			case protoreflect.StringKind:
-				return fmt.Sprintf("'%s'", strings.ReplaceAll(defaultVal.String(), "'", "''"))
-			case protoreflect.BytesKind:
-				return fmt.Sprintf("X'%X'", defaultVal.Bytes())
-			case protoreflect.MessageKind, protoreflect.GroupKind:
-				return "NULL"
-			default:
-				return "NULL"
-			}
-		}
-	}
-
-	// Use proto3 zero values or proto2 implicit defaults
-	switch fieldKind {
-	case protoreflect.DoubleKind, protoreflect.FloatKind:
-		return "0.0"
-	case protoreflect.Int64Kind, protoreflect.Uint64Kind,
-		protoreflect.Int32Kind, protoreflect.Uint32Kind,
-		protoreflect.Fixed64Kind, protoreflect.Fixed32Kind,
-		protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind,
-		protoreflect.Sint32Kind, protoreflect.Sint64Kind,
-		protoreflect.EnumKind:
-		return "0"
-	case protoreflect.BoolKind:
-		return "0"
-	case protoreflect.StringKind:
-		return "''"
-	case protoreflect.BytesKind:
-		return "X''"
-	case protoreflect.MessageKind, protoreflect.GroupKind:
-		return "NULL"
-	default:
-		return "NULL"
-	}
+	return GetDefaultValue(field)
 }
 
 // generateEnumNameGetter creates getter functions that return enum names as strings
@@ -1701,9 +1343,8 @@ func generateEnumNameSetter(content *strings.Builder, funcPrefix string, fullTyp
 		// For proto2 or proto3 optional, zero values are still stored
 		content.WriteString(fmt.Sprintf("%s        RETURN JSON_SET(proto_data, '$.\"%.d\"', 0);\n", commentPrefix, field.Number()))
 	}
-	content.WriteString(fmt.Sprintf("%s    ELSE\n", commentPrefix))
-	content.WriteString(fmt.Sprintf("%s        RETURN JSON_SET(proto_data, '$.\"%.d\"', enum_value);\n", commentPrefix, field.Number()))
 	content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
+	content.WriteString(fmt.Sprintf("%s    RETURN JSON_SET(proto_data, '$.\"%.d\"', enum_value);\n", commentPrefix, field.Number()))
 
 	content.WriteString(fmt.Sprintf("%sEND $$\n\n", commentPrefix))
 

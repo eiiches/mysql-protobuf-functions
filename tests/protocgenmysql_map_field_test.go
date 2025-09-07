@@ -76,6 +76,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_int32_to_int32_map__or(?, ?, ?)", `{"1": {"42": 100}}`, `42`, `999`).IsEqualToInt(100) // Key exists, return value
 		RunTestThatExpression(t, "test_get_int32_to_int32_map__or(?, ?, ?)", `{"1": {"42": 100}}`, `99`, `999`).IsEqualToInt(999) // Key missing, return default
 		RunTestThatExpression(t, "test_get_int32_to_int32_map__or(?, ?, ?)", `{}`, `42`, `999`).IsEqualToInt(999)                 // Map empty, return default
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_int32_to_int32_map(?, ?)", `{"1": {"42": 100}}`, `42`).IsEqualToInt(100) // Key exists, return value
+		RunTestThatExpression(t, "test_get_int32_to_int32_map(?, ?)", `{"1": {"42": 100}}`, `99`).IsEqualToInt(0)   // Key missing, return default
+		RunTestThatExpression(t, "test_get_int32_to_int32_map(?, ?)", `{}`, `42`).IsEqualToInt(0)                   // Map empty, return default
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_int32_to_int32_map(?, ?)", `{"1": {"42": 100}}`, `42`).IsEqualToBool(true)  // Key exists
+		RunTestThatExpression(t, "test_contains_int32_to_int32_map(?, ?)", `{"1": {"42": 100}}`, `99`).IsEqualToBool(false) // Key missing
+		RunTestThatExpression(t, "test_contains_int32_to_int32_map(?, ?)", `{}`, `42`).IsEqualToBool(false)                 // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_int32_to_int32_map(?, ?, ?)", `{}`, `42`, `100`).IsEqualToJsonString(`{"1": {"42": 100}}`)                          // Add to empty map
+		RunTestThatExpression(t, "test_put_int32_to_int32_map(?, ?, ?)", `{"1": {"10": 20}}`, `42`, `100`).IsEqualToJsonString(`{"1": {"10": 20, "42": 100}}`) // Add to existing map
+		RunTestThatExpression(t, "test_put_int32_to_int32_map(?, ?, ?)", `{"1": {"42": 50}}`, `42`, `100`).IsEqualToJsonString(`{"1": {"42": 100}}`)           // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_int32_to_int32_map(?, ?)", `{}`, `{"30": 300, "40": 400}`).IsEqualToJsonString(`{"1": {"30": 300, "40": 400}}`)                                     // Add to empty map
+		RunTestThatExpression(t, "test_put_all_int32_to_int32_map(?, ?)", `{"1": {"10": 20}}`, `{"30": 300, "40": 400}`).IsEqualToJsonString(`{"1": {"10": 20, "30": 300, "40": 400}}`)            // Merge with existing
+		RunTestThatExpression(t, "test_put_all_int32_to_int32_map(?, ?)", `{"1": {"10": 20, "30": 250}}`, `{"30": 300, "40": 400}`).IsEqualToJsonString(`{"1": {"10": 20, "30": 300, "40": 400}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_int32_to_int32_map(?, ?)", `{"1": {"42": 100, "10": 20}}`, `42`).IsEqualToJsonString(`{"1": {"10": 20}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_int32_to_int32_map(?, ?)", `{"1": {"42": 100}}`, `42`).IsEqualToJsonString(`{}`)                          // Remove last key
+		RunTestThatExpression(t, "test_remove_int32_to_int32_map(?, ?)", `{"1": {"42": 100}}`, `99`).IsEqualToJsonString(`{"1": {"42": 100}}`)          // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_int32_to_int32_map(?, ?)", `{}`, `42`).IsEqualToJsonString(`{}`)
 	})
 
 	t.Run("int64_key", func(t *testing.T) {
@@ -88,6 +114,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_int64_to_int32_map__or(?, ?, ?)", `{"2": {"9223372036854775807": 200}}`, `9223372036854775807`, `888`).IsEqualToInt(200) // Key exists
 		RunTestThatExpression(t, "test_get_int64_to_int32_map__or(?, ?, ?)", `{"2": {"9223372036854775807": 200}}`, `123`, `888`).IsEqualToInt(888)                 // Key missing
 		RunTestThatExpression(t, "test_get_int64_to_int32_map__or(?, ?, ?)", `{}`, `9223372036854775807`, `888`).IsEqualToInt(888)                                  // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_int64_to_int32_map(?, ?)", `{"2": {"9223372036854775807": 200}}`, `9223372036854775807`).IsEqualToInt(200) // Key exists
+		RunTestThatExpression(t, "test_get_int64_to_int32_map(?, ?)", `{"2": {"9223372036854775807": 200}}`, `123`).IsEqualToInt(0)                   // Key missing
+		RunTestThatExpression(t, "test_get_int64_to_int32_map(?, ?)", `{}`, `9223372036854775807`).IsEqualToInt(0)                                    // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_int64_to_int32_map(?, ?)", `{"2": {"9223372036854775807": 200}}`, `9223372036854775807`).IsEqualToBool(true) // Key exists
+		RunTestThatExpression(t, "test_contains_int64_to_int32_map(?, ?)", `{"2": {"9223372036854775807": 200}}`, `123`).IsEqualToBool(false)                // Key missing
+		RunTestThatExpression(t, "test_contains_int64_to_int32_map(?, ?)", `{}`, `9223372036854775807`).IsEqualToBool(false)                                 // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_int64_to_int32_map(?, ?, ?)", `{}`, `9223372036854775807`, `200`).IsEqualToJsonString(`{"2": {"9223372036854775807": 200}}`)                                  // Add to empty map
+		RunTestThatExpression(t, "test_put_int64_to_int32_map(?, ?, ?)", `{"2": {"100": 50}}`, `9223372036854775807`, `200`).IsEqualToJsonString(`{"2": {"100": 50, "9223372036854775807": 200}}`)       // Add to existing map
+		RunTestThatExpression(t, "test_put_int64_to_int32_map(?, ?, ?)", `{"2": {"9223372036854775807": 150}}`, `9223372036854775807`, `200`).IsEqualToJsonString(`{"2": {"9223372036854775807": 200}}`) // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_int64_to_int32_map(?, ?)", `{}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"2": {"300": 333, "400": 444}}`)                                        // Add to empty map
+		RunTestThatExpression(t, "test_put_all_int64_to_int32_map(?, ?)", `{"2": {"100": 50}}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"2": {"100": 50, "300": 333, "400": 444}}`)             // Merge with existing
+		RunTestThatExpression(t, "test_put_all_int64_to_int32_map(?, ?)", `{"2": {"100": 50, "300": 250}}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"2": {"100": 50, "300": 333, "400": 444}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_int64_to_int32_map(?, ?)", `{"2": {"9223372036854775807": 200, "100": 50}}`, `9223372036854775807`).IsEqualToJsonString(`{"2": {"100": 50}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_int64_to_int32_map(?, ?)", `{"2": {"9223372036854775807": 200}}`, `9223372036854775807`).IsEqualToJsonString(`{}`)                            // Remove last key
+		RunTestThatExpression(t, "test_remove_int64_to_int32_map(?, ?)", `{"2": {"9223372036854775807": 200}}`, `123`).IsEqualToJsonString(`{"2": {"9223372036854775807": 200}}`)           // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_int64_to_int32_map(?, ?)", `{}`, `9223372036854775807`).IsEqualToJsonString(`{}`)                                                             // Remove from empty map
 	})
 
 	t.Run("uint32_key", func(t *testing.T) {
@@ -100,6 +152,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_uint32_to_int32_map__or(?, ?, ?)", `{"3": {"4294967295": 300}}`, `4294967295`, `777`).IsEqualToInt(300) // Key exists
 		RunTestThatExpression(t, "test_get_uint32_to_int32_map__or(?, ?, ?)", `{"3": {"4294967295": 300}}`, `123`, `777`).IsEqualToInt(777)        // Key missing
 		RunTestThatExpression(t, "test_get_uint32_to_int32_map__or(?, ?, ?)", `{}`, `4294967295`, `777`).IsEqualToInt(777)                         // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_uint32_to_int32_map(?, ?)", `{"3": {"4294967295": 300}}`, `4294967295`).IsEqualToInt(300) // Key exists
+		RunTestThatExpression(t, "test_get_uint32_to_int32_map(?, ?)", `{"3": {"4294967295": 300}}`, `123`).IsEqualToInt(0)          // Key missing
+		RunTestThatExpression(t, "test_get_uint32_to_int32_map(?, ?)", `{}`, `4294967295`).IsEqualToInt(0)                           // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_uint32_to_int32_map(?, ?)", `{"3": {"4294967295": 300}}`, `4294967295`).IsEqualToBool(true) // Key exists
+		RunTestThatExpression(t, "test_contains_uint32_to_int32_map(?, ?)", `{"3": {"4294967295": 300}}`, `123`).IsEqualToBool(false)       // Key missing
+		RunTestThatExpression(t, "test_contains_uint32_to_int32_map(?, ?)", `{}`, `4294967295`).IsEqualToBool(false)                        // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_uint32_to_int32_map(?, ?, ?)", `{}`, `4294967295`, `300`).IsEqualToJsonString(`{"3": {"4294967295": 300}}`)                            // Add to empty map
+		RunTestThatExpression(t, "test_put_uint32_to_int32_map(?, ?, ?)", `{"3": {"100": 50}}`, `4294967295`, `300`).IsEqualToJsonString(`{"3": {"100": 50, "4294967295": 300}}`) // Add to existing map
+		RunTestThatExpression(t, "test_put_uint32_to_int32_map(?, ?, ?)", `{"3": {"4294967295": 250}}`, `4294967295`, `300`).IsEqualToJsonString(`{"3": {"4294967295": 300}}`)    // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_uint32_to_int32_map(?, ?)", `{}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"3": {"300": 333, "400": 444}}`)                                        // Add to empty map
+		RunTestThatExpression(t, "test_put_all_uint32_to_int32_map(?, ?)", `{"3": {"100": 50}}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"3": {"100": 50, "300": 333, "400": 444}}`)             // Merge with existing
+		RunTestThatExpression(t, "test_put_all_uint32_to_int32_map(?, ?)", `{"3": {"100": 50, "300": 250}}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"3": {"100": 50, "300": 333, "400": 444}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_uint32_to_int32_map(?, ?)", `{"3": {"4294967295": 300, "100": 50}}`, `4294967295`).IsEqualToJsonString(`{"3": {"100": 50}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_uint32_to_int32_map(?, ?)", `{"3": {"4294967295": 300}}`, `4294967295`).IsEqualToJsonString(`{}`)                            // Remove last key
+		RunTestThatExpression(t, "test_remove_uint32_to_int32_map(?, ?)", `{"3": {"4294967295": 300}}`, `123`).IsEqualToJsonString(`{"3": {"4294967295": 300}}`)           // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_uint32_to_int32_map(?, ?)", `{}`, `4294967295`).IsEqualToJsonString(`{}`)                                                    // Remove from empty map
 	})
 
 	t.Run("uint64_key", func(t *testing.T) {
@@ -112,6 +190,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_uint64_to_int32_map__or(?, ?, ?)", `{"4": {"18446744073709551615": 400}}`, `18446744073709551615`, `666`).IsEqualToInt(400) // Key exists
 		RunTestThatExpression(t, "test_get_uint64_to_int32_map__or(?, ?, ?)", `{"4": {"18446744073709551615": 400}}`, `123`, `666`).IsEqualToInt(666)                  // Key missing
 		RunTestThatExpression(t, "test_get_uint64_to_int32_map__or(?, ?, ?)", `{}`, `18446744073709551615`, `666`).IsEqualToInt(666)                                   // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_uint64_to_int32_map(?, ?)", `{"4": {"18446744073709551615": 400}}`, `18446744073709551615`).IsEqualToInt(400) // Key exists
+		RunTestThatExpression(t, "test_get_uint64_to_int32_map(?, ?)", `{"4": {"18446744073709551615": 400}}`, `123`).IsEqualToInt(0)                    // Key missing
+		RunTestThatExpression(t, "test_get_uint64_to_int32_map(?, ?)", `{}`, `18446744073709551615`).IsEqualToInt(0)                                     // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_uint64_to_int32_map(?, ?)", `{"4": {"18446744073709551615": 400}}`, `18446744073709551615`).IsEqualToBool(true) // Key exists
+		RunTestThatExpression(t, "test_contains_uint64_to_int32_map(?, ?)", `{"4": {"18446744073709551615": 400}}`, `123`).IsEqualToBool(false)                 // Key missing
+		RunTestThatExpression(t, "test_contains_uint64_to_int32_map(?, ?)", `{}`, `18446744073709551615`).IsEqualToBool(false)                                  // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_uint64_to_int32_map(?, ?, ?)", `{}`, `18446744073709551615`, `400`).IsEqualToJsonString(`{"4": {"18446744073709551615": 400}}`)                                   // Add to empty map
+		RunTestThatExpression(t, "test_put_uint64_to_int32_map(?, ?, ?)", `{"4": {"100": 50}}`, `18446744073709551615`, `400`).IsEqualToJsonString(`{"4": {"100": 50, "18446744073709551615": 400}}`)        // Add to existing map
+		RunTestThatExpression(t, "test_put_uint64_to_int32_map(?, ?, ?)", `{"4": {"18446744073709551615": 350}}`, `18446744073709551615`, `400`).IsEqualToJsonString(`{"4": {"18446744073709551615": 400}}`) // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_uint64_to_int32_map(?, ?)", `{}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"4": {"300": 333, "400": 444}}`)                                        // Add to empty map
+		RunTestThatExpression(t, "test_put_all_uint64_to_int32_map(?, ?)", `{"4": {"100": 50}}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"4": {"100": 50, "300": 333, "400": 444}}`)             // Merge with existing
+		RunTestThatExpression(t, "test_put_all_uint64_to_int32_map(?, ?)", `{"4": {"100": 50, "300": 250}}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"4": {"100": 50, "300": 333, "400": 444}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_uint64_to_int32_map(?, ?)", `{"4": {"18446744073709551615": 400, "100": 50}}`, `18446744073709551615`).IsEqualToJsonString(`{"4": {"100": 50}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_uint64_to_int32_map(?, ?)", `{"4": {"18446744073709551615": 400}}`, `18446744073709551615`).IsEqualToJsonString(`{}`)                            // Remove last key
+		RunTestThatExpression(t, "test_remove_uint64_to_int32_map(?, ?)", `{"4": {"18446744073709551615": 400}}`, `123`).IsEqualToJsonString(`{"4": {"18446744073709551615": 400}}`)           // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_uint64_to_int32_map(?, ?)", `{}`, `18446744073709551615`).IsEqualToJsonString(`{}`)                                                              // Remove from empty map
 	})
 
 	t.Run("sint32_key", func(t *testing.T) {
@@ -124,6 +228,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_sint32_to_int32_map__or(?, ?, ?)", `{"5": {"-2147483648": 500}}`, `-2147483648`, `555`).IsEqualToInt(500) // Key exists
 		RunTestThatExpression(t, "test_get_sint32_to_int32_map__or(?, ?, ?)", `{"5": {"-2147483648": 500}}`, `123`, `555`).IsEqualToInt(555)         // Key missing
 		RunTestThatExpression(t, "test_get_sint32_to_int32_map__or(?, ?, ?)", `{}`, `-2147483648`, `555`).IsEqualToInt(555)                          // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_sint32_to_int32_map(?, ?)", `{"5": {"-2147483648": 500}}`, `-2147483648`).IsEqualToInt(500) // Key exists
+		RunTestThatExpression(t, "test_get_sint32_to_int32_map(?, ?)", `{"5": {"-2147483648": 500}}`, `123`).IsEqualToInt(0)           // Key missing
+		RunTestThatExpression(t, "test_get_sint32_to_int32_map(?, ?)", `{}`, `-2147483648`).IsEqualToInt(0)                            // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_sint32_to_int32_map(?, ?)", `{"5": {"-2147483648": 500}}`, `-2147483648`).IsEqualToBool(true) // Key exists
+		RunTestThatExpression(t, "test_contains_sint32_to_int32_map(?, ?)", `{"5": {"-2147483648": 500}}`, `123`).IsEqualToBool(false)        // Key missing
+		RunTestThatExpression(t, "test_contains_sint32_to_int32_map(?, ?)", `{}`, `-2147483648`).IsEqualToBool(false)                         // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_sint32_to_int32_map(?, ?, ?)", `{}`, `-2147483648`, `500`).IsEqualToJsonString(`{"5": {"-2147483648": 500}}`)                            // Add to empty map
+		RunTestThatExpression(t, "test_put_sint32_to_int32_map(?, ?, ?)", `{"5": {"100": 50}}`, `-2147483648`, `500`).IsEqualToJsonString(`{"5": {"100": 50, "-2147483648": 500}}`) // Add to existing map
+		RunTestThatExpression(t, "test_put_sint32_to_int32_map(?, ?, ?)", `{"5": {"-2147483648": 450}}`, `-2147483648`, `500`).IsEqualToJsonString(`{"5": {"-2147483648": 500}}`)   // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_sint32_to_int32_map(?, ?)", `{}`, `{"-300": 333, "-400": 444}`).IsEqualToJsonString(`{"5": {"-300": 333, "-400": 444}}`)                                         // Add to empty map
+		RunTestThatExpression(t, "test_put_all_sint32_to_int32_map(?, ?)", `{"5": {"100": 50}}`, `{"-300": 333, "-400": 444}`).IsEqualToJsonString(`{"5": {"100": 50, "-300": 333, "-400": 444}}`)              // Merge with existing
+		RunTestThatExpression(t, "test_put_all_sint32_to_int32_map(?, ?)", `{"5": {"100": 50, "-300": 250}}`, `{"-300": 333, "-400": 444}`).IsEqualToJsonString(`{"5": {"100": 50, "-300": 333, "-400": 444}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_sint32_to_int32_map(?, ?)", `{"5": {"-2147483648": 500, "100": 50}}`, `-2147483648`).IsEqualToJsonString(`{"5": {"100": 50}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_sint32_to_int32_map(?, ?)", `{"5": {"-2147483648": 500}}`, `-2147483648`).IsEqualToJsonString(`{}`)                            // Remove last key
+		RunTestThatExpression(t, "test_remove_sint32_to_int32_map(?, ?)", `{"5": {"-2147483648": 500}}`, `123`).IsEqualToJsonString(`{"5": {"-2147483648": 500}}`)           // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_sint32_to_int32_map(?, ?)", `{}`, `-2147483648`).IsEqualToJsonString(`{}`)                                                     // Remove from empty map
 	})
 
 	t.Run("sint64_key", func(t *testing.T) {
@@ -136,6 +266,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_sint64_to_int32_map__or(?, ?, ?)", `{"6": {"-9223372036854775808": 600}}`, `-9223372036854775808`, `444`).IsEqualToInt(600) // Key exists
 		RunTestThatExpression(t, "test_get_sint64_to_int32_map__or(?, ?, ?)", `{"6": {"-9223372036854775808": 600}}`, `123`, `444`).IsEqualToInt(444)                  // Key missing
 		RunTestThatExpression(t, "test_get_sint64_to_int32_map__or(?, ?, ?)", `{}`, `-9223372036854775808`, `444`).IsEqualToInt(444)                                   // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_sint64_to_int32_map(?, ?)", `{"6": {"-9223372036854775808": 600}}`, `-9223372036854775808`).IsEqualToInt(600) // Key exists
+		RunTestThatExpression(t, "test_get_sint64_to_int32_map(?, ?)", `{"6": {"-9223372036854775808": 600}}`, `123`).IsEqualToInt(0)                    // Key missing
+		RunTestThatExpression(t, "test_get_sint64_to_int32_map(?, ?)", `{}`, `-9223372036854775808`).IsEqualToInt(0)                                     // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_sint64_to_int32_map(?, ?)", `{"6": {"-9223372036854775808": 600}}`, `-9223372036854775808`).IsEqualToBool(true) // Key exists
+		RunTestThatExpression(t, "test_contains_sint64_to_int32_map(?, ?)", `{"6": {"-9223372036854775808": 600}}`, `123`).IsEqualToBool(false)                 // Key missing
+		RunTestThatExpression(t, "test_contains_sint64_to_int32_map(?, ?)", `{}`, `-9223372036854775808`).IsEqualToBool(false)                                  // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_sint64_to_int32_map(?, ?, ?)", `{}`, `-9223372036854775808`, `600`).IsEqualToJsonString(`{"6": {"-9223372036854775808": 600}}`)                                   // Add to empty map
+		RunTestThatExpression(t, "test_put_sint64_to_int32_map(?, ?, ?)", `{"6": {"100": 50}}`, `-9223372036854775808`, `600`).IsEqualToJsonString(`{"6": {"100": 50, "-9223372036854775808": 600}}`)        // Add to existing map
+		RunTestThatExpression(t, "test_put_sint64_to_int32_map(?, ?, ?)", `{"6": {"-9223372036854775808": 550}}`, `-9223372036854775808`, `600`).IsEqualToJsonString(`{"6": {"-9223372036854775808": 600}}`) // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_sint64_to_int32_map(?, ?)", `{}`, `{"-300": 333, "-400": 444}`).IsEqualToJsonString(`{"6": {"-300": 333, "-400": 444}}`)                                         // Add to empty map
+		RunTestThatExpression(t, "test_put_all_sint64_to_int32_map(?, ?)", `{"6": {"100": 50}}`, `{"-300": 333, "-400": 444}`).IsEqualToJsonString(`{"6": {"100": 50, "-300": 333, "-400": 444}}`)              // Merge with existing
+		RunTestThatExpression(t, "test_put_all_sint64_to_int32_map(?, ?)", `{"6": {"100": 50, "-300": 250}}`, `{"-300": 333, "-400": 444}`).IsEqualToJsonString(`{"6": {"100": 50, "-300": 333, "-400": 444}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_sint64_to_int32_map(?, ?)", `{"6": {"-9223372036854775808": 600, "100": 50}}`, `-9223372036854775808`).IsEqualToJsonString(`{"6": {"100": 50}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_sint64_to_int32_map(?, ?)", `{"6": {"-9223372036854775808": 600}}`, `-9223372036854775808`).IsEqualToJsonString(`{}`)                            // Remove last key
+		RunTestThatExpression(t, "test_remove_sint64_to_int32_map(?, ?)", `{"6": {"-9223372036854775808": 600}}`, `123`).IsEqualToJsonString(`{"6": {"-9223372036854775808": 600}}`)           // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_sint64_to_int32_map(?, ?)", `{}`, `-9223372036854775808`).IsEqualToJsonString(`{}`)                                                              // Remove from empty map
 	})
 
 	t.Run("fixed32_key", func(t *testing.T) {
@@ -148,6 +304,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_fixed32_to_int32_map__or(?, ?, ?)", `{"7": {"4294967295": 700}}`, `4294967295`, `333`).IsEqualToInt(700) // Key exists
 		RunTestThatExpression(t, "test_get_fixed32_to_int32_map__or(?, ?, ?)", `{"7": {"4294967295": 700}}`, `123`, `333`).IsEqualToInt(333)        // Key missing
 		RunTestThatExpression(t, "test_get_fixed32_to_int32_map__or(?, ?, ?)", `{}`, `4294967295`, `333`).IsEqualToInt(333)                         // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_fixed32_to_int32_map(?, ?)", `{"7": {"4294967295": 700}}`, `4294967295`).IsEqualToInt(700) // Key exists
+		RunTestThatExpression(t, "test_get_fixed32_to_int32_map(?, ?)", `{"7": {"4294967295": 700}}`, `123`).IsEqualToInt(0)          // Key missing
+		RunTestThatExpression(t, "test_get_fixed32_to_int32_map(?, ?)", `{}`, `4294967295`).IsEqualToInt(0)                           // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_fixed32_to_int32_map(?, ?)", `{"7": {"4294967295": 700}}`, `4294967295`).IsEqualToBool(true) // Key exists
+		RunTestThatExpression(t, "test_contains_fixed32_to_int32_map(?, ?)", `{"7": {"4294967295": 700}}`, `123`).IsEqualToBool(false)       // Key missing
+		RunTestThatExpression(t, "test_contains_fixed32_to_int32_map(?, ?)", `{}`, `4294967295`).IsEqualToBool(false)                        // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_fixed32_to_int32_map(?, ?, ?)", `{}`, `4294967295`, `700`).IsEqualToJsonString(`{"7": {"4294967295": 700}}`)                            // Add to empty map
+		RunTestThatExpression(t, "test_put_fixed32_to_int32_map(?, ?, ?)", `{"7": {"100": 50}}`, `4294967295`, `700`).IsEqualToJsonString(`{"7": {"100": 50, "4294967295": 700}}`) // Add to existing map
+		RunTestThatExpression(t, "test_put_fixed32_to_int32_map(?, ?, ?)", `{"7": {"4294967295": 650}}`, `4294967295`, `700`).IsEqualToJsonString(`{"7": {"4294967295": 700}}`)    // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_fixed32_to_int32_map(?, ?)", `{}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"7": {"300": 333, "400": 444}}`)                                        // Add to empty map
+		RunTestThatExpression(t, "test_put_all_fixed32_to_int32_map(?, ?)", `{"7": {"100": 50}}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"7": {"100": 50, "300": 333, "400": 444}}`)             // Merge with existing
+		RunTestThatExpression(t, "test_put_all_fixed32_to_int32_map(?, ?)", `{"7": {"100": 50, "300": 250}}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"7": {"100": 50, "300": 333, "400": 444}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_fixed32_to_int32_map(?, ?)", `{"7": {"4294967295": 700, "100": 50}}`, `4294967295`).IsEqualToJsonString(`{"7": {"100": 50}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_fixed32_to_int32_map(?, ?)", `{"7": {"4294967295": 700}}`, `4294967295`).IsEqualToJsonString(`{}`)                            // Remove last key
+		RunTestThatExpression(t, "test_remove_fixed32_to_int32_map(?, ?)", `{"7": {"4294967295": 700}}`, `123`).IsEqualToJsonString(`{"7": {"4294967295": 700}}`)           // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_fixed32_to_int32_map(?, ?)", `{}`, `4294967295`).IsEqualToJsonString(`{}`)                                                    // Remove from empty map
 	})
 
 	t.Run("fixed64_key", func(t *testing.T) {
@@ -160,6 +342,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_fixed64_to_int32_map__or(?, ?, ?)", `{"8": {"18446744073709551615": 800}}`, `18446744073709551615`, `222`).IsEqualToInt(800) // Key exists
 		RunTestThatExpression(t, "test_get_fixed64_to_int32_map__or(?, ?, ?)", `{"8": {"18446744073709551615": 800}}`, `123`, `222`).IsEqualToInt(222)                  // Key missing
 		RunTestThatExpression(t, "test_get_fixed64_to_int32_map__or(?, ?, ?)", `{}`, `18446744073709551615`, `222`).IsEqualToInt(222)                                   // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_fixed64_to_int32_map(?, ?)", `{"8": {"18446744073709551615": 800}}`, `18446744073709551615`).IsEqualToInt(800) // Key exists
+		RunTestThatExpression(t, "test_get_fixed64_to_int32_map(?, ?)", `{"8": {"18446744073709551615": 800}}`, `123`).IsEqualToInt(0)                    // Key missing
+		RunTestThatExpression(t, "test_get_fixed64_to_int32_map(?, ?)", `{}`, `18446744073709551615`).IsEqualToInt(0)                                     // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_fixed64_to_int32_map(?, ?)", `{"8": {"18446744073709551615": 800}}`, `18446744073709551615`).IsEqualToBool(true) // Key exists
+		RunTestThatExpression(t, "test_contains_fixed64_to_int32_map(?, ?)", `{"8": {"18446744073709551615": 800}}`, `123`).IsEqualToBool(false)                 // Key missing
+		RunTestThatExpression(t, "test_contains_fixed64_to_int32_map(?, ?)", `{}`, `18446744073709551615`).IsEqualToBool(false)                                  // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_fixed64_to_int32_map(?, ?, ?)", `{}`, `18446744073709551615`, `800`).IsEqualToJsonString(`{"8": {"18446744073709551615": 800}}`)                                   // Add to empty map
+		RunTestThatExpression(t, "test_put_fixed64_to_int32_map(?, ?, ?)", `{"8": {"100": 50}}`, `18446744073709551615`, `800`).IsEqualToJsonString(`{"8": {"100": 50, "18446744073709551615": 800}}`)        // Add to existing map
+		RunTestThatExpression(t, "test_put_fixed64_to_int32_map(?, ?, ?)", `{"8": {"18446744073709551615": 750}}`, `18446744073709551615`, `800`).IsEqualToJsonString(`{"8": {"18446744073709551615": 800}}`) // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_fixed64_to_int32_map(?, ?)", `{}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"8": {"300": 333, "400": 444}}`)                                        // Add to empty map
+		RunTestThatExpression(t, "test_put_all_fixed64_to_int32_map(?, ?)", `{"8": {"100": 50}}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"8": {"100": 50, "300": 333, "400": 444}}`)             // Merge with existing
+		RunTestThatExpression(t, "test_put_all_fixed64_to_int32_map(?, ?)", `{"8": {"100": 50, "300": 250}}`, `{"300": 333, "400": 444}`).IsEqualToJsonString(`{"8": {"100": 50, "300": 333, "400": 444}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_fixed64_to_int32_map(?, ?)", `{"8": {"18446744073709551615": 800, "100": 50}}`, `18446744073709551615`).IsEqualToJsonString(`{"8": {"100": 50}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_fixed64_to_int32_map(?, ?)", `{"8": {"18446744073709551615": 800}}`, `18446744073709551615`).IsEqualToJsonString(`{}`)                            // Remove last key
+		RunTestThatExpression(t, "test_remove_fixed64_to_int32_map(?, ?)", `{"8": {"18446744073709551615": 800}}`, `123`).IsEqualToJsonString(`{"8": {"18446744073709551615": 800}}`)           // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_fixed64_to_int32_map(?, ?)", `{}`, `18446744073709551615`).IsEqualToJsonString(`{}`)                                                              // Remove from empty map
 	})
 
 	t.Run("sfixed32_key", func(t *testing.T) {
@@ -172,6 +380,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_sfixed32_to_int32_map__or(?, ?, ?)", `{"9": {"-2147483648": 900}}`, `-2147483648`, `111`).IsEqualToInt(900) // Key exists
 		RunTestThatExpression(t, "test_get_sfixed32_to_int32_map__or(?, ?, ?)", `{"9": {"-2147483648": 900}}`, `123`, `111`).IsEqualToInt(111)         // Key missing
 		RunTestThatExpression(t, "test_get_sfixed32_to_int32_map__or(?, ?, ?)", `{}`, `-2147483648`, `111`).IsEqualToInt(111)                          // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_sfixed32_to_int32_map(?, ?)", `{"9": {"-2147483648": 900}}`, `-2147483648`).IsEqualToInt(900) // Key exists
+		RunTestThatExpression(t, "test_get_sfixed32_to_int32_map(?, ?)", `{"9": {"-2147483648": 900}}`, `123`).IsEqualToInt(0)           // Key missing
+		RunTestThatExpression(t, "test_get_sfixed32_to_int32_map(?, ?)", `{}`, `-2147483648`).IsEqualToInt(0)                            // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_sfixed32_to_int32_map(?, ?)", `{"9": {"-2147483648": 900}}`, `-2147483648`).IsEqualToBool(true) // Key exists
+		RunTestThatExpression(t, "test_contains_sfixed32_to_int32_map(?, ?)", `{"9": {"-2147483648": 900}}`, `123`).IsEqualToBool(false)        // Key missing
+		RunTestThatExpression(t, "test_contains_sfixed32_to_int32_map(?, ?)", `{}`, `-2147483648`).IsEqualToBool(false)                         // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_sfixed32_to_int32_map(?, ?, ?)", `{}`, `-2147483648`, `900`).IsEqualToJsonString(`{"9": {"-2147483648": 900}}`)                            // Add to empty map
+		RunTestThatExpression(t, "test_put_sfixed32_to_int32_map(?, ?, ?)", `{"9": {"100": 50}}`, `-2147483648`, `900`).IsEqualToJsonString(`{"9": {"100": 50, "-2147483648": 900}}`) // Add to existing map
+		RunTestThatExpression(t, "test_put_sfixed32_to_int32_map(?, ?, ?)", `{"9": {"-2147483648": 850}}`, `-2147483648`, `900`).IsEqualToJsonString(`{"9": {"-2147483648": 900}}`)   // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_sfixed32_to_int32_map(?, ?)", `{}`, `{"-300": 333, "-400": 444}`).IsEqualToJsonString(`{"9": {"-300": 333, "-400": 444}}`)                                         // Add to empty map
+		RunTestThatExpression(t, "test_put_all_sfixed32_to_int32_map(?, ?)", `{"9": {"100": 50}}`, `{"-300": 333, "-400": 444}`).IsEqualToJsonString(`{"9": {"100": 50, "-300": 333, "-400": 444}}`)              // Merge with existing
+		RunTestThatExpression(t, "test_put_all_sfixed32_to_int32_map(?, ?)", `{"9": {"100": 50, "-300": 250}}`, `{"-300": 333, "-400": 444}`).IsEqualToJsonString(`{"9": {"100": 50, "-300": 333, "-400": 444}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_sfixed32_to_int32_map(?, ?)", `{"9": {"-2147483648": 900, "100": 50}}`, `-2147483648`).IsEqualToJsonString(`{"9": {"100": 50}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_sfixed32_to_int32_map(?, ?)", `{"9": {"-2147483648": 900}}`, `-2147483648`).IsEqualToJsonString(`{}`)                            // Remove last key
+		RunTestThatExpression(t, "test_remove_sfixed32_to_int32_map(?, ?)", `{"9": {"-2147483648": 900}}`, `123`).IsEqualToJsonString(`{"9": {"-2147483648": 900}}`)           // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_sfixed32_to_int32_map(?, ?)", `{}`, `-2147483648`).IsEqualToJsonString(`{}`)                                                     // Remove from empty map
 	})
 
 	t.Run("sfixed64_key", func(t *testing.T) {
@@ -184,6 +418,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_sfixed64_to_int32_map__or(?, ?, ?)", `{"10": {"-9223372036854775808": 1000}}`, `-9223372036854775808`, `101`).IsEqualToInt(1000) // Key exists
 		RunTestThatExpression(t, "test_get_sfixed64_to_int32_map__or(?, ?, ?)", `{"10": {"-9223372036854775808": 1000}}`, `123`, `101`).IsEqualToInt(101)                   // Key missing
 		RunTestThatExpression(t, "test_get_sfixed64_to_int32_map__or(?, ?, ?)", `{}`, `-9223372036854775808`, `101`).IsEqualToInt(101)                                      // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_sfixed64_to_int32_map(?, ?)", `{"10": {"-9223372036854775808": 1000}}`, `-9223372036854775808`).IsEqualToInt(1000) // Key exists
+		RunTestThatExpression(t, "test_get_sfixed64_to_int32_map(?, ?)", `{"10": {"-9223372036854775808": 1000}}`, `123`).IsEqualToInt(0)                     // Key missing
+		RunTestThatExpression(t, "test_get_sfixed64_to_int32_map(?, ?)", `{}`, `-9223372036854775808`).IsEqualToInt(0)                                        // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_sfixed64_to_int32_map(?, ?)", `{"10": {"-9223372036854775808": 1000}}`, `-9223372036854775808`).IsEqualToBool(true) // Key exists
+		RunTestThatExpression(t, "test_contains_sfixed64_to_int32_map(?, ?)", `{"10": {"-9223372036854775808": 1000}}`, `123`).IsEqualToBool(false)                 // Key missing
+		RunTestThatExpression(t, "test_contains_sfixed64_to_int32_map(?, ?)", `{}`, `-9223372036854775808`).IsEqualToBool(false)                                    // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_sfixed64_to_int32_map(?, ?, ?)", `{}`, `-9223372036854775808`, `1000`).IsEqualToJsonString(`{"10": {"-9223372036854775808": 1000}}`)                                    // Add to empty map
+		RunTestThatExpression(t, "test_put_sfixed64_to_int32_map(?, ?, ?)", `{"10": {"100": 50}}`, `-9223372036854775808`, `1000`).IsEqualToJsonString(`{"10": {"100": 50, "-9223372036854775808": 1000}}`)        // Add to existing map
+		RunTestThatExpression(t, "test_put_sfixed64_to_int32_map(?, ?, ?)", `{"10": {"-9223372036854775808": 950}}`, `-9223372036854775808`, `1000`).IsEqualToJsonString(`{"10": {"-9223372036854775808": 1000}}`) // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_sfixed64_to_int32_map(?, ?)", `{}`, `{"-300": 333, "-400": 444}`).IsEqualToJsonString(`{"10": {"-300": 333, "-400": 444}}`)                                          // Add to empty map
+		RunTestThatExpression(t, "test_put_all_sfixed64_to_int32_map(?, ?)", `{"10": {"100": 50}}`, `{"-300": 333, "-400": 444}`).IsEqualToJsonString(`{"10": {"100": 50, "-300": 333, "-400": 444}}`)              // Merge with existing
+		RunTestThatExpression(t, "test_put_all_sfixed64_to_int32_map(?, ?)", `{"10": {"100": 50, "-300": 250}}`, `{"-300": 333, "-400": 444}`).IsEqualToJsonString(`{"10": {"100": 50, "-300": 333, "-400": 444}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_sfixed64_to_int32_map(?, ?)", `{"10": {"-9223372036854775808": 1000, "100": 50}}`, `-9223372036854775808`).IsEqualToJsonString(`{"10": {"100": 50}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_sfixed64_to_int32_map(?, ?)", `{"10": {"-9223372036854775808": 1000}}`, `-9223372036854775808`).IsEqualToJsonString(`{}`)                             // Remove last key
+		RunTestThatExpression(t, "test_remove_sfixed64_to_int32_map(?, ?)", `{"10": {"-9223372036854775808": 1000}}`, `123`).IsEqualToJsonString(`{"10": {"-9223372036854775808": 1000}}`)          // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_sfixed64_to_int32_map(?, ?)", `{}`, `-9223372036854775808`).IsEqualToJsonString(`{}`)                                                                 // Remove from empty map
 	})
 
 	// Test non-integer key types
@@ -197,6 +457,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_bool_to_int32_map__or(?, ?, ?)", `{"11": {"true": 1100, "false": 0}}`, true, 999).IsEqualToInt(1100) // Key exists
 		RunTestThatExpression(t, "test_get_bool_to_int32_map__or(?, ?, ?)", `{"11": {"true": 1100, "false": 0}}`, false, 999).IsEqualToInt(0)   // Key exists (zero value)
 		RunTestThatExpression(t, "test_get_bool_to_int32_map__or(?, ?, ?)", `{}`, true, 999).IsEqualToInt(999)                                  // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_bool_to_int32_map(?, ?)", `{"11": {"true": 1100, "false": 0}}`, true).IsEqualToInt(1100) // Key exists
+		RunTestThatExpression(t, "test_get_bool_to_int32_map(?, ?)", `{"11": {"true": 1100, "false": 0}}`, false).IsEqualToInt(0)   // Key exists (zero value)
+		RunTestThatExpression(t, "test_get_bool_to_int32_map(?, ?)", `{}`, true).IsEqualToInt(0)                                    // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_bool_to_int32_map(?, ?)", `{"11": {"true": 1100, "false": 0}}`, true).IsEqualToBool(true)  // Key exists
+		RunTestThatExpression(t, "test_contains_bool_to_int32_map(?, ?)", `{"11": {"true": 1100, "false": 0}}`, false).IsEqualToBool(true) // Key exists (zero value)
+		RunTestThatExpression(t, "test_contains_bool_to_int32_map(?, ?)", `{}`, true).IsEqualToBool(false)                                 // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_bool_to_int32_map(?, ?, ?)", `{}`, true, 1100).IsEqualToJsonString(`{"11": {"true": 1100}}`)                               // Add to empty map
+		RunTestThatExpression(t, "test_put_bool_to_int32_map(?, ?, ?)", `{"11": {"true": 1100}}`, false, 0).IsEqualToJsonString(`{"11": {"true": 1100, "false": 0}}`) // Add to existing map
+		RunTestThatExpression(t, "test_put_bool_to_int32_map(?, ?, ?)", `{"11": {"true": 500}}`, true, 1100).IsEqualToJsonString(`{"11": {"true": 1100}}`)            // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_bool_to_int32_map(?, ?)", `{}`, `{"true": 1100, "false": 0}`).IsEqualToJsonString(`{"11": {"true": 1100, "false": 0}}`)                                  // Add to empty map
+		RunTestThatExpression(t, "test_put_all_bool_to_int32_map(?, ?)", `{"11": {"true": 500}}`, `{"false": 0}`).IsEqualToJsonString(`{"11": {"true": 500, "false": 0}}`)                              // Merge with existing
+		RunTestThatExpression(t, "test_put_all_bool_to_int32_map(?, ?)", `{"11": {"true": 500, "false": 200}}`, `{"true": 1100, "false": 0}`).IsEqualToJsonString(`{"11": {"true": 1100, "false": 0}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_bool_to_int32_map(?, ?)", `{"11": {"true": 1100, "false": 0}}`, true).IsEqualToJsonString(`{"11": {"false": 0}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_bool_to_int32_map(?, ?)", `{"11": {"true": 1100}}`, true).IsEqualToJsonString(`{}`)                               // Remove last key
+		RunTestThatExpression(t, "test_remove_bool_to_int32_map(?, ?)", `{"11": {"true": 1100}}`, false).IsEqualToJsonString(`{"11": {"true": 1100}}`)          // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_bool_to_int32_map(?, ?)", `{}`, true).IsEqualToJsonString(`{}`)                                                   // Remove from empty map
 	})
 
 	t.Run("string_key", func(t *testing.T) {
@@ -219,6 +505,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_string_to_int32_map__or(?, ?, ?)", `{"12": {"key": 555}}`, `key`, `9999`).IsEqualToInt(555)      // Key exists
 		RunTestThatExpression(t, "test_get_string_to_int32_map__or(?, ?, ?)", `{"12": {"key": 555}}`, `missing`, `9999`).IsEqualToInt(9999) // Key missing
 		RunTestThatExpression(t, "test_get_string_to_int32_map__or(?, ?, ?)", `{}`, `key`, `9999`).IsEqualToInt(9999)                       // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_string_to_int32_map(?, ?)", `{"12": {"key": 555}}`, `key`).IsEqualToInt(555)   // Key exists
+		RunTestThatExpression(t, "test_get_string_to_int32_map(?, ?)", `{"12": {"key": 555}}`, `missing`).IsEqualToInt(0) // Key missing, return default
+		RunTestThatExpression(t, "test_get_string_to_int32_map(?, ?)", `{}`, `key`).IsEqualToInt(0)                       // Map empty, return default
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_string_to_int32_map(?, ?)", `{"12": {"key": 555}}`, `key`).IsEqualToBool(true)      // Key exists
+		RunTestThatExpression(t, "test_contains_string_to_int32_map(?, ?)", `{"12": {"key": 555}}`, `missing`).IsEqualToBool(false) // Key missing
+		RunTestThatExpression(t, "test_contains_string_to_int32_map(?, ?)", `{}`, `key`).IsEqualToBool(false)                       // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_string_to_int32_map(?, ?, ?)", `{}`, `new_key`, `777`).IsEqualToJsonString(`{"12": {"new_key": 777}}`)                                         // Add to empty map
+		RunTestThatExpression(t, "test_put_string_to_int32_map(?, ?, ?)", `{"12": {"existing": 100}}`, `new_key`, `777`).IsEqualToJsonString(`{"12": {"existing": 100, "new_key": 777}}`) // Add to existing map
+		RunTestThatExpression(t, "test_put_string_to_int32_map(?, ?, ?)", `{"12": {"key": 500}}`, `key`, `777`).IsEqualToJsonString(`{"12": {"key": 777}}`)                               // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_string_to_int32_map(?, ?)", `{}`, `{"alpha": 111, "beta": 222}`).IsEqualToJsonString(`{"12": {"alpha": 111, "beta": 222}}`)                                                       // Add to empty map
+		RunTestThatExpression(t, "test_put_all_string_to_int32_map(?, ?)", `{"12": {"existing": 100}}`, `{"alpha": 111, "beta": 222}`).IsEqualToJsonString(`{"12": {"existing": 100, "alpha": 111, "beta": 222}}`)               // Merge with existing
+		RunTestThatExpression(t, "test_put_all_string_to_int32_map(?, ?)", `{"12": {"existing": 100, "alpha": 999}}`, `{"alpha": 111, "beta": 222}`).IsEqualToJsonString(`{"12": {"existing": 100, "alpha": 111, "beta": 222}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_string_to_int32_map(?, ?)", `{"12": {"key": 555, "other": 777}}`, `key`).IsEqualToJsonString(`{"12": {"other": 777}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_string_to_int32_map(?, ?)", `{"12": {"key": 555}}`, `key`).IsEqualToJsonString(`{}`)                                   // Remove last key should clear entire field
+		RunTestThatExpression(t, "test_remove_string_to_int32_map(?, ?)", `{"12": {"key": 555}}`, `missing`).IsEqualToJsonString(`{"12": {"key": 555}}`)             // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_string_to_int32_map(?, ?)", `{}`, `key`).IsEqualToJsonString(`{}`)                                                     // Remove from empty map
 	})
 
 	// Test different value types with string keys
@@ -229,9 +541,34 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_clear_string_to_double_map(?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`).IsEqualToJsonString(`{}`)
 
 		// Test individual key access with default (__or variant)
-		RunTestThatExpression(t, "test_get_string_to_double_map__or(?, ?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `pi`, "binary64:0x4000000000000000").IsEqualToString(`binary64:0x400921fb54442d18`)      // Key exists
-		RunTestThatExpression(t, "test_get_string_to_double_map__or(?, ?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `missing`, "binary64:0x4000000000000000").IsEqualToString(`binary64:0x4000000000000000`) // Key missing
-		RunTestThatExpression(t, "test_get_string_to_double_map__or(?, ?, ?)", `{}`, `pi`, "binary64:0x4000000000000000").IsEqualToString(`binary64:0x4000000000000000`)                                                 // Map empty
+		RunTestThatExpression(t, "test_get_string_to_double_map__or(?, ?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `pi`, 4).IsEqualToDouble(3.141592653589793) // Key exists
+		RunTestThatExpression(t, "test_get_string_to_double_map__or(?, ?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `missing`, 4).IsEqualToDouble(4)            // Key missing
+		RunTestThatExpression(t, "test_get_string_to_double_map__or(?, ?, ?)", `{}`, `pi`, 4).IsEqualToDouble(4)                                                            // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_string_to_double_map(?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `pi`).IsEqualToDouble(3.141592653589793) // Key exists
+		RunTestThatExpression(t, "test_get_string_to_double_map(?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `missing`).IsEqualToDouble(0)            // Key missing
+		RunTestThatExpression(t, "test_get_string_to_double_map(?, ?)", `{}`, `pi`).IsEqualToDouble(0)                                                            // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_string_to_double_map(?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `pi`).IsEqualToBool(true)       // Key exists
+		RunTestThatExpression(t, "test_contains_string_to_double_map(?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `missing`).IsEqualToBool(false) // Key missing
+		RunTestThatExpression(t, "test_contains_string_to_double_map(?, ?)", `{}`, `pi`).IsEqualToBool(false)                                                 // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_string_to_double_map(?, ?, ?)", `{}`, `e`, 2.718).IsEqualToJsonString(`{"13": {"e": "binary64:0x4005be76c8b43958"}}`)
+		RunTestThatExpression(t, "test_put_string_to_double_map(?, ?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `e`, 2.718).IsEqualToJsonString(`{"13": {"pi": "binary64:0x400921fb54442d18", "e": "binary64:0x4005be76c8b43958"}}`)
+		RunTestThatExpression(t, "test_put_string_to_double_map(?, ?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `pi`, 3.14).IsEqualToJsonString(`{"13": {"pi": "binary64:0x40091eb851eb851f"}}`)
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_string_to_double_map(?, ?)", `{}`, `{"sqrt2": 1.414, "phi": 1.618}`).IsEqualToJsonString(`{"13": {"sqrt2": "binary64:0x3ff69fbe76c8b439", "phi": "binary64:0x3ff9e353f7ced917"}}`)
+		RunTestThatExpression(t, "test_put_all_string_to_double_map(?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `{"e": 2.718}`).IsEqualToJsonString(`{"13": {"pi": "binary64:0x400921fb54442d18", "e": "binary64:0x4005be76c8b43958"}}`)
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_string_to_double_map(?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18", "e": "binary64:0x4005be76c8b43958"}}`, `pi`).IsEqualToJsonString(`{"13": {"e": "binary64:0x4005be76c8b43958"}}`)
+		RunTestThatExpression(t, "test_remove_string_to_double_map(?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `pi`).IsEqualToJsonString(`{}`)
+		RunTestThatExpression(t, "test_remove_string_to_double_map(?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `missing`).IsEqualToJsonString(`{"13": {"pi": "binary64:0x400921fb54442d18"}}`)
+		RunTestThatExpression(t, "test_remove_string_to_double_map(?, ?)", `{}`, `pi`).IsEqualToJsonString(`{}`)
 	})
 
 	t.Run("float_value", func(t *testing.T) {
@@ -241,9 +578,34 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_clear_string_to_float_map(?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`).IsEqualToJsonString(`{}`)
 
 		// Test individual key access with default (__or variant)
-		RunTestThatExpression(t, "test_get_string_to_float_map__or(?, ?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `pi_float`, "binary32:0x40000000").IsEqualToString(`binary32:0x4048f5c3`) // Key exists
-		RunTestThatExpression(t, "test_get_string_to_float_map__or(?, ?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `missing`, "binary32:0x40000000").IsEqualToString(`binary32:0x40000000`)  // Key missing
-		RunTestThatExpression(t, "test_get_string_to_float_map__or(?, ?, ?)", `{}`, `pi_float`, "binary32:0x40000000").IsEqualToString(`binary32:0x40000000`)                                          // Map empty
+		RunTestThatExpression(t, "test_get_string_to_float_map__or(?, ?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `pi_float`, 4).IsEqualToFloat(3.140000104904175) // Key exists
+		RunTestThatExpression(t, "test_get_string_to_float_map__or(?, ?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `missing`, 4).IsEqualToFloat(4)                  // Key missing
+		RunTestThatExpression(t, "test_get_string_to_float_map__or(?, ?, ?)", `{}`, `pi_float`, 4).IsEqualToFloat(4)                                                          // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_string_to_float_map(?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `pi_float`).IsEqualToFloat(3.140000104904175) // Key exists
+		RunTestThatExpression(t, "test_get_string_to_float_map(?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `missing`).IsEqualToFloat(0)                  // Key missing
+		RunTestThatExpression(t, "test_get_string_to_float_map(?, ?)", `{}`, `pi_float`).IsEqualToFloat(0)                                                          // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_string_to_float_map(?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `pi_float`).IsEqualToBool(true) // Key exists
+		RunTestThatExpression(t, "test_contains_string_to_float_map(?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `missing`).IsEqualToBool(false) // Key missing
+		RunTestThatExpression(t, "test_contains_string_to_float_map(?, ?)", `{}`, `pi_float`).IsEqualToBool(false)                                         // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_string_to_float_map(?, ?, ?)", `{}`, `e_float`, 2.718).IsEqualToJsonString(`{"14": {"e_float": "binary32:0x402df3b6"}}`)
+		RunTestThatExpression(t, "test_put_string_to_float_map(?, ?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `e_float`, 2.718).IsEqualToJsonString(`{"14": {"pi_float": "binary32:0x4048f5c3", "e_float": "binary32:0x402df3b6"}}`)
+		RunTestThatExpression(t, "test_put_string_to_float_map(?, ?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `pi_float`, 3.14).IsEqualToJsonString(`{"14": {"pi_float": "binary32:0x4048f5c3"}}`)
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_string_to_float_map(?, ?)", `{}`, `{"sqrt2": 1.414, "phi": 1.618}`).IsEqualToJsonString(`{"14": {"sqrt2": "binary32:0x3fb4fdf4", "phi": "binary32:0x3fcf1aa0"}}`)
+		RunTestThatExpression(t, "test_put_all_string_to_float_map(?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `{"e_float": 2.718}`).IsEqualToJsonString(`{"14": {"pi_float": "binary32:0x4048f5c3", "e_float": "binary32:0x402df3b6"}}`)
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_string_to_float_map(?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3", "e_float": "binary32:0x402df3b6"}}`, `pi_float`).IsEqualToJsonString(`{"14": {"e_float": "binary32:0x402df3b6"}}`)
+		RunTestThatExpression(t, "test_remove_string_to_float_map(?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `pi_float`).IsEqualToJsonString(`{}`)
+		RunTestThatExpression(t, "test_remove_string_to_float_map(?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `missing`).IsEqualToJsonString(`{"14": {"pi_float": "binary32:0x4048f5c3"}}`)
+		RunTestThatExpression(t, "test_remove_string_to_float_map(?, ?)", `{}`, `pi_float`).IsEqualToJsonString(`{}`)
 	})
 
 	t.Run("int32_value", func(t *testing.T) {
@@ -421,6 +783,32 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_string_to_enum_map__or(?, ?, ?)", `{"27": {"status": 1}}`, `status`, `0`).IsEqualToInt(1)  // Key exists
 		RunTestThatExpression(t, "test_get_string_to_enum_map__or(?, ?, ?)", `{"27": {"status": 1}}`, `missing`, `0`).IsEqualToInt(0) // Key missing
 		RunTestThatExpression(t, "test_get_string_to_enum_map__or(?, ?, ?)", `{}`, `status`, `0`).IsEqualToInt(0)                     // Map empty
+
+		// Test individual key access without default
+		RunTestThatExpression(t, "test_get_string_to_enum_map(?, ?)", `{"27": {"status": 1}}`, `status`).IsEqualToInt(1)  // Key exists
+		RunTestThatExpression(t, "test_get_string_to_enum_map(?, ?)", `{"27": {"status": 1}}`, `missing`).IsEqualToInt(0) // Key missing
+		RunTestThatExpression(t, "test_get_string_to_enum_map(?, ?)", `{}`, `status`).IsEqualToInt(0)                     // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_string_to_enum_map(?, ?)", `{"27": {"status": 1}}`, `status`).IsEqualToBool(true)   // Key exists
+		RunTestThatExpression(t, "test_contains_string_to_enum_map(?, ?)", `{"27": {"status": 1}}`, `missing`).IsEqualToBool(false) // Key missing
+		RunTestThatExpression(t, "test_contains_string_to_enum_map(?, ?)", `{}`, `status`).IsEqualToBool(false)                     // Map empty
+
+		// Test single key insertion
+		RunTestThatExpression(t, "test_put_string_to_enum_map(?, ?, ?)", `{}`, `active_status`, 1).IsEqualToJsonString(`{"27": {"active_status": 1}}`)                                     // Add to empty map
+		RunTestThatExpression(t, "test_put_string_to_enum_map(?, ?, ?)", `{"27": {"status": 1}}`, `inactive_status`, 2).IsEqualToJsonString(`{"27": {"status": 1, "inactive_status": 2}}`) // Add to existing map
+		RunTestThatExpression(t, "test_put_string_to_enum_map(?, ?, ?)", `{"27": {"status": 1}}`, `status`, 2).IsEqualToJsonString(`{"27": {"status": 2}}`)                                // Update existing key
+
+		// Test bulk key insertion
+		RunTestThatExpression(t, "test_put_all_string_to_enum_map(?, ?)", `{}`, `{"active": 1, "inactive": 2}`).IsEqualToJsonString(`{"27": {"active": 1, "inactive": 2}}`)                                              // Add to empty map
+		RunTestThatExpression(t, "test_put_all_string_to_enum_map(?, ?)", `{"27": {"status": 0}}`, `{"active": 1, "inactive": 2}`).IsEqualToJsonString(`{"27": {"status": 0, "active": 1, "inactive": 2}}`)              // Merge with existing
+		RunTestThatExpression(t, "test_put_all_string_to_enum_map(?, ?)", `{"27": {"status": 0, "active": 1}}`, `{"active": 2, "inactive": 2}`).IsEqualToJsonString(`{"27": {"status": 0, "active": 2, "inactive": 2}}`) // Update existing keys
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_string_to_enum_map(?, ?)", `{"27": {"status": 1, "active": 1}}`, `status`).IsEqualToJsonString(`{"27": {"active": 1}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_string_to_enum_map(?, ?)", `{"27": {"status": 1}}`, `status`).IsEqualToJsonString(`{}`)                                 // Remove last key
+		RunTestThatExpression(t, "test_remove_string_to_enum_map(?, ?)", `{"27": {"status": 1}}`, `missing`).IsEqualToJsonString(`{"27": {"status": 1}}`)             // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_string_to_enum_map(?, ?)", `{}`, `status`).IsEqualToJsonString(`{}`)                                                    // Remove from empty map
 	})
 
 	t.Run("message_value", func(t *testing.T) {
@@ -435,5 +823,34 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_string_to_message_map__or(?, ?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `nested`, defaultMessage).IsEqualToJsonString(`{"1": "test", "2": 42}`) // Key exists
 		RunTestThatExpression(t, "test_get_string_to_message_map__or(?, ?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `missing`, defaultMessage).IsEqualToJsonString(defaultMessage)          // Key missing
 		RunTestThatExpression(t, "test_get_string_to_message_map__or(?, ?, ?)", `{}`, `nested`, defaultMessage).IsEqualToJsonString(defaultMessage)                                                   // Map empty
+
+		// Test individual key access without default
+		emptyMessage := `{}`
+		RunTestThatExpression(t, "test_get_string_to_message_map(?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `nested`).IsEqualToJsonString(`{"1": "test", "2": 42}`) // Key exists
+		RunTestThatExpression(t, "test_get_string_to_message_map(?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `missing`).IsEqualToJsonString(emptyMessage)            // Key missing
+		RunTestThatExpression(t, "test_get_string_to_message_map(?, ?)", `{}`, `nested`).IsEqualToJsonString(emptyMessage)                                                     // Map empty
+
+		// Test key existence checks
+		RunTestThatExpression(t, "test_contains_string_to_message_map(?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `nested`).IsEqualToBool(true)   // Key exists
+		RunTestThatExpression(t, "test_contains_string_to_message_map(?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `missing`).IsEqualToBool(false) // Key missing
+		RunTestThatExpression(t, "test_contains_string_to_message_map(?, ?)", `{}`, `nested`).IsEqualToBool(false)                                          // Map empty
+
+		// Test single key insertion
+		newMessage := `{"1": "hello", "2": 123}`
+		RunTestThatExpression(t, "test_put_string_to_message_map(?, ?, ?)", `{}`, `new_nested`, newMessage).IsEqualToJsonString(`{"28": {"new_nested": {"1": "hello", "2": 123}}}`)                                                                           // Add to empty map
+		RunTestThatExpression(t, "test_put_string_to_message_map(?, ?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `new_nested`, newMessage).IsEqualToJsonString(`{"28": {"nested": {"1": "test", "2": 42}, "new_nested": {"1": "hello", "2": 123}}}`) // Add to existing map
+		updatedMessage := `{"1": "updated", "2": 999}`
+		RunTestThatExpression(t, "test_put_string_to_message_map(?, ?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `nested`, updatedMessage).IsEqualToJsonString(`{"28": {"nested": {"1": "updated", "2": 999}}}`) // Update existing key
+
+		// Test bulk key insertion
+		bulkMessages := `{"msg1": {"1": "first", "2": 1}, "msg2": {"1": "second", "2": 2}}`
+		RunTestThatExpression(t, "test_put_all_string_to_message_map(?, ?)", `{}`, bulkMessages).IsEqualToJsonString(`{"28": {"msg1": {"1": "first", "2": 1}, "msg2": {"1": "second", "2": 2}}}`)                                                                // Add to empty map
+		RunTestThatExpression(t, "test_put_all_string_to_message_map(?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `{"msg1": {"1": "first", "2": 1}}`).IsEqualToJsonString(`{"28": {"nested": {"1": "test", "2": 42}, "msg1": {"1": "first", "2": 1}}}`) // Merge with existing
+
+		// Test key removal
+		RunTestThatExpression(t, "test_remove_string_to_message_map(?, ?)", `{"28": {"nested": {"1": "test", "2": 42}, "other": {"1": "other", "2": 1}}}`, `nested`).IsEqualToJsonString(`{"28": {"other": {"1": "other", "2": 1}}}`) // Remove existing key
+		RunTestThatExpression(t, "test_remove_string_to_message_map(?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `nested`).IsEqualToJsonString(`{}`)                                                                         // Remove last key
+		RunTestThatExpression(t, "test_remove_string_to_message_map(?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `missing`).IsEqualToJsonString(`{"28": {"nested": {"1": "test", "2": 42}}}`)                                // Remove non-existent key
+		RunTestThatExpression(t, "test_remove_string_to_message_map(?, ?)", `{}`, `nested`).IsEqualToJsonString(`{}`)                                                                                                                 // Remove from empty map
 	})
 }
