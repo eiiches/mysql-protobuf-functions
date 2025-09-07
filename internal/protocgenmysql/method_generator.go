@@ -88,7 +88,7 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 	}
 
 	// Generate field accessor methods with enhanced opaque API patterns
-	if err := generateFieldAccessorMethods(content, messageDesc, funcPrefix, fullTypeName, fieldFilterFunc); err != nil {
+	if err := generateFieldAccessorMethods(content, messageDesc, funcPrefix, fullTypeName, fieldFilterFunc, typePrefixFunc); err != nil {
 		return err
 	}
 
@@ -182,7 +182,7 @@ func generateConversionMethods(content *strings.Builder, funcPrefix string, full
 }
 
 // generateFieldAccessorMethods creates enhanced field accessor methods following opaque API patterns
-func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, funcPrefix string, fullTypeName protoreflect.FullName, fieldFilterFunc FieldFilterFunc) error {
+func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, funcPrefix string, fullTypeName protoreflect.FullName, fieldFilterFunc FieldFilterFunc, typePrefixFunc TypePrefixFunc) error {
 	fields := messageDesc.Fields()
 
 	for field := range protoreflectutils.Iterate(fields) {
@@ -200,6 +200,27 @@ func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoref
 		// Generate nullable getter with custom default for optional fields
 		if field.HasPresence() && !isRepeated && !isMapField {
 			if err := generateNullableGetter(content, funcPrefix, fullTypeName, field, fieldName, fieldType, isMessage, fieldFilterFunc); err != nil {
+				return err
+			}
+		}
+
+		// Generate enum name getters for enum fields
+		if fieldType == protoreflect.EnumKind && !isRepeated && !isMapField {
+			// Generate regular enum name getter (__as_name)
+			if err := generateEnumNameGetter(content, funcPrefix, fullTypeName, field, fieldName, false, fieldFilterFunc, typePrefixFunc); err != nil {
+				return err
+			}
+			// Generate nullable enum name getter (__as_name_or) for optional fields
+			if field.HasPresence() {
+				if err := generateEnumNameGetter(content, funcPrefix, fullTypeName, field, fieldName, true, fieldFilterFunc, typePrefixFunc); err != nil {
+					return err
+				}
+			}
+		}
+
+		// Generate enum name setters for enum fields
+		if fieldType == protoreflect.EnumKind && !isRepeated && !isMapField {
+			if err := generateEnumNameSetter(content, funcPrefix, fullTypeName, field, fieldName, fieldFilterFunc, typePrefixFunc); err != nil {
 				return err
 			}
 		}
@@ -1414,6 +1435,182 @@ func getFieldDefaultValueFromReflection(field protoreflect.FieldDescriptor) stri
 	default:
 		return "NULL"
 	}
+}
+
+// generateEnumNameGetter creates getter functions that return enum names as strings
+func generateEnumNameGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, isNullableVariant bool, fieldFilterFunc FieldFilterFunc, typePrefixFunc TypePrefixFunc) error {
+	// Determine function name suffix
+	var suffix string
+	if isNullableVariant {
+		suffix = "__as_name_or"
+	} else {
+		suffix = "__as_name"
+	}
+
+	// Create function name
+	getterFuncName := fmt.Sprintf("%s_get_%s%s", funcPrefix, fieldName, suffix)
+
+	// Check filtering
+	var commentPrefix string
+	if fieldFilterFunc != nil {
+		decision := fieldFilterFunc(field, getterFuncName)
+		switch decision {
+		case DecisionExclude:
+			return nil
+		case DecisionCommentOut:
+			commentPrefix = "-- "
+		case DecisionInclude:
+			commentPrefix = ""
+		default:
+			commentPrefix = ""
+		}
+	}
+
+	// Validate function name
+	if err := validateFunctionName(getterFuncName, fullTypeName); err != nil {
+		if commentPrefix == "" {
+			return err
+		}
+	}
+
+	// Get the enum descriptor
+	enumDesc := field.Enum()
+	if enumDesc == nil {
+		return fmt.Errorf("field %s is not an enum field", field.FullName())
+	}
+
+	// Get the enum conversion function name using TypePrefixFunc
+	enumFullTypeName := enumDesc.FullName()
+	enumPackageName := enumDesc.ParentFile().Package()
+	enumFuncPrefix := typePrefixFunc(enumPackageName, enumFullTypeName)
+	toStringFuncName := enumFuncPrefix + "_to_string"
+
+	// Generate function signature
+	content.WriteString(fmt.Sprintf("%sDROP FUNCTION IF EXISTS %s $$\n", commentPrefix, getterFuncName))
+	if isNullableVariant {
+		content.WriteString(fmt.Sprintf("%sCREATE FUNCTION %s(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC\n", commentPrefix, getterFuncName))
+	} else {
+		content.WriteString(fmt.Sprintf("%sCREATE FUNCTION %s(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC\n", commentPrefix, getterFuncName))
+	}
+	content.WriteString(fmt.Sprintf("%sBEGIN\n", commentPrefix))
+
+	// DECLARE statements must be at the beginning
+	content.WriteString(fmt.Sprintf("%s    DECLARE enum_value INT;\n", commentPrefix))
+	content.WriteString(fmt.Sprintf("%s    DECLARE enum_name LONGTEXT;\n", commentPrefix))
+
+	// For nullable variant, check presence first
+	if isNullableVariant {
+		content.WriteString(fmt.Sprintf("%s    IF JSON_CONTAINS_PATH(proto_data, 'one', '$.\"%.d\"') THEN\n", commentPrefix, field.Number()))
+	}
+
+	// Get the enum value
+	var indent string
+	if isNullableVariant {
+		indent = "        " // Inside IF block
+		content.WriteString(fmt.Sprintf("%s%sSET enum_value = CAST(JSON_EXTRACT(proto_data, '$.\"%.d\"') AS SIGNED);\n", commentPrefix, indent, field.Number()))
+	} else {
+		indent = "    " // At top level
+		content.WriteString(fmt.Sprintf("%s%sSET enum_value = CAST(JSON_EXTRACT(proto_data, '$.\"%.d\"') AS SIGNED);\n", commentPrefix, indent, field.Number()))
+		// For non-nullable variant, handle missing field by using default (0)
+		content.WriteString(fmt.Sprintf("%s%sIF enum_value IS NULL THEN\n", commentPrefix, indent))
+		content.WriteString(fmt.Sprintf("%s%s    SET enum_value = 0;\n", commentPrefix, indent))
+		content.WriteString(fmt.Sprintf("%s%sEND IF;\n", commentPrefix, indent))
+	}
+
+	// Use the enum's to_string function
+	content.WriteString(fmt.Sprintf("%s%sSET enum_name = %s(enum_value);\n", commentPrefix, indent, toStringFuncName))
+
+	// If the conversion was successful, return the name; otherwise return the number as string
+	content.WriteString(fmt.Sprintf("%s%sIF enum_name IS NOT NULL THEN\n", commentPrefix, indent))
+	content.WriteString(fmt.Sprintf("%s%s    RETURN enum_name;\n", commentPrefix, indent))
+	content.WriteString(fmt.Sprintf("%s%sELSE\n", commentPrefix, indent))
+	content.WriteString(fmt.Sprintf("%s%s    RETURN CAST(enum_value AS CHAR);\n", commentPrefix, indent))
+	content.WriteString(fmt.Sprintf("%s%sEND IF;\n", commentPrefix, indent))
+
+	if isNullableVariant {
+		// Close the presence check and return default
+		content.WriteString(fmt.Sprintf("%s    ELSE\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s        RETURN default_value;\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
+	}
+
+	content.WriteString(fmt.Sprintf("%sEND $$\n\n", commentPrefix))
+
+	return nil
+}
+
+// generateEnumNameSetter creates setter functions that accept enum names as strings
+func generateEnumNameSetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, fieldFilterFunc FieldFilterFunc, typePrefixFunc TypePrefixFunc) error {
+	// Create function name
+	setterFuncName := fmt.Sprintf("%s_set_%s__from_name", funcPrefix, fieldName)
+
+	// Check filtering
+	var commentPrefix string
+	if fieldFilterFunc != nil {
+		decision := fieldFilterFunc(field, setterFuncName)
+		switch decision {
+		case DecisionExclude:
+			return nil
+		case DecisionCommentOut:
+			commentPrefix = "-- "
+		case DecisionInclude:
+			commentPrefix = ""
+		default:
+			commentPrefix = ""
+		}
+	}
+
+	// Validate function name
+	if err := validateFunctionName(setterFuncName, fullTypeName); err != nil {
+		if commentPrefix == "" {
+			return err
+		}
+	}
+
+	// Get the enum descriptor
+	enumDesc := field.Enum()
+	if enumDesc == nil {
+		return fmt.Errorf("field %s is not an enum field", field.FullName())
+	}
+
+	// Get the enum conversion function name using TypePrefixFunc
+	enumFullTypeName := enumDesc.FullName()
+	enumPackageName := enumDesc.ParentFile().Package()
+	enumFuncPrefix := typePrefixFunc(enumPackageName, enumFullTypeName)
+	fromStringFuncName := enumFuncPrefix + "_from_string"
+
+	// Generate function signature
+	content.WriteString(fmt.Sprintf("%sDROP FUNCTION IF EXISTS %s $$\n", commentPrefix, setterFuncName))
+	content.WriteString(fmt.Sprintf("%sCREATE FUNCTION %s(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC\n", commentPrefix, setterFuncName))
+	content.WriteString(fmt.Sprintf("%sBEGIN\n", commentPrefix))
+
+	// Declare variable to store enum value
+	content.WriteString(fmt.Sprintf("%s    DECLARE enum_value INT;\n", commentPrefix))
+
+	// Call the enum's from_string function
+	content.WriteString(fmt.Sprintf("%s    SET enum_value = %s(enum_name);\n", commentPrefix, fromStringFuncName))
+
+	// Check if the conversion was successful (not NULL)
+	content.WriteString(fmt.Sprintf("%s    IF enum_value IS NULL THEN\n", commentPrefix))
+	content.WriteString(fmt.Sprintf("%s        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';\n", commentPrefix))
+	content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
+
+	// Handle zero values based on field presence semantics
+	content.WriteString(fmt.Sprintf("%s    IF enum_value = 0 THEN\n", commentPrefix))
+	if !field.HasPresence() {
+		// For proto3, zero values should be omitted (removed from JSON)
+		content.WriteString(fmt.Sprintf("%s        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
+	} else {
+		// For proto2 or proto3 optional, zero values are still stored
+		content.WriteString(fmt.Sprintf("%s        RETURN JSON_SET(proto_data, '$.\"%.d\"', 0);\n", commentPrefix, field.Number()))
+	}
+	content.WriteString(fmt.Sprintf("%s    ELSE\n", commentPrefix))
+	content.WriteString(fmt.Sprintf("%s        RETURN JSON_SET(proto_data, '$.\"%.d\"', enum_value);\n", commentPrefix, field.Number()))
+	content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
+
+	content.WriteString(fmt.Sprintf("%sEND $$\n\n", commentPrefix))
+
+	return nil
 }
 
 // validateFunctionName validates that a function name doesn't exceed MySQL's 64 character limit

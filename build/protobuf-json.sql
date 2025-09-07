@@ -6165,6 +6165,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_edition__as_name $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_edition__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."14"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_edition_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_edition__as_name_or $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_edition__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."14"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."14"') AS SIGNED);
+        SET enum_name = _pb_edition_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_edition__from_name $$
+CREATE FUNCTION _pb_file_descriptor_proto_set_edition__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_edition_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."14"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."14"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_edition $$
 CREATE FUNCTION _pb_file_descriptor_proto_set_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -8492,6 +8542,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_extension_range_options_get_verification__as_name $$
+CREATE FUNCTION _pb_extension_range_options_get_verification__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_extension_range_options_verification_state_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_get_verification__as_name_or $$
+CREATE FUNCTION _pb_extension_range_options_get_verification__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+        SET enum_name = _pb_extension_range_options_verification_state_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_set_verification__from_name $$
+CREATE FUNCTION _pb_extension_range_options_set_verification__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_extension_range_options_verification_state_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."3"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."3"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_extension_range_options_set_verification $$
 CREATE FUNCTION _pb_extension_range_options_set_verification(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -8900,6 +9000,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_label__as_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_label__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_field_descriptor_proto_label_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_label__as_name_or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_label__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+        SET enum_name = _pb_field_descriptor_proto_label_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_label__from_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_label__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_field_descriptor_proto_label_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."4"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."4"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_label $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_label(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -8938,6 +9088,56 @@ BEGIN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_type__as_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_type__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_field_descriptor_proto_type_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_type__as_name_or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_type__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+        SET enum_name = _pb_field_descriptor_proto_type_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_type__from_name $$
+CREATE FUNCTION _pb_field_descriptor_proto_set_type__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_field_descriptor_proto_type_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."5"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."5"', enum_value);
     END IF;
 END $$
 
@@ -11171,6 +11371,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_options_get_optimize_for__as_name $$
+CREATE FUNCTION _pb_file_options_get_optimize_for__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."9"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_file_options_optimize_mode_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_optimize_for__as_name_or $$
+CREATE FUNCTION _pb_file_options_get_optimize_for__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."9"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."9"') AS SIGNED);
+        SET enum_name = _pb_file_options_optimize_mode_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_set_optimize_for__from_name $$
+CREATE FUNCTION _pb_file_options_set_optimize_for__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_file_options_optimize_mode_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."9"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."9"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_options_set_optimize_for $$
 CREATE FUNCTION _pb_file_options_set_optimize_for(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -12477,6 +12727,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_options_get_ctype__as_name $$
+CREATE FUNCTION _pb_field_options_get_ctype__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_field_options_c_type_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_ctype__as_name_or $$
+CREATE FUNCTION _pb_field_options_get_ctype__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+        SET enum_name = _pb_field_options_c_type_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_ctype__from_name $$
+CREATE FUNCTION _pb_field_options_set_ctype__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_field_options_c_type_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."1"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."1"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_options_set_ctype $$
 CREATE FUNCTION _pb_field_options_set_ctype(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -12556,6 +12856,56 @@ BEGIN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_jstype__as_name $$
+CREATE FUNCTION _pb_field_options_get_jstype__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."6"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_field_options_j_s_type_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_jstype__as_name_or $$
+CREATE FUNCTION _pb_field_options_get_jstype__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."6"') AS SIGNED);
+        SET enum_name = _pb_field_options_j_s_type_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_jstype__from_name $$
+CREATE FUNCTION _pb_field_options_set_jstype__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_field_options_j_s_type_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."6"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."6"', enum_value);
     END IF;
 END $$
 
@@ -12802,6 +13152,56 @@ BEGIN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_retention__as_name $$
+CREATE FUNCTION _pb_field_options_get_retention__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."17"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_field_options_option_retention_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_retention__as_name_or $$
+CREATE FUNCTION _pb_field_options_get_retention__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."17"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."17"') AS SIGNED);
+        SET enum_name = _pb_field_options_option_retention_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_set_retention__from_name $$
+CREATE FUNCTION _pb_field_options_set_retention__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_field_options_option_retention_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."17"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."17"', enum_value);
     END IF;
 END $$
 
@@ -13505,6 +13905,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_get_edition__as_name $$
+CREATE FUNCTION _pb_field_options_edition_default_get_edition__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_edition_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_get_edition__as_name_or $$
+CREATE FUNCTION _pb_field_options_edition_default_get_edition__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+        SET enum_name = _pb_edition_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_set_edition__from_name $$
+CREATE FUNCTION _pb_field_options_edition_default_set_edition__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_edition_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."3"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."3"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_options_edition_default_set_edition $$
 CREATE FUNCTION _pb_field_options_edition_default_set_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -13617,6 +14067,56 @@ BEGIN
     END IF;
 END $$
 
+-- DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_introduced__as_name $$
+-- CREATE FUNCTION _pb_field_options_feature_support_get_edition_introduced__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+-- BEGIN
+--     DECLARE enum_value INT;
+--     DECLARE enum_name LONGTEXT;
+--     SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+--     IF enum_value IS NULL THEN
+--         SET enum_value = 0;
+--     END IF;
+--     SET enum_name = _pb_edition_to_string(enum_value);
+--     IF enum_name IS NOT NULL THEN
+--         RETURN enum_name;
+--     ELSE
+--         RETURN CAST(enum_value AS CHAR);
+--     END IF;
+-- END $$
+
+-- DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_introduced__as_name_or $$
+-- CREATE FUNCTION _pb_field_options_feature_support_get_edition_introduced__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+-- BEGIN
+--     DECLARE enum_value INT;
+--     DECLARE enum_name LONGTEXT;
+--     IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+--         SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+--         SET enum_name = _pb_edition_to_string(enum_value);
+--         IF enum_name IS NOT NULL THEN
+--             RETURN enum_name;
+--         ELSE
+--             RETURN CAST(enum_value AS CHAR);
+--         END IF;
+--     ELSE
+--         RETURN default_value;
+--     END IF;
+-- END $$
+
+-- DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_introduced__from_name $$
+-- CREATE FUNCTION _pb_field_options_feature_support_set_edition_introduced__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+-- BEGIN
+--     DECLARE enum_value INT;
+--     SET enum_value = _pb_edition_from_string(enum_name);
+--     IF enum_value IS NULL THEN
+--         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+--     END IF;
+--     IF enum_value = 0 THEN
+--         RETURN JSON_SET(proto_data, '$."1"', 0);
+--     ELSE
+--         RETURN JSON_SET(proto_data, '$."1"', enum_value);
+--     END IF;
+-- END $$
+
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_introduced $$
 CREATE FUNCTION _pb_field_options_feature_support_set_edition_introduced(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -13657,6 +14157,56 @@ BEGIN
         RETURN default_value;
     END IF;
 END $$
+
+-- DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_deprecated__as_name $$
+-- CREATE FUNCTION _pb_field_options_feature_support_get_edition_deprecated__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+-- BEGIN
+--     DECLARE enum_value INT;
+--     DECLARE enum_name LONGTEXT;
+--     SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."2"') AS SIGNED);
+--     IF enum_value IS NULL THEN
+--         SET enum_value = 0;
+--     END IF;
+--     SET enum_name = _pb_edition_to_string(enum_value);
+--     IF enum_name IS NOT NULL THEN
+--         RETURN enum_name;
+--     ELSE
+--         RETURN CAST(enum_value AS CHAR);
+--     END IF;
+-- END $$
+
+-- DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_deprecated__as_name_or $$
+-- CREATE FUNCTION _pb_field_options_feature_support_get_edition_deprecated__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+-- BEGIN
+--     DECLARE enum_value INT;
+--     DECLARE enum_name LONGTEXT;
+--     IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+--         SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."2"') AS SIGNED);
+--         SET enum_name = _pb_edition_to_string(enum_value);
+--         IF enum_name IS NOT NULL THEN
+--             RETURN enum_name;
+--         ELSE
+--             RETURN CAST(enum_value AS CHAR);
+--         END IF;
+--     ELSE
+--         RETURN default_value;
+--     END IF;
+-- END $$
+
+-- DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_deprecated__from_name $$
+-- CREATE FUNCTION _pb_field_options_feature_support_set_edition_deprecated__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+-- BEGIN
+--     DECLARE enum_value INT;
+--     SET enum_value = _pb_edition_from_string(enum_name);
+--     IF enum_value IS NULL THEN
+--         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+--     END IF;
+--     IF enum_value = 0 THEN
+--         RETURN JSON_SET(proto_data, '$."2"', 0);
+--     ELSE
+--         RETURN JSON_SET(proto_data, '$."2"', enum_value);
+--     END IF;
+-- END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_deprecated $$
 CREATE FUNCTION _pb_field_options_feature_support_set_edition_deprecated(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
@@ -13737,6 +14287,56 @@ BEGIN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_removed__as_name $$
+CREATE FUNCTION _pb_field_options_feature_support_get_edition_removed__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_edition_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+-- DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_removed__as_name_or $$
+-- CREATE FUNCTION _pb_field_options_feature_support_get_edition_removed__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+-- BEGIN
+--     DECLARE enum_value INT;
+--     DECLARE enum_name LONGTEXT;
+--     IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+--         SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+--         SET enum_name = _pb_edition_to_string(enum_value);
+--         IF enum_name IS NOT NULL THEN
+--             RETURN enum_name;
+--         ELSE
+--             RETURN CAST(enum_value AS CHAR);
+--         END IF;
+--     ELSE
+--         RETURN default_value;
+--     END IF;
+-- END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_removed__from_name $$
+CREATE FUNCTION _pb_field_options_feature_support_set_edition_removed__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_edition_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."4"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."4"', enum_value);
     END IF;
 END $$
 
@@ -15245,6 +15845,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_method_options_get_idempotency_level__as_name $$
+CREATE FUNCTION _pb_method_options_get_idempotency_level__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."34"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_method_options_idempotency_level_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_get_idempotency_level__as_name_or $$
+CREATE FUNCTION _pb_method_options_get_idempotency_level__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."34"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."34"') AS SIGNED);
+        SET enum_name = _pb_method_options_idempotency_level_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_set_idempotency_level__from_name $$
+CREATE FUNCTION _pb_method_options_set_idempotency_level__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_method_options_idempotency_level_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."34"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."34"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_method_options_set_idempotency_level $$
 CREATE FUNCTION _pb_method_options_set_idempotency_level(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -16133,6 +16783,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_feature_set_get_field_presence__as_name $$
+CREATE FUNCTION _pb_feature_set_get_field_presence__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_feature_set_field_presence_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_field_presence__as_name_or $$
+CREATE FUNCTION _pb_feature_set_get_field_presence__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+        SET enum_name = _pb_feature_set_field_presence_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_field_presence__from_name $$
+CREATE FUNCTION _pb_feature_set_set_field_presence__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_feature_set_field_presence_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."1"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."1"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_feature_set_set_field_presence $$
 CREATE FUNCTION _pb_feature_set_set_field_presence(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -16171,6 +16871,56 @@ BEGIN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_enum_type__as_name $$
+CREATE FUNCTION _pb_feature_set_get_enum_type__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."2"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_feature_set_enum_type_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_enum_type__as_name_or $$
+CREATE FUNCTION _pb_feature_set_get_enum_type__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."2"') AS SIGNED);
+        SET enum_name = _pb_feature_set_enum_type_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_enum_type__from_name $$
+CREATE FUNCTION _pb_feature_set_set_enum_type__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_feature_set_enum_type_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."2"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."2"', enum_value);
     END IF;
 END $$
 
@@ -16215,6 +16965,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_feature_set_get_repeated_field_encoding__as_name $$
+CREATE FUNCTION _pb_feature_set_get_repeated_field_encoding__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_feature_set_repeated_field_encoding_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_repeated_field_encoding__as_name_or $$
+CREATE FUNCTION _pb_feature_set_get_repeated_field_encoding__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+        SET enum_name = _pb_feature_set_repeated_field_encoding_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_repeated_field_encoding__from_name $$
+CREATE FUNCTION _pb_feature_set_set_repeated_field_encoding__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_feature_set_repeated_field_encoding_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."3"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."3"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_feature_set_set_repeated_field_encoding $$
 CREATE FUNCTION _pb_feature_set_set_repeated_field_encoding(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -16253,6 +17053,56 @@ BEGIN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_utf8_validation__as_name $$
+CREATE FUNCTION _pb_feature_set_get_utf8_validation__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_feature_set_utf8_validation_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_utf8_validation__as_name_or $$
+CREATE FUNCTION _pb_feature_set_get_utf8_validation__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+        SET enum_name = _pb_feature_set_utf8_validation_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_utf8_validation__from_name $$
+CREATE FUNCTION _pb_feature_set_set_utf8_validation__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_feature_set_utf8_validation_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."4"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."4"', enum_value);
     END IF;
 END $$
 
@@ -16297,6 +17147,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_feature_set_get_message_encoding__as_name $$
+CREATE FUNCTION _pb_feature_set_get_message_encoding__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_feature_set_message_encoding_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_message_encoding__as_name_or $$
+CREATE FUNCTION _pb_feature_set_get_message_encoding__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+        SET enum_name = _pb_feature_set_message_encoding_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_message_encoding__from_name $$
+CREATE FUNCTION _pb_feature_set_set_message_encoding__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_feature_set_message_encoding_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."5"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."5"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_feature_set_set_message_encoding $$
 CREATE FUNCTION _pb_feature_set_set_message_encoding(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -16338,6 +17238,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_feature_set_get_json_format__as_name $$
+CREATE FUNCTION _pb_feature_set_get_json_format__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."6"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_feature_set_json_format_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_json_format__as_name_or $$
+CREATE FUNCTION _pb_feature_set_get_json_format__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."6"') AS SIGNED);
+        SET enum_name = _pb_feature_set_json_format_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_json_format__from_name $$
+CREATE FUNCTION _pb_feature_set_set_json_format__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_feature_set_json_format_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."6"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."6"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_feature_set_set_json_format $$
 CREATE FUNCTION _pb_feature_set_set_json_format(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -16376,6 +17326,56 @@ BEGIN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_enforce_naming_style__as_name $$
+CREATE FUNCTION _pb_feature_set_get_enforce_naming_style__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."7"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_feature_set_enforce_naming_style_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_enforce_naming_style__as_name_or $$
+CREATE FUNCTION _pb_feature_set_get_enforce_naming_style__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."7"') AS SIGNED);
+        SET enum_name = _pb_feature_set_enforce_naming_style_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_set_enforce_naming_style__from_name $$
+CREATE FUNCTION _pb_feature_set_set_enforce_naming_style__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_feature_set_enforce_naming_style_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."7"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."7"', enum_value);
     END IF;
 END $$
 
@@ -16791,6 +17791,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_minimum_edition__as_name $$
+CREATE FUNCTION _pb_feature_set_defaults_get_minimum_edition__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_edition_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_minimum_edition__as_name_or $$
+CREATE FUNCTION _pb_feature_set_defaults_get_minimum_edition__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."4"') AS SIGNED);
+        SET enum_name = _pb_edition_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_set_minimum_edition__from_name $$
+CREATE FUNCTION _pb_feature_set_defaults_set_minimum_edition__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_edition_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."4"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."4"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_set_minimum_edition $$
 CREATE FUNCTION _pb_feature_set_defaults_set_minimum_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -16829,6 +17879,56 @@ BEGIN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_maximum_edition__as_name $$
+CREATE FUNCTION _pb_feature_set_defaults_get_maximum_edition__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_edition_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_maximum_edition__as_name_or $$
+CREATE FUNCTION _pb_feature_set_defaults_get_maximum_edition__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+        SET enum_name = _pb_edition_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_set_maximum_edition__from_name $$
+CREATE FUNCTION _pb_feature_set_defaults_set_maximum_edition__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_edition_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."5"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."5"', enum_value);
     END IF;
 END $$
 
@@ -16900,6 +18000,56 @@ BEGIN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_edition__as_name $$
+CREATE FUNCTION _pb_feature_set_edition_default_get_edition__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_edition_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_edition__as_name_or $$
+CREATE FUNCTION _pb_feature_set_edition_default_get_edition__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."3"') AS SIGNED);
+        SET enum_name = _pb_edition_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_set_edition__from_name $$
+CREATE FUNCTION _pb_feature_set_edition_default_set_edition__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_edition_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."3"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."3"', enum_value);
     END IF;
 END $$
 
@@ -18453,6 +19603,56 @@ BEGIN
     END IF;
 END $$
 
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_semantic__as_name $$
+CREATE FUNCTION _pb_generated_code_info_annotation_get_semantic__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = _pb_generated_code_info_annotation_semantic_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_semantic__as_name_or $$
+CREATE FUNCTION _pb_generated_code_info_annotation_get_semantic__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."5"') AS SIGNED);
+        SET enum_name = _pb_generated_code_info_annotation_semantic_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_semantic__from_name $$
+CREATE FUNCTION _pb_generated_code_info_annotation_set_semantic__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = _pb_generated_code_info_annotation_semantic_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."5"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."5"', enum_value);
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_semantic $$
 CREATE FUNCTION _pb_generated_code_info_annotation_set_semantic(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -18810,6 +20010,56 @@ BEGIN
         RETURN _pb_json_parse_signed_int(json_value);
     ELSE
         RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_get_null_value__as_name $$
+CREATE FUNCTION pb_wkt_value_get_null_value__as_name(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+    IF enum_value IS NULL THEN
+        SET enum_value = 0;
+    END IF;
+    SET enum_name = pb_wkt_null_value_to_string(enum_value);
+    IF enum_name IS NOT NULL THEN
+        RETURN enum_name;
+    ELSE
+        RETURN CAST(enum_value AS CHAR);
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_get_null_value__as_name_or $$
+CREATE FUNCTION pb_wkt_value_get_null_value__as_name_or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    DECLARE enum_name LONGTEXT;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET enum_value = CAST(JSON_EXTRACT(proto_data, '$."1"') AS SIGNED);
+        SET enum_name = pb_wkt_null_value_to_string(enum_value);
+        IF enum_name IS NOT NULL THEN
+            RETURN enum_name;
+        ELSE
+            RETURN CAST(enum_value AS CHAR);
+        END IF;
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_set_null_value__from_name $$
+CREATE FUNCTION pb_wkt_value_set_null_value__from_name(proto_data JSON, enum_name LONGTEXT) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE enum_value INT;
+    SET enum_value = pb_wkt_null_value_from_string(enum_name);
+    IF enum_value IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid enum name';
+    END IF;
+    IF enum_value = 0 THEN
+        RETURN JSON_SET(proto_data, '$."1"', 0);
+    ELSE
+        RETURN JSON_SET(proto_data, '$."1"', enum_value);
     END IF;
 END $$
 

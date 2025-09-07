@@ -374,6 +374,24 @@ func TestProtocGenOptionalField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_optional_enum_field__or(?, 999)", `{"16": 1}`).IsEqualToInt(1) // Field present, return actual value
 		RunTestThatExpression(t, "test_get_optional_enum_field__or(?, 999)", `{}`).IsEqualToInt(999)      // Field absent, return default
 		RunTestThatExpression(t, "test_get_optional_enum_field__or(?, 999)", `{"16": 0}`).IsEqualToInt(0) // Zero enum is still present
+
+		// Test enum name getter (__as_name) methods
+		RunTestThatExpression(t, "test_get_optional_enum_field__as_name(?)", `{"16": 0}`).IsEqualToString("STATUS_UNSPECIFIED") // Zero value name
+		RunTestThatExpression(t, "test_get_optional_enum_field__as_name(?)", `{"16": 1}`).IsEqualToString("STATUS_ACTIVE")      // Active status name
+		RunTestThatExpression(t, "test_get_optional_enum_field__as_name(?)", `{"16": 2}`).IsEqualToString("STATUS_INACTIVE")    // Inactive status name
+		RunTestThatExpression(t, "test_get_optional_enum_field__as_name(?)", `{"16": 999}`).IsEqualToString("999")              // Unknown enum value returns number as string
+		RunTestThatExpression(t, "test_get_optional_enum_field__as_name(?)", `{}`).IsEqualToString("STATUS_UNSPECIFIED")        // Default when absent
+
+		// Test enum name nullable getter (__as_name_or) methods
+		RunTestThatExpression(t, "test_get_optional_enum_field__as_name_or(?, 'DEFAULT_VALUE')", `{"16": 1}`).IsEqualToString("STATUS_ACTIVE")      // Field present, return actual name
+		RunTestThatExpression(t, "test_get_optional_enum_field__as_name_or(?, 'DEFAULT_VALUE')", `{}`).IsEqualToString("DEFAULT_VALUE")             // Field absent, return custom default
+		RunTestThatExpression(t, "test_get_optional_enum_field__as_name_or(?, 'DEFAULT_VALUE')", `{"16": 0}`).IsEqualToString("STATUS_UNSPECIFIED") // Zero enum is still present
+
+		// Test enum name setter (__from_name) methods
+		RunTestThatExpression(t, "test_set_optional_enum_field__from_name(?, 'STATUS_ACTIVE')", `{}`).IsEqualToJsonString(`{"16": 1}`)                       // Set from valid name
+		RunTestThatExpression(t, "test_set_optional_enum_field__from_name(?, 'STATUS_INACTIVE')", `{}`).IsEqualToJsonString(`{"16": 2}`)                     // Set from different name
+		RunTestThatExpression(t, "test_set_optional_enum_field__from_name(?, 'STATUS_UNSPECIFIED')", `{}`).IsEqualToJsonString(`{"16": 0}`)                  // Set from zero value name
+		RunTestThatExpression(t, "test_set_optional_enum_field__from_name(?, 'INVALID_NAME')", `{}`).ToFailWithSignalException("45000", "Invalid enum name") // Invalid name should signal error
 	})
 
 	// Test message optional field

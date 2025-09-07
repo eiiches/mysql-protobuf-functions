@@ -115,8 +115,15 @@ func main() {
 				return methodNamePrefix + regexp.MustCompile("_+").ReplaceAllString(snake, "_")
 			},
 			FieldFilterFunc: func(field protoreflect.FieldDescriptor, functionName string) protocgenmysql.FilterDecision {
-				// Skip the problematic long function name
-				if functionName == "_pb_message_options_get_deprecated_legacy_json_field_conflicts__or" {
+				// Skip the problematic long function names
+				if functionName == "_pb_message_options_get_deprecated_legacy_json_field_conflicts__or" ||
+					functionName == "_pb_field_options_feature_support_get_edition_introduced__as_name" ||
+					functionName == "_pb_field_options_feature_support_get_edition_introduced__as_name_or" ||
+					functionName == "_pb_field_options_feature_support_get_edition_deprecated__as_name" ||
+					functionName == "_pb_field_options_feature_support_get_edition_deprecated__as_name_or" ||
+					functionName == "_pb_field_options_feature_support_set_edition_introduced__from_name" ||
+					functionName == "_pb_field_options_feature_support_set_edition_deprecated__from_name" ||
+					(strings.Contains(functionName, "__as_name") || strings.Contains(functionName, "__from_name")) && len(functionName) > 64 {
 					return protocgenmysql.DecisionCommentOut
 				}
 				return protocgenmysql.DecisionInclude
