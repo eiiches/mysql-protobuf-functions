@@ -306,7 +306,7 @@ func createFieldFilterFunc(skippedFunctions []string) protocgenmysql.FieldFilter
 		skippedSet[funcName] = true
 	}
 
-	return func(field protoreflect.FieldDescriptor, functionName string) protocgenmysql.FunctionGenerationDecision {
+	return func(field protoreflect.FieldDescriptor, functionName string) protocgenmysql.FilterDecision {
 		if skippedSet[functionName] {
 			return protocgenmysql.DecisionCommentOut
 		}

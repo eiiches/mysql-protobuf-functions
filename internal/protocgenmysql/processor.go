@@ -14,17 +14,17 @@ import (
 	"google.golang.org/protobuf/types/pluginpb"
 )
 
-// FunctionGenerationDecision represents what to do with a generated function
-type FunctionGenerationDecision int
+// FilterDecision represents what to do with a generated function
+type FilterDecision int
 
 const (
-	DecisionInclude    FunctionGenerationDecision = iota // Generate the function normally
-	DecisionExclude                                      // Don't generate the function at all
-	DecisionCommentOut                                   // Generate the function but comment it out
+	DecisionInclude    FilterDecision = iota // Generate the function normally
+	DecisionExclude                          // Don't generate the function at all
+	DecisionCommentOut                       // Generate the function but comment it out
 )
 
 // FieldFilterFunc is called for each function to determine how it should be generated
-type FieldFilterFunc func(field protoreflect.FieldDescriptor, functionName string) FunctionGenerationDecision
+type FieldFilterFunc func(field protoreflect.FieldDescriptor, functionName string) FilterDecision
 
 type GenerateConfig struct {
 	DescriptorSetName string
