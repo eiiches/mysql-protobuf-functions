@@ -254,6 +254,11 @@ func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoref
 			if err := generateMapFieldMethods(content, funcPrefix, fullTypeName, field, fieldName); err != nil {
 				return err
 			}
+
+			// Generate nullable getter (__or) for map fields
+			if err := generateMapNullableGetter(content, funcPrefix, fullTypeName, field, fieldName); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -419,23 +424,22 @@ func generateNullableGetter(content *strings.Builder, funcPrefix string, fullTyp
 		content.WriteString(fmt.Sprintf("%s    DECLARE json_value JSON;\n", commentPrefix))
 	}
 
-	// Get field value and check for presence using simpler IS NULL check
+	// Extract field value and return default if null
 	if needsJsonParsing {
 		content.WriteString(fmt.Sprintf("%s    SET json_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
-		content.WriteString(fmt.Sprintf("%s    IF json_value IS NOT NULL THEN\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s        RETURN %s;\n", commentPrefix, getJsonParseFunction(fieldType)))
+		content.WriteString(fmt.Sprintf("%s    IF json_value IS NULL THEN\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s        RETURN default_value;\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s    RETURN %s;\n", commentPrefix, getJsonParseFunction(fieldType)))
 	} else {
 		// For message fields and others, extract directly and check for null
 		content.WriteString(fmt.Sprintf("%s    DECLARE field_value JSON;\n", commentPrefix))
 		content.WriteString(fmt.Sprintf("%s    SET field_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
-		content.WriteString(fmt.Sprintf("%s    IF field_value IS NOT NULL THEN\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s        RETURN field_value;\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s    IF field_value IS NULL THEN\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s        RETURN default_value;\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
+		content.WriteString(fmt.Sprintf("%s    RETURN field_value;\n", commentPrefix))
 	}
-
-	// Field is not present, return provided default
-	content.WriteString(fmt.Sprintf("%s    ELSE\n", commentPrefix))
-	content.WriteString(fmt.Sprintf("%s        RETURN default_value;\n", commentPrefix))
-	content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
 
 	content.WriteString(fmt.Sprintf("%sEND $$\n\n", commentPrefix))
 	return nil
@@ -1193,6 +1197,32 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 	content.WriteString("        RETURN 0;\n")
 	content.WriteString("    END IF;\n")
 	content.WriteString("    RETURN JSON_LENGTH(map_value);\n")
+	content.WriteString("END $$\n\n")
+
+	return nil
+}
+
+// generateMapNullableGetter creates a nullable getter with custom default for map fields
+func generateMapNullableGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string) error {
+	// Create function name with __or modifier for get_all_ functions
+	getterFuncName := fmt.Sprintf("%s_get_all_%s__or", funcPrefix, fieldName)
+
+	if err := validateFunctionName(getterFuncName, fullTypeName); err != nil {
+		return err
+	}
+
+	// Map fields always return JSON for the entire map
+	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", getterFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC\n", getterFuncName))
+	content.WriteString("BEGIN\n")
+
+	// Extract map field and return default if null
+	content.WriteString(fmt.Sprintf("    DECLARE map_value JSON;\n"))
+	content.WriteString(fmt.Sprintf("    SET map_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("    IF map_value IS NULL THEN\n")
+	content.WriteString("        RETURN default_value;\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    RETURN map_value;\n")
 	content.WriteString("END $$\n\n")
 
 	return nil

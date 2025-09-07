@@ -4666,11 +4666,10 @@ CREATE FUNCTION _pb_file_descriptor_proto_get_name__or(proto_data JSON, default_
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_name $$
@@ -4707,11 +4706,10 @@ CREATE FUNCTION _pb_file_descriptor_proto_get_package__or(proto_data JSON, defau
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_package $$
@@ -6038,11 +6036,10 @@ CREATE FUNCTION _pb_file_descriptor_proto_get_options__or(proto_data JSON, defau
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."8"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_options $$
@@ -6077,11 +6074,10 @@ CREATE FUNCTION _pb_file_descriptor_proto_get_source_code_info__or(proto_data JS
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."9"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_source_code_info $$
@@ -6121,11 +6117,10 @@ CREATE FUNCTION _pb_file_descriptor_proto_get_syntax__or(proto_data JSON, defaul
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."12"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_syntax $$
@@ -6162,11 +6157,10 @@ CREATE FUNCTION _pb_file_descriptor_proto_get_edition__or(proto_data JSON, defau
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."14"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_edition__as_name $$
@@ -6283,11 +6277,10 @@ CREATE FUNCTION _pb_descriptor_proto_get_name__or(proto_data JSON, default_value
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_name $$
@@ -7429,11 +7422,10 @@ CREATE FUNCTION _pb_descriptor_proto_get_options__or(proto_data JSON, default_va
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."7"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_options $$
@@ -7873,11 +7865,10 @@ CREATE FUNCTION _pb_descriptor_proto_extension_range_get_start__or(proto_data JS
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_set_start $$
@@ -7914,11 +7905,10 @@ CREATE FUNCTION _pb_descriptor_proto_extension_range_get_end__or(proto_data JSON
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_set_end $$
@@ -7950,11 +7940,10 @@ CREATE FUNCTION _pb_descriptor_proto_extension_range_get_options__or(proto_data 
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_set_options $$
@@ -8024,11 +8013,10 @@ CREATE FUNCTION _pb_descriptor_proto_reserved_range_get_start__or(proto_data JSO
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_set_start $$
@@ -8065,11 +8053,10 @@ CREATE FUNCTION _pb_descriptor_proto_reserved_range_get_end__or(proto_data JSON,
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_set_end $$
@@ -8501,11 +8488,10 @@ CREATE FUNCTION _pb_extension_range_options_get_features__or(proto_data JSON, de
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."50"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_set_features $$
@@ -8545,11 +8531,10 @@ CREATE FUNCTION _pb_extension_range_options_get_verification__or(proto_data JSON
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_get_verification__as_name $$
@@ -8666,11 +8651,10 @@ CREATE FUNCTION _pb_extension_range_options_declaration_get_number__or(proto_dat
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_number $$
@@ -8707,11 +8691,10 @@ CREATE FUNCTION _pb_extension_range_options_declaration_get_full_name__or(proto_
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_full_name $$
@@ -8748,11 +8731,10 @@ CREATE FUNCTION _pb_extension_range_options_declaration_get_type__or(proto_data 
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_type $$
@@ -8789,11 +8771,10 @@ CREATE FUNCTION _pb_extension_range_options_declaration_get_reserved__or(proto_d
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_reserved $$
@@ -8830,11 +8811,10 @@ CREATE FUNCTION _pb_extension_range_options_declaration_get_repeated__or(proto_d
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_repeated $$
@@ -8921,11 +8901,10 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_name__or(proto_data JSON, default
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_name $$
@@ -8962,11 +8941,10 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_number__or(proto_data JSON, defau
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_number $$
@@ -9003,11 +8981,10 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_label__or(proto_data JSON, defaul
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_label__as_name $$
@@ -9094,11 +9071,10 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_type__or(proto_data JSON, default
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_type__as_name $$
@@ -9185,11 +9161,10 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_type_name__or(proto_data JSON, de
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_type_name $$
@@ -9226,11 +9201,10 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_extendee__or(proto_data JSON, def
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_extendee $$
@@ -9267,11 +9241,10 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_default_value__or(proto_data JSON
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."7"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_default_value $$
@@ -9308,11 +9281,10 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_oneof_index__or(proto_data JSON, 
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."9"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_oneof_index $$
@@ -9349,11 +9321,10 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_json_name__or(proto_data JSON, de
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."10"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_json_name $$
@@ -9385,11 +9356,10 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_options__or(proto_data JSON, defa
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."8"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_options $$
@@ -9429,11 +9399,10 @@ CREATE FUNCTION _pb_field_descriptor_proto_get_proto3_optional__or(proto_data JS
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."17"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_proto3_optional $$
@@ -9574,11 +9543,10 @@ CREATE FUNCTION _pb_oneof_descriptor_proto_get_name__or(proto_data JSON, default
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_set_name $$
@@ -9610,11 +9578,10 @@ CREATE FUNCTION _pb_oneof_descriptor_proto_get_options__or(proto_data JSON, defa
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_set_options $$
@@ -9684,11 +9651,10 @@ CREATE FUNCTION _pb_enum_descriptor_proto_get_name__or(proto_data JSON, default_
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_name $$
@@ -9905,11 +9871,10 @@ CREATE FUNCTION _pb_enum_descriptor_proto_get_options__or(proto_data JSON, defau
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_options $$
@@ -10349,11 +10314,10 @@ CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_get_start__or(prot
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_set_start $$
@@ -10390,11 +10354,10 @@ CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_get_end__or(proto_
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_set_end $$
@@ -10461,11 +10424,10 @@ CREATE FUNCTION _pb_enum_value_descriptor_proto_get_name__or(proto_data JSON, de
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_set_name $$
@@ -10502,11 +10464,10 @@ CREATE FUNCTION _pb_enum_value_descriptor_proto_get_number__or(proto_data JSON, 
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_set_number $$
@@ -10538,11 +10499,10 @@ CREATE FUNCTION _pb_enum_value_descriptor_proto_get_options__or(proto_data JSON,
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_set_options $$
@@ -10612,11 +10572,10 @@ CREATE FUNCTION _pb_service_descriptor_proto_get_name__or(proto_data JSON, defau
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_set_name $$
@@ -10833,11 +10792,10 @@ CREATE FUNCTION _pb_service_descriptor_proto_get_options__or(proto_data JSON, de
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_set_options $$
@@ -10907,11 +10865,10 @@ CREATE FUNCTION _pb_method_descriptor_proto_get_name__or(proto_data JSON, defaul
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_name $$
@@ -10948,11 +10905,10 @@ CREATE FUNCTION _pb_method_descriptor_proto_get_input_type__or(proto_data JSON, 
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_input_type $$
@@ -10989,11 +10945,10 @@ CREATE FUNCTION _pb_method_descriptor_proto_get_output_type__or(proto_data JSON,
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_output_type $$
@@ -11025,11 +10980,10 @@ CREATE FUNCTION _pb_method_descriptor_proto_get_options__or(proto_data JSON, def
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_options $$
@@ -11069,11 +11023,10 @@ CREATE FUNCTION _pb_method_descriptor_proto_get_client_streaming__or(proto_data 
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_client_streaming $$
@@ -11110,11 +11063,10 @@ CREATE FUNCTION _pb_method_descriptor_proto_get_server_streaming__or(proto_data 
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_server_streaming $$
@@ -11181,11 +11133,10 @@ CREATE FUNCTION _pb_file_options_get_java_package__or(proto_data JSON, default_v
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_package $$
@@ -11222,11 +11173,10 @@ CREATE FUNCTION _pb_file_options_get_java_outer_classname__or(proto_data JSON, d
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."8"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_outer_classname $$
@@ -11263,11 +11213,10 @@ CREATE FUNCTION _pb_file_options_get_java_multiple_files__or(proto_data JSON, de
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."10"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_multiple_files $$
@@ -11304,11 +11253,10 @@ CREATE FUNCTION _pb_file_options_get_java_generate_equals_and_hash__or(proto_dat
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."20"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_generate_equals_and_hash $$
@@ -11345,11 +11293,10 @@ CREATE FUNCTION _pb_file_options_get_java_string_check_utf8__or(proto_data JSON,
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."27"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_string_check_utf8 $$
@@ -11386,11 +11333,10 @@ CREATE FUNCTION _pb_file_options_get_optimize_for__or(proto_data JSON, default_v
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."9"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_get_optimize_for__as_name $$
@@ -11477,11 +11423,10 @@ CREATE FUNCTION _pb_file_options_get_go_package__or(proto_data JSON, default_val
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."11"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_go_package $$
@@ -11518,11 +11463,10 @@ CREATE FUNCTION _pb_file_options_get_cc_generic_services__or(proto_data JSON, de
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."16"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_cc_generic_services $$
@@ -11559,11 +11503,10 @@ CREATE FUNCTION _pb_file_options_get_java_generic_services__or(proto_data JSON, 
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."17"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_generic_services $$
@@ -11600,11 +11543,10 @@ CREATE FUNCTION _pb_file_options_get_py_generic_services__or(proto_data JSON, de
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."18"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_py_generic_services $$
@@ -11641,11 +11583,10 @@ CREATE FUNCTION _pb_file_options_get_deprecated__or(proto_data JSON, default_val
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."23"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_deprecated $$
@@ -11682,11 +11623,10 @@ CREATE FUNCTION _pb_file_options_get_cc_enable_arenas__or(proto_data JSON, defau
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."31"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_cc_enable_arenas $$
@@ -11723,11 +11663,10 @@ CREATE FUNCTION _pb_file_options_get_objc_class_prefix__or(proto_data JSON, defa
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."36"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_objc_class_prefix $$
@@ -11764,11 +11703,10 @@ CREATE FUNCTION _pb_file_options_get_csharp_namespace__or(proto_data JSON, defau
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."37"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_csharp_namespace $$
@@ -11805,11 +11743,10 @@ CREATE FUNCTION _pb_file_options_get_swift_prefix__or(proto_data JSON, default_v
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."39"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_swift_prefix $$
@@ -11846,11 +11783,10 @@ CREATE FUNCTION _pb_file_options_get_php_class_prefix__or(proto_data JSON, defau
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."40"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_php_class_prefix $$
@@ -11887,11 +11823,10 @@ CREATE FUNCTION _pb_file_options_get_php_namespace__or(proto_data JSON, default_
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."41"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_php_namespace $$
@@ -11928,11 +11863,10 @@ CREATE FUNCTION _pb_file_options_get_php_metadata_namespace__or(proto_data JSON,
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."44"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_php_metadata_namespace $$
@@ -11969,11 +11903,10 @@ CREATE FUNCTION _pb_file_options_get_ruby_package__or(proto_data JSON, default_v
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."45"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_ruby_package $$
@@ -12005,11 +11938,10 @@ CREATE FUNCTION _pb_file_options_get_features__or(proto_data JSON, default_value
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."50"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_features $$
@@ -12286,11 +12218,10 @@ CREATE FUNCTION _pb_message_options_get_message_set_wire_format__or(proto_data J
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_set_message_set_wire_format $$
@@ -12327,11 +12258,10 @@ CREATE FUNCTION _pb_message_options_get_no_standard_descriptor_accessor__or(prot
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_set_no_standard_descriptor_accessor $$
@@ -12368,11 +12298,10 @@ CREATE FUNCTION _pb_message_options_get_deprecated__or(proto_data JSON, default_
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_set_deprecated $$
@@ -12409,11 +12338,10 @@ CREATE FUNCTION _pb_message_options_get_map_entry__or(proto_data JSON, default_v
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."7"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_set_map_entry $$
@@ -12451,11 +12379,10 @@ END $$
 -- SKIPPED: BEGIN
 -- SKIPPED:     DECLARE json_value JSON;
 -- SKIPPED:     SET json_value = JSON_EXTRACT(proto_data, '$."11"');
--- SKIPPED:     IF json_value IS NOT NULL THEN
--- SKIPPED:         RETURN _pb_json_parse_bool(json_value);
--- SKIPPED:     ELSE
+-- SKIPPED:     IF json_value IS NULL THEN
 -- SKIPPED:         RETURN default_value;
 -- SKIPPED:     END IF;
+-- SKIPPED:     RETURN _pb_json_parse_bool(json_value);
 -- SKIPPED: END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_set_deprecated_legacy_json_field_conflicts $$
@@ -12487,11 +12414,10 @@ CREATE FUNCTION _pb_message_options_get_features__or(proto_data JSON, default_va
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."12"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_set_features $$
@@ -12746,11 +12672,10 @@ CREATE FUNCTION _pb_field_options_get_ctype__or(proto_data JSON, default_value I
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_get_ctype__as_name $$
@@ -12837,11 +12762,10 @@ CREATE FUNCTION _pb_field_options_get_packed__or(proto_data JSON, default_value 
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_packed $$
@@ -12878,11 +12802,10 @@ CREATE FUNCTION _pb_field_options_get_jstype__or(proto_data JSON, default_value 
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_get_jstype__as_name $$
@@ -12969,11 +12892,10 @@ CREATE FUNCTION _pb_field_options_get_lazy__or(proto_data JSON, default_value BO
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_lazy $$
@@ -13010,11 +12932,10 @@ CREATE FUNCTION _pb_field_options_get_unverified_lazy__or(proto_data JSON, defau
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."15"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_unverified_lazy $$
@@ -13051,11 +12972,10 @@ CREATE FUNCTION _pb_field_options_get_deprecated__or(proto_data JSON, default_va
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_deprecated $$
@@ -13092,11 +13012,10 @@ CREATE FUNCTION _pb_field_options_get_weak__or(proto_data JSON, default_value BO
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."10"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_weak $$
@@ -13133,11 +13052,10 @@ CREATE FUNCTION _pb_field_options_get_debug_redact__or(proto_data JSON, default_
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."16"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_debug_redact $$
@@ -13174,11 +13092,10 @@ CREATE FUNCTION _pb_field_options_get_retention__or(proto_data JSON, default_val
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."17"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_get_retention__as_name $$
@@ -13630,11 +13547,10 @@ CREATE FUNCTION _pb_field_options_get_features__or(proto_data JSON, default_valu
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."21"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_features $$
@@ -13669,11 +13585,10 @@ CREATE FUNCTION _pb_field_options_get_feature_support__or(proto_data JSON, defau
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."22"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_feature_support $$
@@ -13928,11 +13843,10 @@ CREATE FUNCTION _pb_field_options_edition_default_get_edition__or(proto_data JSO
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_edition_default_get_edition__as_name $$
@@ -14019,11 +13933,10 @@ CREATE FUNCTION _pb_field_options_edition_default_get_value__or(proto_data JSON,
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_edition_default_set_value $$
@@ -14090,11 +14003,10 @@ CREATE FUNCTION _pb_field_options_feature_support_get_edition_introduced__or(pro
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 -- DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_introduced__as_name $$
@@ -14181,11 +14093,10 @@ CREATE FUNCTION _pb_field_options_feature_support_get_edition_deprecated__or(pro
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 -- DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_deprecated__as_name $$
@@ -14272,11 +14183,10 @@ CREATE FUNCTION _pb_field_options_feature_support_get_deprecation_warning__or(pr
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_deprecation_warning $$
@@ -14313,11 +14223,10 @@ CREATE FUNCTION _pb_field_options_feature_support_get_edition_removed__or(proto_
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_removed__as_name $$
@@ -14531,11 +14440,10 @@ CREATE FUNCTION _pb_oneof_options_get_features__or(proto_data JSON, default_valu
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_oneof_options_set_features $$
@@ -14790,11 +14698,10 @@ CREATE FUNCTION _pb_enum_options_get_allow_alias__or(proto_data JSON, default_va
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_options_set_allow_alias $$
@@ -14831,11 +14738,10 @@ CREATE FUNCTION _pb_enum_options_get_deprecated__or(proto_data JSON, default_val
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_options_set_deprecated $$
@@ -14872,11 +14778,10 @@ CREATE FUNCTION _pb_enum_options_get_deprecated_legacy_json_field_conflicts__or(
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_options_set_deprecated_legacy_json_field_conflicts $$
@@ -14908,11 +14813,10 @@ CREATE FUNCTION _pb_enum_options_get_features__or(proto_data JSON, default_value
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."7"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_options_set_features $$
@@ -15167,11 +15071,10 @@ CREATE FUNCTION _pb_enum_value_options_get_deprecated__or(proto_data JSON, defau
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_options_set_deprecated $$
@@ -15203,11 +15106,10 @@ CREATE FUNCTION _pb_enum_value_options_get_features__or(proto_data JSON, default
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_options_set_features $$
@@ -15247,11 +15149,10 @@ CREATE FUNCTION _pb_enum_value_options_get_debug_redact__or(proto_data JSON, def
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_options_set_debug_redact $$
@@ -15283,11 +15184,10 @@ CREATE FUNCTION _pb_enum_value_options_get_feature_support__or(proto_data JSON, 
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_options_set_feature_support $$
@@ -15537,11 +15437,10 @@ CREATE FUNCTION _pb_service_options_get_features__or(proto_data JSON, default_va
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."34"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_options_set_features $$
@@ -15581,11 +15480,10 @@ CREATE FUNCTION _pb_service_options_get_deprecated__or(proto_data JSON, default_
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."33"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_options_set_deprecated $$
@@ -15837,11 +15735,10 @@ CREATE FUNCTION _pb_method_options_get_deprecated__or(proto_data JSON, default_v
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."33"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_options_set_deprecated $$
@@ -15878,11 +15775,10 @@ CREATE FUNCTION _pb_method_options_get_idempotency_level__or(proto_data JSON, de
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."34"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_options_get_idempotency_level__as_name $$
@@ -15964,11 +15860,10 @@ CREATE FUNCTION _pb_method_options_get_features__or(proto_data JSON, default_val
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."35"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_options_set_features $$
@@ -16430,11 +16325,10 @@ CREATE FUNCTION _pb_uninterpreted_option_get_identifier_value__or(proto_data JSO
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_identifier_value $$
@@ -16471,11 +16365,10 @@ CREATE FUNCTION _pb_uninterpreted_option_get_positive_int_value__or(proto_data J
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_unsigned_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_unsigned_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_positive_int_value $$
@@ -16512,11 +16405,10 @@ CREATE FUNCTION _pb_uninterpreted_option_get_negative_int_value__or(proto_data J
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_negative_int_value $$
@@ -16553,11 +16445,10 @@ CREATE FUNCTION _pb_uninterpreted_option_get_double_value__or(proto_data JSON, d
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_double_value $$
@@ -16594,11 +16485,10 @@ CREATE FUNCTION _pb_uninterpreted_option_get_string_value__or(proto_data JSON, d
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."7"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bytes(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bytes(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_string_value $$
@@ -16635,11 +16525,10 @@ CREATE FUNCTION _pb_uninterpreted_option_get_aggregate_value__or(proto_data JSON
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."8"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_aggregate_value $$
@@ -16706,11 +16595,10 @@ CREATE FUNCTION _pb_uninterpreted_option_name_part_get_name_part__or(proto_data 
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_set_name_part $$
@@ -16747,11 +16635,10 @@ CREATE FUNCTION _pb_uninterpreted_option_name_part_get_is_extension__or(proto_da
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_set_is_extension $$
@@ -16818,11 +16705,10 @@ CREATE FUNCTION _pb_feature_set_get_field_presence__or(proto_data JSON, default_
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_get_field_presence__as_name $$
@@ -16909,11 +16795,10 @@ CREATE FUNCTION _pb_feature_set_get_enum_type__or(proto_data JSON, default_value
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_get_enum_type__as_name $$
@@ -17000,11 +16885,10 @@ CREATE FUNCTION _pb_feature_set_get_repeated_field_encoding__or(proto_data JSON,
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_get_repeated_field_encoding__as_name $$
@@ -17091,11 +16975,10 @@ CREATE FUNCTION _pb_feature_set_get_utf8_validation__or(proto_data JSON, default
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_get_utf8_validation__as_name $$
@@ -17182,11 +17065,10 @@ CREATE FUNCTION _pb_feature_set_get_message_encoding__or(proto_data JSON, defaul
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_get_message_encoding__as_name $$
@@ -17273,11 +17155,10 @@ CREATE FUNCTION _pb_feature_set_get_json_format__or(proto_data JSON, default_val
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_get_json_format__as_name $$
@@ -17364,11 +17245,10 @@ CREATE FUNCTION _pb_feature_set_get_enforce_naming_style__or(proto_data JSON, de
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."7"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_get_enforce_naming_style__as_name $$
@@ -17826,11 +17706,10 @@ CREATE FUNCTION _pb_feature_set_defaults_get_minimum_edition__or(proto_data JSON
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_minimum_edition__as_name $$
@@ -17917,11 +17796,10 @@ CREATE FUNCTION _pb_feature_set_defaults_get_maximum_edition__or(proto_data JSON
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_maximum_edition__as_name $$
@@ -18038,11 +17916,10 @@ CREATE FUNCTION _pb_feature_set_edition_default_get_edition__or(proto_data JSON,
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_edition__as_name $$
@@ -18124,11 +18001,10 @@ CREATE FUNCTION _pb_feature_set_edition_default_get_overridable_features__or(pro
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_set_overridable_features $$
@@ -18163,11 +18039,10 @@ CREATE FUNCTION _pb_feature_set_edition_default_get_fixed_features__or(proto_dat
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_set_fixed_features $$
@@ -18822,11 +18697,10 @@ CREATE FUNCTION _pb_source_code_info_location_get_leading_comments__or(proto_dat
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_leading_comments $$
@@ -18863,11 +18737,10 @@ CREATE FUNCTION _pb_source_code_info_location_get_trailing_comments__or(proto_da
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_trailing_comments $$
@@ -19519,11 +19392,10 @@ CREATE FUNCTION _pb_generated_code_info_annotation_get_source_file__or(proto_dat
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_source_file $$
@@ -19560,11 +19432,10 @@ CREATE FUNCTION _pb_generated_code_info_annotation_get_begin__or(proto_data JSON
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_begin $$
@@ -19601,11 +19472,10 @@ CREATE FUNCTION _pb_generated_code_info_annotation_get_end__or(proto_data JSON, 
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_end $$
@@ -19642,11 +19512,10 @@ CREATE FUNCTION _pb_generated_code_info_annotation_get_semantic__or(proto_data J
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_semantic__as_name $$
@@ -19912,6 +19781,17 @@ BEGIN
     RETURN JSON_LENGTH(map_value);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_struct_get_all_fields__or $$
+CREATE FUNCTION pb_wkt_struct_get_all_fields__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    DECLARE map_value JSON;
+    SET map_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF map_value IS NULL THEN
+        RETURN default_value;
+    END IF;
+    RETURN map_value;
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_new $$
 CREATE FUNCTION pb_wkt_struct_fields_entry_new() RETURNS JSON DETERMINISTIC
 BEGIN
@@ -19980,11 +19860,10 @@ CREATE FUNCTION pb_wkt_struct_fields_entry_get_value__or(proto_data JSON, defaul
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_set_value $$
@@ -20054,11 +19933,10 @@ CREATE FUNCTION pb_wkt_value_get_null_value__or(proto_data JSON, default_value I
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_signed_int(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_get_null_value__as_name $$
@@ -20152,11 +20030,10 @@ CREATE FUNCTION pb_wkt_value_get_number_value__or(proto_data JSON, default_value
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_number_value $$
@@ -20200,11 +20077,10 @@ CREATE FUNCTION pb_wkt_value_get_string_value__or(proto_data JSON, default_value
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_string(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_string(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_string_value $$
@@ -20248,11 +20124,10 @@ CREATE FUNCTION pb_wkt_value_get_bool_value__or(proto_data JSON, default_value B
 BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF json_value IS NOT NULL THEN
-        RETURN _pb_json_parse_bool(json_value);
-    ELSE
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN _pb_json_parse_bool(json_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_bool_value $$
@@ -20291,11 +20166,10 @@ CREATE FUNCTION pb_wkt_value_get_struct_value__or(proto_data JSON, default_value
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_struct_value $$
@@ -20337,11 +20211,10 @@ CREATE FUNCTION pb_wkt_value_get_list_value__or(proto_data JSON, default_value J
 BEGIN
     DECLARE field_value JSON;
     SET field_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF field_value IS NOT NULL THEN
-        RETURN field_value;
-    ELSE
+    IF field_value IS NULL THEN
         RETURN default_value;
     END IF;
+    RETURN field_value;
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_list_value $$
