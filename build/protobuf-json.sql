@@ -19781,15 +19781,20 @@ BEGIN
     RETURN JSON_LENGTH(map_value);
 END $$
 
-DROP FUNCTION IF EXISTS pb_wkt_struct_get_all_fields__or $$
-CREATE FUNCTION pb_wkt_struct_get_all_fields__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_wkt_struct_get_fields__or $$
+CREATE FUNCTION pb_wkt_struct_get_fields__or(proto_data JSON, key_value LONGTEXT, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     DECLARE map_value JSON;
+    DECLARE element_value JSON;
     SET map_value = JSON_EXTRACT(proto_data, '$."1"');
     IF map_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN map_value;
+    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', JSON_QUOTE(key_value)));
+    IF element_value IS NULL THEN
+        RETURN default_value;
+    END IF;
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_new $$

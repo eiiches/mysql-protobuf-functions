@@ -255,8 +255,8 @@ func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoref
 				return err
 			}
 
-			// Generate nullable getter (__or) for map fields
-			if err := generateMapNullableGetter(content, funcPrefix, fullTypeName, field, fieldName); err != nil {
+			// Generate individual key getter with default (__or) for map fields
+			if err := generateMapKeyNullableGetter(content, funcPrefix, fullTypeName, field, fieldName); err != nil {
 				return err
 			}
 		}
@@ -1202,27 +1202,72 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 	return nil
 }
 
-// generateMapNullableGetter creates a nullable getter with custom default for map fields
-func generateMapNullableGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string) error {
-	// Create function name with __or modifier for get_all_ functions
-	getterFuncName := fmt.Sprintf("%s_get_all_%s__or", funcPrefix, fieldName)
+// generateMapKeyNullableGetter creates a nullable getter for individual map key access
+func generateMapKeyNullableGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string) error {
+	// Get map key and value types
+	keyType := field.MapKey().Kind()
+	valueType := field.MapValue().Kind()
+	isValueMessage := valueType == protoreflect.MessageKind
+
+	keyMySQLType, _ := getMySQLTypesForFieldFromReflection(keyType, false)
+	_, valueMySQLType := getMySQLTypesForFieldFromReflection(valueType, false)
+
+	// Create function name with __or modifier for individual key access
+	getterFuncName := fmt.Sprintf("%s_get_%s__or", funcPrefix, fieldName)
 
 	if err := validateFunctionName(getterFuncName, fullTypeName); err != nil {
 		return err
 	}
 
-	// Map fields always return JSON for the entire map
+	// Create the function signature
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", getterFuncName))
-	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC\n", getterFuncName))
+	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, key_value %s, default_value %s) RETURNS %s DETERMINISTIC\n",
+		getterFuncName, keyMySQLType, valueMySQLType, valueMySQLType))
 	content.WriteString("BEGIN\n")
 
-	// Extract map field and return default if null
-	content.WriteString(fmt.Sprintf("    DECLARE map_value JSON;\n"))
+	// Declare variables
+	content.WriteString("    DECLARE map_value JSON;\n")
+	content.WriteString("    DECLARE element_value JSON;\n")
+
+	// Get the map from the proto_data
 	content.WriteString(fmt.Sprintf("    SET map_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
 	content.WriteString("    IF map_value IS NULL THEN\n")
 	content.WriteString("        RETURN default_value;\n")
 	content.WriteString("    END IF;\n")
-	content.WriteString("    RETURN map_value;\n")
+
+	// Get the element from the map using the key
+	if keyType == protoreflect.StringKind {
+		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', JSON_QUOTE(key_value)));\n")
+	} else {
+		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', CAST(key_value AS CHAR)));\n")
+	}
+
+	content.WriteString("    IF element_value IS NULL THEN\n")
+	content.WriteString("        RETURN default_value;\n")
+	content.WriteString("    END IF;\n")
+
+	// Return the value, converting if necessary
+	if isValueMessage {
+		content.WriteString("    RETURN element_value;\n")
+	} else {
+		// For primitive types, cast appropriately
+		switch valueType {
+		case protoreflect.BoolKind:
+			content.WriteString("    RETURN CAST(element_value AS UNSIGNED);\n")
+		case protoreflect.StringKind:
+			content.WriteString("    RETURN JSON_UNQUOTE(element_value);\n")
+		case protoreflect.BytesKind:
+			content.WriteString("    RETURN FROM_BASE64(JSON_UNQUOTE(element_value));\n")
+		default:
+			// Numeric types
+			if valueMySQLType == "BIGINT" || valueMySQLType == "BIGINT UNSIGNED" {
+				content.WriteString("    RETURN CAST(element_value AS UNSIGNED);\n")
+			} else {
+				content.WriteString("    RETURN CAST(element_value AS SIGNED);\n")
+			}
+		}
+	}
+
 	content.WriteString("END $$\n\n")
 
 	return nil
