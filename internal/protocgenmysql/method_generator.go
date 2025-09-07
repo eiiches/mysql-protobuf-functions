@@ -17,7 +17,7 @@ type FileNameFunc func(protoPath string) string
 type TypePrefixFunc func(packageName protoreflect.FullName, typeName protoreflect.FullName) string
 
 // GenerateMethodFragments returns individual content fragments for each proto file
-func GenerateMethodFragments(files *protoregistry.Files, fileNameFunc FileNameFunc, typePrefixFunc TypePrefixFunc, schemaFunctionName string) (map[string][]string, error) {
+func GenerateMethodFragments(files *protoregistry.Files, fileNameFunc FileNameFunc, typePrefixFunc TypePrefixFunc, schemaFunctionName string, fieldFilterFunc FieldFilterFunc) (map[string][]string, error) {
 	fileFragments := make(map[string][]string)
 
 	// Collect all files and sort by path for deterministic ordering
@@ -35,7 +35,7 @@ func GenerateMethodFragments(files *protoregistry.Files, fileNameFunc FileNameFu
 	// Generate fragments for each proto file in sorted order
 	for _, fileDesc := range allFiles {
 		filename := fileNameFunc(fileDesc.Path())
-		content, err := generateMethodsForFile(fileDesc, typePrefixFunc, schemaFunctionName)
+		content, err := generateMethodsForFile(fileDesc, typePrefixFunc, schemaFunctionName, fieldFilterFunc)
 		if err != nil {
 			return nil, err
 		}
@@ -47,13 +47,13 @@ func GenerateMethodFragments(files *protoregistry.Files, fileNameFunc FileNameFu
 	return fileFragments, nil
 }
 
-func generateMethodsForFile(fileDesc protoreflect.FileDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string) (string, error) {
+func generateMethodsForFile(fileDesc protoreflect.FileDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string, fieldFilterFunc FieldFilterFunc) (string, error) {
 	var content strings.Builder
 
 	// Generate methods for each message type
 	messages := fileDesc.Messages()
 	for messageDesc := range protoreflectutils.Iterate(messages) {
-		if err := generateMessageMethods(&content, messageDesc, typePrefixFunc, schemaFunctionName); err != nil {
+		if err := generateMessageMethods(&content, messageDesc, typePrefixFunc, schemaFunctionName, fieldFilterFunc); err != nil {
 			return "", err
 		}
 	}
@@ -69,7 +69,7 @@ func generateMethodsForFile(fileDesc protoreflect.FileDescriptor, typePrefixFunc
 	return content.String(), nil
 }
 
-func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string) error {
+func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string, fieldFilterFunc FieldFilterFunc) error {
 	// Use FullName from descriptor - no manual string construction needed
 	fullTypeName := messageDesc.FullName()
 	packageName := messageDesc.ParentFile().Package()
@@ -88,7 +88,7 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 	}
 
 	// Generate field accessor methods with enhanced opaque API patterns
-	if err := generateFieldAccessorMethods(content, messageDesc, funcPrefix, fullTypeName); err != nil {
+	if err := generateFieldAccessorMethods(content, messageDesc, funcPrefix, fullTypeName, fieldFilterFunc); err != nil {
 		return err
 	}
 
@@ -100,7 +100,7 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 	// Generate methods for nested message types
 	nestedMessages := messageDesc.Messages()
 	for nestedMessageDesc := range protoreflectutils.Iterate(nestedMessages) {
-		if err := generateMessageMethods(content, nestedMessageDesc, typePrefixFunc, schemaFunctionName); err != nil {
+		if err := generateMessageMethods(content, nestedMessageDesc, typePrefixFunc, schemaFunctionName, fieldFilterFunc); err != nil {
 			return err
 		}
 	}
@@ -182,7 +182,7 @@ func generateConversionMethods(content *strings.Builder, funcPrefix string, full
 }
 
 // generateFieldAccessorMethods creates enhanced field accessor methods following opaque API patterns
-func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, funcPrefix string, fullTypeName protoreflect.FullName) error {
+func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, funcPrefix string, fullTypeName protoreflect.FullName, fieldFilterFunc FieldFilterFunc) error {
 	fields := messageDesc.Fields()
 
 	for field := range protoreflectutils.Iterate(fields) {
@@ -195,6 +195,13 @@ func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoref
 		// Generate enhanced getter with better defaults and type safety
 		if err := generateEnhancedGetter(content, funcPrefix, fullTypeName, field, fieldName, fieldType, isRepeated, isMessage, isMapField); err != nil {
 			return err
+		}
+
+		// Generate nullable getter with custom default for optional fields
+		if field.HasPresence() && !isRepeated && !isMapField {
+			if err := generateNullableGetter(content, funcPrefix, fullTypeName, field, fieldName, fieldType, isMessage, fieldFilterFunc); err != nil {
+				return err
+			}
 		}
 
 		// Generate enhanced setter with validation
@@ -329,6 +336,88 @@ func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTyp
 	}
 
 	content.WriteString("END $$\n\n")
+	return nil
+}
+
+// generateNullableGetter creates a nullable getter with custom default for optional fields
+func generateNullableGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, fieldType protoreflect.Kind, isMessage bool, fieldFilterFunc FieldFilterFunc) error {
+	// Create function name with __or modifier
+	getterFuncName := fmt.Sprintf("%s_get_%s__or", funcPrefix, fieldName)
+
+	_, getterType := getMySQLTypesForFieldFromReflection(fieldType, false)
+
+	// Determine how this function should be generated
+	decision := DecisionInclude
+	if fieldFilterFunc != nil {
+		decision = fieldFilterFunc(field, getterFuncName)
+	}
+
+	// Only validate function names for functions that will be generated normally
+	if decision == DecisionInclude {
+		if err := validateFunctionName(getterFuncName, fullTypeName); err != nil {
+			return err
+		}
+	}
+
+	// Skip generation entirely if excluded
+	if decision == DecisionExclude {
+		return nil
+	}
+
+	// Generate function (commented out if requested)
+	commentPrefix := ""
+	if decision == DecisionCommentOut {
+		commentPrefix = "-- SKIPPED: "
+		content.WriteString(fmt.Sprintf("-- SKIPPED: Function '%s' was filtered out\n", getterFuncName))
+	}
+
+	content.WriteString(fmt.Sprintf("%sDROP FUNCTION IF EXISTS %s $$\n", commentPrefix, getterFuncName))
+	content.WriteString(fmt.Sprintf("%sCREATE FUNCTION %s(proto_data JSON, default_value %s) RETURNS %s DETERMINISTIC\n", commentPrefix, getterFuncName, getterType, getterType))
+	content.WriteString(fmt.Sprintf("%sBEGIN\n", commentPrefix))
+
+	// Field is present, return actual value using same logic as regular getter
+	needsJsonParsing := !isMessage && (fieldType == protoreflect.BoolKind ||
+		fieldType == protoreflect.StringKind ||
+		fieldType == protoreflect.BytesKind ||
+		fieldType == protoreflect.Int64Kind ||
+		fieldType == protoreflect.Sint64Kind ||
+		fieldType == protoreflect.Sfixed64Kind ||
+		fieldType == protoreflect.Int32Kind ||
+		fieldType == protoreflect.Sint32Kind ||
+		fieldType == protoreflect.Sfixed32Kind ||
+		fieldType == protoreflect.Uint64Kind ||
+		fieldType == protoreflect.Fixed64Kind ||
+		fieldType == protoreflect.Uint32Kind ||
+		fieldType == protoreflect.Fixed32Kind ||
+		fieldType == protoreflect.FloatKind ||
+		fieldType == protoreflect.DoubleKind ||
+		fieldType == protoreflect.EnumKind)
+
+	// Declare variables at the beginning of the function if needed
+	if needsJsonParsing {
+		content.WriteString(fmt.Sprintf("%s    DECLARE json_value JSON;\n", commentPrefix))
+	}
+
+	// Check if field has presence
+	content.WriteString(fmt.Sprintf("%s    IF JSON_CONTAINS_PATH(proto_data, 'one', '$.\"%.d\"') THEN\n", commentPrefix, field.Number()))
+
+	if needsJsonParsing {
+		content.WriteString(fmt.Sprintf("%s        SET json_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
+		content.WriteString(fmt.Sprintf("%s        RETURN %s;\n", commentPrefix, getJsonParseFunction(fieldType)))
+	} else if isMessage {
+		// For message fields, return JSON object
+		content.WriteString(fmt.Sprintf("%s        RETURN JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
+	} else {
+		// Shouldn't reach here, but fallback
+		content.WriteString(fmt.Sprintf("%s        RETURN JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
+	}
+
+	// Field is not present, return provided default
+	content.WriteString(fmt.Sprintf("%s    ELSE\n", commentPrefix))
+	content.WriteString(fmt.Sprintf("%s        RETURN default_value;\n", commentPrefix))
+	content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
+
+	content.WriteString(fmt.Sprintf("%sEND $$\n\n", commentPrefix))
 	return nil
 }
 
@@ -644,7 +733,7 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("        RETURN NULL;\n")
 	content.WriteString("    END IF;\n")
 	content.WriteString("    SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));\n")
-	
+
 	// Handle type-specific parsing for return value
 	switch fieldType {
 	case protoreflect.BoolKind:
@@ -663,7 +752,7 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 		// For integers and enums, direct JSON parsing
 		content.WriteString("    RETURN CAST(element_value AS SIGNED);\n")
 	}
-	
+
 	content.WriteString("END $$\n\n")
 
 	// Generate index-based set method for repeated fields
@@ -740,7 +829,7 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("    END WHILE;\n")
 	content.WriteString("    \n")
 	content.WriteString("    -- Insert new element\n")
-	
+
 	// Handle type-specific conversions for inserting
 	switch fieldType {
 	case protoreflect.BoolKind:
@@ -757,7 +846,7 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 		// For integers and enums, direct JSON casting
 		content.WriteString("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));\n")
 	}
-	
+
 	content.WriteString("    \n")
 	content.WriteString("    -- Copy remaining elements after insert position\n")
 	content.WriteString("    WHILE i < array_length DO\n")
@@ -827,7 +916,7 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("    SET elements_length = JSON_LENGTH(elements_array);\n")
 	content.WriteString("    WHILE i < elements_length DO\n")
 	content.WriteString("        SET element_value = JSON_EXTRACT(elements_array, CONCAT('$[', i, ']'));\n")
-	
+
 	// Handle type-specific conversions for adding elements
 	switch fieldType {
 	case protoreflect.BoolKind:
@@ -841,7 +930,7 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	default:
 		content.WriteString("        SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);\n")
 	}
-	
+
 	content.WriteString("        SET i = i + 1;\n")
 	content.WriteString("    END WHILE;\n")
 	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', current_array);\n", field.Number()))
@@ -873,7 +962,7 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 	content.WriteString("    DECLARE element_value JSON;\n")
 	content.WriteString(fmt.Sprintf("    SET map_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
 	content.WriteString("    IF map_value IS NULL THEN\n")
-	
+
 	// Return appropriate default value for the value type
 	switch valueType {
 	case protoreflect.BoolKind:
@@ -888,9 +977,9 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 		// All numeric types default to 0
 		content.WriteString("        RETURN 0;\n")
 	}
-	
+
 	content.WriteString("    END IF;\n")
-	
+
 	// Convert key to string for JSON access (all map keys are stored as strings in JSON)
 	switch keyType {
 	case protoreflect.StringKind:
@@ -899,9 +988,9 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 		// For numeric keys, convert to string
 		content.WriteString("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', CAST(key_value AS CHAR)));\n")
 	}
-	
+
 	content.WriteString("    IF element_value IS NULL THEN\n")
-	
+
 	// Return appropriate default value for the value type when key not found
 	switch valueType {
 	case protoreflect.BoolKind:
@@ -916,9 +1005,9 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 		// All numeric types default to 0
 		content.WriteString("        RETURN 0;\n")
 	}
-	
+
 	content.WriteString("    END IF;\n")
-	
+
 	// Handle type-specific parsing for return value
 	switch valueType {
 	case protoreflect.BoolKind:
@@ -935,7 +1024,7 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 		// For integers and enums, direct JSON parsing
 		content.WriteString("    RETURN CAST(element_value AS SIGNED);\n")
 	}
-	
+
 	content.WriteString("END $$\n\n")
 
 	// Generate contains method for map fields
@@ -952,7 +1041,7 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 	content.WriteString("    IF map_value IS NULL THEN\n")
 	content.WriteString("        RETURN FALSE;\n")
 	content.WriteString("    END IF;\n")
-	
+
 	// Convert key to string for JSON access
 	switch keyType {
 	case protoreflect.StringKind:
@@ -961,7 +1050,7 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTy
 		// For numeric keys, convert to string
 		content.WriteString("    RETURN JSON_CONTAINS_PATH(map_value, 'one', CONCAT('$.', CAST(key_value AS CHAR)));\n")
 	}
-	
+
 	content.WriteString("END $$\n\n")
 
 	// Generate put method for map fields

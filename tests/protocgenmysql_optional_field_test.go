@@ -59,6 +59,10 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_double_field(?)", `{"1": "binary64:0x400921fb54442d18"}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_double_field__or(?, 99.99)", `{"1": "binary64:0x400921fb54442d18"}`).IsEqualToDouble(3.141592653589793) // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_double_field__or(?, 99.99)", `{}`).IsEqualToDouble(99.99)                                               // Field absent, return default
 	})
 
 	// Test float optional field (IEEE 754 binary32 format)
@@ -76,6 +80,10 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_float_field(?)", `{"2": "binary32:0x4048f5c3"}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_float_field__or(?, 88.88)", `{"2": "binary32:0x4048f5c3"}`).IsEqualToFloat(3.14) // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_float_field__or(?, 88.88)", `{}`).IsEqualToFloat(88.88)                          // Field absent, return default
 	})
 
 	// Test remaining integer types
@@ -92,6 +100,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_int32_field(?)", `{"3": 42}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_int32_field__or(?, 999)", `{"3": 42}`).IsEqualToInt(42)  // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_int32_field__or(?, 999)", `{}`).IsEqualToInt(999)       // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_int32_field__or(?, 999)", `{"3": 0}`).IsEqualToInt(0)   // Zero is still present
 	})
 
 	t.Run("optional_int64_field", func(t *testing.T) {
@@ -107,6 +120,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_int64_field(?)", `{"4": 9223372036854775807}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_int64_field__or(?, 999)", `{"4": 9223372036854775807}`).IsEqualToInt(9223372036854775807) // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_int64_field__or(?, 999)", `{}`).IsEqualToInt(999)                                        // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_int64_field__or(?, 999)", `{"4": 0}`).IsEqualToInt(0)                                   // Zero is still present
 	})
 
 	t.Run("optional_uint32_field", func(t *testing.T) {
@@ -122,6 +140,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_uint32_field(?)", `{"5": 4294967295}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_uint32_field__or(?, 999)", `{"5": 4294967295}`).IsEqualToUint(4294967295) // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_uint32_field__or(?, 999)", `{}`).IsEqualToUint(999)                      // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_uint32_field__or(?, 999)", `{"5": 0}`).IsEqualToUint(0)                  // Zero is still present
 	})
 
 	t.Run("optional_uint64_field", func(t *testing.T) {
@@ -137,6 +160,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_uint64_field(?)", `{"6": 18446744073709551615}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_uint64_field__or(?, 999)", `{"6": 18446744073709551615}`).IsEqualToUint(18446744073709551615) // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_uint64_field__or(?, 999)", `{}`).IsEqualToUint(999)                                           // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_uint64_field__or(?, 999)", `{"6": 0}`).IsEqualToUint(0)                                       // Zero is still present
 	})
 
 	t.Run("optional_sint32_field", func(t *testing.T) {
@@ -152,6 +180,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_sint32_field(?)", `{"7": -1}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_sint32_field__or(?, 999)", `{"7": -1}`).IsEqualToInt(-1)  // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_sint32_field__or(?, 999)", `{}`).IsEqualToInt(999)       // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_sint32_field__or(?, 999)", `{"7": 0}`).IsEqualToInt(0)   // Zero is still present
 	})
 
 	t.Run("optional_sint64_field", func(t *testing.T) {
@@ -167,6 +200,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_sint64_field(?)", `{"8": -9223372036854775808}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_sint64_field__or(?, 999)", `{"8": -9223372036854775808}`).IsEqualToInt(-9223372036854775808) // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_sint64_field__or(?, 999)", `{}`).IsEqualToInt(999)                                          // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_sint64_field__or(?, 999)", `{"8": 0}`).IsEqualToInt(0)                                     // Zero is still present
 	})
 
 	t.Run("optional_fixed32_field", func(t *testing.T) {
@@ -182,6 +220,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_fixed32_field(?)", `{"9": 4294967295}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_fixed32_field__or(?, 999)", `{"9": 4294967295}`).IsEqualToUint(4294967295) // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_fixed32_field__or(?, 999)", `{}`).IsEqualToUint(999)                      // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_fixed32_field__or(?, 999)", `{"9": 0}`).IsEqualToUint(0)                  // Zero is still present
 	})
 
 	t.Run("optional_fixed64_field", func(t *testing.T) {
@@ -197,6 +240,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_fixed64_field(?)", `{"10": 18446744073709551615}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_fixed64_field__or(?, 999)", `{"10": 18446744073709551615}`).IsEqualToUint(18446744073709551615) // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_fixed64_field__or(?, 999)", `{}`).IsEqualToUint(999)                                           // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_fixed64_field__or(?, 999)", `{"10": 0}`).IsEqualToUint(0)                                      // Zero is still present
 	})
 
 	t.Run("optional_sfixed32_field", func(t *testing.T) {
@@ -212,6 +260,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_sfixed32_field(?)", `{"11": -2147483648}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_sfixed32_field__or(?, 999)", `{"11": -2147483648}`).IsEqualToInt(-2147483648) // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_sfixed32_field__or(?, 999)", `{}`).IsEqualToInt(999)                         // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_sfixed32_field__or(?, 999)", `{"11": 0}`).IsEqualToInt(0)                    // Zero is still present
 	})
 
 	t.Run("optional_sfixed64_field", func(t *testing.T) {
@@ -227,6 +280,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_sfixed64_field(?)", `{"12": -9223372036854775808}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_sfixed64_field__or(?, 999)", `{"12": -9223372036854775808}`).IsEqualToInt(-9223372036854775808) // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_sfixed64_field__or(?, 999)", `{}`).IsEqualToInt(999)                                           // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_sfixed64_field__or(?, 999)", `{"12": 0}`).IsEqualToInt(0)                                     // Zero is still present
 	})
 
 	// Test bool optional field
@@ -244,6 +302,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_bool_field(?)", `{"13": true}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_bool_field__or(?, TRUE)", `{"13": false}`).IsEqualToBool(false) // Field present (false), return actual value
+		RunTestThatExpression(t, "test_get_optional_bool_field__or(?, TRUE)", `{}`).IsEqualToBool(true)             // Field absent, return default (true)
+		RunTestThatExpression(t, "test_get_optional_bool_field__or(?, FALSE)", `{"13": true}`).IsEqualToBool(true)  // Field present (true), return actual value
 	})
 
 	// Test string optional field
@@ -261,6 +324,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_string_field(?)", `{"14": "hello world"}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_string_field__or(?, 'default text')", `{"14": "hello world"}`).IsEqualToString("hello world") // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_string_field__or(?, 'default text')", `{}`).IsEqualToString("default text")                   // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_string_field__or(?, 'default text')", `{"14": ""}`).IsEqualToString("")                       // Empty string is still present
 	})
 
 	// Test bytes optional field
@@ -278,6 +346,12 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_bytes_field(?)", `{"15": "aGVsbG8="}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		defaultBytes := []byte("default")
+		RunTestThatExpression(t, "test_get_optional_bytes_field__or(?, ?)", `{"15": "aGVsbG8="}`, defaultBytes).IsEqualToBytes([]byte("hello"))   // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_bytes_field__or(?, ?)", `{}`, defaultBytes).IsEqualToBytes(defaultBytes)                   // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_bytes_field__or(?, ?)", `{"15": ""}`, defaultBytes).IsEqualToBytes([]byte{})               // Empty bytes is still present
 	})
 
 	// Test enum optional field
@@ -295,6 +369,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_enum_field(?)", `{"16": 1}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		RunTestThatExpression(t, "test_get_optional_enum_field__or(?, 999)", `{"16": 1}`).IsEqualToInt(1)   // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_enum_field__or(?, 999)", `{}`).IsEqualToInt(999)       // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_enum_field__or(?, 999)", `{"16": 0}`).IsEqualToInt(0)  // Zero enum is still present
 	})
 
 	// Test message optional field
@@ -314,5 +393,11 @@ func TestProtocGenOptionalField(t *testing.T) {
 
 		// Test clear methods
 		RunTestThatExpression(t, "test_clear_optional_message_field(?)", `{"17": {"1": "test", "2": 42}}`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods
+		defaultMessage := `{"1": "default", "2": 999}`
+		RunTestThatExpression(t, "test_get_optional_message_field__or(?, ?)", `{"17": {"1": "test", "2": 42}}`, defaultMessage).IsEqualToJsonString(`{"1": "test", "2": 42}`) // Field present, return actual value
+		RunTestThatExpression(t, "test_get_optional_message_field__or(?, ?)", `{}`, defaultMessage).IsEqualToJsonString(defaultMessage)                                       // Field absent, return default
+		RunTestThatExpression(t, "test_get_optional_message_field__or(?, ?)", `{"17": {}}`, defaultMessage).IsEqualToJsonString(`{}`)                                         // Empty message is still present
 	})
 }

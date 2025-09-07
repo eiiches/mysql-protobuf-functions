@@ -114,6 +114,13 @@ func main() {
 				snake = strings.ReplaceAll(snake, "u_int32", "uint32")
 				return methodNamePrefix + regexp.MustCompile("_+").ReplaceAllString(snake, "_")
 			},
+			FieldFilterFunc: func(field protoreflect.FieldDescriptor, functionName string) protocgenmysql.FunctionGenerationDecision {
+				// Skip the problematic long function name
+				if functionName == "_pb_message_options_get_deprecated_legacy_json_field_conflicts__or" {
+					return protocgenmysql.DecisionCommentOut
+				}
+				return protocgenmysql.DecisionInclude
+			},
 		}
 
 		response, err := protocgenmysql.Generate(fileDescriptorSet, config)

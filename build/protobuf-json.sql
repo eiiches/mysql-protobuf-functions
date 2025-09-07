@@ -236,7 +236,6 @@ proc: BEGIN
 
 	-- Get message descriptor
 	SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);
-
 	IF message_descriptor IS NULL THEN
 		SET message_text = CONCAT('_pb_wire_json_to_json: message type `', full_type_name, '` not found in descriptor set');
 		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
@@ -248,10 +247,8 @@ proc: BEGIN
 		SET message_text = CONCAT('_pb_wire_json_to_json: file descriptor not found for type `', full_type_name, '`');
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
-	SET syntax = JSON_UNQUOTE(JSON_EXTRACT(file_descriptor, '$."12"')); -- syntax field
-	IF syntax IS NULL THEN
-		SET syntax = 'proto2'; -- default
-	END IF;
+
+	SET syntax = _pb_file_descriptor_proto_get_syntax__or(file_descriptor, 'proto2');
 
 	SET result = JSON_OBJECT();
 	SET oneofs = JSON_OBJECT();
@@ -267,16 +264,10 @@ proc: BEGIN
 		SET field_name = _pb_field_descriptor_proto_get_name(field_descriptor);
 		SET field_label = _pb_field_descriptor_proto_get_label(field_descriptor);
 		SET field_type = _pb_field_descriptor_proto_get_type(field_descriptor);
-		IF _pb_field_descriptor_proto_has_type_name(field_descriptor) THEN
-			SET field_type_name = _pb_field_descriptor_proto_get_type_name(field_descriptor);
-		END IF;
-		IF _pb_field_descriptor_proto_has_json_name(field_descriptor) THEN
-			SET json_name = _pb_field_descriptor_proto_get_json_name(field_descriptor);
-		END IF;
+		SET field_type_name = _pb_field_descriptor_proto_get_type_name__or(field_descriptor, NULL);
+		SET json_name = _pb_field_descriptor_proto_get_json_name__or(field_descriptor, NULL);
 		SET proto3_optional = _pb_field_descriptor_proto_get_proto3_optional(field_descriptor);
-		IF _pb_field_descriptor_proto_has_oneof_index(field_descriptor) THEN
-			SET oneof_index = _pb_field_descriptor_proto_get_oneof_index(field_descriptor);
-		END IF;
+		SET oneof_index = _pb_field_descriptor_proto_get_oneof_index__or(field_descriptor, NULL);
 
 		SET is_repeated = (field_label = 3); -- LABEL_REPEATED
 
@@ -311,11 +302,11 @@ proc: BEGIN
 				SET field_json_value = JSON_OBJECT();
 
 				-- Get map key/value field descriptors
-				SET map_key_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- first field (key)
-				SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value)
-				SET map_key_type = JSON_EXTRACT(map_key_field, '$."5"');
-				SET map_value_type = JSON_EXTRACT(map_value_field, '$."5"');
-				SET map_value_type_name = JSON_UNQUOTE(JSON_EXTRACT(map_value_field, '$."6"'));
+				SET map_key_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- first field (key) -- FIXME: don't assume specific index
+				SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value) -- FIXME: don't assume specific index
+				SET map_key_type = _pb_field_descriptor_proto_get_type(map_key_field);
+				SET map_value_type = _pb_field_descriptor_proto_get_type(map_value_field);
+				SET map_value_type_name = _pb_field_descriptor_proto_get_type_name__or(map_value_field, NULL);
 
 				WHILE element_index < element_count DO
 					SET element = pb_message_to_wire_json(FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(elements, CONCAT('$[', element_index, ']')))));
@@ -803,7 +794,6 @@ proc: BEGIN
 
 	-- Get message descriptor
 	SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);
-
 	IF message_descriptor IS NULL THEN
 		SET message_text = CONCAT('_pb_json_to_number_json_proc: message type not found: ', full_type_name);
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
@@ -811,7 +801,7 @@ proc: BEGIN
 
 	-- Get file descriptor to determine syntax
 	SET file_descriptor = _pb_descriptor_set_get_file_descriptor(descriptor_set_json, full_type_name);
-	SET syntax = _pb_file_descriptor_proto_get_syntax(file_descriptor);
+	SET syntax = _pb_file_descriptor_proto_get_syntax__or(file_descriptor, 'proto2');
 
 	-- Process each field in the message descriptor
 	SET field_index = 0;
@@ -824,16 +814,10 @@ proc: BEGIN
 		SET field_name = _pb_field_descriptor_proto_get_name(field_descriptor);
 		SET field_label = _pb_field_descriptor_proto_get_label(field_descriptor);
 		SET field_type = _pb_field_descriptor_proto_get_type(field_descriptor);
-		IF _pb_field_descriptor_proto_has_type_name(field_descriptor) THEN
-			SET field_type_name = _pb_field_descriptor_proto_get_type_name(field_descriptor);
-		END IF;
-		IF _pb_field_descriptor_proto_has_json_name(field_descriptor) THEN
-			SET json_name = _pb_field_descriptor_proto_get_json_name(field_descriptor);
-		END IF;
+		SET field_type_name = _pb_field_descriptor_proto_get_type_name__or(field_descriptor, NULL);
+		SET json_name = _pb_field_descriptor_proto_get_json_name__or(field_descriptor, NULL);
 		SET proto3_optional = _pb_field_descriptor_proto_get_proto3_optional(field_descriptor);
-		IF _pb_field_descriptor_proto_has_oneof_index(field_descriptor) THEN
-			SET oneof_index = _pb_field_descriptor_proto_get_oneof_index(field_descriptor);
-		END IF;
+		SET oneof_index = _pb_field_descriptor_proto_get_oneof_index__or(field_descriptor, NULL);
 
 		SET is_repeated = (field_label = 3);
 		-- Determine field presence
@@ -860,26 +844,20 @@ proc: BEGIN
 
 		-- First try json_name if specified
 		IF json_name IS NOT NULL THEN
-			IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', json_name)) THEN
-				SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', json_name));
-			END IF;
+			SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', JSON_QUOTE(json_name)));
 		END IF;
 
 		-- If not found and json_name is different from camelCase version, try camelCase
 		IF field_json_value IS NULL THEN
 			SET source_field_name = _pb_util_snake_to_camel(field_name);
 			IF json_name IS NULL OR json_name != source_field_name THEN
-				IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', source_field_name)) THEN
-					SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', source_field_name));
-				END IF;
+				SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', JSON_QUOTE(source_field_name)));
 			END IF;
 		END IF;
 
 		-- If still not found, try original proto field name
 		IF field_json_value IS NULL THEN
-			IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', field_name)) THEN
-				SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', field_name));
-			END IF;
+			SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', JSON_QUOTE(field_name)));
 		END IF;
 
 		-- If field is not found, skip to the next field processing.
@@ -899,9 +877,9 @@ proc: BEGIN
 			-- Maps in ProtoJSON are objects like {"key1": "value1", "key2": "value2"}
 			-- In ProtoNumberJSON, values may need conversion based on their types
 			-- Get map value field type for conversion
-			SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value)
-			SET map_value_type = JSON_EXTRACT(map_value_field, '$."5"');
-			SET map_value_type_name = JSON_UNQUOTE(JSON_EXTRACT(map_value_field, '$."6"'));
+			SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value) -- FIXME: don't assume specific index
+			SET map_value_type = _pb_field_descriptor_proto_get_type(map_value_field);
+			SET map_value_type_name = _pb_field_descriptor_proto_get_type_name__or(map_value_field, NULL);
 
 			-- Convert map values if necessary
 			SET map_keys = JSON_KEYS(field_json_value);
@@ -1228,10 +1206,12 @@ proc: BEGIN
 
 	-- Get file descriptor to determine syntax
 	SET file_descriptor = _pb_descriptor_set_get_file_descriptor(descriptor_set_json, full_type_name);
-	SET syntax = JSON_UNQUOTE(JSON_EXTRACT(file_descriptor, '$."12"')); -- syntax field
-	IF syntax IS NULL THEN
-		SET syntax = 'proto2'; -- default
+	IF file_descriptor IS NULL THEN
+		SET message_text = CONCAT('_pb_number_json_to_message: file descriptor not found for type `', full_type_name, '`');
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
+
+	SET syntax = _pb_file_descriptor_proto_get_syntax__or(file_descriptor, 'proto2');
 
 	SET result = JSON_OBJECT();
 
@@ -1246,16 +1226,10 @@ proc: BEGIN
 		SET field_name = _pb_field_descriptor_proto_get_name(field_descriptor);
 		SET field_label = _pb_field_descriptor_proto_get_label(field_descriptor);
 		SET field_type = _pb_field_descriptor_proto_get_type(field_descriptor);
-		IF _pb_field_descriptor_proto_has_type_name(field_descriptor) THEN
-			SET field_type_name = _pb_field_descriptor_proto_get_type_name(field_descriptor);
-		END IF;
-		IF _pb_field_descriptor_proto_has_json_name(field_descriptor) THEN
-			SET json_name = _pb_field_descriptor_proto_get_json_name(field_descriptor);
-		END IF;
+		SET field_type_name = _pb_field_descriptor_proto_get_type_name__or(field_descriptor, NULL);
+		SET json_name = _pb_field_descriptor_proto_get_json_name__or(field_descriptor, NULL);
 		SET proto3_optional = _pb_field_descriptor_proto_get_proto3_optional(field_descriptor);
-		IF _pb_field_descriptor_proto_has_oneof_index(field_descriptor) THEN
-			SET oneof_index = _pb_field_descriptor_proto_get_oneof_index(field_descriptor);
-		END IF;
+		SET oneof_index = _pb_field_descriptor_proto_get_oneof_index__or(field_descriptor, NULL);
 
 		SET is_repeated = (field_label = 3); -- LABEL_REPEATED
 
@@ -1303,11 +1277,11 @@ proc: BEGIN
 					SET map_key_index = 0;
 
 					-- Get map key/value field descriptors
-					SET map_key_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- first field (key)
-					SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value)
-					SET map_key_type = JSON_EXTRACT(map_key_field, '$."5"');
-					SET map_value_type = JSON_EXTRACT(map_value_field, '$."5"');
-					SET map_value_type_name = JSON_UNQUOTE(JSON_EXTRACT(map_value_field, '$."6"'));
+					SET map_key_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- first field (key) -- FIXME: don't assume specific index
+					SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value) -- FIXME: don't assume specific index
+					SET map_key_type = _pb_field_descriptor_proto_get_type(map_key_field);
+					SET map_value_type = _pb_field_descriptor_proto_get_type(map_value_field);
+					SET map_value_type_name = _pb_field_descriptor_proto_get_type_name__or(map_value_field, NULL);
 
 					WHILE map_key_index < map_key_count DO
 						SET map_key_name = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', map_key_index, ']')));
@@ -1587,12 +1561,12 @@ BEGIN
 	SET map_entry_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, map_entry_type_name);
 
 	-- Get key and value field descriptors (map entries always have field 1 = key, field 2 = value)
-	SET key_field_descriptor = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- field 1 (key)
-	SET value_field_descriptor = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- field 2 (value)
+	SET key_field_descriptor = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- field 1 (key) -- FIXME: don't assume specific index
+	SET value_field_descriptor = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- field 2 (value) -- FIXME: don't assume specific index
 
 	-- Get value field type information
-	SET value_field_type = JSON_EXTRACT(value_field_descriptor, '$."5"'); -- type
-	SET value_field_type_name = JSON_UNQUOTE(JSON_EXTRACT(value_field_descriptor, '$."6"')); -- type_name
+	SET value_field_type = _pb_field_descriptor_proto_get_type(value_field_descriptor);
+	SET value_field_type_name = _pb_field_descriptor_proto_get_type_name__or(value_field_descriptor, NULL);
 
 	-- Initialize result object
 	SET result = JSON_OBJECT();
@@ -1679,7 +1653,6 @@ proc: BEGIN
 	DECLARE message_text TEXT;
 	DECLARE message_descriptor JSON;
 	DECLARE file_descriptor JSON;
-	DECLARE syntax TEXT;
 	DECLARE fields JSON;
 	DECLARE field_count INT;
 	DECLARE field_index INT;
@@ -1692,6 +1665,7 @@ proc: BEGIN
 	DECLARE field_type_name TEXT;
 	DECLARE json_name TEXT;
 	DECLARE proto3_optional BOOLEAN;
+	DECLARE oneof_index INT;
 	-- Processing variables
 	DECLARE is_repeated BOOLEAN;
 	DECLARE field_json_value JSON;
@@ -1728,7 +1702,6 @@ proc: BEGIN
 
 	-- Get message descriptor
 	SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);
-
 	IF message_descriptor IS NULL THEN
 		SET message_text = CONCAT('_pb_number_json_to_json_proc: message type not found: ', full_type_name);
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
@@ -1745,13 +1718,10 @@ proc: BEGIN
 		SET field_name = _pb_field_descriptor_proto_get_name(field_descriptor);
 		SET field_label = _pb_field_descriptor_proto_get_label(field_descriptor);
 		SET field_type = _pb_field_descriptor_proto_get_type(field_descriptor);
-		IF _pb_field_descriptor_proto_has_type_name(field_descriptor) THEN
-			SET field_type_name = _pb_field_descriptor_proto_get_type_name(field_descriptor);
-		END IF;
-		IF _pb_field_descriptor_proto_has_json_name(field_descriptor) THEN
-			SET json_name = _pb_field_descriptor_proto_get_json_name(field_descriptor);
-		END IF;
+		SET field_type_name = _pb_field_descriptor_proto_get_type_name__or(field_descriptor, NULL);
+		SET json_name = _pb_field_descriptor_proto_get_json_name__or(field_descriptor, NULL);
 		SET proto3_optional = _pb_field_descriptor_proto_get_proto3_optional(field_descriptor);
+		SET oneof_index = _pb_field_descriptor_proto_get_oneof_index__or(field_descriptor, NULL);
 
 		-- Determine target field name (json_name takes precedence over field_name)
 		SET target_field_name = COALESCE(json_name, field_name);
@@ -1807,7 +1777,7 @@ proc: BEGIN
 				IF is_map OR is_repeated THEN
 					SET has_presence = FALSE; -- Maps and repeated fields always emit defaults
 				ELSE
-					SET has_presence = proto3_optional OR (JSON_EXTRACT(field_descriptor, '$.\"9\"') IS NOT NULL) OR (field_type = 11); -- oneof_index or message type
+					SET has_presence = proto3_optional OR (oneof_index IS NOT NULL) OR (field_type = 11); -- oneof_index or message type
 				END IF;
 
 				-- Only emit defaults for non-presence-sensing fields
@@ -4691,6 +4661,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_name__or $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_file_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -4718,6 +4700,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_package__or $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_package__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_package $$
@@ -6039,6 +6033,16 @@ BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."8"'), JSON_OBJECT());
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_options__or $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."8"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."8"');
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_options $$
 CREATE FUNCTION _pb_file_descriptor_proto_set_options(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -6064,6 +6068,16 @@ DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_source_code_info $$
 CREATE FUNCTION _pb_file_descriptor_proto_get_source_code_info(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."9"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_source_code_info__or $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_source_code_info__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."9"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."9"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_source_code_info $$
@@ -6098,6 +6112,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_syntax__or $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_syntax__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."12"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."12"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_syntax $$
 CREATE FUNCTION _pb_file_descriptor_proto_set_syntax(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -6125,6 +6151,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_edition__or $$
+CREATE FUNCTION _pb_file_descriptor_proto_get_edition__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."14"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."14"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_edition $$
@@ -6184,6 +6222,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_name__or $$
+CREATE FUNCTION _pb_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_name $$
@@ -7320,6 +7370,16 @@ BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."7"'), JSON_OBJECT());
 END $$
 
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_options__or $$
+CREATE FUNCTION _pb_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."7"');
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_options $$
 CREATE FUNCTION _pb_descriptor_proto_set_options(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -7752,6 +7812,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_get_start__or $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_get_start__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_set_start $$
 CREATE FUNCTION _pb_descriptor_proto_extension_range_set_start(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -7781,6 +7853,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_get_end__or $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_get_end__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_set_end $$
 CREATE FUNCTION _pb_descriptor_proto_extension_range_set_end(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -7803,6 +7887,16 @@ DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_get_options $$
 CREATE FUNCTION _pb_descriptor_proto_extension_range_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."3"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_get_options__or $$
+CREATE FUNCTION _pb_descriptor_proto_extension_range_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."3"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_set_options $$
@@ -7867,6 +7961,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_get_start__or $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_get_start__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_set_start $$
 CREATE FUNCTION _pb_descriptor_proto_reserved_range_set_start(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -7894,6 +8000,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_get_end__or $$
+CREATE FUNCTION _pb_descriptor_proto_reserved_range_get_end__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_set_end $$
@@ -8320,6 +8438,16 @@ BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."50"'), JSON_OBJECT());
 END $$
 
+DROP FUNCTION IF EXISTS _pb_extension_range_options_get_features__or $$
+CREATE FUNCTION _pb_extension_range_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."50"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."50"');
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_extension_range_options_set_features $$
 CREATE FUNCTION _pb_extension_range_options_set_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -8350,6 +8478,18 @@ BEGIN
         RETURN 1;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_get_verification__or $$
+CREATE FUNCTION _pb_extension_range_options_get_verification__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_set_verification $$
@@ -8411,6 +8551,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_number__or $$
+CREATE FUNCTION _pb_extension_range_options_declaration_get_number__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_number $$
 CREATE FUNCTION _pb_extension_range_options_declaration_set_number(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -8438,6 +8590,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_full_name__or $$
+CREATE FUNCTION _pb_extension_range_options_declaration_get_full_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_full_name $$
@@ -8469,6 +8633,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_type__or $$
+CREATE FUNCTION _pb_extension_range_options_declaration_get_type__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_type $$
 CREATE FUNCTION _pb_extension_range_options_declaration_set_type(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -8498,6 +8674,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_reserved__or $$
+CREATE FUNCTION _pb_extension_range_options_declaration_get_reserved__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_reserved $$
 CREATE FUNCTION _pb_extension_range_options_declaration_set_reserved(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -8525,6 +8713,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_get_repeated__or $$
+CREATE FUNCTION _pb_extension_range_options_declaration_get_repeated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_repeated $$
@@ -8606,6 +8806,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_name__or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -8633,6 +8845,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_number__or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_number__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_number $$
@@ -8664,6 +8888,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_label__or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_label__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_label $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_label(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -8691,6 +8927,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_type__or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_type__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_type $$
@@ -8722,6 +8970,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_type_name__or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_type_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_type_name $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_type_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -8749,6 +9009,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_extendee__or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_extendee__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_extendee $$
@@ -8780,6 +9052,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_default_value__or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_default_value__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_default_value $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_default_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -8807,6 +9091,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_oneof_index__or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_oneof_index__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."9"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."9"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_oneof_index $$
@@ -8838,6 +9134,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_json_name__or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_json_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."10"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."10"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_json_name $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_json_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -8860,6 +9168,16 @@ DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_options $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."8"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_options__or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."8"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."8"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_options $$
@@ -8892,6 +9210,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_proto3_optional__or $$
+CREATE FUNCTION _pb_field_descriptor_proto_get_proto3_optional__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."17"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."17"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_proto3_optional $$
@@ -9027,6 +9357,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_get_name__or $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_oneof_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -9049,6 +9391,16 @@ DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_get_options $$
 CREATE FUNCTION _pb_oneof_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."2"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_get_options__or $$
+CREATE FUNCTION _pb_oneof_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."2"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_set_options $$
@@ -9111,6 +9463,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_name__or $$
+CREATE FUNCTION _pb_enum_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_name $$
@@ -9320,6 +9684,16 @@ DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_options $$
 CREATE FUNCTION _pb_enum_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."3"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_options__or $$
+CREATE FUNCTION _pb_enum_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."3"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_options $$
@@ -9754,6 +10128,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_get_start__or $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_get_start__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_set_start $$
 CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_set_start(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -9781,6 +10167,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_get_end__or $$
+CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_get_end__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_set_end $$
@@ -9842,6 +10240,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_get_name__or $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_enum_value_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -9871,6 +10281,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_get_number__or $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_get_number__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_set_number $$
 CREATE FUNCTION _pb_enum_value_descriptor_proto_set_number(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -9893,6 +10315,16 @@ DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_get_options $$
 CREATE FUNCTION _pb_enum_value_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."3"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_get_options__or $$
+CREATE FUNCTION _pb_enum_value_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."3"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_set_options $$
@@ -9955,6 +10387,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_get_name__or $$
+CREATE FUNCTION _pb_service_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_set_name $$
@@ -10166,6 +10610,16 @@ BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."3"'), JSON_OBJECT());
 END $$
 
+DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_get_options__or $$
+CREATE FUNCTION _pb_service_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."3"');
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_set_options $$
 CREATE FUNCTION _pb_service_descriptor_proto_set_options(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10228,6 +10682,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_name__or $$
+CREATE FUNCTION _pb_method_descriptor_proto_get_name__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_method_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10255,6 +10721,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_input_type__or $$
+CREATE FUNCTION _pb_method_descriptor_proto_get_input_type__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_input_type $$
@@ -10286,6 +10764,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_output_type__or $$
+CREATE FUNCTION _pb_method_descriptor_proto_get_output_type__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_output_type $$
 CREATE FUNCTION _pb_method_descriptor_proto_set_output_type(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10308,6 +10798,16 @@ DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_options $$
 CREATE FUNCTION _pb_method_descriptor_proto_get_options(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."4"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_options__or $$
+CREATE FUNCTION _pb_method_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."4"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_options $$
@@ -10342,6 +10842,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_client_streaming__or $$
+CREATE FUNCTION _pb_method_descriptor_proto_get_client_streaming__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_client_streaming $$
 CREATE FUNCTION _pb_method_descriptor_proto_set_client_streaming(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10369,6 +10881,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_server_streaming__or $$
+CREATE FUNCTION _pb_method_descriptor_proto_get_server_streaming__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_server_streaming $$
@@ -10430,6 +10954,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_options_get_java_package__or $$
+CREATE FUNCTION _pb_file_options_get_java_package__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_package $$
 CREATE FUNCTION _pb_file_options_set_java_package(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10457,6 +10993,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_java_outer_classname__or $$
+CREATE FUNCTION _pb_file_options_get_java_outer_classname__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."8"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."8"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_outer_classname $$
@@ -10488,6 +11036,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_options_get_java_multiple_files__or $$
+CREATE FUNCTION _pb_file_options_get_java_multiple_files__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."10"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."10"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_multiple_files $$
 CREATE FUNCTION _pb_file_options_set_java_multiple_files(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10515,6 +11075,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_java_generate_equals_and_hash__or $$
+CREATE FUNCTION _pb_file_options_get_java_generate_equals_and_hash__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."20"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."20"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_generate_equals_and_hash $$
@@ -10546,6 +11118,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_options_get_java_string_check_utf8__or $$
+CREATE FUNCTION _pb_file_options_get_java_string_check_utf8__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."27"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."27"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_string_check_utf8 $$
 CREATE FUNCTION _pb_file_options_set_java_string_check_utf8(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10573,6 +11157,18 @@ BEGIN
         RETURN 1;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_optimize_for__or $$
+CREATE FUNCTION _pb_file_options_get_optimize_for__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."9"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."9"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_optimize_for $$
@@ -10604,6 +11200,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_options_get_go_package__or $$
+CREATE FUNCTION _pb_file_options_get_go_package__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."11"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."11"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_options_set_go_package $$
 CREATE FUNCTION _pb_file_options_set_go_package(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10631,6 +11239,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_cc_generic_services__or $$
+CREATE FUNCTION _pb_file_options_get_cc_generic_services__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."16"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."16"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_cc_generic_services $$
@@ -10662,6 +11282,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_options_get_java_generic_services__or $$
+CREATE FUNCTION _pb_file_options_get_java_generic_services__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."17"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."17"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_generic_services $$
 CREATE FUNCTION _pb_file_options_set_java_generic_services(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10689,6 +11321,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_py_generic_services__or $$
+CREATE FUNCTION _pb_file_options_get_py_generic_services__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."18"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."18"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_py_generic_services $$
@@ -10720,6 +11364,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_options_get_deprecated__or $$
+CREATE FUNCTION _pb_file_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."23"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."23"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_options_set_deprecated $$
 CREATE FUNCTION _pb_file_options_set_deprecated(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10747,6 +11403,18 @@ BEGIN
         RETURN 1;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_cc_enable_arenas__or $$
+CREATE FUNCTION _pb_file_options_get_cc_enable_arenas__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."31"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."31"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_cc_enable_arenas $$
@@ -10778,6 +11446,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_options_get_objc_class_prefix__or $$
+CREATE FUNCTION _pb_file_options_get_objc_class_prefix__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."36"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."36"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_options_set_objc_class_prefix $$
 CREATE FUNCTION _pb_file_options_set_objc_class_prefix(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10805,6 +11485,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_csharp_namespace__or $$
+CREATE FUNCTION _pb_file_options_get_csharp_namespace__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."37"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."37"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_csharp_namespace $$
@@ -10836,6 +11528,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_options_get_swift_prefix__or $$
+CREATE FUNCTION _pb_file_options_get_swift_prefix__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."39"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."39"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_options_set_swift_prefix $$
 CREATE FUNCTION _pb_file_options_set_swift_prefix(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10863,6 +11567,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_php_class_prefix__or $$
+CREATE FUNCTION _pb_file_options_get_php_class_prefix__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."40"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."40"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_php_class_prefix $$
@@ -10894,6 +11610,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_options_get_php_namespace__or $$
+CREATE FUNCTION _pb_file_options_get_php_namespace__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."41"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."41"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_options_set_php_namespace $$
 CREATE FUNCTION _pb_file_options_set_php_namespace(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10921,6 +11649,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_php_metadata_namespace__or $$
+CREATE FUNCTION _pb_file_options_get_php_metadata_namespace__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."44"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."44"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_php_metadata_namespace $$
@@ -10952,6 +11692,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_file_options_get_ruby_package__or $$
+CREATE FUNCTION _pb_file_options_get_ruby_package__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."45"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."45"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_file_options_set_ruby_package $$
 CREATE FUNCTION _pb_file_options_set_ruby_package(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -10974,6 +11726,16 @@ DROP FUNCTION IF EXISTS _pb_file_options_get_features $$
 CREATE FUNCTION _pb_file_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."50"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_file_options_get_features__or $$
+CREATE FUNCTION _pb_file_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."50"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."50"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_features $$
@@ -11245,6 +12007,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_message_options_get_message_set_wire_format__or $$
+CREATE FUNCTION _pb_message_options_get_message_set_wire_format__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_message_options_set_message_set_wire_format $$
 CREATE FUNCTION _pb_message_options_set_message_set_wire_format(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -11272,6 +12046,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_get_no_standard_descriptor_accessor__or $$
+CREATE FUNCTION _pb_message_options_get_no_standard_descriptor_accessor__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_set_no_standard_descriptor_accessor $$
@@ -11303,6 +12089,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_message_options_get_deprecated__or $$
+CREATE FUNCTION _pb_message_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_message_options_set_deprecated $$
 CREATE FUNCTION _pb_message_options_set_deprecated(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -11330,6 +12128,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_get_map_entry__or $$
+CREATE FUNCTION _pb_message_options_get_map_entry__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_set_map_entry $$
@@ -11361,6 +12171,19 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+-- SKIPPED: Function '_pb_message_options_get_deprecated_legacy_json_field_conflicts__or' was filtered out
+-- SKIPPED: DROP FUNCTION IF EXISTS _pb_message_options_get_deprecated_legacy_json_field_conflicts__or $$
+-- SKIPPED: CREATE FUNCTION _pb_message_options_get_deprecated_legacy_json_field_conflicts__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+-- SKIPPED: BEGIN
+-- SKIPPED:     DECLARE json_value JSON;
+-- SKIPPED:     IF JSON_CONTAINS_PATH(proto_data, 'one', '$."11"') THEN
+-- SKIPPED:         SET json_value = JSON_EXTRACT(proto_data, '$."11"');
+-- SKIPPED:         RETURN _pb_json_parse_bool(json_value);
+-- SKIPPED:     ELSE
+-- SKIPPED:         RETURN default_value;
+-- SKIPPED:     END IF;
+-- SKIPPED: END $$
+
 DROP FUNCTION IF EXISTS _pb_message_options_set_deprecated_legacy_json_field_conflicts $$
 CREATE FUNCTION _pb_message_options_set_deprecated_legacy_json_field_conflicts(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -11383,6 +12206,16 @@ DROP FUNCTION IF EXISTS _pb_message_options_get_features $$
 CREATE FUNCTION _pb_message_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."12"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_message_options_get_features__or $$
+CREATE FUNCTION _pb_message_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."12"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."12"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_set_features $$
@@ -11632,6 +12465,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_options_get_ctype__or $$
+CREATE FUNCTION _pb_field_options_get_ctype__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_options_set_ctype $$
 CREATE FUNCTION _pb_field_options_set_ctype(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -11659,6 +12504,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_packed__or $$
+CREATE FUNCTION _pb_field_options_get_packed__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_packed $$
@@ -11690,6 +12547,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_options_get_jstype__or $$
+CREATE FUNCTION _pb_field_options_get_jstype__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_options_set_jstype $$
 CREATE FUNCTION _pb_field_options_set_jstype(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -11717,6 +12586,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_lazy__or $$
+CREATE FUNCTION _pb_field_options_get_lazy__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_lazy $$
@@ -11748,6 +12629,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_options_get_unverified_lazy__or $$
+CREATE FUNCTION _pb_field_options_get_unverified_lazy__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."15"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."15"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_options_set_unverified_lazy $$
 CREATE FUNCTION _pb_field_options_set_unverified_lazy(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -11775,6 +12668,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_deprecated__or $$
+CREATE FUNCTION _pb_field_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_deprecated $$
@@ -11806,6 +12711,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_options_get_weak__or $$
+CREATE FUNCTION _pb_field_options_get_weak__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."10"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."10"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_options_set_weak $$
 CREATE FUNCTION _pb_field_options_set_weak(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -11835,6 +12752,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_options_get_debug_redact__or $$
+CREATE FUNCTION _pb_field_options_get_debug_redact__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."16"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."16"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_options_set_debug_redact $$
 CREATE FUNCTION _pb_field_options_set_debug_redact(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -11862,6 +12791,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_retention__or $$
+CREATE FUNCTION _pb_field_options_get_retention__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."17"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."17"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_retention $$
@@ -12258,6 +13199,16 @@ BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."21"'), JSON_OBJECT());
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_options_get_features__or $$
+CREATE FUNCTION _pb_field_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."21"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."21"');
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_options_set_features $$
 CREATE FUNCTION _pb_field_options_set_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -12283,6 +13234,16 @@ DROP FUNCTION IF EXISTS _pb_field_options_get_feature_support $$
 CREATE FUNCTION _pb_field_options_get_feature_support(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."22"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_get_feature_support__or $$
+CREATE FUNCTION _pb_field_options_get_feature_support__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."22"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."22"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_feature_support $$
@@ -12532,6 +13493,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_get_edition__or $$
+CREATE FUNCTION _pb_field_options_edition_default_get_edition__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_options_edition_default_set_edition $$
 CREATE FUNCTION _pb_field_options_edition_default_set_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -12559,6 +13532,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_edition_default_get_value__or $$
+CREATE FUNCTION _pb_field_options_edition_default_get_value__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_edition_default_set_value $$
@@ -12620,6 +13605,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_introduced__or $$
+CREATE FUNCTION _pb_field_options_feature_support_get_edition_introduced__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_introduced $$
 CREATE FUNCTION _pb_field_options_feature_support_set_edition_introduced(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -12647,6 +13644,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_deprecated__or $$
+CREATE FUNCTION _pb_field_options_feature_support_get_edition_deprecated__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_deprecated $$
@@ -12678,6 +13687,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_deprecation_warning__or $$
+CREATE FUNCTION _pb_field_options_feature_support_get_deprecation_warning__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_deprecation_warning $$
 CREATE FUNCTION _pb_field_options_feature_support_set_deprecation_warning(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -12705,6 +13726,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_field_options_feature_support_get_edition_removed__or $$
+CREATE FUNCTION _pb_field_options_feature_support_get_edition_removed__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_removed $$
@@ -12861,6 +13894,16 @@ DROP FUNCTION IF EXISTS _pb_oneof_options_get_features $$
 CREATE FUNCTION _pb_oneof_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."1"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_oneof_options_get_features__or $$
+CREATE FUNCTION _pb_oneof_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."1"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_oneof_options_set_features $$
@@ -13110,6 +14153,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_enum_options_get_allow_alias__or $$
+CREATE FUNCTION _pb_enum_options_get_allow_alias__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_enum_options_set_allow_alias $$
 CREATE FUNCTION _pb_enum_options_set_allow_alias(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -13137,6 +14192,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_get_deprecated__or $$
+CREATE FUNCTION _pb_enum_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_options_set_deprecated $$
@@ -13168,6 +14235,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_enum_options_get_deprecated_legacy_json_field_conflicts__or $$
+CREATE FUNCTION _pb_enum_options_get_deprecated_legacy_json_field_conflicts__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_enum_options_set_deprecated_legacy_json_field_conflicts $$
 CREATE FUNCTION _pb_enum_options_set_deprecated_legacy_json_field_conflicts(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -13190,6 +14269,16 @@ DROP FUNCTION IF EXISTS _pb_enum_options_get_features $$
 CREATE FUNCTION _pb_enum_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."7"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_options_get_features__or $$
+CREATE FUNCTION _pb_enum_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."7"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_options_set_features $$
@@ -13439,6 +14528,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_enum_value_options_get_deprecated__or $$
+CREATE FUNCTION _pb_enum_value_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_enum_value_options_set_deprecated $$
 CREATE FUNCTION _pb_enum_value_options_set_deprecated(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -13461,6 +14562,16 @@ DROP FUNCTION IF EXISTS _pb_enum_value_options_get_features $$
 CREATE FUNCTION _pb_enum_value_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."2"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_get_features__or $$
+CREATE FUNCTION _pb_enum_value_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."2"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_options_set_features $$
@@ -13495,6 +14606,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_enum_value_options_get_debug_redact__or $$
+CREATE FUNCTION _pb_enum_value_options_get_debug_redact__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_enum_value_options_set_debug_redact $$
 CREATE FUNCTION _pb_enum_value_options_set_debug_redact(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -13517,6 +14640,16 @@ DROP FUNCTION IF EXISTS _pb_enum_value_options_get_feature_support $$
 CREATE FUNCTION _pb_enum_value_options_get_feature_support(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."4"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_enum_value_options_get_feature_support__or $$
+CREATE FUNCTION _pb_enum_value_options_get_feature_support__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."4"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_options_set_feature_support $$
@@ -13761,6 +14894,16 @@ BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."34"'), JSON_OBJECT());
 END $$
 
+DROP FUNCTION IF EXISTS _pb_service_options_get_features__or $$
+CREATE FUNCTION _pb_service_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."34"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."34"');
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_service_options_set_features $$
 CREATE FUNCTION _pb_service_options_set_features(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -13791,6 +14934,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_service_options_get_deprecated__or $$
+CREATE FUNCTION _pb_service_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."33"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."33"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_options_set_deprecated $$
@@ -14037,6 +15192,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_method_options_get_deprecated__or $$
+CREATE FUNCTION _pb_method_options_get_deprecated__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."33"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."33"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_method_options_set_deprecated $$
 CREATE FUNCTION _pb_method_options_set_deprecated(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -14066,6 +15233,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_method_options_get_idempotency_level__or $$
+CREATE FUNCTION _pb_method_options_get_idempotency_level__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."34"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."34"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_method_options_set_idempotency_level $$
 CREATE FUNCTION _pb_method_options_set_idempotency_level(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -14088,6 +15267,16 @@ DROP FUNCTION IF EXISTS _pb_method_options_get_features $$
 CREATE FUNCTION _pb_method_options_get_features(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."35"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_method_options_get_features__or $$
+CREATE FUNCTION _pb_method_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."35"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."35"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_options_set_features $$
@@ -14544,6 +15733,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_identifier_value__or $$
+CREATE FUNCTION _pb_uninterpreted_option_get_identifier_value__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_identifier_value $$
 CREATE FUNCTION _pb_uninterpreted_option_set_identifier_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -14571,6 +15772,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_unsigned_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_positive_int_value__or $$
+CREATE FUNCTION _pb_uninterpreted_option_get_positive_int_value__or(proto_data JSON, default_value BIGINT UNSIGNED) RETURNS BIGINT UNSIGNED DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+        RETURN _pb_json_parse_unsigned_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_positive_int_value $$
@@ -14602,6 +15815,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_negative_int_value__or $$
+CREATE FUNCTION _pb_uninterpreted_option_get_negative_int_value__or(proto_data JSON, default_value BIGINT) RETURNS BIGINT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_negative_int_value $$
 CREATE FUNCTION _pb_uninterpreted_option_set_negative_int_value(proto_data JSON, field_value BIGINT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -14629,6 +15854,18 @@ BEGIN
         RETURN 0.0;
     END IF;
     RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_double_value__or $$
+CREATE FUNCTION _pb_uninterpreted_option_get_double_value__or(proto_data JSON, default_value DOUBLE) RETURNS DOUBLE DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+        RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_double_value $$
@@ -14660,6 +15897,18 @@ BEGIN
     RETURN _pb_json_parse_bytes(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_string_value__or $$
+CREATE FUNCTION _pb_uninterpreted_option_get_string_value__or(proto_data JSON, default_value LONGBLOB) RETURNS LONGBLOB DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+        RETURN _pb_json_parse_bytes(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_string_value $$
 CREATE FUNCTION _pb_uninterpreted_option_set_string_value(proto_data JSON, field_value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -14687,6 +15936,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_get_aggregate_value__or $$
+CREATE FUNCTION _pb_uninterpreted_option_get_aggregate_value__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."8"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."8"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_aggregate_value $$
@@ -14748,6 +16009,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_get_name_part__or $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_get_name_part__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_set_name_part $$
 CREATE FUNCTION _pb_uninterpreted_option_name_part_set_name_part(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -14775,6 +16048,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_get_is_extension__or $$
+CREATE FUNCTION _pb_uninterpreted_option_name_part_get_is_extension__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_set_is_extension $$
@@ -14836,6 +16121,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_feature_set_get_field_presence__or $$
+CREATE FUNCTION _pb_feature_set_get_field_presence__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_feature_set_set_field_presence $$
 CREATE FUNCTION _pb_feature_set_set_field_presence(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -14863,6 +16160,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_enum_type__or $$
+CREATE FUNCTION _pb_feature_set_get_enum_type__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_set_enum_type $$
@@ -14894,6 +16203,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_feature_set_get_repeated_field_encoding__or $$
+CREATE FUNCTION _pb_feature_set_get_repeated_field_encoding__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_feature_set_set_repeated_field_encoding $$
 CREATE FUNCTION _pb_feature_set_set_repeated_field_encoding(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -14921,6 +16242,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_utf8_validation__or $$
+CREATE FUNCTION _pb_feature_set_get_utf8_validation__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_set_utf8_validation $$
@@ -14952,6 +16285,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_feature_set_get_message_encoding__or $$
+CREATE FUNCTION _pb_feature_set_get_message_encoding__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_feature_set_set_message_encoding $$
 CREATE FUNCTION _pb_feature_set_set_message_encoding(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -14981,6 +16326,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_feature_set_get_json_format__or $$
+CREATE FUNCTION _pb_feature_set_get_json_format__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_feature_set_set_json_format $$
 CREATE FUNCTION _pb_feature_set_set_json_format(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -15008,6 +16365,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_get_enforce_naming_style__or $$
+CREATE FUNCTION _pb_feature_set_get_enforce_naming_style__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."7"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_set_enforce_naming_style $$
@@ -15410,6 +16779,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_minimum_edition__or $$
+CREATE FUNCTION _pb_feature_set_defaults_get_minimum_edition__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_set_minimum_edition $$
 CREATE FUNCTION _pb_feature_set_defaults_set_minimum_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -15437,6 +16818,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_defaults_get_maximum_edition__or $$
+CREATE FUNCTION _pb_feature_set_defaults_get_maximum_edition__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_set_maximum_edition $$
@@ -15498,6 +16891,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_edition__or $$
+CREATE FUNCTION _pb_feature_set_edition_default_get_edition__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_set_edition $$
 CREATE FUNCTION _pb_feature_set_edition_default_set_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -15520,6 +16925,16 @@ DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_overridable_features
 CREATE FUNCTION _pb_feature_set_edition_default_get_overridable_features(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."4"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_overridable_features__or $$
+CREATE FUNCTION _pb_feature_set_edition_default_get_overridable_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."4"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_set_overridable_features $$
@@ -15547,6 +16962,16 @@ DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_fixed_features $$
 CREATE FUNCTION _pb_feature_set_edition_default_get_fixed_features(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."5"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_fixed_features__or $$
+CREATE FUNCTION _pb_feature_set_edition_default_get_fixed_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."5"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_set_fixed_features $$
@@ -16196,6 +17621,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_leading_comments__or $$
+CREATE FUNCTION _pb_source_code_info_location_get_leading_comments__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_leading_comments $$
 CREATE FUNCTION _pb_source_code_info_location_set_leading_comments(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -16223,6 +17660,18 @@ BEGIN
         RETURN '';
     END IF;
     RETURN _pb_json_parse_string(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_source_code_info_location_get_trailing_comments__or $$
+CREATE FUNCTION _pb_source_code_info_location_get_trailing_comments__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_trailing_comments $$
@@ -16869,6 +18318,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_source_file__or $$
+CREATE FUNCTION _pb_generated_code_info_annotation_get_source_file__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_source_file $$
 CREATE FUNCTION _pb_generated_code_info_annotation_set_source_file(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -16896,6 +18357,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_begin__or $$
+CREATE FUNCTION _pb_generated_code_info_annotation_get_begin__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_begin $$
@@ -16927,6 +18400,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_end__or $$
+CREATE FUNCTION _pb_generated_code_info_annotation_get_end__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_end $$
 CREATE FUNCTION _pb_generated_code_info_annotation_set_end(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -16954,6 +18439,18 @@ BEGIN
         RETURN 0;
     END IF;
     RETURN _pb_json_parse_signed_int(json_value);
+END $$
+
+DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_get_semantic__or $$
+CREATE FUNCTION _pb_generated_code_info_annotation_get_semantic__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_semantic $$
@@ -17232,6 +18729,16 @@ BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."2"'), JSON_OBJECT());
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_get_value__or $$
+CREATE FUNCTION pb_wkt_struct_fields_entry_get_value__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."2"');
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_struct_fields_entry_set_value $$
 CREATE FUNCTION pb_wkt_struct_fields_entry_set_value(proto_data JSON, field_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -17294,6 +18801,18 @@ BEGIN
     RETURN _pb_json_parse_signed_int(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_value_get_null_value__or $$
+CREATE FUNCTION pb_wkt_value_get_null_value__or(proto_data JSON, default_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."1"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+        RETURN _pb_json_parse_signed_int(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_value_set_null_value $$
 CREATE FUNCTION pb_wkt_value_set_null_value(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -17328,6 +18847,18 @@ BEGIN
         RETURN 0.0;
     END IF;
     RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_get_number_value__or $$
+CREATE FUNCTION pb_wkt_value_get_number_value__or(proto_data JSON, default_value DOUBLE) RETURNS DOUBLE DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."2"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+        RETURN _pb_util_reinterpret_uint64_as_double(_pb_json_parse_double_as_uint64(json_value, TRUE));
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_number_value $$
@@ -17366,6 +18897,18 @@ BEGIN
     RETURN _pb_json_parse_string(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_value_get_string_value__or $$
+CREATE FUNCTION pb_wkt_value_get_string_value__or(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."3"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+        RETURN _pb_json_parse_string(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_value_set_string_value $$
 CREATE FUNCTION pb_wkt_value_set_string_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -17402,6 +18945,18 @@ BEGIN
     RETURN _pb_json_parse_bool(json_value);
 END $$
 
+DROP FUNCTION IF EXISTS pb_wkt_value_get_bool_value__or $$
+CREATE FUNCTION pb_wkt_value_get_bool_value__or(proto_data JSON, default_value BOOLEAN) RETURNS BOOLEAN DETERMINISTIC
+BEGIN
+    DECLARE json_value JSON;
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."4"') THEN
+        SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+        RETURN _pb_json_parse_bool(json_value);
+    ELSE
+        RETURN default_value;
+    END IF;
+END $$
+
 DROP FUNCTION IF EXISTS pb_wkt_value_set_bool_value $$
 CREATE FUNCTION pb_wkt_value_set_bool_value(proto_data JSON, field_value BOOLEAN) RETURNS JSON DETERMINISTIC
 BEGIN
@@ -17431,6 +18986,16 @@ DROP FUNCTION IF EXISTS pb_wkt_value_get_struct_value $$
 CREATE FUNCTION pb_wkt_value_get_struct_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."5"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_get_struct_value__or $$
+CREATE FUNCTION pb_wkt_value_get_struct_value__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."5"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."5"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_struct_value $$
@@ -17465,6 +19030,16 @@ DROP FUNCTION IF EXISTS pb_wkt_value_get_list_value $$
 CREATE FUNCTION pb_wkt_value_get_list_value(proto_data JSON) RETURNS JSON DETERMINISTIC
 BEGIN
     RETURN COALESCE(JSON_EXTRACT(proto_data, '$."6"'), JSON_OBJECT());
+END $$
+
+DROP FUNCTION IF EXISTS pb_wkt_value_get_list_value__or $$
+CREATE FUNCTION pb_wkt_value_get_list_value__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
+BEGIN
+    IF JSON_CONTAINS_PATH(proto_data, 'one', '$."6"') THEN
+        RETURN JSON_EXTRACT(proto_data, '$."6"');
+    ELSE
+        RETURN default_value;
+    END IF;
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_list_value $$

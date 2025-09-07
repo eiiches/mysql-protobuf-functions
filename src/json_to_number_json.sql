@@ -314,7 +314,6 @@ proc: BEGIN
 
 	-- Get message descriptor
 	SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);
-
 	IF message_descriptor IS NULL THEN
 		SET message_text = CONCAT('_pb_json_to_number_json_proc: message type not found: ', full_type_name);
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
@@ -322,7 +321,7 @@ proc: BEGIN
 
 	-- Get file descriptor to determine syntax
 	SET file_descriptor = _pb_descriptor_set_get_file_descriptor(descriptor_set_json, full_type_name);
-	SET syntax = _pb_file_descriptor_proto_get_syntax(file_descriptor);
+	SET syntax = _pb_file_descriptor_proto_get_syntax__or(file_descriptor, 'proto2');
 
 	-- Process each field in the message descriptor
 	SET field_index = 0;
@@ -335,16 +334,10 @@ proc: BEGIN
 		SET field_name = _pb_field_descriptor_proto_get_name(field_descriptor);
 		SET field_label = _pb_field_descriptor_proto_get_label(field_descriptor);
 		SET field_type = _pb_field_descriptor_proto_get_type(field_descriptor);
-		IF _pb_field_descriptor_proto_has_type_name(field_descriptor) THEN
-			SET field_type_name = _pb_field_descriptor_proto_get_type_name(field_descriptor);
-		END IF;
-		IF _pb_field_descriptor_proto_has_json_name(field_descriptor) THEN
-			SET json_name = _pb_field_descriptor_proto_get_json_name(field_descriptor);
-		END IF;
+		SET field_type_name = _pb_field_descriptor_proto_get_type_name__or(field_descriptor, NULL);
+		SET json_name = _pb_field_descriptor_proto_get_json_name__or(field_descriptor, NULL);
 		SET proto3_optional = _pb_field_descriptor_proto_get_proto3_optional(field_descriptor);
-		IF _pb_field_descriptor_proto_has_oneof_index(field_descriptor) THEN
-			SET oneof_index = _pb_field_descriptor_proto_get_oneof_index(field_descriptor);
-		END IF;
+		SET oneof_index = _pb_field_descriptor_proto_get_oneof_index__or(field_descriptor, NULL);
 
 		SET is_repeated = (field_label = 3);
 		-- Determine field presence
@@ -371,26 +364,20 @@ proc: BEGIN
 
 		-- First try json_name if specified
 		IF json_name IS NOT NULL THEN
-			IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', json_name)) THEN
-				SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', json_name));
-			END IF;
+			SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', JSON_QUOTE(json_name)));
 		END IF;
 
 		-- If not found and json_name is different from camelCase version, try camelCase
 		IF field_json_value IS NULL THEN
 			SET source_field_name = _pb_util_snake_to_camel(field_name);
 			IF json_name IS NULL OR json_name != source_field_name THEN
-				IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', source_field_name)) THEN
-					SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', source_field_name));
-				END IF;
+				SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', JSON_QUOTE(source_field_name)));
 			END IF;
 		END IF;
 
 		-- If still not found, try original proto field name
 		IF field_json_value IS NULL THEN
-			IF JSON_CONTAINS_PATH(proto_json, 'one', CONCAT('$.', field_name)) THEN
-				SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', field_name));
-			END IF;
+			SET field_json_value = JSON_EXTRACT(proto_json, CONCAT('$.', JSON_QUOTE(field_name)));
 		END IF;
 
 		-- If field is not found, skip to the next field processing.
@@ -410,9 +397,9 @@ proc: BEGIN
 			-- Maps in ProtoJSON are objects like {"key1": "value1", "key2": "value2"}
 			-- In ProtoNumberJSON, values may need conversion based on their types
 			-- Get map value field type for conversion
-			SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value)
-			SET map_value_type = JSON_EXTRACT(map_value_field, '$."5"');
-			SET map_value_type_name = JSON_UNQUOTE(JSON_EXTRACT(map_value_field, '$."6"'));
+			SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value) -- FIXME: don't assume specific index
+			SET map_value_type = _pb_field_descriptor_proto_get_type(map_value_field);
+			SET map_value_type_name = _pb_field_descriptor_proto_get_type_name__or(map_value_field, NULL);
 
 			-- Convert map values if necessary
 			SET map_keys = JSON_KEYS(field_json_value);

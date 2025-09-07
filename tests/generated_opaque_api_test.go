@@ -178,7 +178,6 @@ func testBasicFieldOperations(t *testing.T, fieldDef, fieldName, typeName string
 
 // TestGeneratedOpaqueApiInternalRepresentation tests that setter functions create correct protonumberjson format for all protobuf types
 func TestGeneratedOpaqueApiInternalRepresentation(t *testing.T) {
-
 	// Test field number keys (crucial for protonumberjson format)
 	t.Run("field_number_keys", func(t *testing.T) {
 		protoContent := dedent.Pipe(`
@@ -528,7 +527,6 @@ func TestGeneratedOpaqueApiEnums(t *testing.T) {
 		RunTestThatExpression(t, fmt.Sprintf("status_to_string(test_get_status(%s))", obj2)).IsEqualToString("STATUS_FAILED")
 	})
 }
-
 
 // TestGeneratedOpaqueApiMapFields tests map field operations for all key and value types
 func TestGeneratedOpaqueApiMapFields(t *testing.T) {

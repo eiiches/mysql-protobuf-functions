@@ -122,12 +122,12 @@ func TestProtocGenOneofField(t *testing.T) {
 		RunTestThatExpression(t, "test_has_double_field(?)", `{"1": "binary64:0x0000000000000000"}`).IsTrue() // Set field present (even default value)
 
 		// Test which oneof method
-		RunTestThatExpression(t, "test_which_choice(?)", `{}`).IsNull()                                         // No field set
+		RunTestThatExpression(t, "test_which_choice(?)", `{}`).IsNull() // No field set
 		RunTestThatExpression(t, "test_which_choice(?)", `{"1": "binary64:0x400921fb54442d18"}`).IsEqualToString("double_field")
 
 		// Test clear field methods
 		RunTestThatExpression(t, "test_clear_double_field(?)", `{"1": "binary64:0x400921fb54442d18"}`).IsEqualToJsonString(`{}`)
-		
+
 		// Test clear oneof group
 		RunTestThatExpression(t, "test_clear_choice(?)", `{"1": "binary64:0x400921fb54442d18"}`).IsEqualToJsonString(`{}`)
 	})
@@ -449,7 +449,7 @@ func TestProtocGenOneofField(t *testing.T) {
 		expr := "test_set_bool_field(test_set_enum_field(test_set_string_field(test_set_int32_field(test_new(), 42), 'hello'), 1), TRUE)"
 		RunTestThatExpression(t, expr).IsEqualToJsonString(`{"13": true}`)
 		RunTestThatExpression(t, fmt.Sprintf("test_which_choice(%s)", expr)).IsEqualToString("bool_field")
-		RunTestThatExpression(t, fmt.Sprintf("test_get_int32_field(%s)", expr)).IsEqualToInt(0)       // cleared
+		RunTestThatExpression(t, fmt.Sprintf("test_get_int32_field(%s)", expr)).IsEqualToInt(0)      // cleared
 		RunTestThatExpression(t, fmt.Sprintf("test_get_string_field(%s)", expr)).IsEqualToString("") // cleared
 		RunTestThatExpression(t, fmt.Sprintf("test_get_enum_field(%s)", expr)).IsEqualToInt(0)       // cleared
 	})

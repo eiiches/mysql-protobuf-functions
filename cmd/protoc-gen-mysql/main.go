@@ -79,6 +79,11 @@ func runStandalone() {
 				Usage: "Validate the file descriptor set",
 				Value: true,
 			},
+			&cli.StringFlag{
+				Name:  "skip_functions",
+				Usage: "Comma-separated list of function names to skip (generate as commented out)",
+				Value: "",
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			descriptorSetIn := cmd.String("descriptor_set_in")
@@ -90,6 +95,16 @@ func runStandalone() {
 			generateMethods := cmd.Bool("generate_methods")
 			includeWkt := cmd.Bool("include_wkt")
 			validate := cmd.Bool("validate")
+			skipFunctionsStr := cmd.String("skip_functions")
+
+			// Parse skip functions list
+			var skippedFunctions []string
+			if skipFunctionsStr != "" {
+				skippedFunctions = strings.Split(skipFunctionsStr, ",")
+				for i := range skippedFunctions {
+					skippedFunctions[i] = strings.TrimSpace(skippedFunctions[i])
+				}
+			}
 
 			// Read binary FileDescriptorSet from file
 			data, err := os.ReadFile(descriptorSetIn)
@@ -110,6 +125,7 @@ func runStandalone() {
 				IncludeWkt:        includeWkt,
 				FileNameFunc:      getFileNameFunc(namingStrategy),
 				TypePrefixFunc:    createTypePrefixFunc(parsePrefixMap(prefixMapStr)),
+				FieldFilterFunc:   createFieldFilterFunc(skippedFunctions),
 			}
 
 			if validate {
@@ -166,6 +182,7 @@ func runAsProtocPlugin() {
 	generateMethods := true
 	includeWkt := false
 	prefixMap := make(map[protoreflect.FullName]string)
+	var skippedFunctions []string
 	if req.Parameter != nil && *req.Parameter != "" {
 		params := parseParameters(*req.Parameter)
 		if name, ok := params["name"]; ok {
@@ -185,6 +202,12 @@ func runAsProtocPlugin() {
 		}
 		if prefix, ok := params["prefix_map"]; ok {
 			prefixMap = parsePrefixMap(prefix)
+		}
+		if skipFuncs, ok := params["skip_functions"]; ok {
+			skippedFunctions = strings.Split(skipFuncs, ",")
+			for i := range skippedFunctions {
+				skippedFunctions[i] = strings.TrimSpace(skippedFunctions[i])
+			}
 		}
 	}
 
@@ -206,6 +229,7 @@ func runAsProtocPlugin() {
 		IncludeWkt:        includeWkt,
 		FileNameFunc:      getFileNameFunc(namingStrategy),
 		TypePrefixFunc:    createTypePrefixFunc(prefixMap),
+		FieldFilterFunc:   createFieldFilterFunc(skippedFunctions),
 	}
 
 	// Process and generate files
@@ -269,4 +293,23 @@ func parsePrefixMap(mapStr string) map[protoreflect.FullName]string {
 		}
 	}
 	return result
+}
+
+// createFieldFilterFunc creates a FieldFilterFunc from a list of skipped function names
+func createFieldFilterFunc(skippedFunctions []string) protocgenmysql.FieldFilterFunc {
+	if len(skippedFunctions) == 0 {
+		return nil
+	}
+
+	skippedSet := make(map[string]bool)
+	for _, funcName := range skippedFunctions {
+		skippedSet[funcName] = true
+	}
+
+	return func(field protoreflect.FieldDescriptor, functionName string) protocgenmysql.FunctionGenerationDecision {
+		if skippedSet[functionName] {
+			return protocgenmysql.DecisionCommentOut
+		}
+		return protocgenmysql.DecisionInclude
+	}
 }

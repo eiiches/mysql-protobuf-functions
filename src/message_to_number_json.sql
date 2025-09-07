@@ -234,7 +234,6 @@ proc: BEGIN
 
 	-- Get message descriptor
 	SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);
-
 	IF message_descriptor IS NULL THEN
 		SET message_text = CONCAT('_pb_wire_json_to_json: message type `', full_type_name, '` not found in descriptor set');
 		SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
@@ -246,10 +245,8 @@ proc: BEGIN
 		SET message_text = CONCAT('_pb_wire_json_to_json: file descriptor not found for type `', full_type_name, '`');
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END IF;
-	SET syntax = JSON_UNQUOTE(JSON_EXTRACT(file_descriptor, '$."12"')); -- syntax field
-	IF syntax IS NULL THEN
-		SET syntax = 'proto2'; -- default
-	END IF;
+
+	SET syntax = _pb_file_descriptor_proto_get_syntax__or(file_descriptor, 'proto2');
 
 	SET result = JSON_OBJECT();
 	SET oneofs = JSON_OBJECT();
@@ -265,16 +262,10 @@ proc: BEGIN
 		SET field_name = _pb_field_descriptor_proto_get_name(field_descriptor);
 		SET field_label = _pb_field_descriptor_proto_get_label(field_descriptor);
 		SET field_type = _pb_field_descriptor_proto_get_type(field_descriptor);
-		IF _pb_field_descriptor_proto_has_type_name(field_descriptor) THEN
-			SET field_type_name = _pb_field_descriptor_proto_get_type_name(field_descriptor);
-		END IF;
-		IF _pb_field_descriptor_proto_has_json_name(field_descriptor) THEN
-			SET json_name = _pb_field_descriptor_proto_get_json_name(field_descriptor);
-		END IF;
+		SET field_type_name = _pb_field_descriptor_proto_get_type_name__or(field_descriptor, NULL);
+		SET json_name = _pb_field_descriptor_proto_get_json_name__or(field_descriptor, NULL);
 		SET proto3_optional = _pb_field_descriptor_proto_get_proto3_optional(field_descriptor);
-		IF _pb_field_descriptor_proto_has_oneof_index(field_descriptor) THEN
-			SET oneof_index = _pb_field_descriptor_proto_get_oneof_index(field_descriptor);
-		END IF;
+		SET oneof_index = _pb_field_descriptor_proto_get_oneof_index__or(field_descriptor, NULL);
 
 		SET is_repeated = (field_label = 3); -- LABEL_REPEATED
 
@@ -309,11 +300,11 @@ proc: BEGIN
 				SET field_json_value = JSON_OBJECT();
 
 				-- Get map key/value field descriptors
-				SET map_key_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- first field (key)
-				SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value)
-				SET map_key_type = JSON_EXTRACT(map_key_field, '$."5"');
-				SET map_value_type = JSON_EXTRACT(map_value_field, '$."5"');
-				SET map_value_type_name = JSON_UNQUOTE(JSON_EXTRACT(map_value_field, '$."6"'));
+				SET map_key_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- first field (key) -- FIXME: don't assume specific index
+				SET map_value_field = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- second field (value) -- FIXME: don't assume specific index
+				SET map_key_type = _pb_field_descriptor_proto_get_type(map_key_field);
+				SET map_value_type = _pb_field_descriptor_proto_get_type(map_value_field);
+				SET map_value_type_name = _pb_field_descriptor_proto_get_type_name__or(map_value_field, NULL);
 
 				WHILE element_index < element_count DO
 					SET element = pb_message_to_wire_json(FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(elements, CONCAT('$[', element_index, ']')))));

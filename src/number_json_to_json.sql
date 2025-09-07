@@ -134,12 +134,12 @@ BEGIN
 	SET map_entry_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, map_entry_type_name);
 
 	-- Get key and value field descriptors (map entries always have field 1 = key, field 2 = value)
-	SET key_field_descriptor = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- field 1 (key)
-	SET value_field_descriptor = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- field 2 (value)
+	SET key_field_descriptor = JSON_EXTRACT(map_entry_descriptor, '$."2"[0]'); -- field 1 (key) -- FIXME: don't assume specific index
+	SET value_field_descriptor = JSON_EXTRACT(map_entry_descriptor, '$."2"[1]'); -- field 2 (value) -- FIXME: don't assume specific index
 
 	-- Get value field type information
-	SET value_field_type = JSON_EXTRACT(value_field_descriptor, '$."5"'); -- type
-	SET value_field_type_name = JSON_UNQUOTE(JSON_EXTRACT(value_field_descriptor, '$."6"')); -- type_name
+	SET value_field_type = _pb_field_descriptor_proto_get_type(value_field_descriptor);
+	SET value_field_type_name = _pb_field_descriptor_proto_get_type_name__or(value_field_descriptor, NULL);
 
 	-- Initialize result object
 	SET result = JSON_OBJECT();
@@ -226,7 +226,6 @@ proc: BEGIN
 	DECLARE message_text TEXT;
 	DECLARE message_descriptor JSON;
 	DECLARE file_descriptor JSON;
-	DECLARE syntax TEXT;
 	DECLARE fields JSON;
 	DECLARE field_count INT;
 	DECLARE field_index INT;
@@ -239,6 +238,7 @@ proc: BEGIN
 	DECLARE field_type_name TEXT;
 	DECLARE json_name TEXT;
 	DECLARE proto3_optional BOOLEAN;
+	DECLARE oneof_index INT;
 	-- Processing variables
 	DECLARE is_repeated BOOLEAN;
 	DECLARE field_json_value JSON;
@@ -275,7 +275,6 @@ proc: BEGIN
 
 	-- Get message descriptor
 	SET message_descriptor = _pb_descriptor_set_get_message_descriptor(descriptor_set_json, full_type_name);
-
 	IF message_descriptor IS NULL THEN
 		SET message_text = CONCAT('_pb_number_json_to_json_proc: message type not found: ', full_type_name);
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
@@ -292,13 +291,10 @@ proc: BEGIN
 		SET field_name = _pb_field_descriptor_proto_get_name(field_descriptor);
 		SET field_label = _pb_field_descriptor_proto_get_label(field_descriptor);
 		SET field_type = _pb_field_descriptor_proto_get_type(field_descriptor);
-		IF _pb_field_descriptor_proto_has_type_name(field_descriptor) THEN
-			SET field_type_name = _pb_field_descriptor_proto_get_type_name(field_descriptor);
-		END IF;
-		IF _pb_field_descriptor_proto_has_json_name(field_descriptor) THEN
-			SET json_name = _pb_field_descriptor_proto_get_json_name(field_descriptor);
-		END IF;
+		SET field_type_name = _pb_field_descriptor_proto_get_type_name__or(field_descriptor, NULL);
+		SET json_name = _pb_field_descriptor_proto_get_json_name__or(field_descriptor, NULL);
 		SET proto3_optional = _pb_field_descriptor_proto_get_proto3_optional(field_descriptor);
+		SET oneof_index = _pb_field_descriptor_proto_get_oneof_index__or(field_descriptor, NULL);
 
 		-- Determine target field name (json_name takes precedence over field_name)
 		SET target_field_name = COALESCE(json_name, field_name);
@@ -354,7 +350,7 @@ proc: BEGIN
 				IF is_map OR is_repeated THEN
 					SET has_presence = FALSE; -- Maps and repeated fields always emit defaults
 				ELSE
-					SET has_presence = proto3_optional OR (JSON_EXTRACT(field_descriptor, '$.\"9\"') IS NOT NULL) OR (field_type = 11); -- oneof_index or message type
+					SET has_presence = proto3_optional OR (oneof_index IS NOT NULL) OR (field_type = 11); -- oneof_index or message type
 				END IF;
 
 				-- Only emit defaults for non-presence-sensing fields

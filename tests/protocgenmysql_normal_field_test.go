@@ -275,5 +275,12 @@ func TestProtocGenNormalField(t *testing.T) {
 		// Test clear methods remove field and return empty JSON
 		RunTestThatExpression(t, `test_clear_message_field('{"17": {"1": "test", "2": 42}}')`).IsEqualToJsonString(`{}`)
 		RunTestThatExpression(t, `test_clear_message_field('{"17": {}}')`).IsEqualToJsonString(`{}`)
+
+		// Test nullable getter (__or) methods for message fields
+		// Note: In proto3, message fields have presence semantics, so __or variants are generated
+		defaultMessage := `{"1": "default", "2": 999}`
+		RunTestThatExpression(t, fmt.Sprintf("test_get_message_field__or(?, %s)", `'{"1": "default", "2": 999}'`), `{"17": {"1": "test", "2": 42}}`).IsEqualToJsonString(`{"1": "test", "2": 42}`) // Field present, return actual value
+		RunTestThatExpression(t, fmt.Sprintf("test_get_message_field__or(?, %s)", `'{"1": "default", "2": 999}'`), `{}`).IsEqualToJsonString(defaultMessage)                                       // Field absent, return default
+		RunTestThatExpression(t, fmt.Sprintf("test_get_message_field__or(?, %s)", `'{"1": "default", "2": 999}'`), `{"17": {}}`).IsEqualToJsonString(`{}`)                                         // Empty message is still present
 	})
 }

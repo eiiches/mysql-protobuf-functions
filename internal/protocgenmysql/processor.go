@@ -6,12 +6,25 @@ import (
 
 	"github.com/eiiches/mysql-protobuf-functions/internal/moremaps"
 	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/eiiches/mysql-protobuf-functions/internal/descriptorsetjson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/pluginpb"
 )
+
+// FunctionGenerationDecision represents what to do with a generated function
+type FunctionGenerationDecision int
+
+const (
+	DecisionInclude    FunctionGenerationDecision = iota // Generate the function normally
+	DecisionExclude                                      // Don't generate the function at all
+	DecisionCommentOut                                   // Generate the function but comment it out
+)
+
+// FieldFilterFunc is called for each function to determine how it should be generated
+type FieldFilterFunc func(field protoreflect.FieldDescriptor, functionName string) FunctionGenerationDecision
 
 type GenerateConfig struct {
 	DescriptorSetName string
@@ -20,6 +33,7 @@ type GenerateConfig struct {
 	IncludeWkt        bool
 	FileNameFunc      FileNameFunc
 	TypePrefixFunc    TypePrefixFunc
+	FieldFilterFunc   FieldFilterFunc // Callback to determine how functions should be generated
 }
 
 func Generate(fileDescriptorSet *descriptorpb.FileDescriptorSet, config GenerateConfig) (*pluginpb.CodeGeneratorResponse, error) {
@@ -77,7 +91,7 @@ END $$
 			return nil, fmt.Errorf("failed to create protoregistry.Files from FileDescriptorSet: %w", err)
 		}
 
-		methodFragments, err := GenerateMethodFragments(files, config.FileNameFunc, config.TypePrefixFunc, config.DescriptorSetName)
+		methodFragments, err := GenerateMethodFragments(files, config.FileNameFunc, config.TypePrefixFunc, config.DescriptorSetName, config.FieldFilterFunc)
 		if err != nil {
 			return nil, err
 		}
