@@ -70,6 +70,12 @@ func generateMethodsForFile(fileDesc protoreflect.FileDescriptor, typePrefixFunc
 }
 
 func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, typePrefixFunc TypePrefixFunc, schemaFunctionName string, fieldFilterFunc FieldFilterFunc) error {
+	// Skip map entry messages - these are synthetic types created by protobuf for map fields
+	// and should not have user-facing accessor methods generated
+	if messageDesc.IsMapEntry() {
+		return nil
+	}
+
 	// Use FullName from descriptor - no manual string construction needed
 	fullTypeName := messageDesc.FullName()
 	packageName := messageDesc.ParentFile().Package()
