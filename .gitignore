@@ -1,6 +1,5 @@
 /.idea
 /flamegraph-*.svg
-/build/*.sql.instrumented
 /coverage.lcov
 /coverage-html/
 /perf.data
@@ -8,3 +7,5 @@
 /mysql.pid
 /protoc-gen-descriptor_set_json
 /mysql-coverage
+/build
+/protobuf.sql

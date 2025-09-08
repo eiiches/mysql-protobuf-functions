@@ -1,0 +1,46 @@
+ALL_SQL_FILES_INSTRUMENTED := $(patsubst build/%.sql,build/%.sql.instrumented,$(ALL_SQL_FILES))
+
+build/%.sql.instrumented: build/%.sql mysql-coverage
+	./mysql-coverage instrument $<
+
+.PHONY: coverage
+coverage: purge coverage-load coverage-run coverage-report-html
+	xdg-open coverage-html/index.html
+
+.PHONY: coverage-ci
+coverage-ci: purge coverage-load coverage-run coverage-report-lcov
+	go run cmd/mysql-coverage/main.go github-comment --lcov-file coverage.lcov --github-pr-number $(GITHUB_PR_NUMBER)
+
+.PHONY: coverage-instrument
+coverage-instrument: $(ALL_SQL_FILES_INSTRUMENTED)
+
+.PHONY: coverage-load
+coverage-load: $(ALL_SQL_FILES_INSTRUMENTED) ensure-test-database
+	go run cmd/mysql-coverage/main.go init --database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)"
+	$(foreach file,$(ALL_SQL_FILES_INSTRUMENTED),$(MYSQL_COMMAND) < $(file);)
+
+.PHONY: coverage-run
+coverage-run:
+	go run cmd/mysql-coverage/main.go init --database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)"
+	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" -fuzz-iterations 20 $${GO_TEST_FLAGS:-}
+	make -C conformance test
+
+.PHONY: coverage-report-html
+coverage-report-html: coverage-report-lcov
+	genhtml coverage.lcov --output-directory coverage-html --title "MySQL Protobuf Functions Coverage Report"
+	@echo ""
+	@echo "=== COVERAGE REPORT GENERATED ==="
+	@echo "HTML Report: coverage-html/index.html"
+	@echo "LCOV Data: coverage.lcov"
+
+.PHONY: coverage-report-lcov
+coverage-report-lcov:
+	go run cmd/mysql-coverage/main.go lcov --database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" --output coverage.lcov
+	@echo ""
+	@echo "=== LCOV COVERAGE DATA GENERATED ==="
+	@echo "LCOV Data: coverage.lcov"
+	@echo ""
+
+.PHONY: clean
+clean::
+	$(RM) $(ALL_SQL_FILES_INSTRUMENTED)

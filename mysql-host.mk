@@ -11,8 +11,6 @@ MYSQL_DATABASE = test
 MYSQL_COMMAND = $(MYSQL_BIN) --host $(MYSQL_HOST) --port $(MYSQL_PORT) -u root $(MYSQL_DATABASE)
 MYSQL_COMMAND_NO_DB = $(MYSQL_BIN) --host $(MYSQL_HOST) --port $(MYSQL_PORT) -u root
 
-include scripts/common.mk
-
 .PHONY: start-mysql
 start-mysql: download-mysql
 	if test -f mysql.pid; then echo "MySQL is already running. Delete mysql.pid if you are sure MySQL is stopped."; exit 1; fi

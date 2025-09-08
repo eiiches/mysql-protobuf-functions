@@ -1,1 +1,5 @@
-include scripts/docker-mysql.mk
+include build.mk
+include coverage.mk
+include ftrace.mk
+include profile.mk
+include mysql-host.mk
