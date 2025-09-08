@@ -57,8 +57,8 @@ make stop-mysql
 # Open MySQL shell
 make mysql-shell
 
-# Show debug logs
-make show-logs
+# Run a specific MySQL command
+make mysql-run COMMAND='SELECT _pb_util_reinterpret_double_as_uint64(3.14)'
 ```
 
 ### Testing
@@ -118,11 +118,33 @@ make ftrace-load
 make ftrace-report
 ```
 
-### Code Generation
+#### Tracing Example
+
+Complete workflow for tracing SQL function execution:
+
 ```bash
-# Generate protobuf accessor functions
-go run cmd/protobuf-accessors/main.go > protobuf-accessors.sql
+# 1. Load instrumented functions into database (ftrace-instrument and ftrace-init is run automatically)
+make ftrace-load
+
+# 2. Execute some SQL functions to generate trace data
+make mysql-run COMMAND='SELECT _pb_util_reinterpret_double_as_uint64(3.14)'
+
+# 3. Generate and view trace report
+make ftrace-report
 ```
+
+For a quick single-command trace:
+
+```bash
+make ftrace-load mysql-run ftrace-report COMMAND='SELECT _pb_util_reinterpret_double_as_uint64(3.14)'
+```
+
+The trace report will show detailed execution flow including:
+- Function call hierarchy
+- Execution times
+- Parameter values
+- Return values
+- SQL statement execution paths
 
 ### Code Formatting
 ```bash
