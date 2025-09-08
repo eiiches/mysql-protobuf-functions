@@ -146,3 +146,6 @@ test: purge reload ensure-test-database internal/jsonoptionspb/json_options.pb.g
 .PHONY: clean
 clean::
 	$(RM) $(ALL_SQL_FILES)
+	$(RM) protobuf.sql
+	$(RM) protoc-gen-mysql
+	$(RM) mysql-coverage mysql-ftrace
