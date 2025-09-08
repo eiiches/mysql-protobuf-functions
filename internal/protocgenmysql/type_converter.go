@@ -328,7 +328,6 @@ func GetProtobufType(kind protoreflect.Kind) ProtobufType {
 	panic(fmt.Sprintf("unsupported protobuf kind: %s", kind))
 }
 
-
 // GetDefaultValue returns the appropriate default value for a field
 func GetDefaultValue(field protoreflect.FieldDescriptor) string {
 	// Handle explicit default values (proto2 only)

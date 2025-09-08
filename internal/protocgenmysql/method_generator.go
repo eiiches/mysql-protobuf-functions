@@ -786,7 +786,6 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 
 // generateMapFieldMethods creates additional methods for map fields
 func generateMapFieldMethods(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string) error {
-
 	// Get MySQL types for key and value
 	keySetterType := GetProtobufType(field.MapKey().Kind()).GetSqlTypeName()
 	valueSetterType := GetProtobufType(field.MapValue().Kind()).GetSqlTypeName()

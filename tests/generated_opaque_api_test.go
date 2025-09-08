@@ -361,7 +361,6 @@ func TestGeneratedOpaqueApiBasicFields(t *testing.T) {
 	})
 }
 
-
 // TestGeneratedOpaqueApiEnums tests enum string/number conversion
 func TestGeneratedOpaqueApiEnums(t *testing.T) {
 	protoContent := dedent.Pipe(`

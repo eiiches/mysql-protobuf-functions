@@ -9,7 +9,7 @@ coverage: purge coverage-load coverage-run coverage-report-html
 
 .PHONY: coverage-ci
 coverage-ci: purge coverage-load coverage-run coverage-report-lcov
-	go run cmd/mysql-coverage/main.go github-comment --lcov-file coverage.lcov --github-pr-number $(GITHUB_PR_NUMBER)
+	go run cmd/mysql-coverage/main.go github-comment --lcov-file coverage.lcov --exclude-file _pb_options_proto.pb.sql --exclude-file well_known_proto.pb.sql --github-pr-number $(GITHUB_PR_NUMBER)
 
 .PHONY: coverage-instrument
 coverage-instrument: $(ALL_SQL_FILES_INSTRUMENTED)
