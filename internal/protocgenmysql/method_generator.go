@@ -84,22 +84,22 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 	funcPrefix := typePrefixFunc(packageName, fullTypeName)
 
 	// Generate basic constructor
-	if err := generateConstructor(content, funcPrefix, fullTypeName); err != nil {
+	if err := generateConstructor(content, funcPrefix, messageDesc); err != nil {
 		return err
 	}
 
 	// Generate conversion methods (from_json, to_json, etc.)
-	if err := generateConversionMethods(content, funcPrefix, fullTypeName, schemaFunctionName); err != nil {
+	if err := generateConversionMethods(content, funcPrefix, messageDesc, schemaFunctionName); err != nil {
 		return err
 	}
 
 	// Generate field accessor methods with enhanced opaque API patterns
-	if err := generateFieldAccessorMethods(content, messageDesc, funcPrefix, fullTypeName, fieldFilterFunc, typePrefixFunc); err != nil {
+	if err := generateFieldAccessorMethods(content, messageDesc, funcPrefix, fieldFilterFunc, typePrefixFunc); err != nil {
 		return err
 	}
 
 	// Generate oneOf methods for oneOf groups
-	if err := generateOneOfMethods(content, messageDesc, funcPrefix, fullTypeName); err != nil {
+	if err := generateOneOfMethods(content, messageDesc, funcPrefix); err != nil {
 		return err
 	}
 
@@ -123,9 +123,9 @@ func generateMessageMethods(content *strings.Builder, messageDesc protoreflect.M
 }
 
 // generateConstructor creates a basic constructor function
-func generateConstructor(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName) error {
+func generateConstructor(content *strings.Builder, funcPrefix string, messageDesc protoreflect.MessageDescriptor) error {
 	newFuncName := funcPrefix + "_new"
-	if err := validateFunctionName(newFuncName, fullTypeName); err != nil {
+	if err := validateFunctionName(newFuncName, messageDesc.FullName()); err != nil {
 		return err
 	}
 
@@ -139,69 +139,70 @@ func generateConstructor(content *strings.Builder, funcPrefix string, fullTypeNa
 }
 
 // generateConversionMethods creates conversion methods (from_json, to_json, etc.)
-func generateConversionMethods(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, schemaFunctionName string) error {
+func generateConversionMethods(content *strings.Builder, funcPrefix string, messageDesc protoreflect.MessageDescriptor, schemaFunctionName string) error {
 	// Generate from_json
 	fromJsonFuncName := funcPrefix + "_from_json"
-	if err := validateFunctionName(fromJsonFuncName, fullTypeName); err != nil {
+	if err := validateFunctionName(fromJsonFuncName, messageDesc.FullName()); err != nil {
 		return err
 	}
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", fromJsonFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(json_data JSON, json_unmarshal_options JSON) RETURNS JSON DETERMINISTIC\n", fromJsonFuncName))
 	content.WriteString("BEGIN\n")
-	content.WriteString(fmt.Sprintf("    RETURN _pb_json_to_number_json(%s(), '.%s', json_data, json_unmarshal_options);\n", schemaFunctionName, fullTypeName))
+	content.WriteString(fmt.Sprintf("    RETURN _pb_json_to_number_json(%s(), '.%s', json_data, json_unmarshal_options);\n", schemaFunctionName, messageDesc.FullName()))
 	content.WriteString("END $$\n\n")
 
 	// Generate from_message
 	fromMessageFuncName := funcPrefix + "_from_message"
-	if err := validateFunctionName(fromMessageFuncName, fullTypeName); err != nil {
+	if err := validateFunctionName(fromMessageFuncName, messageDesc.FullName()); err != nil {
 		return err
 	}
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", fromMessageFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(message_data LONGBLOB, unmarshal_options JSON) RETURNS JSON DETERMINISTIC\n", fromMessageFuncName))
 	content.WriteString("BEGIN\n")
-	content.WriteString(fmt.Sprintf("    RETURN _pb_message_to_number_json(%s(), '.%s', message_data, unmarshal_options);\n", schemaFunctionName, fullTypeName))
+	content.WriteString(fmt.Sprintf("    RETURN _pb_message_to_number_json(%s(), '.%s', message_data, unmarshal_options);\n", schemaFunctionName, messageDesc.FullName()))
 	content.WriteString("END $$\n\n")
 
 	// Generate to_json
 	toJsonFuncName := funcPrefix + "_to_json"
-	if err := validateFunctionName(toJsonFuncName, fullTypeName); err != nil {
+	if err := validateFunctionName(toJsonFuncName, messageDesc.FullName()); err != nil {
 		return err
 	}
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", toJsonFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, json_marshal_options JSON) RETURNS JSON DETERMINISTIC\n", toJsonFuncName))
 	content.WriteString("BEGIN\n")
-	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_json(%s(), '.%s', proto_data, json_marshal_options);\n", schemaFunctionName, fullTypeName))
+	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_json(%s(), '.%s', proto_data, json_marshal_options);\n", schemaFunctionName, messageDesc.FullName()))
 	content.WriteString("END $$\n\n")
 
 	// Generate to_message
 	toMessageFuncName := funcPrefix + "_to_message"
-	if err := validateFunctionName(toMessageFuncName, fullTypeName); err != nil {
+	if err := validateFunctionName(toMessageFuncName, messageDesc.FullName()); err != nil {
 		return err
 	}
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", toMessageFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, marshal_options JSON) RETURNS LONGBLOB DETERMINISTIC\n", toMessageFuncName))
 	content.WriteString("BEGIN\n")
-	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_message(%s(), '.%s', proto_data, marshal_options);\n", schemaFunctionName, fullTypeName))
+	content.WriteString(fmt.Sprintf("    RETURN _pb_number_json_to_message(%s(), '.%s', proto_data, marshal_options);\n", schemaFunctionName, messageDesc.FullName()))
 	content.WriteString("END $$\n\n")
 
 	return nil
 }
 
 // generateFieldAccessorMethods creates enhanced field accessor methods following opaque API patterns
-func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, funcPrefix string, fullTypeName protoreflect.FullName, fieldFilterFunc FieldFilterFunc, typePrefixFunc TypePrefixFunc) error {
+func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, funcPrefix string, fieldFilterFunc FieldFilterFunc, typePrefixFunc TypePrefixFunc) error {
+	fullTypeName := messageDesc.FullName()
 	fields := messageDesc.Fields()
 
 	for field := range protoreflectutils.Iterate(fields) {
 		fieldName := string(field.Name())
 
 		// Generate enhanced getter with better defaults and type safety
-		if err := generateEnhancedGetter(content, funcPrefix, fullTypeName, field, fieldName); err != nil {
+		if err := generateEnhancedGetter(content, funcPrefix, field); err != nil {
 			return err
 		}
 
 		// Generate nullable getter with custom default for optional fields
 		if field.HasPresence() && !field.IsList() && !field.IsMap() {
-			if err := generateNullableGetter(content, funcPrefix, fullTypeName, field, fieldName, fieldFilterFunc); err != nil {
+			if err := generateNullableGetter(content, funcPrefix, field, fieldFilterFunc); err != nil {
 				return err
 			}
 		}
@@ -209,12 +210,12 @@ func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoref
 		// Generate enum name getters for enum fields
 		if field.Kind() == protoreflect.EnumKind && !field.IsList() && !field.IsMap() {
 			// Generate regular enum name getter (__as_name)
-			if err := generateEnumNameGetter(content, funcPrefix, fullTypeName, field, fieldName, false, fieldFilterFunc, typePrefixFunc); err != nil {
+			if err := generateEnumNameGetter(content, funcPrefix, field, false, fieldFilterFunc, typePrefixFunc); err != nil {
 				return err
 			}
 			// Generate nullable enum name getter (__as_name_or) for optional fields
 			if field.HasPresence() {
-				if err := generateEnumNameGetter(content, funcPrefix, fullTypeName, field, fieldName, true, fieldFilterFunc, typePrefixFunc); err != nil {
+				if err := generateEnumNameGetter(content, funcPrefix, field, true, fieldFilterFunc, typePrefixFunc); err != nil {
 					return err
 				}
 			}
@@ -268,7 +269,8 @@ func generateFieldAccessorMethods(content *strings.Builder, messageDesc protoref
 }
 
 // generateEnhancedGetter creates an enhanced getter with better defaults and type safety
-func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string) error {
+func generateEnhancedGetter(content *strings.Builder, funcPrefix string, field protoreflect.FieldDescriptor) error {
+	fieldName := string(field.Name())
 	// Use new naming: get_all_ for repeated/map fields, get_ for singular fields
 	var getterFuncName string
 	if field.IsList() || field.IsMap() {
@@ -276,7 +278,7 @@ func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTyp
 	} else {
 		getterFuncName = fmt.Sprintf("%s_get_%s", funcPrefix, fieldName)
 	}
-	if err := validateFunctionName(getterFuncName, fullTypeName); err != nil {
+	if err := validateFunctionName(getterFuncName, field.ContainingMessage().FullName()); err != nil {
 		return err
 	}
 
@@ -362,53 +364,72 @@ func generateEnhancedGetter(content *strings.Builder, funcPrefix string, fullTyp
 	return nil
 }
 
-// generateNullableGetter creates a nullable getter with custom default for optional fields
-func generateNullableGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, fieldFilterFunc FieldFilterFunc) error {
-	// Create function name with __or modifier
-	getterFuncName := fmt.Sprintf("%s_get_%s__or", funcPrefix, fieldName)
+// ValueConverter is a function that converts an extracted JSON value to the final return type
+type ValueConverter func(valueVar string) string
 
-	getterType := GetProtobufType(field.Kind()).GetSqlTypeName()
+// generateUnifiedFieldGetter creates regular field getter variants (__or, __as_name, __as_name_or) - NOT for maps
+func generateUnifiedFieldGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, suffix string, returnType string, hasDefaultParam bool, defaultValue string, converter ValueConverter, fieldFilterFunc FieldFilterFunc) error {
+	getterFuncName := fmt.Sprintf("%s_get_%s%s", funcPrefix, fieldName, suffix)
 
-	// Determine how this function should be generated
+	// Build parameters
+	var parameters string
+	if hasDefaultParam {
+		parameters = fmt.Sprintf("proto_data JSON, default_value %s", returnType)
+	} else {
+		parameters = "proto_data JSON"
+	}
+
+	// Apply field filtering
 	decision := DecisionInclude
 	if fieldFilterFunc != nil {
 		decision = fieldFilterFunc(field, getterFuncName)
 	}
 
-	// Only validate function names for functions that will be generated normally
+	if decision == DecisionExclude {
+		return nil
+	}
+
 	if decision == DecisionInclude {
 		if err := validateFunctionName(getterFuncName, fullTypeName); err != nil {
 			return err
 		}
 	}
 
-	// Skip generation entirely if excluded
-	if decision == DecisionExclude {
-		return nil
-	}
-
-	// Generate function (commented out if requested)
 	commentPrefix := ""
 	if decision == DecisionCommentOut {
-		commentPrefix = "-- SKIPPED: "
+		commentPrefix = "-- "
 		content.WriteString(fmt.Sprintf("-- SKIPPED: Function '%s' was filtered out\n", getterFuncName))
 	}
 
+	// Generate function
 	content.WriteString(fmt.Sprintf("%sDROP FUNCTION IF EXISTS %s $$\n", commentPrefix, getterFuncName))
-	content.WriteString(fmt.Sprintf("%sCREATE FUNCTION %s(proto_data JSON, default_value %s) RETURNS %s DETERMINISTIC\n", commentPrefix, getterFuncName, getterType, getterType))
+	content.WriteString(fmt.Sprintf("%sCREATE FUNCTION %s(%s) RETURNS %s DETERMINISTIC\n", commentPrefix, getterFuncName, parameters, returnType))
 	content.WriteString(fmt.Sprintf("%sBEGIN\n", commentPrefix))
 
-	// Use unified nullable getter logic
+	// Declare variables
 	content.WriteString(fmt.Sprintf("%s    DECLARE json_value JSON;\n", commentPrefix))
 	content.WriteString(fmt.Sprintf("%s    SET json_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", commentPrefix, field.Number()))
+
+	// Always handle null the same way - just different default values
 	content.WriteString(fmt.Sprintf("%s    IF json_value IS NULL THEN\n", commentPrefix))
-	content.WriteString(fmt.Sprintf("%s        RETURN default_value;\n", commentPrefix))
+	content.WriteString(fmt.Sprintf("%s        RETURN %s;\n", commentPrefix, defaultValue))
 	content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
-	expression := GetProtobufType(field.Kind()).GenerateNumberJsonToSqlExpression("json_value")
-	content.WriteString(fmt.Sprintf("%s    RETURN %s;\n", commentPrefix, expression))
+
+	// Convert and return the value
+	convertedExpr := converter("json_value")
+	content.WriteString(fmt.Sprintf("%s    RETURN %s;\n", commentPrefix, convertedExpr))
 
 	content.WriteString(fmt.Sprintf("%sEND $$\n\n", commentPrefix))
 	return nil
+}
+
+// Now the original functions just call the unified one
+func generateNullableGetter(content *strings.Builder, funcPrefix string, field protoreflect.FieldDescriptor, fieldFilterFunc FieldFilterFunc) error {
+	returnType := GetProtobufType(field.Kind()).GetSqlTypeName()
+	converter := func(valueVar string) string {
+		return GetProtobufType(field.Kind()).GenerateNumberJsonToSqlExpression(valueVar)
+	}
+	return generateUnifiedFieldGetter(content, funcPrefix, field.ContainingMessage().FullName(), field, string(field.Name()), "__or", returnType, true, "default_value", converter, fieldFilterFunc)
 }
 
 // generateEnhancedSetter creates an enhanced setter with input validation
@@ -1057,7 +1078,8 @@ func generateMapKeyNullableGetter(content *strings.Builder, funcPrefix string, f
 }
 
 // generateOneOfMethods creates methods for oneOf groups
-func generateOneOfMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, funcPrefix string, fullTypeName protoreflect.FullName) error {
+func generateOneOfMethods(content *strings.Builder, messageDesc protoreflect.MessageDescriptor, funcPrefix string) error {
+	fullTypeName := messageDesc.FullName()
 	oneofs := messageDesc.Oneofs()
 	for oneof := range protoreflectutils.Iterate(oneofs) {
 		oneofName := string(oneof.Name())
@@ -1161,109 +1183,26 @@ func generateEnumMethods(content *strings.Builder, enumDesc protoreflect.EnumDes
 }
 
 // generateEnumNameGetter creates getter functions that return enum names as strings
-func generateEnumNameGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, isNullableVariant bool, fieldFilterFunc FieldFilterFunc, typePrefixFunc TypePrefixFunc) error {
-	// Determine function name suffix
-	var suffix string
-	if isNullableVariant {
-		suffix = "__as_name_or"
-	} else {
-		suffix = "__as_name"
-	}
-
-	// Create function name
-	getterFuncName := fmt.Sprintf("%s_get_%s%s", funcPrefix, fieldName, suffix)
-
-	// Check filtering
-	var commentPrefix string
-	if fieldFilterFunc != nil {
-		decision := fieldFilterFunc(field, getterFuncName)
-		switch decision {
-		case DecisionExclude:
-			return nil
-		case DecisionCommentOut:
-			commentPrefix = "-- "
-		case DecisionInclude:
-			commentPrefix = ""
-		default:
-			commentPrefix = ""
-		}
-	}
-
-	// Validate function name
-	if err := validateFunctionName(getterFuncName, fullTypeName); err != nil {
-		if commentPrefix == "" {
-			return err
-		}
-	}
-
-	// Get the enum descriptor
+func generateEnumNameGetter(content *strings.Builder, funcPrefix string, field protoreflect.FieldDescriptor, isNullableVariant bool, fieldFilterFunc FieldFilterFunc, typePrefixFunc TypePrefixFunc) error {
+	// Get enum conversion function name
 	enumDesc := field.Enum()
-	if enumDesc == nil {
-		return fmt.Errorf("field %s is not an enum field", field.FullName())
-	}
-
-	// Get the enum conversion function name using TypePrefixFunc
 	enumFullTypeName := enumDesc.FullName()
 	enumPackageName := enumDesc.ParentFile().Package()
 	enumFuncPrefix := typePrefixFunc(enumPackageName, enumFullTypeName)
 	toStringFuncName := enumFuncPrefix + "_to_string"
 
-	// Generate function signature
-	content.WriteString(fmt.Sprintf("%sDROP FUNCTION IF EXISTS %s $$\n", commentPrefix, getterFuncName))
-	if isNullableVariant {
-		content.WriteString(fmt.Sprintf("%sCREATE FUNCTION %s(proto_data JSON, default_value LONGTEXT) RETURNS LONGTEXT DETERMINISTIC\n", commentPrefix, getterFuncName))
-	} else {
-		content.WriteString(fmt.Sprintf("%sCREATE FUNCTION %s(proto_data JSON) RETURNS LONGTEXT DETERMINISTIC\n", commentPrefix, getterFuncName))
-	}
-	content.WriteString(fmt.Sprintf("%sBEGIN\n", commentPrefix))
-
-	// DECLARE statements must be at the beginning
-	content.WriteString(fmt.Sprintf("%s    DECLARE enum_value INT;\n", commentPrefix))
-	content.WriteString(fmt.Sprintf("%s    DECLARE enum_name LONGTEXT;\n", commentPrefix))
-
-	// Get the enum value first
-	content.WriteString(fmt.Sprintf("%s    SET enum_value = CAST(JSON_EXTRACT(proto_data, '$.\"%.d\"') AS SIGNED);\n", commentPrefix, field.Number()))
-
-	if isNullableVariant {
-		// For nullable variant, check if field is present (enum_value IS NOT NULL)
-		content.WriteString(fmt.Sprintf("%s    IF enum_value IS NOT NULL THEN\n", commentPrefix))
-	} else {
-		// For non-nullable variant, handle missing field by using default (0)
-		content.WriteString(fmt.Sprintf("%s    IF enum_value IS NULL THEN\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s        SET enum_value = 0;\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
+	// Create converter that handles enum to string conversion
+	converter := func(valueVar string) string {
+		return fmt.Sprintf(`COALESCE(%s(CAST(%s AS SIGNED)), CAST(CAST(%s AS SIGNED) AS CHAR))`, toStringFuncName, valueVar, valueVar)
 	}
 
 	if isNullableVariant {
-		// Use the enum's to_string function
-		content.WriteString(fmt.Sprintf("%s        SET enum_name = %s(enum_value);\n", commentPrefix, toStringFuncName))
-
-		// If the conversion was successful, return the name; otherwise return the number as string
-		content.WriteString(fmt.Sprintf("%s        IF enum_name IS NOT NULL THEN\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s            RETURN enum_name;\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s        ELSE\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s            RETURN CAST(enum_value AS CHAR);\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s        END IF;\n", commentPrefix))
-
-		// Field absent, return default
-		content.WriteString(fmt.Sprintf("%s    ELSE\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s        RETURN default_value;\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
+		return generateUnifiedFieldGetter(content, funcPrefix, field.ContainingMessage().FullName(), field, string(field.Name()), "__as_name_or", "LONGTEXT", true, "default_value", converter, fieldFilterFunc)
 	} else {
-		// Use the enum's to_string function
-		content.WriteString(fmt.Sprintf("%s    SET enum_name = %s(enum_value);\n", commentPrefix, toStringFuncName))
-
-		// If the conversion was successful, return the name; otherwise return the number as string
-		content.WriteString(fmt.Sprintf("%s    IF enum_name IS NOT NULL THEN\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s        RETURN enum_name;\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s    ELSE\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s        RETURN CAST(enum_value AS CHAR);\n", commentPrefix))
-		content.WriteString(fmt.Sprintf("%s    END IF;\n", commentPrefix))
+		// For non-nullable enum, the default is the converted value of 0
+		defaultValue := fmt.Sprintf(`COALESCE(%s(0), '0')`, toStringFuncName)
+		return generateUnifiedFieldGetter(content, funcPrefix, field.ContainingMessage().FullName(), field, string(field.Name()), "__as_name", "LONGTEXT", false, defaultValue, converter, fieldFilterFunc)
 	}
-
-	content.WriteString(fmt.Sprintf("%sEND $$\n\n", commentPrefix))
-
-	return nil
 }
 
 // generateEnumNameSetter creates setter functions that accept enum names as strings
