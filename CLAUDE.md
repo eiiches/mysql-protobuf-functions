@@ -17,6 +17,8 @@ This is a MySQL Protocol Buffers (protobuf) functions library that provides comp
 ### Go Development Tools
 - **cmd/protobuf-accessors/**: Code generator for MySQL accessor functions
 - **cmd/mysql-profiler/**: Performance profiling tool that generates flamegraphs from MySQL performance schema
+- **cmd/mysql-coverage/**: SQL code coverage analysis tool with LCOV report generation
+- **cmd/mysql-ftrace/**: Function tracing tool for SQL execution analysis
 - **internal/**: Supporting Go packages for protobuf reflection, MySQL utilities, and testing
 
 ### Key Components
@@ -24,6 +26,8 @@ This is a MySQL Protocol Buffers (protobuf) functions library that provides comp
 - **Type system**: Comprehensive support for all protobuf types (varint, fixed32/64, length-delimited)
 - **JSON conversion**: Protobuf to JSON transformation with schema awareness
 - **Performance profiling**: MySQL performance analysis and flamegraph generation
+- **Coverage analysis**: SQL code coverage tracking with LCOV report generation
+- **Function tracing**: Detailed SQL function execution tracing and analysis
 
 ## Development Commands
 

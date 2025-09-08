@@ -47,11 +47,11 @@ protoc-gen-mysql:
 	go build ./cmd/protoc-gen-mysql/
 
 .PHONY: mysql-coverage
-mysql-coverage:
+mysql-coverage: internal/mysql/sqlflowparser/mysql_ast_parser.go
 	go build ./cmd/mysql-coverage
 
 .PHONY: mysql-ftrace
-mysql-ftrace:
+mysql-ftrace: internal/mysql/sqlflowparser/mysql_ast_parser.go
 	go build ./cmd/mysql-ftrace
 
 build/%.sql: src/%.sql
