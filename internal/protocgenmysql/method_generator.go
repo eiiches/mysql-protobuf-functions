@@ -329,28 +329,20 @@ func generateListGetAll(content *strings.Builder, funcPrefix string, field proto
 	content.WriteString(fmt.Sprintf("DROP FUNCTION IF EXISTS %s $$\n", getterFuncName))
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS JSON DETERMINISTIC\n", getterFuncName))
 	content.WriteString("BEGIN\n")
-
-	// Special handling for float and double to convert from binary format
-	if field.Kind() == protoreflect.FloatKind || field.Kind() == protoreflect.DoubleKind {
-		content.WriteString("    DECLARE result_array JSON DEFAULT JSON_ARRAY();\n")
-		content.WriteString("    DECLARE raw_array JSON;\n")
-		content.WriteString("    DECLARE array_length INT;\n")
-		content.WriteString("    DECLARE i INT DEFAULT 0;\n")
-		content.WriteString("    DECLARE element_value JSON;\n")
-		content.WriteString(fmt.Sprintf("    SET raw_array = COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_ARRAY());\n", field.Number()))
-		content.WriteString("    SET array_length = JSON_LENGTH(raw_array);\n")
-		content.WriteString("    WHILE i < array_length DO\n")
-		content.WriteString("        SET element_value = JSON_EXTRACT(raw_array, CONCAT('$[', i, ']'));\n")
-		convertedExpression := GetProtobufType(field.Kind()).GenerateNumberJsonToSqlExpression("element_value")
-		content.WriteString(fmt.Sprintf("        SET result_array = JSON_ARRAY_APPEND(result_array, '$', %s);\n", convertedExpression))
-		content.WriteString("        SET i = i + 1;\n")
-		content.WriteString("    END WHILE;\n")
-		content.WriteString("    RETURN result_array;\n")
-	} else {
-		// For other repeated fields, return JSON array or empty array if not present
-		content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_ARRAY());\n", field.Number()))
-	}
-
+	content.WriteString("    DECLARE result_array JSON DEFAULT JSON_ARRAY();\n")
+	content.WriteString("    DECLARE raw_array JSON;\n")
+	content.WriteString("    DECLARE array_length INT;\n")
+	content.WriteString("    DECLARE i INT DEFAULT 0;\n")
+	content.WriteString("    DECLARE element_value JSON;\n")
+	content.WriteString(fmt.Sprintf("    SET raw_array = COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_ARRAY());\n", field.Number()))
+	content.WriteString("    SET array_length = JSON_LENGTH(raw_array);\n")
+	content.WriteString("    WHILE i < array_length DO\n")
+	content.WriteString("        SET element_value = JSON_EXTRACT(raw_array, CONCAT('$[', i, ']'));\n")
+	convertedExpression := GetProtobufType(field.Kind()).GenerateNumberJsonToJsonExpression("element_value")
+	content.WriteString(fmt.Sprintf("        SET result_array = JSON_ARRAY_APPEND(result_array, '$', %s);\n", convertedExpression))
+	content.WriteString("        SET i = i + 1;\n")
+	content.WriteString("    END WHILE;\n")
+	content.WriteString("    RETURN result_array;\n")
 	content.WriteString("END $$\n\n")
 	return nil
 }
@@ -951,8 +943,7 @@ func generateUnifiedMapKeyGetter(content *strings.Builder, funcPrefix string, fi
 // generateMapFieldMethods creates additional methods for map fields
 func generateMapFieldMethods(content *strings.Builder, funcPrefix string, field protoreflect.FieldDescriptor) error {
 	// Generate key-based get method for map fields
-	defaultValue := GetProtobufType(field.MapValue().Kind()).GetDefaultValueExpression()
-	if err := generateUnifiedMapKeyGetter(content, funcPrefix, field, "", false, defaultValue); err != nil {
+	if err := generateUnifiedMapKeyGetter(content, funcPrefix, field, "", false, "NULL"); err != nil {
 		return err
 	}
 

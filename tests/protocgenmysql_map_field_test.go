@@ -79,8 +79,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_int32_to_int32_map(?, ?)", `{"1": {"42": 100}}`, `42`).IsEqualToInt(100) // Key exists, return value
-		RunTestThatExpression(t, "test_get_int32_to_int32_map(?, ?)", `{"1": {"42": 100}}`, `99`).IsEqualToInt(0)   // Key missing, return default
-		RunTestThatExpression(t, "test_get_int32_to_int32_map(?, ?)", `{}`, `42`).IsEqualToInt(0)                   // Map empty, return default
+		RunTestThatExpression(t, "test_get_int32_to_int32_map(?, ?)", `{"1": {"42": 100}}`, `99`).IsNull()   // Key missing, return NULL
+		RunTestThatExpression(t, "test_get_int32_to_int32_map(?, ?)", `{}`, `42`).IsNull()                   // Map empty, return NULL
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_int32_to_int32_map(?, ?)", `{"1": {"42": 100}}`, `42`).IsEqualToBool(true)  // Key exists
@@ -117,8 +117,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_int64_to_int32_map(?, ?)", `{"2": {"9223372036854775807": 200}}`, `9223372036854775807`).IsEqualToInt(200) // Key exists
-		RunTestThatExpression(t, "test_get_int64_to_int32_map(?, ?)", `{"2": {"9223372036854775807": 200}}`, `123`).IsEqualToInt(0)                   // Key missing
-		RunTestThatExpression(t, "test_get_int64_to_int32_map(?, ?)", `{}`, `9223372036854775807`).IsEqualToInt(0)                                    // Map empty
+		RunTestThatExpression(t, "test_get_int64_to_int32_map(?, ?)", `{"2": {"9223372036854775807": 200}}`, `123`).IsNull()                   // Key missing
+		RunTestThatExpression(t, "test_get_int64_to_int32_map(?, ?)", `{}`, `9223372036854775807`).IsNull()                                    // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_int64_to_int32_map(?, ?)", `{"2": {"9223372036854775807": 200}}`, `9223372036854775807`).IsEqualToBool(true) // Key exists
@@ -155,8 +155,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_uint32_to_int32_map(?, ?)", `{"3": {"4294967295": 300}}`, `4294967295`).IsEqualToInt(300) // Key exists
-		RunTestThatExpression(t, "test_get_uint32_to_int32_map(?, ?)", `{"3": {"4294967295": 300}}`, `123`).IsEqualToInt(0)          // Key missing
-		RunTestThatExpression(t, "test_get_uint32_to_int32_map(?, ?)", `{}`, `4294967295`).IsEqualToInt(0)                           // Map empty
+		RunTestThatExpression(t, "test_get_uint32_to_int32_map(?, ?)", `{"3": {"4294967295": 300}}`, `123`).IsNull()          // Key missing
+		RunTestThatExpression(t, "test_get_uint32_to_int32_map(?, ?)", `{}`, `4294967295`).IsNull()                           // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_uint32_to_int32_map(?, ?)", `{"3": {"4294967295": 300}}`, `4294967295`).IsEqualToBool(true) // Key exists
@@ -193,8 +193,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_uint64_to_int32_map(?, ?)", `{"4": {"18446744073709551615": 400}}`, `18446744073709551615`).IsEqualToInt(400) // Key exists
-		RunTestThatExpression(t, "test_get_uint64_to_int32_map(?, ?)", `{"4": {"18446744073709551615": 400}}`, `123`).IsEqualToInt(0)                    // Key missing
-		RunTestThatExpression(t, "test_get_uint64_to_int32_map(?, ?)", `{}`, `18446744073709551615`).IsEqualToInt(0)                                     // Map empty
+		RunTestThatExpression(t, "test_get_uint64_to_int32_map(?, ?)", `{"4": {"18446744073709551615": 400}}`, `123`).IsNull()                    // Key missing
+		RunTestThatExpression(t, "test_get_uint64_to_int32_map(?, ?)", `{}`, `18446744073709551615`).IsNull()                                     // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_uint64_to_int32_map(?, ?)", `{"4": {"18446744073709551615": 400}}`, `18446744073709551615`).IsEqualToBool(true) // Key exists
@@ -231,8 +231,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_sint32_to_int32_map(?, ?)", `{"5": {"-2147483648": 500}}`, `-2147483648`).IsEqualToInt(500) // Key exists
-		RunTestThatExpression(t, "test_get_sint32_to_int32_map(?, ?)", `{"5": {"-2147483648": 500}}`, `123`).IsEqualToInt(0)           // Key missing
-		RunTestThatExpression(t, "test_get_sint32_to_int32_map(?, ?)", `{}`, `-2147483648`).IsEqualToInt(0)                            // Map empty
+		RunTestThatExpression(t, "test_get_sint32_to_int32_map(?, ?)", `{"5": {"-2147483648": 500}}`, `123`).IsNull()           // Key missing
+		RunTestThatExpression(t, "test_get_sint32_to_int32_map(?, ?)", `{}`, `-2147483648`).IsNull()                            // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_sint32_to_int32_map(?, ?)", `{"5": {"-2147483648": 500}}`, `-2147483648`).IsEqualToBool(true) // Key exists
@@ -269,8 +269,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_sint64_to_int32_map(?, ?)", `{"6": {"-9223372036854775808": 600}}`, `-9223372036854775808`).IsEqualToInt(600) // Key exists
-		RunTestThatExpression(t, "test_get_sint64_to_int32_map(?, ?)", `{"6": {"-9223372036854775808": 600}}`, `123`).IsEqualToInt(0)                    // Key missing
-		RunTestThatExpression(t, "test_get_sint64_to_int32_map(?, ?)", `{}`, `-9223372036854775808`).IsEqualToInt(0)                                     // Map empty
+		RunTestThatExpression(t, "test_get_sint64_to_int32_map(?, ?)", `{"6": {"-9223372036854775808": 600}}`, `123`).IsNull()                    // Key missing
+		RunTestThatExpression(t, "test_get_sint64_to_int32_map(?, ?)", `{}`, `-9223372036854775808`).IsNull()                                     // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_sint64_to_int32_map(?, ?)", `{"6": {"-9223372036854775808": 600}}`, `-9223372036854775808`).IsEqualToBool(true) // Key exists
@@ -307,8 +307,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_fixed32_to_int32_map(?, ?)", `{"7": {"4294967295": 700}}`, `4294967295`).IsEqualToInt(700) // Key exists
-		RunTestThatExpression(t, "test_get_fixed32_to_int32_map(?, ?)", `{"7": {"4294967295": 700}}`, `123`).IsEqualToInt(0)          // Key missing
-		RunTestThatExpression(t, "test_get_fixed32_to_int32_map(?, ?)", `{}`, `4294967295`).IsEqualToInt(0)                           // Map empty
+		RunTestThatExpression(t, "test_get_fixed32_to_int32_map(?, ?)", `{"7": {"4294967295": 700}}`, `123`).IsNull()          // Key missing
+		RunTestThatExpression(t, "test_get_fixed32_to_int32_map(?, ?)", `{}`, `4294967295`).IsNull()                           // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_fixed32_to_int32_map(?, ?)", `{"7": {"4294967295": 700}}`, `4294967295`).IsEqualToBool(true) // Key exists
@@ -345,8 +345,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_fixed64_to_int32_map(?, ?)", `{"8": {"18446744073709551615": 800}}`, `18446744073709551615`).IsEqualToInt(800) // Key exists
-		RunTestThatExpression(t, "test_get_fixed64_to_int32_map(?, ?)", `{"8": {"18446744073709551615": 800}}`, `123`).IsEqualToInt(0)                    // Key missing
-		RunTestThatExpression(t, "test_get_fixed64_to_int32_map(?, ?)", `{}`, `18446744073709551615`).IsEqualToInt(0)                                     // Map empty
+		RunTestThatExpression(t, "test_get_fixed64_to_int32_map(?, ?)", `{"8": {"18446744073709551615": 800}}`, `123`).IsNull()                    // Key missing
+		RunTestThatExpression(t, "test_get_fixed64_to_int32_map(?, ?)", `{}`, `18446744073709551615`).IsNull()                                     // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_fixed64_to_int32_map(?, ?)", `{"8": {"18446744073709551615": 800}}`, `18446744073709551615`).IsEqualToBool(true) // Key exists
@@ -383,8 +383,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_sfixed32_to_int32_map(?, ?)", `{"9": {"-2147483648": 900}}`, `-2147483648`).IsEqualToInt(900) // Key exists
-		RunTestThatExpression(t, "test_get_sfixed32_to_int32_map(?, ?)", `{"9": {"-2147483648": 900}}`, `123`).IsEqualToInt(0)           // Key missing
-		RunTestThatExpression(t, "test_get_sfixed32_to_int32_map(?, ?)", `{}`, `-2147483648`).IsEqualToInt(0)                            // Map empty
+		RunTestThatExpression(t, "test_get_sfixed32_to_int32_map(?, ?)", `{"9": {"-2147483648": 900}}`, `123`).IsNull()           // Key missing
+		RunTestThatExpression(t, "test_get_sfixed32_to_int32_map(?, ?)", `{}`, `-2147483648`).IsNull()                            // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_sfixed32_to_int32_map(?, ?)", `{"9": {"-2147483648": 900}}`, `-2147483648`).IsEqualToBool(true) // Key exists
@@ -421,8 +421,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_sfixed64_to_int32_map(?, ?)", `{"10": {"-9223372036854775808": 1000}}`, `-9223372036854775808`).IsEqualToInt(1000) // Key exists
-		RunTestThatExpression(t, "test_get_sfixed64_to_int32_map(?, ?)", `{"10": {"-9223372036854775808": 1000}}`, `123`).IsEqualToInt(0)                     // Key missing
-		RunTestThatExpression(t, "test_get_sfixed64_to_int32_map(?, ?)", `{}`, `-9223372036854775808`).IsEqualToInt(0)                                        // Map empty
+		RunTestThatExpression(t, "test_get_sfixed64_to_int32_map(?, ?)", `{"10": {"-9223372036854775808": 1000}}`, `123`).IsNull()                     // Key missing
+		RunTestThatExpression(t, "test_get_sfixed64_to_int32_map(?, ?)", `{}`, `-9223372036854775808`).IsNull()                                        // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_sfixed64_to_int32_map(?, ?)", `{"10": {"-9223372036854775808": 1000}}`, `-9223372036854775808`).IsEqualToBool(true) // Key exists
@@ -461,7 +461,7 @@ func TestProtocGenMapField(t *testing.T) {
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_bool_to_int32_map(?, ?)", `{"11": {"true": 1100, "false": 0}}`, true).IsEqualToInt(1100) // Key exists
 		RunTestThatExpression(t, "test_get_bool_to_int32_map(?, ?)", `{"11": {"true": 1100, "false": 0}}`, false).IsEqualToInt(0)   // Key exists (zero value)
-		RunTestThatExpression(t, "test_get_bool_to_int32_map(?, ?)", `{}`, true).IsEqualToInt(0)                                    // Map empty
+		RunTestThatExpression(t, "test_get_bool_to_int32_map(?, ?)", `{}`, true).IsNull()                                    // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_bool_to_int32_map(?, ?)", `{"11": {"true": 1100, "false": 0}}`, true).IsEqualToBool(true)  // Key exists
@@ -508,8 +508,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_string_to_int32_map(?, ?)", `{"12": {"key": 555}}`, `key`).IsEqualToInt(555)   // Key exists
-		RunTestThatExpression(t, "test_get_string_to_int32_map(?, ?)", `{"12": {"key": 555}}`, `missing`).IsEqualToInt(0) // Key missing, return default
-		RunTestThatExpression(t, "test_get_string_to_int32_map(?, ?)", `{}`, `key`).IsEqualToInt(0)                       // Map empty, return default
+		RunTestThatExpression(t, "test_get_string_to_int32_map(?, ?)", `{"12": {"key": 555}}`, `missing`).IsNull() // Key missing, return NULL
+		RunTestThatExpression(t, "test_get_string_to_int32_map(?, ?)", `{}`, `key`).IsNull()                       // Map empty, return NULL
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_string_to_int32_map(?, ?)", `{"12": {"key": 555}}`, `key`).IsEqualToBool(true)      // Key exists
@@ -547,8 +547,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_string_to_double_map(?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `pi`).IsEqualToDouble(3.141592653589793) // Key exists
-		RunTestThatExpression(t, "test_get_string_to_double_map(?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `missing`).IsEqualToDouble(0)            // Key missing
-		RunTestThatExpression(t, "test_get_string_to_double_map(?, ?)", `{}`, `pi`).IsEqualToDouble(0)                                                            // Map empty
+		RunTestThatExpression(t, "test_get_string_to_double_map(?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `missing`).IsNull()            // Key missing
+		RunTestThatExpression(t, "test_get_string_to_double_map(?, ?)", `{}`, `pi`).IsNull()                                                            // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_string_to_double_map(?, ?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`, `pi`).IsEqualToBool(true)       // Key exists
@@ -588,8 +588,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_string_to_float_map(?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `pi_float`).IsEqualToFloat(3.140000104904175) // Key exists
-		RunTestThatExpression(t, "test_get_string_to_float_map(?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `missing`).IsEqualToFloat(0)                  // Key missing
-		RunTestThatExpression(t, "test_get_string_to_float_map(?, ?)", `{}`, `pi_float`).IsEqualToFloat(0)                                                          // Map empty
+		RunTestThatExpression(t, "test_get_string_to_float_map(?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `missing`).IsNull()                  // Key missing
+		RunTestThatExpression(t, "test_get_string_to_float_map(?, ?)", `{}`, `pi_float`).IsNull()                                                          // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_string_to_float_map(?, ?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`, `pi_float`).IsEqualToBool(true) // Key exists
@@ -790,8 +790,8 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test individual key access without default
 		RunTestThatExpression(t, "test_get_string_to_enum_map(?, ?)", `{"27": {"status": 1}}`, `status`).IsEqualToInt(1)  // Key exists
-		RunTestThatExpression(t, "test_get_string_to_enum_map(?, ?)", `{"27": {"status": 1}}`, `missing`).IsEqualToInt(0) // Key missing
-		RunTestThatExpression(t, "test_get_string_to_enum_map(?, ?)", `{}`, `status`).IsEqualToInt(0)                     // Map empty
+		RunTestThatExpression(t, "test_get_string_to_enum_map(?, ?)", `{"27": {"status": 1}}`, `missing`).IsNull() // Key missing
+		RunTestThatExpression(t, "test_get_string_to_enum_map(?, ?)", `{}`, `status`).IsNull()                     // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_string_to_enum_map(?, ?)", `{"27": {"status": 1}}`, `status`).IsEqualToBool(true)   // Key exists
@@ -829,10 +829,9 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "test_get_string_to_message_map__or(?, ?, ?)", `{}`, `nested`, defaultMessage).IsEqualToJsonString(defaultMessage)                                                   // Map empty
 
 		// Test individual key access without default
-		emptyMessage := `{}`
 		RunTestThatExpression(t, "test_get_string_to_message_map(?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `nested`).IsEqualToJsonString(`{"1": "test", "2": 42}`) // Key exists
-		RunTestThatExpression(t, "test_get_string_to_message_map(?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `missing`).IsEqualToJsonString(emptyMessage)            // Key missing
-		RunTestThatExpression(t, "test_get_string_to_message_map(?, ?)", `{}`, `nested`).IsEqualToJsonString(emptyMessage)                                                     // Map empty
+		RunTestThatExpression(t, "test_get_string_to_message_map(?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `missing`).IsNull()            // Key missing
+		RunTestThatExpression(t, "test_get_string_to_message_map(?, ?)", `{}`, `nested`).IsNull()                                                     // Map empty
 
 		// Test key existence checks
 		RunTestThatExpression(t, "test_contains_string_to_message_map(?, ?)", `{"28": {"nested": {"1": "test", "2": 42}}}`, `nested`).IsEqualToBool(true)   // Key exists
