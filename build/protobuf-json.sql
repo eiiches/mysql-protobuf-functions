@@ -4528,7 +4528,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
@@ -4555,7 +4555,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -4675,7 +4675,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_file_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_has_name $$
@@ -4715,7 +4715,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_package $$
 CREATE FUNCTION _pb_file_descriptor_proto_set_package(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_has_package $$
@@ -4779,7 +4779,7 @@ BEGIN
     IF current_array IS NULL THEN
         SET current_array = JSON_ARRAY();
     END IF;
-    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
     RETURN JSON_SET(proto_data, '$."3"', current_array);
 END $$
 
@@ -4807,7 +4807,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN JSON_UNQUOTE(element_value);
+    RETURN _pb_json_parse_string(element_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_dependency $$
@@ -4823,7 +4823,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(JSON_QUOTE(element_value) AS JSON));
     RETURN JSON_SET(proto_data, '$."3"', array_value);
 END $$
 
@@ -4850,7 +4850,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -4964,7 +4964,7 @@ BEGIN
     IF current_array IS NULL THEN
         SET current_array = JSON_ARRAY();
     END IF;
-    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."10"', current_array);
 END $$
 
@@ -4992,7 +4992,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN _pb_json_parse_signed_int(element_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_public_dependency $$
@@ -5149,7 +5149,7 @@ BEGIN
     IF current_array IS NULL THEN
         SET current_array = JSON_ARRAY();
     END IF;
-    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."11"', current_array);
 END $$
 
@@ -5177,7 +5177,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN _pb_json_parse_signed_int(element_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_weak_dependency $$
@@ -5378,7 +5378,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."4"', array_value);
 END $$
 
@@ -5405,7 +5405,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -5563,7 +5563,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."5"', array_value);
 END $$
 
@@ -5590,7 +5590,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -5748,7 +5748,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."6"', array_value);
 END $$
 
@@ -5775,7 +5775,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -5933,7 +5933,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."7"', array_value);
 END $$
 
@@ -5960,7 +5960,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -6034,12 +6034,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_file_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."8"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_options $$
@@ -6072,12 +6072,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_get_source_code_info__or $$
 CREATE FUNCTION _pb_file_descriptor_proto_get_source_code_info__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."9"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."9"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_source_code_info $$
@@ -6126,7 +6126,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_syntax $$
 CREATE FUNCTION _pb_file_descriptor_proto_set_syntax(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."12"', field_value);
+    RETURN JSON_SET(proto_data, '$."12"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_has_syntax $$
@@ -6208,15 +6208,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."14"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."14"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."14"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_set_edition $$
 CREATE FUNCTION _pb_file_descriptor_proto_set_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."14"', field_value);
+    RETURN JSON_SET(proto_data, '$."14"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_has_edition $$
@@ -6286,7 +6285,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_has_name $$
@@ -6394,7 +6393,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."2"', array_value);
 END $$
 
@@ -6421,7 +6420,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -6579,7 +6578,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."6"', array_value);
 END $$
 
@@ -6606,7 +6605,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -6764,7 +6763,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."3"', array_value);
 END $$
 
@@ -6791,7 +6790,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -6949,7 +6948,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."4"', array_value);
 END $$
 
@@ -6976,7 +6975,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -7134,7 +7133,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."5"', array_value);
 END $$
 
@@ -7161,7 +7160,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -7319,7 +7318,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."8"', array_value);
 END $$
 
@@ -7346,7 +7345,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -7420,12 +7419,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."7"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_options $$
@@ -7542,7 +7541,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."9"', array_value);
 END $$
 
@@ -7569,7 +7568,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -7683,7 +7682,7 @@ BEGIN
     IF current_array IS NULL THEN
         SET current_array = JSON_ARRAY();
     END IF;
-    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
     RETURN JSON_SET(proto_data, '$."10"', current_array);
 END $$
 
@@ -7711,7 +7710,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN JSON_UNQUOTE(element_value);
+    RETURN _pb_json_parse_string(element_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_set_reserved_name $$
@@ -7727,7 +7726,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(JSON_QUOTE(element_value) AS JSON));
     RETURN JSON_SET(proto_data, '$."10"', array_value);
 END $$
 
@@ -7754,7 +7753,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -7874,7 +7873,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_set_start $$
 CREATE FUNCTION _pb_descriptor_proto_extension_range_set_start(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_has_start $$
@@ -7914,7 +7913,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_set_end $$
 CREATE FUNCTION _pb_descriptor_proto_extension_range_set_end(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_has_end $$
@@ -7938,12 +7937,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_get_options__or $$
 CREATE FUNCTION _pb_descriptor_proto_extension_range_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_extension_range_set_options $$
@@ -8022,7 +8021,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_set_start $$
 CREATE FUNCTION _pb_descriptor_proto_reserved_range_set_start(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_has_start $$
@@ -8062,7 +8061,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_set_end $$
 CREATE FUNCTION _pb_descriptor_proto_reserved_range_set_end(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_reserved_range_has_end $$
@@ -8200,7 +8199,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
@@ -8227,7 +8226,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -8385,7 +8384,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."2"', array_value);
 END $$
 
@@ -8412,7 +8411,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -8486,12 +8485,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_extension_range_options_get_features__or $$
 CREATE FUNCTION _pb_extension_range_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."50"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."50"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_set_features $$
@@ -8582,15 +8581,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."3"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."3"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."3"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_set_verification $$
 CREATE FUNCTION _pb_extension_range_options_set_verification(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
+    RETURN JSON_SET(proto_data, '$."3"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_has_verification $$
@@ -8660,7 +8658,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_number $$
 CREATE FUNCTION _pb_extension_range_options_declaration_set_number(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_has_number $$
@@ -8700,7 +8698,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_full_name $$
 CREATE FUNCTION _pb_extension_range_options_declaration_set_full_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_has_full_name $$
@@ -8740,7 +8738,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_set_type $$
 CREATE FUNCTION _pb_extension_range_options_declaration_set_type(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
+    RETURN JSON_SET(proto_data, '$."3"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_declaration_has_type $$
@@ -8761,7 +8759,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."5"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -8801,7 +8799,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."6"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -8910,7 +8908,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_name $$
@@ -8950,7 +8948,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_number $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_number(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
+    RETURN JSON_SET(proto_data, '$."3"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_number $$
@@ -9032,15 +9030,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."4"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."4"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."4"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_label $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_label(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."4"', field_value);
+    RETURN JSON_SET(proto_data, '$."4"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_label $$
@@ -9122,15 +9119,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."5"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."5"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."5"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_type $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_type(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."5"', field_value);
+    RETURN JSON_SET(proto_data, '$."5"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_type $$
@@ -9170,7 +9166,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_type_name $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_type_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."6"', field_value);
+    RETURN JSON_SET(proto_data, '$."6"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_type_name $$
@@ -9210,7 +9206,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_extendee $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_extendee(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_extendee $$
@@ -9250,7 +9246,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_default_value $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_default_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."7"', field_value);
+    RETURN JSON_SET(proto_data, '$."7"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_default_value $$
@@ -9290,7 +9286,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_oneof_index $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_oneof_index(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."9"', field_value);
+    RETURN JSON_SET(proto_data, '$."9"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_oneof_index $$
@@ -9330,7 +9326,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_json_name $$
 CREATE FUNCTION _pb_field_descriptor_proto_set_json_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."10"', field_value);
+    RETURN JSON_SET(proto_data, '$."10"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_has_json_name $$
@@ -9354,12 +9350,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_field_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."8"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."8"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_descriptor_proto_set_options $$
@@ -9389,7 +9385,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."17"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -9552,7 +9548,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_oneof_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_has_name $$
@@ -9576,12 +9572,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_oneof_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_oneof_descriptor_proto_set_options $$
@@ -9660,7 +9656,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_enum_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_has_name $$
@@ -9768,7 +9764,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."2"', array_value);
 END $$
 
@@ -9795,7 +9791,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -9869,12 +9865,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_enum_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_options $$
@@ -9991,7 +9987,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."4"', array_value);
 END $$
 
@@ -10018,7 +10014,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -10132,7 +10128,7 @@ BEGIN
     IF current_array IS NULL THEN
         SET current_array = JSON_ARRAY();
     END IF;
-    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
     RETURN JSON_SET(proto_data, '$."5"', current_array);
 END $$
 
@@ -10160,7 +10156,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN JSON_UNQUOTE(element_value);
+    RETURN _pb_json_parse_string(element_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_set_reserved_name $$
@@ -10176,7 +10172,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(JSON_QUOTE(element_value) AS JSON));
     RETURN JSON_SET(proto_data, '$."5"', array_value);
 END $$
 
@@ -10203,7 +10199,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -10323,7 +10319,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_set_start $$
 CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_set_start(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_has_start $$
@@ -10363,7 +10359,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_set_end $$
 CREATE FUNCTION _pb_enum_descriptor_proto_enum_reserved_range_set_end(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_enum_reserved_range_has_end $$
@@ -10433,7 +10429,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_enum_value_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_has_name $$
@@ -10473,7 +10469,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_set_number $$
 CREATE FUNCTION _pb_enum_value_descriptor_proto_set_number(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_has_number $$
@@ -10497,12 +10493,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_enum_value_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_descriptor_proto_set_options $$
@@ -10581,7 +10577,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_service_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_has_name $$
@@ -10689,7 +10685,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."2"', array_value);
 END $$
 
@@ -10716,7 +10712,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -10790,12 +10786,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_service_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."3"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_set_options $$
@@ -10874,7 +10870,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_name $$
 CREATE FUNCTION _pb_method_descriptor_proto_set_name(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_has_name $$
@@ -10914,7 +10910,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_input_type $$
 CREATE FUNCTION _pb_method_descriptor_proto_set_input_type(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_has_input_type $$
@@ -10954,7 +10950,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_output_type $$
 CREATE FUNCTION _pb_method_descriptor_proto_set_output_type(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
+    RETURN JSON_SET(proto_data, '$."3"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_has_output_type $$
@@ -10978,12 +10974,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_get_options__or $$
 CREATE FUNCTION _pb_method_descriptor_proto_get_options__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_descriptor_proto_set_options $$
@@ -11013,7 +11009,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."5"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -11053,7 +11049,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."6"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -11142,7 +11138,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_package $$
 CREATE FUNCTION _pb_file_options_set_java_package(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_has_java_package $$
@@ -11182,7 +11178,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_set_java_outer_classname $$
 CREATE FUNCTION _pb_file_options_set_java_outer_classname(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."8"', field_value);
+    RETURN JSON_SET(proto_data, '$."8"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_has_java_outer_classname $$
@@ -11203,7 +11199,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."10"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -11243,7 +11239,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."20"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -11283,7 +11279,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."27"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -11384,15 +11380,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."9"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."9"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."9"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_optimize_for $$
 CREATE FUNCTION _pb_file_options_set_optimize_for(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."9"', field_value);
+    RETURN JSON_SET(proto_data, '$."9"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_has_optimize_for $$
@@ -11432,7 +11427,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_set_go_package $$
 CREATE FUNCTION _pb_file_options_set_go_package(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."11"', field_value);
+    RETURN JSON_SET(proto_data, '$."11"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_has_go_package $$
@@ -11453,7 +11448,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."16"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -11493,7 +11488,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."17"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -11533,7 +11528,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."18"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -11573,7 +11568,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."23"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -11613,7 +11608,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."31"');
     IF json_value IS NULL THEN
-        RETURN 1;
+        RETURN TRUE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -11672,7 +11667,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_set_objc_class_prefix $$
 CREATE FUNCTION _pb_file_options_set_objc_class_prefix(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."36"', field_value);
+    RETURN JSON_SET(proto_data, '$."36"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_has_objc_class_prefix $$
@@ -11712,7 +11707,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_set_csharp_namespace $$
 CREATE FUNCTION _pb_file_options_set_csharp_namespace(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."37"', field_value);
+    RETURN JSON_SET(proto_data, '$."37"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_has_csharp_namespace $$
@@ -11752,7 +11747,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_set_swift_prefix $$
 CREATE FUNCTION _pb_file_options_set_swift_prefix(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."39"', field_value);
+    RETURN JSON_SET(proto_data, '$."39"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_has_swift_prefix $$
@@ -11792,7 +11787,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_set_php_class_prefix $$
 CREATE FUNCTION _pb_file_options_set_php_class_prefix(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."40"', field_value);
+    RETURN JSON_SET(proto_data, '$."40"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_has_php_class_prefix $$
@@ -11832,7 +11827,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_set_php_namespace $$
 CREATE FUNCTION _pb_file_options_set_php_namespace(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."41"', field_value);
+    RETURN JSON_SET(proto_data, '$."41"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_has_php_namespace $$
@@ -11872,7 +11867,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_set_php_metadata_namespace $$
 CREATE FUNCTION _pb_file_options_set_php_metadata_namespace(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."44"', field_value);
+    RETURN JSON_SET(proto_data, '$."44"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_has_php_metadata_namespace $$
@@ -11912,7 +11907,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_set_ruby_package $$
 CREATE FUNCTION _pb_file_options_set_ruby_package(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."45"', field_value);
+    RETURN JSON_SET(proto_data, '$."45"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_has_ruby_package $$
@@ -11936,12 +11931,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_get_features__or $$
 CREATE FUNCTION _pb_file_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."50"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."50"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_set_features $$
@@ -12058,7 +12053,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
@@ -12085,7 +12080,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -12208,7 +12203,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -12248,7 +12243,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -12288,7 +12283,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -12328,7 +12323,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."7"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -12368,7 +12363,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."11"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -12412,12 +12407,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_message_options_get_features__or $$
 CREATE FUNCTION _pb_message_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."12"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."12"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_set_features $$
@@ -12534,7 +12529,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
@@ -12561,7 +12556,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -12723,15 +12718,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."1"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."1"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."1"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_ctype $$
 CREATE FUNCTION _pb_field_options_set_ctype(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_has_ctype $$
@@ -12752,7 +12746,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -12853,15 +12847,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."6"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."6"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."6"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_jstype $$
 CREATE FUNCTION _pb_field_options_set_jstype(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."6"', field_value);
+    RETURN JSON_SET(proto_data, '$."6"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_has_jstype $$
@@ -12882,7 +12875,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."5"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -12922,7 +12915,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."15"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -12962,7 +12955,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -13002,7 +12995,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."10"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -13042,7 +13035,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."16"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -13143,15 +13136,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."17"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."17"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."17"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_retention $$
 CREATE FUNCTION _pb_field_options_set_retention(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."17"', field_value);
+    RETURN JSON_SET(proto_data, '$."17"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_has_retention $$
@@ -13215,7 +13207,7 @@ BEGIN
     IF current_array IS NULL THEN
         SET current_array = JSON_ARRAY();
     END IF;
-    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."19"', current_array);
 END $$
 
@@ -13243,7 +13235,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN _pb_json_parse_signed_int(element_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_targets $$
@@ -13444,7 +13436,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."20"', array_value);
 END $$
 
@@ -13471,7 +13463,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -13545,12 +13537,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_options_get_features__or $$
 CREATE FUNCTION _pb_field_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."21"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."21"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_features $$
@@ -13583,12 +13575,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_options_get_feature_support__or $$
 CREATE FUNCTION _pb_field_options_get_feature_support__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."22"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."22"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_set_feature_support $$
@@ -13705,7 +13697,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
@@ -13732,7 +13724,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -13894,15 +13886,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."3"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."3"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."3"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_edition_default_set_edition $$
 CREATE FUNCTION _pb_field_options_edition_default_set_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
+    RETURN JSON_SET(proto_data, '$."3"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_edition_default_has_edition $$
@@ -13942,7 +13933,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_options_edition_default_set_value $$
 CREATE FUNCTION _pb_field_options_edition_default_set_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_edition_default_has_value $$
@@ -14054,15 +14045,14 @@ END $$
 --     END IF;
 --     IF enum_value = 0 THEN
 --         RETURN JSON_SET(proto_data, '$."1"', 0);
---     ELSE
---         RETURN JSON_SET(proto_data, '$."1"', enum_value);
 --     END IF;
+--     RETURN JSON_SET(proto_data, '$."1"', enum_value);
 -- END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_introduced $$
 CREATE FUNCTION _pb_field_options_feature_support_set_edition_introduced(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_has_edition_introduced $$
@@ -14144,15 +14134,14 @@ END $$
 --     END IF;
 --     IF enum_value = 0 THEN
 --         RETURN JSON_SET(proto_data, '$."2"', 0);
---     ELSE
---         RETURN JSON_SET(proto_data, '$."2"', enum_value);
 --     END IF;
+--     RETURN JSON_SET(proto_data, '$."2"', enum_value);
 -- END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_deprecated $$
 CREATE FUNCTION _pb_field_options_feature_support_set_edition_deprecated(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_has_edition_deprecated $$
@@ -14192,7 +14181,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_deprecation_warning $$
 CREATE FUNCTION _pb_field_options_feature_support_set_deprecation_warning(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
+    RETURN JSON_SET(proto_data, '$."3"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_has_deprecation_warning $$
@@ -14274,15 +14263,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."4"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."4"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."4"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_set_edition_removed $$
 CREATE FUNCTION _pb_field_options_feature_support_set_edition_removed(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."4"', field_value);
+    RETURN JSON_SET(proto_data, '$."4"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_feature_support_has_edition_removed $$
@@ -14438,12 +14426,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_oneof_options_get_features__or $$
 CREATE FUNCTION _pb_oneof_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."1"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_oneof_options_set_features $$
@@ -14560,7 +14548,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
@@ -14587,7 +14575,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -14688,7 +14676,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -14728,7 +14716,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -14768,7 +14756,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."6"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -14811,12 +14799,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_options_get_features__or $$
 CREATE FUNCTION _pb_enum_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."7"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."7"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_options_set_features $$
@@ -14933,7 +14921,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
@@ -14960,7 +14948,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -15061,7 +15049,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -15104,12 +15092,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_value_options_get_features__or $$
 CREATE FUNCTION _pb_enum_value_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."2"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_options_set_features $$
@@ -15139,7 +15127,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."3"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -15182,12 +15170,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_value_options_get_feature_support__or $$
 CREATE FUNCTION _pb_enum_value_options_get_feature_support__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_options_set_feature_support $$
@@ -15304,7 +15292,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
@@ -15331,7 +15319,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -15435,12 +15423,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_service_options_get_features__or $$
 CREATE FUNCTION _pb_service_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."34"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."34"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_options_set_features $$
@@ -15470,7 +15458,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."33"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -15597,7 +15585,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
@@ -15624,7 +15612,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -15725,7 +15713,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."33"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -15826,15 +15814,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."34"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."34"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."34"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_options_set_idempotency_level $$
 CREATE FUNCTION _pb_method_options_set_idempotency_level(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."34"', field_value);
+    RETURN JSON_SET(proto_data, '$."34"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_options_has_idempotency_level $$
@@ -15858,12 +15845,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_method_options_get_features__or $$
 CREATE FUNCTION _pb_method_options_get_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."35"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."35"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_options_set_features $$
@@ -15980,7 +15967,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
@@ -16007,7 +15994,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -16217,7 +16204,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."2"', array_value);
 END $$
 
@@ -16244,7 +16231,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -16334,7 +16321,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_identifier_value $$
 CREATE FUNCTION _pb_uninterpreted_option_set_identifier_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
+    RETURN JSON_SET(proto_data, '$."3"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_has_identifier_value $$
@@ -16374,7 +16361,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_positive_int_value $$
 CREATE FUNCTION _pb_uninterpreted_option_set_positive_int_value(proto_data JSON, field_value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."4"', field_value);
+    RETURN JSON_SET(proto_data, '$."4"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_has_positive_int_value $$
@@ -16414,7 +16401,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_negative_int_value $$
 CREATE FUNCTION _pb_uninterpreted_option_set_negative_int_value(proto_data JSON, field_value BIGINT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."5"', field_value);
+    RETURN JSON_SET(proto_data, '$."5"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_has_negative_int_value $$
@@ -16494,7 +16481,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_string_value $$
 CREATE FUNCTION _pb_uninterpreted_option_set_string_value(proto_data JSON, field_value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."7"', _pb_to_base64(field_value));
+    RETURN JSON_SET(proto_data, '$."7"', CAST(JSON_QUOTE(_pb_to_base64(field_value)) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_has_string_value $$
@@ -16534,7 +16521,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_set_aggregate_value $$
 CREATE FUNCTION _pb_uninterpreted_option_set_aggregate_value(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."8"', field_value);
+    RETURN JSON_SET(proto_data, '$."8"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_has_aggregate_value $$
@@ -16604,7 +16591,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_set_name_part $$
 CREATE FUNCTION _pb_uninterpreted_option_name_part_set_name_part(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_name_part_has_name_part $$
@@ -16625,7 +16612,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -16756,15 +16743,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."1"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."1"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."1"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_set_field_presence $$
 CREATE FUNCTION _pb_feature_set_set_field_presence(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_has_field_presence $$
@@ -16846,15 +16832,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."2"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."2"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."2"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_set_enum_type $$
 CREATE FUNCTION _pb_feature_set_set_enum_type(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_has_enum_type $$
@@ -16936,15 +16921,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."3"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."3"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."3"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_set_repeated_field_encoding $$
 CREATE FUNCTION _pb_feature_set_set_repeated_field_encoding(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
+    RETURN JSON_SET(proto_data, '$."3"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_has_repeated_field_encoding $$
@@ -17026,15 +17010,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."4"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."4"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."4"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_set_utf8_validation $$
 CREATE FUNCTION _pb_feature_set_set_utf8_validation(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."4"', field_value);
+    RETURN JSON_SET(proto_data, '$."4"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_has_utf8_validation $$
@@ -17116,15 +17099,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."5"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."5"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."5"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_set_message_encoding $$
 CREATE FUNCTION _pb_feature_set_set_message_encoding(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."5"', field_value);
+    RETURN JSON_SET(proto_data, '$."5"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_has_message_encoding $$
@@ -17206,15 +17188,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."6"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."6"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."6"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_set_json_format $$
 CREATE FUNCTION _pb_feature_set_set_json_format(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."6"', field_value);
+    RETURN JSON_SET(proto_data, '$."6"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_has_json_format $$
@@ -17296,15 +17277,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."7"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."7"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."7"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_set_enforce_naming_style $$
 CREATE FUNCTION _pb_feature_set_set_enforce_naming_style(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."7"', field_value);
+    RETURN JSON_SET(proto_data, '$."7"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_has_enforce_naming_style $$
@@ -17598,7 +17578,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
@@ -17625,7 +17605,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -17757,15 +17737,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."4"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."4"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."4"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_set_minimum_edition $$
 CREATE FUNCTION _pb_feature_set_defaults_set_minimum_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."4"', field_value);
+    RETURN JSON_SET(proto_data, '$."4"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_has_minimum_edition $$
@@ -17847,15 +17826,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."5"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."5"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."5"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_set_maximum_edition $$
 CREATE FUNCTION _pb_feature_set_defaults_set_maximum_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."5"', field_value);
+    RETURN JSON_SET(proto_data, '$."5"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_has_maximum_edition $$
@@ -17967,15 +17945,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."3"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."3"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."3"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_set_edition $$
 CREATE FUNCTION _pb_feature_set_edition_default_set_edition(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
+    RETURN JSON_SET(proto_data, '$."3"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_has_edition $$
@@ -17999,12 +17976,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_overridable_features__or $$
 CREATE FUNCTION _pb_feature_set_edition_default_get_overridable_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."4"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_set_overridable_features $$
@@ -18037,12 +18014,12 @@ END $$
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_get_fixed_features__or $$
 CREATE FUNCTION _pb_feature_set_edition_default_get_fixed_features__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_edition_default_set_fixed_features $$
@@ -18189,7 +18166,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
@@ -18216,7 +18193,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -18360,7 +18337,7 @@ BEGIN
     IF current_array IS NULL THEN
         SET current_array = JSON_ARRAY();
     END IF;
-    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."1"', current_array);
 END $$
 
@@ -18388,7 +18365,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN _pb_json_parse_signed_int(element_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_path $$
@@ -18545,7 +18522,7 @@ BEGIN
     IF current_array IS NULL THEN
         SET current_array = JSON_ARRAY();
     END IF;
-    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."2"', current_array);
 END $$
 
@@ -18573,7 +18550,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN _pb_json_parse_signed_int(element_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_span $$
@@ -18706,7 +18683,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_leading_comments $$
 CREATE FUNCTION _pb_source_code_info_location_set_leading_comments(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
+    RETURN JSON_SET(proto_data, '$."3"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_has_leading_comments $$
@@ -18746,7 +18723,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_trailing_comments $$
 CREATE FUNCTION _pb_source_code_info_location_set_trailing_comments(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."4"', field_value);
+    RETURN JSON_SET(proto_data, '$."4"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_has_trailing_comments $$
@@ -18810,7 +18787,7 @@ BEGIN
     IF current_array IS NULL THEN
         SET current_array = JSON_ARRAY();
     END IF;
-    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
     RETURN JSON_SET(proto_data, '$."6"', current_array);
 END $$
 
@@ -18838,7 +18815,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN JSON_UNQUOTE(element_value);
+    RETURN _pb_json_parse_string(element_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_set_leading_detached_comments $$
@@ -18854,7 +18831,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(JSON_QUOTE(element_value) AS JSON));
     RETURN JSON_SET(proto_data, '$."6"', array_value);
 END $$
 
@@ -18881,7 +18858,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -19069,7 +19046,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
@@ -19096,7 +19073,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -19240,7 +19217,7 @@ BEGIN
     IF current_array IS NULL THEN
         SET current_array = JSON_ARRAY();
     END IF;
-    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST(element_value AS JSON));
     RETURN JSON_SET(proto_data, '$."1"', current_array);
 END $$
 
@@ -19268,7 +19245,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN CAST(element_value AS SIGNED);
+    RETURN _pb_json_parse_signed_int(element_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_path $$
@@ -19401,7 +19378,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_source_file $$
 CREATE FUNCTION _pb_generated_code_info_annotation_set_source_file(proto_data JSON, field_value LONGTEXT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_has_source_file $$
@@ -19441,7 +19418,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_begin $$
 CREATE FUNCTION _pb_generated_code_info_annotation_set_begin(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."3"', field_value);
+    RETURN JSON_SET(proto_data, '$."3"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_has_begin $$
@@ -19481,7 +19458,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_end $$
 CREATE FUNCTION _pb_generated_code_info_annotation_set_end(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."4"', field_value);
+    RETURN JSON_SET(proto_data, '$."4"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_has_end $$
@@ -19563,15 +19540,14 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."5"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."5"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."5"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_set_semantic $$
 CREATE FUNCTION _pb_generated_code_info_annotation_set_semantic(proto_data JSON, field_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    RETURN JSON_SET(proto_data, '$."5"', field_value);
+    RETURN JSON_SET(proto_data, '$."5"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_has_semantic $$
@@ -19696,6 +19672,9 @@ BEGIN
     IF field_value IS NULL THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
     END IF;
+    IF JSON_TYPE(field_value) != 'OBJECT' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Map field value must be a JSON object';
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', field_value);
 END $$
 
@@ -19718,7 +19697,7 @@ BEGIN
     IF element_value IS NULL THEN
         RETURN JSON_OBJECT();
     END IF;
-    RETURN CAST(element_value AS SIGNED);
+    RETURN element_value;
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_struct_contains_fields $$
@@ -19740,7 +19719,7 @@ BEGIN
     IF map_value IS NULL THEN
         SET map_value = JSON_OBJECT();
     END IF;
-    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), CAST(value_param AS JSON));
+    SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(key_value)), value_param);
     RETURN JSON_SET(proto_data, '$."1"', map_value);
 END $$
 
@@ -19767,6 +19746,9 @@ BEGIN
         RETURN proto_data;
     END IF;
     SET map_value = JSON_REMOVE(map_value, CONCAT('$.', JSON_QUOTE(key_value)));
+    IF JSON_LENGTH(map_value) = 0 THEN
+        RETURN JSON_REMOVE(proto_data, '$."1"');
+    END IF;
     RETURN JSON_SET(proto_data, '$."1"', map_value);
 END $$
 
@@ -19894,9 +19876,8 @@ BEGIN
     END IF;
     IF enum_value = 0 THEN
         RETURN JSON_SET(proto_data, '$."1"', 0);
-    ELSE
-        RETURN JSON_SET(proto_data, '$."1"', enum_value);
     END IF;
+    RETURN JSON_SET(proto_data, '$."1"', enum_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_null_value $$
@@ -19909,7 +19890,7 @@ BEGIN
     SET temp_data = JSON_REMOVE(temp_data, '$."4"');
     SET temp_data = JSON_REMOVE(temp_data, '$."5"');
     SET temp_data = JSON_REMOVE(temp_data, '$."6"');
-    RETURN JSON_SET(temp_data, '$."1"', field_value);
+    RETURN JSON_SET(temp_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_has_null_value $$
@@ -20003,7 +19984,7 @@ BEGIN
     SET temp_data = JSON_REMOVE(temp_data, '$."4"');
     SET temp_data = JSON_REMOVE(temp_data, '$."5"');
     SET temp_data = JSON_REMOVE(temp_data, '$."6"');
-    RETURN JSON_SET(temp_data, '$."3"', field_value);
+    RETURN JSON_SET(temp_data, '$."3"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_has_string_value $$
@@ -20024,7 +20005,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."4"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -20074,12 +20055,12 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_value_get_struct_value__or $$
 CREATE FUNCTION pb_wkt_value_get_struct_value__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."5"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_struct_value $$
@@ -20119,12 +20100,12 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_value_get_list_value__or $$
 CREATE FUNCTION pb_wkt_value_get_list_value__or(proto_data JSON, default_value JSON) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE field_value JSON;
-    SET field_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF field_value IS NULL THEN
+    DECLARE json_value JSON;
+    SET json_value = JSON_EXTRACT(proto_data, '$."6"');
+    IF json_value IS NULL THEN
         RETURN default_value;
     END IF;
-    RETURN field_value;
+    RETURN json_value;
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_value_set_list_value $$
@@ -20315,7 +20296,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
     RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
@@ -20342,7 +20323,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -20510,7 +20491,7 @@ BEGIN
     IF current_array IS NULL THEN
         SET current_array = JSON_ARRAY();
     END IF;
-    SET current_array = JSON_ARRAY_APPEND(current_array, '$', element_value);
+    SET current_array = JSON_ARRAY_APPEND(current_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
     RETURN JSON_SET(proto_data, '$."1"', current_array);
 END $$
 
@@ -20538,7 +20519,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     SET element_value = JSON_EXTRACT(array_value, CONCAT('$[', index_value, ']'));
-    RETURN JSON_UNQUOTE(element_value);
+    RETURN _pb_json_parse_string(element_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_field_mask_set_paths $$
@@ -20554,7 +20535,7 @@ BEGIN
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), element_value);
+    SET array_value = JSON_SET(array_value, CONCAT('$[', index_value, ']'), CAST(JSON_QUOTE(element_value) AS JSON));
     RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
@@ -20581,7 +20562,7 @@ BEGIN
     END WHILE;
     
     -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
+    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
     
     -- Copy remaining elements after insert position
     WHILE i < array_length DO
@@ -20814,7 +20795,7 @@ BEGIN
     IF field_value = 0 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_int64_value_clear_value $$
@@ -20871,7 +20852,7 @@ BEGIN
     IF field_value = 0 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_uint64_value_clear_value $$
@@ -20928,7 +20909,7 @@ BEGIN
     IF field_value = 0 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_int32_value_clear_value $$
@@ -20985,7 +20966,7 @@ BEGIN
     IF field_value = 0 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_uint32_value_clear_value $$
@@ -21030,7 +21011,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -21099,7 +21080,7 @@ BEGIN
     IF field_value = '' THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_string_value_clear_value $$
@@ -21153,10 +21134,10 @@ DROP FUNCTION IF EXISTS pb_wkt_bytes_value_set_value $$
 CREATE FUNCTION pb_wkt_bytes_value_set_value(proto_data JSON, field_value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
     -- Proto3 field without presence: omit default values per protonumberjson spec
-    IF field_value = _binary X'' THEN
+    IF LENGTH(field_value) = 0 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', _pb_to_base64(field_value));
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(_pb_to_base64(field_value)) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_bytes_value_clear_value $$
@@ -21219,7 +21200,7 @@ BEGIN
     IF field_value = 0 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_timestamp_clear_seconds $$
@@ -21246,7 +21227,7 @@ BEGIN
     IF field_value = 0 THEN
         RETURN JSON_REMOVE(proto_data, '$."2"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_timestamp_clear_nanos $$
@@ -21309,7 +21290,7 @@ BEGIN
     IF field_value = 0 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_duration_clear_seconds $$
@@ -21336,7 +21317,7 @@ BEGIN
     IF field_value = 0 THEN
         RETURN JSON_REMOVE(proto_data, '$."2"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."2"', field_value);
+    RETURN JSON_SET(proto_data, '$."2"', CAST(field_value AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_duration_clear_nanos $$
@@ -21399,7 +21380,7 @@ BEGIN
     IF field_value = '' THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', field_value);
+    RETURN JSON_SET(proto_data, '$."1"', CAST(JSON_QUOTE(field_value) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_any_clear_type_url $$
@@ -21423,10 +21404,10 @@ DROP FUNCTION IF EXISTS pb_wkt_any_set_value $$
 CREATE FUNCTION pb_wkt_any_set_value(proto_data JSON, field_value LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
     -- Proto3 field without presence: omit default values per protonumberjson spec
-    IF field_value = _binary X'' THEN
+    IF LENGTH(field_value) = 0 THEN
         RETURN JSON_REMOVE(proto_data, '$."2"');
     END IF;
-    RETURN JSON_SET(proto_data, '$."2"', _pb_to_base64(field_value));
+    RETURN JSON_SET(proto_data, '$."2"', CAST(JSON_QUOTE(_pb_to_base64(field_value)) AS JSON));
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_any_clear_value $$
@@ -21517,7 +21498,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -21544,7 +21525,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."2"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
@@ -21601,7 +21582,7 @@ BEGIN
     DECLARE json_value JSON;
     SET json_value = JSON_EXTRACT(proto_data, '$."1"');
     IF json_value IS NULL THEN
-        RETURN 0;
+        RETURN FALSE;
     END IF;
     RETURN _pb_json_parse_bool(json_value);
 END $$
