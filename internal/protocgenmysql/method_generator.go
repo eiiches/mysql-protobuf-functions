@@ -1160,12 +1160,6 @@ func generateEnumMethods(content *strings.Builder, enumDesc protoreflect.EnumDes
 	return nil
 }
 
-// getFieldDefaultValueFromReflection returns the default value for a field
-// Deprecated: Use GetDefaultValue instead
-func getFieldDefaultValueFromReflection(field protoreflect.FieldDescriptor) string {
-	return GetDefaultValue(field)
-}
-
 // generateEnumNameGetter creates getter functions that return enum names as strings
 func generateEnumNameGetter(content *strings.Builder, funcPrefix string, fullTypeName protoreflect.FullName, field protoreflect.FieldDescriptor, fieldName string, isNullableVariant bool, fieldFilterFunc FieldFilterFunc, typePrefixFunc TypePrefixFunc) error {
 	// Determine function name suffix
