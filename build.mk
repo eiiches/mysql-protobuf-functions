@@ -69,13 +69,13 @@ build/well_known_proto.pb.sql:
 	mv $@.tmp $@
 
 .PHONY: build/_pb_options_proto.pb.sql
-build/_pb_options_proto.pb.sql:
+build/_pb_options_proto.pb.sql: protoc-gen-mysql
 	protoc --descriptor_set_out=build/options.binpb \
 		--include_imports \
 		--proto_path=src/ \
 		src/json_options.proto \
 		src/marshal_options.proto
-	go run ./cmd/protoc-gen-mysql \
+	./protoc-gen-mysql \
 		--descriptor_set_in=build/options.binpb \
 		--name=_pb_options_proto \
 		--file_naming_strategy=single \
