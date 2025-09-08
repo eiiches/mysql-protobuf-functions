@@ -536,7 +536,7 @@ func TestProtocGenMapField(t *testing.T) {
 	// Test different value types with string keys
 	t.Run("double_value", func(t *testing.T) {
 		RunTestThatExpression(t, "test_set_all_string_to_double_map(?, ?)", `{}`, `{"pi": 3.141592653589793}`).IsEqualToJsonString(`{"13": {"pi": "binary64:0x400921fb54442d18"}}`)
-		RunTestThatExpression(t, "test_get_all_string_to_double_map(?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`).IsEqualToJsonString(`{"pi": "binary64:0x400921fb54442d18"}`)
+		RunTestThatExpression(t, "test_get_all_string_to_double_map(?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`).IsEqualToJsonString(`{"pi": 3.141592653589793}`)
 		RunTestThatExpression(t, "test_count_string_to_double_map(?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`).IsEqualToInt(1)
 		RunTestThatExpression(t, "test_clear_string_to_double_map(?)", `{"13": {"pi": "binary64:0x400921fb54442d18"}}`).IsEqualToJsonString(`{}`)
 
@@ -577,7 +577,7 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test set_all replaces entire map
 		RunTestThatExpression(t, "test_set_all_string_to_float_map(?, ?)", `{"14": {"old": "binary32:0x3f800000"}}`, `{"new": 2.0}`).IsEqualToJsonString(`{"14": {"new": "binary32:0x40000000"}}`)
-		RunTestThatExpression(t, "test_get_all_string_to_float_map(?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`).IsEqualToJsonString(`{"pi_float": "binary32:0x4048f5c3"}`)
+		RunTestThatExpression(t, "test_get_all_string_to_float_map(?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`).IsEqualToJsonString(`{"pi_float": 3.140000104904175}`)
 		RunTestThatExpression(t, "test_count_string_to_float_map(?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`).IsEqualToInt(1)
 		RunTestThatExpression(t, "test_clear_string_to_float_map(?)", `{"14": {"pi_float": "binary32:0x4048f5c3"}}`).IsEqualToJsonString(`{}`)
 

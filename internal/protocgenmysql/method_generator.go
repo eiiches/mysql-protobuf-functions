@@ -359,9 +359,30 @@ func generateMapGetAll(content *strings.Builder, funcPrefix string, field protor
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON) RETURNS JSON DETERMINISTIC\n", getterFuncName))
 	content.WriteString("BEGIN\n")
 
-	// For map fields, return JSON object or empty JSON object if not present
-	content.WriteString(fmt.Sprintf("    RETURN COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_OBJECT());\n", field.Number()))
+	// Check if value type needs conversion (like float/double)
+	protobufType := GetProtobufType(field.MapValue().Kind())
+	convertedExpression := protobufType.GenerateNumberJsonToJsonExpression("current_value")
 
+	// For map fields with values that need conversion, iterate through and convert each value
+	content.WriteString("    DECLARE result_map JSON DEFAULT JSON_OBJECT();\n")
+	content.WriteString("    DECLARE raw_map JSON;\n")
+	content.WriteString("    DECLARE json_keys JSON;\n")
+	content.WriteString("    DECLARE key_count INT;\n")
+	content.WriteString("    DECLARE i INT DEFAULT 0;\n")
+	content.WriteString("    DECLARE current_key VARCHAR(255);\n")
+	content.WriteString("    DECLARE current_value JSON;\n")
+	content.WriteString(fmt.Sprintf("    SET raw_map = COALESCE(JSON_EXTRACT(proto_data, '$.\"%.d\"'), JSON_OBJECT());\n", field.Number()))
+	content.WriteString("    SET json_keys = JSON_KEYS(raw_map);\n")
+	content.WriteString("    IF json_keys IS NOT NULL THEN\n")
+	content.WriteString("        SET key_count = JSON_LENGTH(json_keys);\n")
+	content.WriteString("        WHILE i < key_count DO\n")
+	content.WriteString("            SET current_key = JSON_UNQUOTE(JSON_EXTRACT(json_keys, CONCAT('$[', i, ']')));\n")
+	content.WriteString("            SET current_value = JSON_EXTRACT(raw_map, CONCAT('$.\"', current_key, '\"'));\n")
+	content.WriteString(fmt.Sprintf("            SET result_map = JSON_SET(result_map, CONCAT('$.\"', current_key, '\"'), %s);\n", convertedExpression))
+	content.WriteString("            SET i = i + 1;\n")
+	content.WriteString("        END WHILE;\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    RETURN result_map;\n")
 	content.WriteString("END $$\n\n")
 	return nil
 }
