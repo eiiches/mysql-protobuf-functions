@@ -33,7 +33,7 @@ This is a MySQL Protocol Buffers (protobuf) functions library that provides comp
 
 ### Build System
 ```bash
-# Build generated SQL files
+# Build generated SQL files and tools
 make build
 
 # Reload all SQL functions into database
@@ -82,13 +82,40 @@ make stop-profiling
 make flamegraph
 ```
 
+### Coverage Analysis
+```bash
+# Run full coverage analysis with HTML report
+make coverage
+
+# Generate instrumented SQL files
+make coverage-instrument
+
+# Load instrumented functions into database
+make coverage-load
+
+# Run tests with coverage tracking
+make coverage-run
+
+# Generate LCOV coverage report
+make coverage-report-lcov
+
+# Generate HTML coverage report
+make coverage-report-html
+```
+
 ### Function Tracing
 ```bash
-# Load instrumented functions for tracing (creates and loads .ftraced files)
-make load-ftrace-instrumented-files
+# Instrument SQL files for tracing
+make ftrace-instrument
+
+# Initialize tracing schema
+make ftrace-init
+
+# Load instrumented functions for tracing
+make ftrace-load
 
 # Generate trace report after running tests
-./mysql-ftrace report --database "root@tcp(127.0.0.100:13306)/test" --format text
+make ftrace-report
 ```
 
 ### Code Generation
@@ -109,14 +136,19 @@ make lint
 ## Development Workflow
 
 1. **SQL Development**: Core protobuf functionality is implemented in MySQL stored functions/procedures
-2. **Go Tools**: Supporting tools for code generation, testing, and profiling
+2. **Go Tools**: Supporting tools for code generation, testing, profiling, coverage analysis, and tracing
 3. **Code Formatting**: Always run `make format` after modifying Go code to ensure consistent formatting
 4. **Test-Driven**: Tests run against live MySQL instance to verify SQL function behavior
 5. **Performance Focus**: Built-in profiling and flamegraph generation for performance analysis
+6. **Coverage Analysis**: Code coverage tracking for SQL functions with LCOV and HTML reports
+7. **Function Tracing**: Detailed execution tracing for debugging and performance analysis
 
 ## Database Schema
 
-The project creates tables prefixed with `_Proto_` for protobuf schema storage and functions prefixed with `pb_` or `_pb_` for protobuf operations.
+The project creates:
+- Stored functions and procedures prefixed with `pb_` (Public API) or `_pb_` (Private) for protobuf operations
+- `__CoverageEvent` table for SQL code coverage tracking (when using coverage analysis)
+- `__FtraceEvent` table for function tracing data (when using function tracing)
 
 ## Testing Requirements
 
@@ -126,4 +158,4 @@ The project creates tables prefixed with `_Proto_` for protobuf schema storage a
 
 ## Development Best Practices
 
-- Remove any trailing whitespaces after editing SQL files
+- Always run `make format` after editing SQL files
