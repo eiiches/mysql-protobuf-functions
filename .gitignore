@@ -5,7 +5,8 @@
 /perf.data
 /perf.data.old
 /mysql.pid
-/protoc-gen-descriptor_set_json
 /mysql-coverage
+/mysql-ftrace
+/protoc-gen-mysql
 /build
 /protobuf.sql

@@ -33,7 +33,7 @@ PROTOBUF_JSON_FILES := $(patsubst src/%.sql,build/%.sql,$(PROTOBUF_JSON_SOURCES)
 ALL_SQL_FILES := $(PROTOBUF_FILES) $(PROTOBUF_JSON_FILES)
 
 .PHONY: build
-build: protobuf.sql protoc-gen-mysql mysql-coverage
+build: protobuf.sql protoc-gen-mysql mysql-coverage mysql-ftrace
 
 protobuf.sql: $(ALL_SQL_FILES)
 	set -euo pipefail
@@ -49,6 +49,10 @@ protoc-gen-mysql:
 .PHONY: mysql-coverage
 mysql-coverage:
 	go build ./cmd/mysql-coverage
+
+.PHONY: mysql-ftrace
+mysql-ftrace:
+	go build ./cmd/mysql-ftrace
 
 build/%.sql: src/%.sql
 	mkdir -p build
