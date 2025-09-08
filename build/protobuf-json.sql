@@ -4537,8 +4537,6 @@ CREATE FUNCTION _pb_file_descriptor_set_insert_file(proto_data JSON, index_value
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -4548,22 +4546,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_set_remove_file $$
@@ -4832,8 +4817,6 @@ CREATE FUNCTION _pb_file_descriptor_proto_insert_dependency(proto_data JSON, ind
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."3"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -4843,22 +4826,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), CAST(JSON_QUOTE(element_value) AS JSON));
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."3"', new_array);
+    RETURN JSON_SET(proto_data, '$."3"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_dependency $$
@@ -5017,8 +4987,6 @@ CREATE FUNCTION _pb_file_descriptor_proto_insert_public_dependency(proto_data JS
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."10"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -5028,22 +4996,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."10"', new_array);
+    RETURN JSON_SET(proto_data, '$."10"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_public_dependency $$
@@ -5202,8 +5157,6 @@ CREATE FUNCTION _pb_file_descriptor_proto_insert_weak_dependency(proto_data JSON
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."11"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -5213,22 +5166,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."11"', new_array);
+    RETURN JSON_SET(proto_data, '$."11"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_weak_dependency $$
@@ -5387,8 +5327,6 @@ CREATE FUNCTION _pb_file_descriptor_proto_insert_message_type(proto_data JSON, i
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -5398,22 +5336,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."4"', new_array);
+    RETURN JSON_SET(proto_data, '$."4"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_message_type $$
@@ -5572,8 +5497,6 @@ CREATE FUNCTION _pb_file_descriptor_proto_insert_enum_type(proto_data JSON, inde
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -5583,22 +5506,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."5"', new_array);
+    RETURN JSON_SET(proto_data, '$."5"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_enum_type $$
@@ -5757,8 +5667,6 @@ CREATE FUNCTION _pb_file_descriptor_proto_insert_service(proto_data JSON, index_
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -5768,22 +5676,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."6"', new_array);
+    RETURN JSON_SET(proto_data, '$."6"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_service $$
@@ -5942,8 +5837,6 @@ CREATE FUNCTION _pb_file_descriptor_proto_insert_extension(proto_data JSON, inde
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."7"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -5953,22 +5846,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."7"', new_array);
+    RETURN JSON_SET(proto_data, '$."7"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_extension $$
@@ -6402,8 +6282,6 @@ CREATE FUNCTION _pb_descriptor_proto_insert_field(proto_data JSON, index_value I
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -6413,22 +6291,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."2"', new_array);
+    RETURN JSON_SET(proto_data, '$."2"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_field $$
@@ -6587,8 +6452,6 @@ CREATE FUNCTION _pb_descriptor_proto_insert_extension(proto_data JSON, index_val
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -6598,22 +6461,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."6"', new_array);
+    RETURN JSON_SET(proto_data, '$."6"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_extension $$
@@ -6772,8 +6622,6 @@ CREATE FUNCTION _pb_descriptor_proto_insert_nested_type(proto_data JSON, index_v
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."3"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -6783,22 +6631,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."3"', new_array);
+    RETURN JSON_SET(proto_data, '$."3"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_nested_type $$
@@ -6957,8 +6792,6 @@ CREATE FUNCTION _pb_descriptor_proto_insert_enum_type(proto_data JSON, index_val
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -6968,22 +6801,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."4"', new_array);
+    RETURN JSON_SET(proto_data, '$."4"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_enum_type $$
@@ -7142,8 +6962,6 @@ CREATE FUNCTION _pb_descriptor_proto_insert_extension_range(proto_data JSON, ind
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -7153,22 +6971,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."5"', new_array);
+    RETURN JSON_SET(proto_data, '$."5"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_extension_range $$
@@ -7327,8 +7132,6 @@ CREATE FUNCTION _pb_descriptor_proto_insert_oneof_decl(proto_data JSON, index_va
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."8"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -7338,22 +7141,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."8"', new_array);
+    RETURN JSON_SET(proto_data, '$."8"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_oneof_decl $$
@@ -7550,8 +7340,6 @@ CREATE FUNCTION _pb_descriptor_proto_insert_reserved_range(proto_data JSON, inde
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."9"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -7561,22 +7349,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."9"', new_array);
+    RETURN JSON_SET(proto_data, '$."9"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_reserved_range $$
@@ -7735,8 +7510,6 @@ CREATE FUNCTION _pb_descriptor_proto_insert_reserved_name(proto_data JSON, index
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."10"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -7746,22 +7519,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), CAST(JSON_QUOTE(element_value) AS JSON));
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."10"', new_array);
+    RETURN JSON_SET(proto_data, '$."10"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_reserved_name $$
@@ -8208,8 +7968,6 @@ CREATE FUNCTION _pb_extension_range_options_insert_uninterpreted_option(proto_da
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -8219,22 +7977,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_remove_uninterpreted_option $$
@@ -8393,8 +8138,6 @@ CREATE FUNCTION _pb_extension_range_options_insert_declaration(proto_data JSON, 
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -8404,22 +8147,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."2"', new_array);
+    RETURN JSON_SET(proto_data, '$."2"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_remove_declaration $$
@@ -9773,8 +9503,6 @@ CREATE FUNCTION _pb_enum_descriptor_proto_insert_value(proto_data JSON, index_va
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -9784,22 +9512,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."2"', new_array);
+    RETURN JSON_SET(proto_data, '$."2"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_remove_value $$
@@ -9996,8 +9711,6 @@ CREATE FUNCTION _pb_enum_descriptor_proto_insert_reserved_range(proto_data JSON,
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."4"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -10007,22 +9720,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."4"', new_array);
+    RETURN JSON_SET(proto_data, '$."4"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_remove_reserved_range $$
@@ -10181,8 +9881,6 @@ CREATE FUNCTION _pb_enum_descriptor_proto_insert_reserved_name(proto_data JSON, 
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."5"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -10192,22 +9890,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), CAST(JSON_QUOTE(element_value) AS JSON));
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."5"', new_array);
+    RETURN JSON_SET(proto_data, '$."5"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_remove_reserved_name $$
@@ -10694,8 +10379,6 @@ CREATE FUNCTION _pb_service_descriptor_proto_insert_method(proto_data JSON, inde
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -10705,22 +10388,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."2"', new_array);
+    RETURN JSON_SET(proto_data, '$."2"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_remove_method $$
@@ -12062,8 +11732,6 @@ CREATE FUNCTION _pb_file_options_insert_uninterpreted_option(proto_data JSON, in
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -12073,22 +11741,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_remove_uninterpreted_option $$
@@ -12538,8 +12193,6 @@ CREATE FUNCTION _pb_message_options_insert_uninterpreted_option(proto_data JSON,
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -12549,22 +12202,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_remove_uninterpreted_option $$
@@ -13260,8 +12900,6 @@ CREATE FUNCTION _pb_field_options_insert_targets(proto_data JSON, index_value IN
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."19"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -13271,22 +12909,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."19"', new_array);
+    RETURN JSON_SET(proto_data, '$."19"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_remove_targets $$
@@ -13445,8 +13070,6 @@ CREATE FUNCTION _pb_field_options_insert_edition_defaults(proto_data JSON, index
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."20"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -13456,22 +13079,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."20"', new_array);
+    RETURN JSON_SET(proto_data, '$."20"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_remove_edition_defaults $$
@@ -13706,8 +13316,6 @@ CREATE FUNCTION _pb_field_options_insert_uninterpreted_option(proto_data JSON, i
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -13717,22 +13325,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_remove_uninterpreted_option $$
@@ -14557,8 +14152,6 @@ CREATE FUNCTION _pb_oneof_options_insert_uninterpreted_option(proto_data JSON, i
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -14568,22 +14161,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_oneof_options_remove_uninterpreted_option $$
@@ -14930,8 +14510,6 @@ CREATE FUNCTION _pb_enum_options_insert_uninterpreted_option(proto_data JSON, in
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -14941,22 +14519,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_options_remove_uninterpreted_option $$
@@ -15301,8 +14866,6 @@ CREATE FUNCTION _pb_enum_value_options_insert_uninterpreted_option(proto_data JS
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -15312,22 +14875,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_options_remove_uninterpreted_option $$
@@ -15594,8 +15144,6 @@ CREATE FUNCTION _pb_service_options_insert_uninterpreted_option(proto_data JSON,
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -15605,22 +15153,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_options_remove_uninterpreted_option $$
@@ -15976,8 +15511,6 @@ CREATE FUNCTION _pb_method_options_insert_uninterpreted_option(proto_data JSON, 
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."999"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -15987,22 +15520,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
+    RETURN JSON_SET(proto_data, '$."999"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_options_remove_uninterpreted_option $$
@@ -16213,8 +15733,6 @@ CREATE FUNCTION _pb_uninterpreted_option_insert_name(proto_data JSON, index_valu
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -16224,22 +15742,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."2"', new_array);
+    RETURN JSON_SET(proto_data, '$."2"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_remove_name $$
@@ -17587,8 +17092,6 @@ CREATE FUNCTION _pb_feature_set_defaults_insert_defaults(proto_data JSON, index_
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -17598,22 +17101,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_remove_defaults $$
@@ -18175,8 +17665,6 @@ CREATE FUNCTION _pb_source_code_info_insert_location(proto_data JSON, index_valu
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -18186,22 +17674,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_remove_location $$
@@ -18390,8 +17865,6 @@ CREATE FUNCTION _pb_source_code_info_location_insert_path(proto_data JSON, index
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -18401,22 +17874,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_remove_path $$
@@ -18575,8 +18035,6 @@ CREATE FUNCTION _pb_source_code_info_location_insert_span(proto_data JSON, index
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."2"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -18586,22 +18044,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."2"', new_array);
+    RETURN JSON_SET(proto_data, '$."2"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_remove_span $$
@@ -18840,8 +18285,6 @@ CREATE FUNCTION _pb_source_code_info_location_insert_leading_detached_comments(p
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."6"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -18851,22 +18294,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), CAST(JSON_QUOTE(element_value) AS JSON));
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."6"', new_array);
+    RETURN JSON_SET(proto_data, '$."6"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_remove_leading_detached_comments $$
@@ -19055,8 +18485,6 @@ CREATE FUNCTION _pb_generated_code_info_insert_annotation(proto_data JSON, index
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -19066,22 +18494,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_remove_annotation $$
@@ -19270,8 +18685,6 @@ CREATE FUNCTION _pb_generated_code_info_annotation_insert_path(proto_data JSON, 
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -19281,22 +18694,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), CAST(element_value AS JSON));
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(element_value AS JSON));
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_remove_path $$
@@ -20305,8 +19705,6 @@ CREATE FUNCTION pb_wkt_list_value_insert_values(proto_data JSON, index_value INT
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -20316,22 +19714,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), element_value);
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', element_value);
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_list_value_remove_values $$
@@ -20544,8 +19929,6 @@ CREATE FUNCTION pb_wkt_field_mask_insert_paths(proto_data JSON, index_value INT,
 BEGIN
     DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
     SET array_value = JSON_EXTRACT(proto_data, '$."1"');
     IF array_value IS NULL THEN
         SET array_value = JSON_ARRAY();
@@ -20555,22 +19938,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';
     END IF;
     
-    -- Copy elements before insert position
-    WHILE i < index_value DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
+    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), CAST(JSON_QUOTE(element_value) AS JSON));
     
-    -- Insert new element
-    SET new_array = JSON_ARRAY_APPEND(new_array, '$', CAST(JSON_QUOTE(element_value) AS JSON));
-    
-    -- Copy remaining elements after insert position
-    WHILE i < array_length DO
-        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        SET i = i + 1;
-    END WHILE;
-    
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
+    RETURN JSON_SET(proto_data, '$."1"', array_value);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_field_mask_remove_paths $$

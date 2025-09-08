@@ -704,8 +704,6 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("BEGIN\n")
 	content.WriteString("    DECLARE array_value JSON;\n")
 	content.WriteString("    DECLARE array_length INT;\n")
-	content.WriteString("    DECLARE new_array JSON DEFAULT JSON_ARRAY();\n")
-	content.WriteString("    DECLARE i INT DEFAULT 0;\n")
 	content.WriteString(fmt.Sprintf("    SET array_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
 	content.WriteString("    IF array_value IS NULL THEN\n")
 	content.WriteString("        SET array_value = JSON_ARRAY();\n")
@@ -715,27 +713,14 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert index out of bounds';\n")
 	content.WriteString("    END IF;\n")
 	content.WriteString("    \n")
-	content.WriteString("    -- Copy elements before insert position\n")
-	content.WriteString("    WHILE i < index_value DO\n")
-	content.WriteString("        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));\n")
-	content.WriteString("        SET i = i + 1;\n")
-	content.WriteString("    END WHILE;\n")
-	content.WriteString("    \n")
-	content.WriteString("    -- Insert new element\n")
 
 	// Handle type-specific conversions for inserting
-	// Use unified array append logic
+	// Use unified array insert logic with JSON_ARRAY_INSERT
 	numberJsonExpression = GetProtobufType(field.Kind()).GenerateSqlToNumberJsonExpression("element_value")
-	content.WriteString(fmt.Sprintf("    SET new_array = JSON_ARRAY_APPEND(new_array, '$', %s);\n", numberJsonExpression))
+	content.WriteString(fmt.Sprintf("    SET array_value = JSON_ARRAY_INSERT(array_value, CONCAT('$[', index_value, ']'), %s);\n", numberJsonExpression))
 
 	content.WriteString("    \n")
-	content.WriteString("    -- Copy remaining elements after insert position\n")
-	content.WriteString("    WHILE i < array_length DO\n")
-	content.WriteString("        SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));\n")
-	content.WriteString("        SET i = i + 1;\n")
-	content.WriteString("    END WHILE;\n")
-	content.WriteString("    \n")
-	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', new_array);\n", field.Number()))
+	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', array_value);\n", field.Number()))
 	content.WriteString("END $$\n\n")
 
 	// Generate remove method for repeated fields
