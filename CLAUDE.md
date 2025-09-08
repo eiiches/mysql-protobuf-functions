@@ -181,3 +181,4 @@ The project creates:
 ## Development Best Practices
 
 - Always run `make format` after editing SQL files
+- Don't use replace_all.

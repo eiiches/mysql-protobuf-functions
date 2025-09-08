@@ -63,7 +63,7 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test getters return entire map
 		RunTestThatExpression(t, "test_get_all_int32_to_int32_map(?)", `{"1": {"42": 100, "1": 10}}`).IsEqualToJsonString(`{"42": 100, "1": 10}`)
-		RunTestThatExpression(t, "test_get_all_int32_to_int32_map(?)", `{}`).IsEqualToJsonString(`[]`) // Default when absent
+		RunTestThatExpression(t, "test_get_all_int32_to_int32_map(?)", `{}`).IsEqualToJsonString(`{}`) // Default when absent
 
 		// Test map count operations
 		RunTestThatExpression(t, "test_count_int32_to_int32_map(?)", `{}`).IsEqualToInt(0)
@@ -492,7 +492,7 @@ func TestProtocGenMapField(t *testing.T) {
 
 		// Test getters return entire map
 		RunTestThatExpression(t, "test_get_all_string_to_int32_map(?)", `{"12": {"first": 10, "second": 20}}`).IsEqualToJsonString(`{"first": 10, "second": 20}`)
-		RunTestThatExpression(t, "test_get_all_string_to_int32_map(?)", `{}`).IsEqualToJsonString(`[]`) // Default when absent
+		RunTestThatExpression(t, "test_get_all_string_to_int32_map(?)", `{}`).IsEqualToJsonString(`{}`) // Default when absent
 
 		// Test overwriting existing map (replaces entire map)
 		RunTestThatExpression(t, "test_set_all_string_to_int32_map(test_set_all_string_to_int32_map(test_new(), JSON_OBJECT('old', 100)), JSON_OBJECT('new', 200))").IsEqualToJsonString(`{"12": {"new": 200}}`)
