@@ -4554,32 +4554,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_set_remove_file $$
 CREATE FUNCTION _pb_file_descriptor_set_remove_file(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."1"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."1"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_set_add_all_file $$
@@ -4834,32 +4822,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_dependency $$
 CREATE FUNCTION _pb_file_descriptor_proto_remove_dependency(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."3"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."3"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."3"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."3"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_dependency $$
@@ -5004,32 +4980,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_public_dependency $$
 CREATE FUNCTION _pb_file_descriptor_proto_remove_public_dependency(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."10"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."10"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."10"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."10"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."10"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_public_dependency $$
@@ -5174,32 +5138,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_weak_dependency $$
 CREATE FUNCTION _pb_file_descriptor_proto_remove_weak_dependency(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."11"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."11"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."11"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."11"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."11"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_weak_dependency $$
@@ -5344,32 +5296,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_message_type $$
 CREATE FUNCTION _pb_file_descriptor_proto_remove_message_type(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."4"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."4"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."4"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."4"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_message_type $$
@@ -5514,32 +5454,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_enum_type $$
 CREATE FUNCTION _pb_file_descriptor_proto_remove_enum_type(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."5"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."5"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."5"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."5"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_enum_type $$
@@ -5684,32 +5612,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_service $$
 CREATE FUNCTION _pb_file_descriptor_proto_remove_service(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."6"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."6"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."6"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."6"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_service $$
@@ -5854,32 +5770,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_remove_extension $$
 CREATE FUNCTION _pb_file_descriptor_proto_remove_extension(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."7"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."7"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."7"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."7"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."7"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_descriptor_proto_add_all_extension $$
@@ -6299,32 +6203,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_field $$
 CREATE FUNCTION _pb_descriptor_proto_remove_field(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."2"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."2"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."2"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."2"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_field $$
@@ -6469,32 +6361,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_extension $$
 CREATE FUNCTION _pb_descriptor_proto_remove_extension(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."6"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."6"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."6"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."6"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_extension $$
@@ -6639,32 +6519,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_nested_type $$
 CREATE FUNCTION _pb_descriptor_proto_remove_nested_type(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."3"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."3"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."3"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."3"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."3"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_nested_type $$
@@ -6809,32 +6677,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_enum_type $$
 CREATE FUNCTION _pb_descriptor_proto_remove_enum_type(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."4"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."4"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."4"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."4"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_enum_type $$
@@ -6979,32 +6835,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_extension_range $$
 CREATE FUNCTION _pb_descriptor_proto_remove_extension_range(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."5"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."5"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."5"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."5"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_extension_range $$
@@ -7149,32 +6993,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_oneof_decl $$
 CREATE FUNCTION _pb_descriptor_proto_remove_oneof_decl(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."8"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."8"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."8"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."8"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."8"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_oneof_decl $$
@@ -7357,32 +7189,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_reserved_range $$
 CREATE FUNCTION _pb_descriptor_proto_remove_reserved_range(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."9"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."9"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."9"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."9"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."9"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_reserved_range $$
@@ -7527,32 +7347,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_remove_reserved_name $$
 CREATE FUNCTION _pb_descriptor_proto_remove_reserved_name(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."10"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."10"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."10"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."10"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."10"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_descriptor_proto_add_all_reserved_name $$
@@ -7985,32 +7793,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_extension_range_options_remove_uninterpreted_option $$
 CREATE FUNCTION _pb_extension_range_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."999"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."999"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."999"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_add_all_uninterpreted_option $$
@@ -8155,32 +7951,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_extension_range_options_remove_declaration $$
 CREATE FUNCTION _pb_extension_range_options_remove_declaration(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."2"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."2"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."2"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."2"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_extension_range_options_add_all_declaration $$
@@ -9520,32 +9304,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_remove_value $$
 CREATE FUNCTION _pb_enum_descriptor_proto_remove_value(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."2"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."2"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."2"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."2"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_add_all_value $$
@@ -9728,32 +9500,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_remove_reserved_range $$
 CREATE FUNCTION _pb_enum_descriptor_proto_remove_reserved_range(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."4"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."4"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."4"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."4"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."4"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_add_all_reserved_range $$
@@ -9898,32 +9658,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_remove_reserved_name $$
 CREATE FUNCTION _pb_enum_descriptor_proto_remove_reserved_name(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."5"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."5"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."5"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."5"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."5"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_descriptor_proto_add_all_reserved_name $$
@@ -10396,32 +10144,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_remove_method $$
 CREATE FUNCTION _pb_service_descriptor_proto_remove_method(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."2"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."2"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."2"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."2"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_descriptor_proto_add_all_method $$
@@ -11749,32 +11485,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_file_options_remove_uninterpreted_option $$
 CREATE FUNCTION _pb_file_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."999"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."999"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."999"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_file_options_add_all_uninterpreted_option $$
@@ -12210,32 +11934,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_message_options_remove_uninterpreted_option $$
 CREATE FUNCTION _pb_message_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."999"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."999"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."999"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_message_options_add_all_uninterpreted_option $$
@@ -12917,32 +12629,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_options_remove_targets $$
 CREATE FUNCTION _pb_field_options_remove_targets(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."19"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."19"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."19"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."19"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."19"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_add_all_targets $$
@@ -13087,32 +12787,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_options_remove_edition_defaults $$
 CREATE FUNCTION _pb_field_options_remove_edition_defaults(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."20"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."20"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."20"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."20"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."20"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_add_all_edition_defaults $$
@@ -13333,32 +13021,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_field_options_remove_uninterpreted_option $$
 CREATE FUNCTION _pb_field_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."999"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."999"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."999"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_field_options_add_all_uninterpreted_option $$
@@ -14169,32 +13845,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_oneof_options_remove_uninterpreted_option $$
 CREATE FUNCTION _pb_oneof_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."999"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."999"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."999"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_oneof_options_add_all_uninterpreted_option $$
@@ -14527,32 +14191,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_options_remove_uninterpreted_option $$
 CREATE FUNCTION _pb_enum_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."999"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."999"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."999"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_options_add_all_uninterpreted_option $$
@@ -14883,32 +14535,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_enum_value_options_remove_uninterpreted_option $$
 CREATE FUNCTION _pb_enum_value_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."999"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."999"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."999"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_enum_value_options_add_all_uninterpreted_option $$
@@ -15161,32 +14801,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_service_options_remove_uninterpreted_option $$
 CREATE FUNCTION _pb_service_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."999"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."999"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."999"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_service_options_add_all_uninterpreted_option $$
@@ -15528,32 +15156,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_method_options_remove_uninterpreted_option $$
 CREATE FUNCTION _pb_method_options_remove_uninterpreted_option(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."999"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."999"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."999"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."999"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."999"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_method_options_add_all_uninterpreted_option $$
@@ -15750,32 +15366,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_remove_name $$
 CREATE FUNCTION _pb_uninterpreted_option_remove_name(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."2"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."2"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."2"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."2"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_uninterpreted_option_add_all_name $$
@@ -17109,32 +16713,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_remove_defaults $$
 CREATE FUNCTION _pb_feature_set_defaults_remove_defaults(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."1"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."1"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_feature_set_defaults_add_all_defaults $$
@@ -17682,32 +17274,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_source_code_info_remove_location $$
 CREATE FUNCTION _pb_source_code_info_remove_location(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."1"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."1"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_add_all_location $$
@@ -17882,32 +17462,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_remove_path $$
 CREATE FUNCTION _pb_source_code_info_location_remove_path(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."1"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."1"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_add_all_path $$
@@ -18052,32 +17620,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_remove_span $$
 CREATE FUNCTION _pb_source_code_info_location_remove_span(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."2"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."2"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."2"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."2"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."2"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_add_all_span $$
@@ -18302,32 +17858,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_remove_leading_detached_comments $$
 CREATE FUNCTION _pb_source_code_info_location_remove_leading_detached_comments(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."6"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."6"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."6"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."6"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."6"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_source_code_info_location_add_all_leading_detached_comments $$
@@ -18502,32 +18046,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_generated_code_info_remove_annotation $$
 CREATE FUNCTION _pb_generated_code_info_remove_annotation(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."1"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."1"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_add_all_annotation $$
@@ -18702,32 +18234,20 @@ END $$
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_remove_path $$
 CREATE FUNCTION _pb_generated_code_info_annotation_remove_path(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."1"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."1"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS _pb_generated_code_info_annotation_add_all_path $$
@@ -19722,32 +19242,20 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_list_value_remove_values $$
 CREATE FUNCTION pb_wkt_list_value_remove_values(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."1"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."1"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_list_value_add_all_values $$
@@ -19946,32 +19454,20 @@ END $$
 DROP FUNCTION IF EXISTS pb_wkt_field_mask_remove_paths $$
 CREATE FUNCTION pb_wkt_field_mask_remove_paths(proto_data JSON, index_value INT) RETURNS JSON DETERMINISTIC
 BEGIN
-    DECLARE array_value JSON;
     DECLARE array_length INT;
-    DECLARE new_array JSON DEFAULT JSON_ARRAY();
-    DECLARE i INT DEFAULT 0;
-    SET array_value = JSON_EXTRACT(proto_data, '$."1"');
-    IF array_value IS NULL THEN
+    SET array_length = JSON_LENGTH(JSON_EXTRACT(proto_data, '$."1"'));
+    IF array_length IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
-    SET array_length = JSON_LENGTH(array_value);
     IF index_value < 0 OR index_value >= array_length THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Array index out of bounds';
     END IF;
     
-    -- Copy all elements except the one to remove
-    WHILE i < array_length DO
-        IF i != index_value THEN
-            SET new_array = JSON_ARRAY_APPEND(new_array, '$', JSON_EXTRACT(array_value, CONCAT('$[', i, ']')));
-        END IF;
-        SET i = i + 1;
-    END WHILE;
-    
-    -- If array becomes empty, remove the field entirely (proto3 default value omission)
-    IF JSON_LENGTH(new_array) = 0 THEN
+    IF array_length = 1 THEN
         RETURN JSON_REMOVE(proto_data, '$."1"');
+    ELSE
+        RETURN JSON_REMOVE(proto_data, CONCAT('$."1"[', index_value, ']'));
     END IF;
-    RETURN JSON_SET(proto_data, '$."1"', new_array);
 END $$
 
 DROP FUNCTION IF EXISTS pb_wkt_field_mask_add_all_paths $$
