@@ -3,42 +3,59 @@
 [![MySQL Version](https://img.shields.io/badge/MySQL-8.0.17%2B-blue)](https://dev.mysql.com/downloads/mysql/)
 [![Aurora MySQL](https://img.shields.io/badge/Aurora%20MySQL-3.04.0%2B-orange)](https://aws.amazon.com/rds/aurora/)
 
-A comprehensive library of MySQL stored functions and procedures for working with Protocol Buffers (protobuf) encoded data directly within MySQL databases. This project enables you to parse, query, and manipulate protobuf messages without requiring external applications or services.
+A comprehensive library of MySQL stored functions and procedures for working with Protocol Buffers (protobuf) encoded data directly within MySQL databases. Features both low-level field access and generated schema-aware accessor functions. Parse, query, and manipulate protobuf messages without requiring external applications or services.
 
 ## Features
 
-- 🔍 **Field Access**: Extract specific fields from protobuf messages using field numbers
-- ✏️ **Message Manipulation**: Create, modify, and update protobuf messages directly in MySQL - set fields, add/remove repeated elements, and clear fields
-- 🔄 **JSON Conversion**: Convert protobuf messages to JSON format for easier debugging
-- 🛠️ **Pure MySQL Implementation**: Written entirely in MySQL stored functions and procedures - no native libraries or external dependencies required
+- **Without** Code Generation
+  - 🔍 **Low-level Field Access**: Extract specific fields from protobuf messages using field numbers
+  - ✏️ **Message Manipulation**: Create, modify, and update protobuf messages using field numbers
+- **With** Code Generation
+  - 🚀 **Schema-aware Accessors**: Generate accessor functions with intuitive field names instead of numbers - provides a bit of type-safety than low-level accessors
+  - 🔧 **Comprehensive Operations**: Full CRUD operations for all field types (singular, repeated, map, message, oneof)
+- 🔄 **JSON Conversion**: Convert binary messages to/from ProtoJSON - nearly compliant with official protobuf conformance tests
+- 📜 **Proto2 & Proto3 Support**: Support for both proto2 and proto3 syntax and semantics
+- ✅ **Well-Known Types**: Built-in support for Google's standard protobuf types (Any, Timestamp, Duration, Struct, etc.)
+- 🛠️ **Pure MySQL**: Written entirely in MySQL stored functions and procedures - no native libraries or external dependencies required
 
 ## Quick Start
 
-1. **Install core functions**:
+> **Note**: We are currently preparing release assets with pre-built SQL files. For now, you need to build from source.
 
-   Download [protobuf.sql](https://raw.githubusercontent.com/eiiches/mysql-protobuf-functions/refs/heads/main/build/protobuf.sql) and load it into your MySQL database:
+1. **Build and install core functions**:
+
    ```bash
-   curl -fLO https://raw.githubusercontent.com/eiiches/mysql-protobuf-functions/refs/heads/main/build/protobuf.sql
+   git clone https://github.com/eiiches/mysql-protobuf-functions.git
+   cd mysql-protobuf-functions
+   make protobuf.sql
    mysql -u your_username -p your_database < protobuf.sql
    ```
 
 2. **Try it out**:
+
    ```sql
-   -- Create new protobuf message
+   -- Low-level field access using field numbers
    SELECT pb_message_set_string_field(pb_message_new(), 1, 'Hello World');
    -- Result: _binary X'0A0B48656C6C6F20576F726C64'
 
-   -- Extract field from protobuf message
    SELECT pb_message_get_string_field(_binary X'0A0B48656C6C6F20576F726C64', 1, '');
    -- Result: "Hello World"
-
-   -- Convert to JSON
-   -- This requires protobuf-json.sql and schema. See docs/tutorial-json.md for ways to load schema into MySQL.
-   SELECT pb_message_to_json(greeting_schema(), '.Greeting', _binary X'0A0B48656C6C6F20576F726C64', NULL, NULL);
-   -- Result: {
-   --   "message": "Hello World",
-   -- }
    ```
+
+   ```sql
+   -- Using generated code for well-known Timestamp type
+   SELECT pb_wkt_timestamp_to_message(pb_wkt_timestamp_set_seconds(pb_wkt_timestamp_new(), 1757377262), NULL);
+   -- Result: _binary X'08EEE5FDC506'
+
+   -- NOTE: to_json usually produces a JSON object instead of string. Timestamp and some well-known types are exceptions.
+   SELECT pb_wkt_timestamp_to_json(pb_wkt_timestamp_from_message(_binary X'08EEE5FDC506', NULL), NULL);
+   -- Result: "2025-09-09T00:21:02Z"
+
+   SELECT pb_wkt_timestamp_get_seconds(pb_wkt_timestamp_from_json('"2025-09-09T00:21:02Z"', NULL));
+   -- Result: 1757377262
+   ```
+
+   You can generate functions for your own protobuf schema, See [protoc-gen-mysql](cmd/protoc-gen-mysql/README.md) for details.
 
 ## Documentation
 
@@ -48,10 +65,13 @@ A comprehensive library of MySQL stored functions and procedures for working wit
 - **[Tutorial: Basics](docs/tutorial-basics.md)** - Getting started with low-level field access
 - **[Tutorial: Modification](docs/tutorial-modification.md)** - Creating and modifying protobuf messages
 - **[Tutorial: JSON Integration](docs/tutorial-json.md)** - Schema-aware JSON conversion
+- **[Generated Functions Documentation](docs/mysql-generated-functions.md)** - Complete reference for generated schema-aware accessor functions
 - **[Advanced Usage](docs/advanced-usage.md)** - Indexing, triggers, and performance optimization
-- **[API Reference](docs/function-reference.md)** - Complete function reference
+- **[API Reference](docs/function-reference.md)** - Complete low-level function reference
 
 ## Project Status
+
+> **⚠️ Early Development**: This project is in early development. While core functionality is complete and extensively tested, APIs may change and some features are still being refined. Use with caution in production environments.
 
 | Feature                                                                                                                                           | Status            | Description                                    |
 |---------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|------------------------------------------------|
@@ -60,7 +80,7 @@ A comprehensive library of MySQL stored functions and procedures for working wit
 | Well-Known Types                                                                                                                                  | ✅ Complete        | Google's standard types (Any, Timestamp, etc.) |
 | Proto3 Support                                                                                                                                    | ✅ Complete        | Full proto3 syntax and semantics               |
 | Proto2 Support                                                                                                                                    | ✅ Complete        | Full proto2 syntax and semantics               |
-| Code Generation & High-level Field Accessors                                                                                                      | ❌ Incomplete      | Generated type-safe accessor functions         |
+| Code Generation & Schema-aware Field Accessors                                                                                                   | ✅ Complete        | Generated schema-aware accessor functions with configurable prefixes, comprehensive field operations, and enum string conversion |
 | [Extensions](https://protobuf.dev/programming-guides/proto2/#extensions) &amp; [Options](https://protobuf.dev/programming-guides/proto2/#options) | ❌ Not Implemented | Custom fields that extend existing messages    |
 | [Groups](https://protobuf.dev/programming-guides/proto2/#groups)                                                                                  | ❌ Not Implemented | Deprecated proto2 feature                      |
 | [Editions](https://protobuf.dev/editions/overview/) Support                                                                                       | ❌ Not Implemented | Newer protobuf syntax (in roadmap)             |
