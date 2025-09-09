@@ -27,7 +27,7 @@ coverage-run:
 
 .PHONY: coverage-report-html
 coverage-report-html: coverage-report-lcov
-	genhtml coverage.lcov --output-directory coverage-html --title "MySQL Protobuf Functions Coverage Report"
+	genhtml coverage.lcov --output-directory coverage-html --title "MySQL Protobuf Functions Coverage Report" --flat --exclude "build/well_known_proto.pb.sql" --exclude "build/_pb_options_proto.pb.sql" --missed
 	@echo ""
 	@echo "=== COVERAGE REPORT GENERATED ==="
 	@echo "HTML Report: coverage-html/index.html"
