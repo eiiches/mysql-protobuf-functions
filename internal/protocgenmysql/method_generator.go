@@ -1138,6 +1138,12 @@ func generateOneOfMethods(content *strings.Builder, messageDesc protoreflect.Mes
 	fullTypeName := messageDesc.FullName()
 	oneofs := messageDesc.Oneofs()
 	for oneof := range protoreflectutils.Iterate(oneofs) {
+		// Skip synthetic oneofs created by proto3 optional fields
+		// These are implementation details and shouldn't have user-facing accessor methods
+		if oneof.IsSynthetic() {
+			continue
+		}
+
 		oneofName := string(oneof.Name())
 
 		// Generate which method to detect which field is set in the oneOf group
