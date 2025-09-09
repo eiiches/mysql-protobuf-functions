@@ -62,12 +62,15 @@ A comprehensive library of MySQL stored functions and procedures for working wit
 > **Work in Progress:** The documentation was written with the help of AI and is currently under review.
 
 - **[Installation Guide](docs/installation.md)** - Detailed installation instructions and requirements
-- **[Tutorial: Basics](docs/tutorial-basics.md)** - Getting started with low-level field access
-- **[Tutorial: Modification](docs/tutorial-modification.md)** - Creating and modifying protobuf messages
-- **[Tutorial: JSON Integration](docs/tutorial-json.md)** - Schema-aware JSON conversion
-- **[Generated Functions Documentation](docs/mysql-generated-functions.md)** - Complete reference for generated schema-aware accessor functions
+- Tutorials
+  - **[Tutorial: Basics](docs/tutorial-basics.md)** - Getting started with low-level field access
+  - **[Tutorial: Modification](docs/tutorial-modification.md)** - Creating and modifying protobuf messages
+  - **[Tutorial: Code Generation](docs/tutorial-code-generation.md)** - Generate schema-aware accessor functions for your protobuf schemas
+  - **[Tutorial: JSON Integration](docs/tutorial-json.md)** - Schema-aware JSON conversion
 - **[Advanced Usage](docs/advanced-usage.md)** - Indexing, triggers, and performance optimization
-- **[API Reference](docs/function-reference.md)** - Complete low-level function reference
+- References
+  - **[Generated Functions Documentation](docs/mysql-generated-functions.md)** - Complete reference for generated schema-aware accessor functions
+  - **[API Reference](docs/function-reference.md)** - Complete low-level function reference
 
 ## Project Status
 
