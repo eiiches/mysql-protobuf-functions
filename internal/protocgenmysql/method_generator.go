@@ -627,17 +627,14 @@ func generateMapSetAll(content *strings.Builder, funcPrefix string, field protor
 	// For map fields, use the same conversion logic as put_all
 	protobufType := GetProtobufType(field.MapValue().Kind())
 	jsonConversionExpr := protobufType.GenerateJsonToNumberJsonExpression("current_value")
-	needsConversion := jsonConversionExpr != "current_value"
 
-	if needsConversion {
-		content.WriteString("    DECLARE json_keys JSON;\n")
-		content.WriteString("    DECLARE key_count INT;\n")
-		content.WriteString("    DECLARE i INT;\n")
-		content.WriteString("    DECLARE current_key VARCHAR(255);\n")
-		content.WriteString("    DECLARE current_value JSON;\n")
-		content.WriteString("    DECLARE converted_value JSON;\n")
-		content.WriteString("    DECLARE result_map JSON DEFAULT JSON_OBJECT();\n")
-	}
+	content.WriteString("    DECLARE json_keys JSON;\n")
+	content.WriteString("    DECLARE key_count INT;\n")
+	content.WriteString("    DECLARE i INT;\n")
+	content.WriteString("    DECLARE current_key VARCHAR(255);\n")
+	content.WriteString("    DECLARE current_value JSON;\n")
+	content.WriteString("    DECLARE converted_value JSON;\n")
+	content.WriteString("    DECLARE result_map JSON DEFAULT JSON_OBJECT();\n")
 
 	content.WriteString("    IF field_value IS NULL THEN\n")
 	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'field_value cannot be NULL';\n")
@@ -646,26 +643,21 @@ func generateMapSetAll(content *strings.Builder, funcPrefix string, field protor
 	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'field_value must be a JSON object';\n")
 	content.WriteString("    END IF;\n")
 
-	if needsConversion {
-		// Need to convert each JSON value to number_json format (for float, double)
-		content.WriteString("    SET json_keys = JSON_KEYS(field_value);\n")
-		content.WriteString("    IF json_keys IS NOT NULL THEN\n")
-		content.WriteString("        SET key_count = JSON_LENGTH(json_keys);\n")
-		content.WriteString("        SET i = 0;\n")
-		content.WriteString("        \n")
-		content.WriteString("        WHILE i < key_count DO\n")
-		content.WriteString("            SET current_key = JSON_UNQUOTE(JSON_EXTRACT(json_keys, CONCAT('$[', i, ']')));\n")
-		content.WriteString("            SET current_value = JSON_EXTRACT(field_value, CONCAT('$.\"', current_key, '\"'));\n")
-		content.WriteString(fmt.Sprintf("            SET converted_value = %s;\n", jsonConversionExpr))
-		content.WriteString("            SET result_map = JSON_SET(result_map, CONCAT('$.\"', current_key, '\"'), converted_value);\n")
-		content.WriteString("            SET i = i + 1;\n")
-		content.WriteString("        END WHILE;\n")
-		content.WriteString("    END IF;\n")
-		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', result_map);\n", field.Number()))
-	} else {
-		// For types that don't need conversion, use direct assignment
-		content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', field_value);\n", field.Number()))
-	}
+	// Need to convert each JSON value to number_json format (for float, double)
+	content.WriteString("    SET json_keys = JSON_KEYS(field_value);\n")
+	content.WriteString("    IF json_keys IS NOT NULL THEN\n")
+	content.WriteString("        SET key_count = JSON_LENGTH(json_keys);\n")
+	content.WriteString("        SET i = 0;\n")
+	content.WriteString("        \n")
+	content.WriteString("        WHILE i < key_count DO\n")
+	content.WriteString("            SET current_key = JSON_UNQUOTE(JSON_EXTRACT(json_keys, CONCAT('$[', i, ']')));\n")
+	content.WriteString("            SET current_value = JSON_EXTRACT(field_value, CONCAT('$.\"', current_key, '\"'));\n")
+	content.WriteString(fmt.Sprintf("            SET converted_value = %s;\n", jsonConversionExpr))
+	content.WriteString("            SET result_map = JSON_SET(result_map, CONCAT('$.\"', current_key, '\"'), converted_value);\n")
+	content.WriteString("            SET i = i + 1;\n")
+	content.WriteString("        END WHILE;\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', result_map);\n", field.Number()))
 	content.WriteString("END $$\n\n")
 	return nil
 }
@@ -1054,19 +1046,16 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, field 
 	// For primitive value types that need conversion (float, double), we need to convert each value
 	protobufType := GetProtobufType(field.MapValue().Kind())
 	jsonConversionExpr := protobufType.GenerateJsonToNumberJsonExpression("current_value")
-	needsConversion := jsonConversionExpr != "current_value"
 
 	content.WriteString(fmt.Sprintf("CREATE FUNCTION %s(proto_data JSON, new_entries JSON) RETURNS JSON DETERMINISTIC\n", putAllFuncName))
 	content.WriteString("BEGIN\n")
 	content.WriteString("    DECLARE map_value JSON;\n")
-	if needsConversion {
-		content.WriteString("    DECLARE json_keys JSON;\n")
-		content.WriteString("    DECLARE key_count INT;\n")
-		content.WriteString("    DECLARE i INT;\n")
-		content.WriteString("    DECLARE current_key VARCHAR(255);\n")
-		content.WriteString("    DECLARE current_value JSON;\n")
-		content.WriteString("    DECLARE converted_value JSON;\n")
-	}
+	content.WriteString("    DECLARE json_keys JSON;\n")
+	content.WriteString("    DECLARE key_count INT;\n")
+	content.WriteString("    DECLARE i INT;\n")
+	content.WriteString("    DECLARE current_key VARCHAR(255);\n")
+	content.WriteString("    DECLARE current_value JSON;\n")
+	content.WriteString("    DECLARE converted_value JSON;\n")
 	content.WriteString(fmt.Sprintf("    SET map_value = JSON_EXTRACT(proto_data, '$.\"%.d\"');\n", field.Number()))
 	content.WriteString("    IF map_value IS NULL THEN\n")
 	content.WriteString("        SET map_value = JSON_OBJECT();\n")
@@ -1078,23 +1067,18 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, field 
 	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'new_entries must be a JSON object';\n")
 	content.WriteString("    END IF;\n")
 
-	if needsConversion {
-		// Need to convert each JSON value to number_json format (for float, double)
-		content.WriteString("    SET json_keys = JSON_KEYS(new_entries);\n")
-		content.WriteString("    SET key_count = JSON_LENGTH(json_keys);\n")
-		content.WriteString("    SET i = 0;\n")
-		content.WriteString("    \n")
-		content.WriteString("    WHILE i < key_count DO\n")
-		content.WriteString("        SET current_key = JSON_UNQUOTE(JSON_EXTRACT(json_keys, CONCAT('$[', i, ']')));\n")
-		content.WriteString("        SET current_value = JSON_EXTRACT(new_entries, CONCAT('$.\"', current_key, '\"'));\n")
-		content.WriteString(fmt.Sprintf("        SET converted_value = %s;\n", jsonConversionExpr))
-		content.WriteString("        SET map_value = JSON_SET(map_value, CONCAT('$.\"', current_key, '\"'), converted_value);\n")
-		content.WriteString("        SET i = i + 1;\n")
-		content.WriteString("    END WHILE;\n")
-	} else {
-		// For types that don't need conversion (int32, string, etc.), use direct merge
-		content.WriteString("    SET map_value = JSON_MERGE_PATCH(map_value, new_entries);\n")
-	}
+	// Need to convert each JSON value to number_json format (for float, double)
+	content.WriteString("    SET json_keys = JSON_KEYS(new_entries);\n")
+	content.WriteString("    SET key_count = JSON_LENGTH(json_keys);\n")
+	content.WriteString("    SET i = 0;\n")
+	content.WriteString("    \n")
+	content.WriteString("    WHILE i < key_count DO\n")
+	content.WriteString("        SET current_key = JSON_UNQUOTE(JSON_EXTRACT(json_keys, CONCAT('$[', i, ']')));\n")
+	content.WriteString("        SET current_value = JSON_EXTRACT(new_entries, CONCAT('$.\"', current_key, '\"'));\n")
+	content.WriteString(fmt.Sprintf("        SET converted_value = %s;\n", jsonConversionExpr))
+	content.WriteString("        SET map_value = JSON_SET(map_value, CONCAT('$.\"', current_key, '\"'), converted_value);\n")
+	content.WriteString("        SET i = i + 1;\n")
+	content.WriteString("    END WHILE;\n")
 	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', map_value);\n", field.Number()))
 	content.WriteString("END $$\n\n")
 
