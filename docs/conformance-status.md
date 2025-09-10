@@ -11,7 +11,7 @@ This document tracks the current status of Protocol Buffers conformance tests fo
 Conformance tests for the following protobuf features are **skipped**.
 These are documented as limitations or unimplemented features of this library.
 
-* **[Text Format](https://protobuf.dev/reference/protobuf/textformat-spec/)** - Textual protobuf representation, which is unlikely to be implemented.
+* **[Text Format](https://protobuf.dev/reference/protobuf/textformat-spec/)** (414 tests) - Textual protobuf representation, which is unlikely to be implemented.
 
 ## Failing Tests
 
@@ -44,7 +44,7 @@ For a machine-readable list of all test failures, see [conformance/expected_fail
 
 ## Tests Not Run
 
-Conformance testing for Editions are not run unless --maximum_edition= is specified. As we don't yet support Editions, we don't currently perform any tests for Editions.
+Conformance tests for Editions are not run unless `--maximum_edition=` is specified. Since we don't yet support Editions, we currently skip all Editions-related tests.
 
 * **[Editions](https://protobuf.dev/editions/overview/)** - Newer protobuf syntax that is in our roadmap.
 
