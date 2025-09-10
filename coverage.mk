@@ -14,14 +14,16 @@ coverage-ci: purge coverage-load coverage-run coverage-report-lcov
 .PHONY: coverage-instrument
 coverage-instrument: $(ALL_SQL_FILES_INSTRUMENTED)
 
-.PHONY: coverage-load
-coverage-load: $(ALL_SQL_FILES_INSTRUMENTED) ensure-test-database
+.PHONY: coverage-init
+coverage-init: ensure-test-database
 	go run cmd/mysql-coverage/main.go init --database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)"
+
+.PHONY: coverage-load
+coverage-load: $(ALL_SQL_FILES_INSTRUMENTED) coverage-init
 	$(foreach file,$(ALL_SQL_FILES_INSTRUMENTED),$(MYSQL_COMMAND) < $(file);)
 
 .PHONY: coverage-run
-coverage-run:
-	go run cmd/mysql-coverage/main.go init --database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)"
+coverage-run: coverage-init
 	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" -fuzz-iterations 20 $${GO_TEST_FLAGS:-}
 	make -C conformance test
 

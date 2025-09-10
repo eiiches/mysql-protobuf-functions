@@ -1214,18 +1214,6 @@ BEGIN
 	END WHILE;
 END $$
 
-DROP FUNCTION IF EXISTS _pb_util_cast_uint64_as_uint32 $$
-CREATE FUNCTION _pb_util_cast_uint64_as_uint32(value BIGINT UNSIGNED) RETURNS INT UNSIGNED DETERMINISTIC
-BEGIN
-	RETURN value;
-END $$
-
-DROP FUNCTION IF EXISTS _pb_util_cast_int64_as_int32 $$
-CREATE FUNCTION _pb_util_cast_int64_as_int32(value BIGINT) RETURNS INT DETERMINISTIC
-BEGIN
-	RETURN value;
-END $$
-
 -- =============================================================================
 -- Wire Encoding Functions (for converting back to protobuf binary format)
 -- =============================================================================

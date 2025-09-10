@@ -37,9 +37,27 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}', 1)`).IsEqualToFloat(1.0)
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_double('{"1": ["binary64:0x400921fb54442d18"]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}', 0, 2.5)`).IsEqualToJsonString(`{"1": ["binary64:0x4004000000000000", "binary64:0x3ff0000000000000"]}`)
+
+		// Test set bounds checking for double
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_double('{"1": ["binary64:0x400921fb54442d18"]}', 1, 2.5)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_double('{"1": ["binary64:0x400921fb54442d18"]}', -1, 2.5)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_double('{}', 0, 2.5)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_double('{"1": ["binary64:0x3ff0000000000000"]}', 0, 3.141592653589793)`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}', 0)`).IsEqualToJsonString(`{"1": ["binary64:0x3ff0000000000000"]}`)
+
+		// Test insert and remove bounds checking for double
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_double('{"1": ["binary64:0x3ff0000000000000"]}', -1, 3.14)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_double('{"1": ["binary64:0x3ff0000000000000"]}', 2, 3.14)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_double('{}', 1, 3.14)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_double('{"1": ["binary64:0x3ff0000000000000"]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_double('{"1": ["binary64:0x3ff0000000000000"]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_double('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_double('{"1": ["binary64:0x400921fb54442d18"]}', '[1.0, 2.5]')`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000", "binary64:0x4004000000000000"]}`)
+
+		// Test add_all and set_all validation for double fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_double('{}', '42.5')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_double('{}', '{"not": "array"}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated float field (IEEE 754 binary32 format in arrays)
@@ -70,9 +88,27 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}', 1)`).IsEqualToFloat(1.0)
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_float('{"2": ["binary32:0x4048f5c3"]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}', 1, 2.5)`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x40200000"]}`)
+
+		// Test set bounds checking for float
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_float('{"2": ["binary32:0x4048f5c3"]}', 1, 2.5)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_float('{"2": ["binary32:0x4048f5c3"]}', -1, 2.5)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_float('{}', 0, 2.5)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_float('{"2": ["binary32:0x3f800000"]}', 0, 3.14)`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}', 0)`).IsEqualToJsonString(`{"2": ["binary32:0x3f800000"]}`)
+
+		// Test insert and remove bounds checking for float
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_float('{"2": ["binary32:0x3f800000"]}', -1, 3.14)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_float('{"2": ["binary32:0x3f800000"]}', 2, 3.14)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_float('{}', 1, 3.14)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_float('{"2": ["binary32:0x3f800000"]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_float('{"2": ["binary32:0x3f800000"]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_float('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_float('{"2": ["binary32:0x4048f5c3"]}', '[1.0, 2.5]')`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000", "binary32:0x40200000"]}`)
+
+		// Test add_all and set_all validation for float fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_float('{}', '3.14')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_float('{}', 'true')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated int32 field
@@ -125,18 +161,36 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{"3": [10, 20]}', -1, 5)`).ToFailWithSignalException("45000", "Insert index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{"3": [10, 20]}', 3, 30)`).ToFailWithSignalException("45000", "Insert index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{}', 1, 100)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{}', -1, 100)`).ToFailWithSignalException("45000", "Insert index out of bounds")
 
 		// Test remove operations
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": [10, 20, 30]}', 0)`).IsEqualToJsonString(`{"3": [20, 30]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": [10, 20, 30]}', 1)`).IsEqualToJsonString(`{"3": [10, 30]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": [10, 20, 30]}', 2)`).IsEqualToJsonString(`{"3": [10, 20]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": [10]}', 0)`).IsEqualToJsonString(`{}`)
+
+		// Test remove bounds checking
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": [10, 20, 30]}', 3)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": [10, 20, 30]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": []}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
 
 		// Test add_all operations
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{}', '[100, 200, 300]')`).IsEqualToJsonString(`{"3": [100, 200, 300]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{"3": [10, 20]}', '[100, 200]')`).IsEqualToJsonString(`{"3": [10, 20, 100, 200]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{"3": [10, 20]}', '[]')`).IsEqualToJsonString(`{"3": [10, 20]}`)
+
+		// Test add_all validation - should reject non-array input
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{}', '42')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{}', '"string"')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{}', '{"key": "value"}')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{}', 'true')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+
+		// Test set_all validation - should reject non-array input
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32('{}', '{"key": "value"}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32('{}', 'false')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated int64 field
@@ -166,9 +220,26 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_int64('{"4": [9223372036854775807, -9223372036854775808, 42]}', 2)`).IsEqualToInt(42)
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_int64('{"4": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int64('{"4": [100, 200]}', 1, -500)`).IsEqualToJsonString(`{"4": [100, -500]}`)
+
+		// Test set bounds checking for int64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int64('{"4": [100]}', 1, -500)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int64('{"4": [100]}', -1, -500)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int64('{}', 0, -500)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int64('{"4": [200]}', 0, 100)`).IsEqualToJsonString(`{"4": [100, 200]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int64('{"4": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"4": [100, 300]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int64('{"4": [100]}', '[200, 300]')`).IsEqualToJsonString(`{"4": [100, 200, 300]}`)
+
+		// Test insert and remove bounds checking for int64
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int64('{"4": [100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int64('{"4": [100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int64('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int64('{"4": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int64('{"4": [100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int64('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for int64 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int64('{}', '9223372036854775807')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int64('{}', '{"key": "value"}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated uint32 field
@@ -197,9 +268,26 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_uint32('{"5": [4294967295, 42, 100]}', 1)`).IsEqualToInt(42)
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_uint32('{"5": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint32('{"5": [100, 200]}', 0, 999)`).IsEqualToJsonString(`{"5": [999, 200]}`)
+
+		// Test set bounds checking for uint32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint32('{"5": [100]}', 1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint32('{"5": [100]}', -1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint32('{}', 0, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint32('{"5": [200]}', 0, 100)`).IsEqualToJsonString(`{"5": [100, 200]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint32('{"5": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"5": [100, 300]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint32('{"5": [100]}', '[200, 300]')`).IsEqualToJsonString(`{"5": [100, 200, 300]}`)
+
+		// Test insert and remove bounds checking for uint32
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint32('{"5": [100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint32('{"5": [100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint32('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint32('{"5": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint32('{"5": [100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint32('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for uint32 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint32('{}', '4294967295')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint32('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated uint64 field
@@ -228,9 +316,26 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_uint64('{"6": [18446744073709551615, 100, 42]}', 1)`).IsEqualToInt(100)
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_uint64('{"6": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint64('{"6": [100, 200]}', 0, 999)`).IsEqualToJsonString(`{"6": [999, 200]}`)
+
+		// Test set bounds checking for uint64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint64('{"6": [100]}', 1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint64('{"6": [100]}', -1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint64('{}', 0, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint64('{"6": [100]}', 0, 50)`).IsEqualToJsonString(`{"6": [50, 100]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint64('{"6": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"6": [100, 300]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint64('{"6": [100]}', '[200, 300]')`).IsEqualToJsonString(`{"6": [100, 200, 300]}`)
+
+		// Test insert and remove bounds checking for uint64
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint64('{"6": [100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint64('{"6": [100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint64('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint64('{"6": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint64('{"6": [100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint64('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for uint64 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint64('{}', '18446744073709551615')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint64('{}', 'false')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated sint32 field
@@ -259,9 +364,26 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sint32('{"7": [-1, 42, 100]}', 0)`).IsEqualToInt(-1)
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sint32('{"7": [-1]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint32('{"7": [-1, 42]}', 1, 100)`).IsEqualToJsonString(`{"7": [-1, 100]}`)
+
+		// Test set bounds checking for sint32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint32('{"7": [-1]}', 1, 100)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint32('{"7": [-1]}', -1, 100)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint32('{}', 0, 100)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint32('{"7": [42]}', 0, -1)`).IsEqualToJsonString(`{"7": [-1, 42]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint32('{"7": [-1, 42, 100]}', 1)`).IsEqualToJsonString(`{"7": [-1, 100]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint32('{"7": [-1]}', '[42, 100]')`).IsEqualToJsonString(`{"7": [-1, 42, 100]}`)
+
+		// Test insert and remove bounds checking for sint32
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint32('{"7": [-1]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint32('{"7": [-1]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint32('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint32('{"7": [-1]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint32('{"7": [-1]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint32('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for sint32 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint32('{}', '-1')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint32('{}', '{}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated sint64 field
@@ -290,9 +412,26 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sint64('{"8": [-1, 100, 200]}', 1)`).IsEqualToInt(100)
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sint64('{"8": [-1]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint64('{"8": [-1, 100]}', 0, -999)`).IsEqualToJsonString(`{"8": [-999, 100]}`)
+
+		// Test set bounds checking for sint64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint64('{"8": [-1]}', 1, -999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint64('{"8": [-1]}', -1, -999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint64('{}', 0, -999)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint64('{"8": [100]}', 0, -1)`).IsEqualToJsonString(`{"8": [-1, 100]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint64('{"8": [-1, 100, 200]}', 1)`).IsEqualToJsonString(`{"8": [-1, 200]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint64('{"8": [-1]}', '[100, 200]')`).IsEqualToJsonString(`{"8": [-1, 100, 200]}`)
+
+		// Test insert and remove bounds checking for sint64
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint64('{"8": [-1]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint64('{"8": [-1]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint64('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint64('{"8": [-1]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint64('{"8": [-1]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint64('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for sint64 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint64('{}', '-9223372036854775808')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint64('{}', 'true')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated fixed32 field
@@ -321,9 +460,26 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_fixed32('{"9": [4294967295, 42]}', 0)`).IsEqualToInt(4294967295)
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_fixed32('{"9": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed32('{"9": [100, 200]}', 1, 999)`).IsEqualToJsonString(`{"9": [100, 999]}`)
+
+		// Test set bounds checking for fixed32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed32('{"9": [100]}', 1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed32('{"9": [100]}', -1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed32('{}', 0, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed32('{"9": [200]}', 0, 100)`).IsEqualToJsonString(`{"9": [100, 200]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed32('{"9": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"9": [100, 300]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed32('{"9": [100]}', '[200, 300]')`).IsEqualToJsonString(`{"9": [100, 200, 300]}`)
+
+		// Test insert and remove bounds checking for fixed32
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed32('{"9": [100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed32('{"9": [100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed32('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed32('{"9": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed32('{"9": [100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed32('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for fixed32 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed32('{}', '4294967295')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed32('{}', '"not_array"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated fixed64 field
@@ -352,9 +508,26 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_fixed64('{"10": [18446744073709551615, 100]}', 1)`).IsEqualToInt(100)
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_fixed64('{"10": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed64('{"10": [100, 200]}', 0, 999)`).IsEqualToJsonString(`{"10": [999, 200]}`)
+
+		// Test set bounds checking for fixed64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed64('{"10": [100]}', 1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed64('{"10": [100]}', -1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed64('{}', 0, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed64('{"10": [200]}', 0, 100)`).IsEqualToJsonString(`{"10": [100, 200]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed64('{"10": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"10": [100, 300]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed64('{"10": [100]}', '[200, 300]')`).IsEqualToJsonString(`{"10": [100, 200, 300]}`)
+
+		// Test insert and remove bounds checking for fixed64
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed64('{"10": [100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed64('{"10": [100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed64('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed64('{"10": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed64('{"10": [100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed64('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for fixed64 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed64('{}', '18446744073709551615')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed64('{}', '{"key": "value"}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated sfixed32 field
@@ -383,9 +556,26 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sfixed32('{"11": [-2147483648, 42]}', 0)`).IsEqualToInt(-2147483648)
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sfixed32('{"11": [42]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed32('{"11": [-100, 42]}', 1, 999)`).IsEqualToJsonString(`{"11": [-100, 999]}`)
+
+		// Test set bounds checking for sfixed32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed32('{"11": [-100]}', 1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed32('{"11": [-100]}', -1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed32('{}', 0, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed32('{"11": [42]}', 0, -100)`).IsEqualToJsonString(`{"11": [-100, 42]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed32('{"11": [-100, 42, 100]}', 1)`).IsEqualToJsonString(`{"11": [-100, 100]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed32('{"11": [-100]}', '[42, 100]')`).IsEqualToJsonString(`{"11": [-100, 42, 100]}`)
+
+		// Test insert and remove bounds checking for sfixed32
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed32('{"11": [-100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed32('{"11": [-100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed32('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed32('{"11": [-100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed32('{"11": [-100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed32('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for sfixed32 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed32('{}', '-2147483648')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed32('{}', 'false')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated sfixed64 field
@@ -414,9 +604,26 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sfixed64('{"12": [-9223372036854775808, 100]}', 1)`).IsEqualToInt(100)
 		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sfixed64('{"12": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed64('{"12": [-100, 100]}', 0, -999)`).IsEqualToJsonString(`{"12": [-999, 100]}`)
+
+		// Test set bounds checking for sfixed64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed64('{"12": [-100]}', 1, -999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed64('{"12": [-100]}', -1, -999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed64('{}', 0, -999)`).ToFailWithSignalException("45000", "Array index out of bounds")
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed64('{"12": [100]}', 0, -100)`).IsEqualToJsonString(`{"12": [-100, 100]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed64('{"12": [-100, 100, 200]}', 1)`).IsEqualToJsonString(`{"12": [-100, 200]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed64('{"12": [-100]}', '[100, 200]')`).IsEqualToJsonString(`{"12": [-100, 100, 200]}`)
+
+		// Test insert and remove bounds checking for sfixed64
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed64('{"12": [-100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed64('{"12": [-100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed64('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed64('{"12": [-100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed64('{"12": [-100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed64('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for sfixed64 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed64('{}', '-9223372036854775808')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed64('{}', 'true')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated bool field (JSON booleans, not 1/0)
@@ -451,6 +658,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_bool('{"13": [true, false]}', 0, false)`).IsEqualToJsonString(`{"13": [false, false]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_bool('{"13": [true, false]}', 1, true)`).IsEqualToJsonString(`{"13": [true, true]}`)
 
+		// Test set bounds checking for bool
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_bool('{"13": [true]}', 1, false)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_bool('{"13": [true]}', -1, false)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_bool('{}', 0, false)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
 		// Test insert operations
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bool('{"13": [false]}', 0, true)`).IsEqualToJsonString(`{"13": [true, false]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bool('{}', 0, true)`).IsEqualToJsonString(`{"13": [true]}`)
@@ -460,6 +672,18 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test add_all operations
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_bool('{"13": [true]}', '[false, true]')`).IsEqualToJsonString(`{"13": [true, false, true]}`)
+
+		// Test insert and remove bounds checking for bool
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bool('{"13": [true]}', -1, false)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bool('{"13": [true]}', 2, false)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bool('{}', 1, false)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bool('{"13": [true]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bool('{"13": [true]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bool('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for bool fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_bool('{}', 'true')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_bool('{}', '"boolean"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated string field
@@ -508,6 +732,19 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test add_all operations
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_string('{"14": ["hello"]}', '["world", "test"]')`).IsEqualToJsonString(`{"14": ["hello", "world", "test"]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_string('{}', '["hello", "world"]')`).IsEqualToJsonString(`{"14": ["hello", "world"]}`)
+
+		// Test insert and remove bounds checking for string
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_string('{"14": ["hello"]}', -1, "test")`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_string('{"14": ["hello"]}', 2, "test")`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_string('{}', 1, "test")`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_string('{"14": ["hello"]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_string('{"14": ["hello"]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_string('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for string fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_string('{}', '"not_array"')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_string('{}', NULL)`).IsEqualToJsonString(`{}`) // NULL is allowed for set_all - clears field
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_string('{}', '123')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated bytes field (base64 encoded)
@@ -541,6 +778,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_repeated_fields_set_repeated_bytes(?, 0, ?)", `{"15": ["aGVsbG8=", "d29ybGQ="]}`, []byte("hi")).IsEqualToJsonString(`{"15": ["aGk=", "d29ybGQ="]}`)
 		RunTestThatExpression(t, "pbt_repeated_fields_set_repeated_bytes(?, 1, ?)", `{"15": ["aGVsbG8=", "d29ybGQ="]}`, []byte("universe")).IsEqualToJsonString(`{"15": ["aGVsbG8=", "dW5pdmVyc2U="]}`)
 
+		// Test set bounds checking for bytes
+		RunTestThatExpression(t, "pbt_repeated_fields_set_repeated_bytes(?, 1, ?)", `{"15": ["aGVsbG8="]}`, []byte("test")).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, "pbt_repeated_fields_set_repeated_bytes(?, -1, ?)", `{"15": ["aGVsbG8="]}`, []byte("test")).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, "pbt_repeated_fields_set_repeated_bytes(?, 0, ?)", `{}`, []byte("test")).ToFailWithSignalException("45000", "Array index out of bounds")
+
 		// Test insert operations
 		RunTestThatExpression(t, "pbt_repeated_fields_insert_repeated_bytes(?, 0, ?)", `{"15": ["d29ybGQ="]}`, []byte("hello")).IsEqualToJsonString(`{"15": ["aGVsbG8=", "d29ybGQ="]}`)
 		RunTestThatExpression(t, "pbt_repeated_fields_insert_repeated_bytes(?, 0, ?)", `{}`, []byte("first")).IsEqualToJsonString(`{"15": ["Zmlyc3Q="]}`)
@@ -550,6 +792,18 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test add_all operations
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_bytes('{"15": ["aGVsbG8="]}', '["d29ybGQ=", "dGVzdA=="]')`).IsEqualToJsonString(`{"15": ["aGVsbG8=", "d29ybGQ=", "dGVzdA=="]}`)
+
+		// Test insert and remove bounds checking for bytes
+		RunTestThatExpression(t, "pbt_repeated_fields_insert_repeated_bytes(?, -1, ?)", `{"15": ["aGVsbG8="]}`, []byte("test")).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, "pbt_repeated_fields_insert_repeated_bytes(?, 2, ?)", `{"15": ["aGVsbG8="]}`, []byte("test")).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, "pbt_repeated_fields_insert_repeated_bytes(?, 1, ?)", `{}`, []byte("test")).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bytes('{"15": ["aGVsbG8="]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bytes('{"15": ["aGVsbG8="]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bytes('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for bytes fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_bytes('{}', '"aGVsbG8="')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_bytes('{}', '{"base64": "encoded"}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated enum field (numbers, not string names)
@@ -584,6 +838,11 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_enum('{"16": [1, 2]}', 0, 0)`).IsEqualToJsonString(`{"16": [0, 2]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_enum('{"16": [1, 2]}', 1, 1)`).IsEqualToJsonString(`{"16": [1, 1]}`)
 
+		// Test set bounds checking for enum
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_enum('{"16": [1]}', 1, 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_enum('{"16": [1]}', -1, 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_enum('{}', 0, 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
 		// Test insert operations
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_enum('{"16": [2]}', 0, 1)`).IsEqualToJsonString(`{"16": [1, 2]}`)
 		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_enum('{}', 0, 1)`).IsEqualToJsonString(`{"16": [1]}`)
@@ -593,6 +852,18 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test add_all operations
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_enum('{"16": [1]}', '[2, 0]')`).IsEqualToJsonString(`{"16": [1, 2, 0]}`)
+
+		// Test insert and remove bounds checking for enum
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_enum('{"16": [1]}', -1, 0)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_enum('{"16": [1]}', 2, 0)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_enum('{}', 1, 0)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_enum('{"16": [1]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_enum('{"16": [1]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_enum('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for enum fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_enum('{}', '1')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_enum('{}', '"ENUM_VALUE"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 
 	// Test repeated message field (array of nested objects with field number keys)
@@ -630,6 +901,12 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		nestedSetModified := "pbt_nested_set_value(pbt_nested_set_name(pbt_nested_new(), 'modified'), 99)"
 		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_set_repeated_message('{"17": [{"1": "first"}, {"1": "second"}]}', 1, %s)`, nestedSetModified)).IsEqualToJsonString(`{"17": [{"1": "first"}, {"1": "modified", "2": 99}]}`)
 
+		// Test set bounds checking for message
+		nestedSetBounds := "pbt_nested_set_name(pbt_nested_new(), 'bounds_test')"
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_set_repeated_message('{"17": [{"1": "first"}]}', 1, %s)`, nestedSetBounds)).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_set_repeated_message('{"17": [{"1": "first"}]}', -1, %s)`, nestedSetBounds)).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_set_repeated_message('{}', 0, %s)`, nestedSetBounds)).ToFailWithSignalException("45000", "Array index out of bounds")
+
 		// Test insert operations
 		nestedInsert := "pbt_nested_set_name(pbt_nested_new(), 'inserted')"
 		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_insert_repeated_message('{"17": [{"1": "second"}]}', 0, %s)`, nestedInsert)).IsEqualToJsonString(`{"17": [{"1": "inserted"}, {"1": "second"}]}`)
@@ -640,5 +917,18 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test add_all operations
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_message('{"17": [{"1": "first"}]}', '[{"1": "second"}, {"1": "third", "2": 42}]')`).IsEqualToJsonString(`{"17": [{"1": "first"}, {"1": "second"}, {"1": "third", "2": 42}]}`)
+
+		// Test insert and remove bounds checking for message
+		nestedBounds := "pbt_nested_set_name(pbt_nested_new(), 'bounds_test')"
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_insert_repeated_message('{"17": [{"1": "first"}]}', -1, %s)`, nestedBounds)).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_insert_repeated_message('{"17": [{"1": "first"}]}', 2, %s)`, nestedBounds)).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_insert_repeated_message('{}', 1, %s)`, nestedBounds)).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_message('{"17": [{"1": "first"}]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_message('{"17": [{"1": "first"}]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_message('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for message fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_message('{}', '{"1": "single_object"}')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_message('{}', '"not_object"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 	})
 }
