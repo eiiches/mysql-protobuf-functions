@@ -1,17 +1,5 @@
 DELIMITER $$
 
--- Helper procedure to check if a type is a well-known type
--- TODO: Wrong and deprecated. Don't use this.
-DROP PROCEDURE IF EXISTS _pb_is_well_known_type $$
-CREATE PROCEDURE _pb_is_well_known_type(IN full_type_name TEXT, OUT is_wkt BOOLEAN)
-BEGIN
-	IF full_type_name LIKE '.google.protobuf.%' THEN
-		SET is_wkt = TRUE;
-	ELSE
-		SET is_wkt = FALSE;
-	END IF;
-END $$
-
 -- Helper function to convert JSON enum value to numeric value
 -- Returns NULL for unknown values when ignore_unknown_enums is TRUE
 DROP FUNCTION IF EXISTS _pb_convert_json_enum_to_number $$
@@ -340,14 +328,6 @@ proc: BEGIN
 		SET oneof_index = _pb_field_descriptor_proto_get_oneof_index__or(field_descriptor, NULL);
 
 		SET is_repeated = (field_label = 3);
-		-- Determine field presence
-		SET has_presence = (syntax = 'proto2' AND field_label <> 3) -- proto2: all non-repeated fields
-			OR (syntax = 'proto3'
-				AND (
-					(field_label = 1 AND proto3_optional) -- proto3 optional
-					OR (field_label <> 3 AND field_type = 11) -- message fields
-					OR (oneof_index IS NOT NULL) -- oneof fields
-			));
 
 		-- Check if this is a map field
 		SET is_map = FALSE;
@@ -459,6 +439,14 @@ proc: BEGIN
 				SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))), converted_array);
 			END IF;
 		ELSE
+			SET has_presence = (syntax = 'proto2' AND field_label <> 3) -- proto2: all non-repeated fields
+				OR (syntax = 'proto3'
+					AND (
+						(field_label = 1 AND proto3_optional) -- proto3 optional
+						OR (field_label <> 3 AND field_type = 11) -- message fields
+						OR (oneof_index IS NOT NULL) -- oneof fields
+				));
+
 			-- Explicit JSON null for a field that has field presence tracking means the field is not set, except
 			-- if the field is .google.protobuf.Value. Explicit JSON null for a Value field, should be recognized
 			-- as a non-null Value message with kind.null_value set to NULL_VALUE.
