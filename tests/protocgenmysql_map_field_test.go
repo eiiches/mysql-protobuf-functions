@@ -392,6 +392,7 @@ func TestProtocGenMapField(t *testing.T) {
 	t.Run("fixed64_key", func(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_set_all_fixed64_to_int32_map(?, JSON_OBJECT('18446744073709551615', 800))", `{}`).IsEqualToJsonString(`{"8": {"18446744073709551615": 800}}`)
 		RunTestThatExpression(t, "pbt_map_fields_get_all_fixed64_to_int32_map(?)", `{"8": {"18446744073709551615": 800}}`).IsEqualToJsonString(`{"18446744073709551615": 800}`)
+		RunTestThatExpression(t, "pbt_map_fields_count_fixed64_to_int32_map(?)", `{}`).IsEqualToInt(0)
 		RunTestThatExpression(t, "pbt_map_fields_count_fixed64_to_int32_map(?)", `{"8": {"18446744073709551615": 800}}`).IsEqualToInt(1)
 		RunTestThatExpression(t, "pbt_map_fields_clear_fixed64_to_int32_map(?)", `{"8": {"18446744073709551615": 800}}`).IsEqualToJsonString(`{}`)
 
@@ -444,6 +445,7 @@ func TestProtocGenMapField(t *testing.T) {
 	t.Run("sfixed32_key", func(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_set_all_sfixed32_to_int32_map(?, JSON_OBJECT('-2147483648', 900))", `{}`).IsEqualToJsonString(`{"9": {"-2147483648": 900}}`)
 		RunTestThatExpression(t, "pbt_map_fields_get_all_sfixed32_to_int32_map(?)", `{"9": {"-2147483648": 900}}`).IsEqualToJsonString(`{"-2147483648": 900}`)
+		RunTestThatExpression(t, "pbt_map_fields_count_sfixed32_to_int32_map(?)", `{}`).IsEqualToInt(0)
 		RunTestThatExpression(t, "pbt_map_fields_count_sfixed32_to_int32_map(?)", `{"9": {"-2147483648": 900}}`).IsEqualToInt(1)
 		RunTestThatExpression(t, "pbt_map_fields_clear_sfixed32_to_int32_map(?)", `{"9": {"-2147483648": 900}}`).IsEqualToJsonString(`{}`)
 
@@ -496,6 +498,7 @@ func TestProtocGenMapField(t *testing.T) {
 	t.Run("sfixed64_key", func(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_set_all_sfixed64_to_int32_map(?, JSON_OBJECT('-9223372036854775808', 1000))", `{}`).IsEqualToJsonString(`{"10": {"-9223372036854775808": 1000}}`)
 		RunTestThatExpression(t, "pbt_map_fields_get_all_sfixed64_to_int32_map(?)", `{"10": {"-9223372036854775808": 1000}}`).IsEqualToJsonString(`{"-9223372036854775808": 1000}`)
+		RunTestThatExpression(t, "pbt_map_fields_count_sfixed64_to_int32_map(?)", `{}`).IsEqualToInt(0)
 		RunTestThatExpression(t, "pbt_map_fields_count_sfixed64_to_int32_map(?)", `{"10": {"-9223372036854775808": 1000}}`).IsEqualToInt(1)
 		RunTestThatExpression(t, "pbt_map_fields_clear_sfixed64_to_int32_map(?)", `{"10": {"-9223372036854775808": 1000}}`).IsEqualToJsonString(`{}`)
 

@@ -25,11 +25,10 @@ coverage-load: $(ALL_SQL_FILES_INSTRUMENTED) coverage-init
 .PHONY: coverage-run
 coverage-run: coverage-init
 	go test ./tests -database "root@tcp($(MYSQL_HOST):$(MYSQL_PORT))/$(MYSQL_DATABASE)" -fuzz-iterations 20 $${GO_TEST_FLAGS:-}
-	make -C conformance test
 
 .PHONY: coverage-report-html
 coverage-report-html: coverage-report-lcov
-	genhtml coverage.lcov --output-directory coverage-html --title "MySQL Protobuf Functions Coverage Report" --flat --exclude "build/well_known_proto.pb.sql" --exclude "build/_pb_options_proto.pb.sql" --missed
+	genhtml coverage.lcov --output-directory coverage-html --title "MySQL Protobuf Functions Coverage Report" --flat --exclude "build/well_known_proto.pb.sql" --exclude "build/_pb_options_proto.pb.sql" --missed --show-navigation
 	@echo ""
 	@echo "=== COVERAGE REPORT GENERATED ==="
 	@echo "HTML Report: coverage-html/index.html"
