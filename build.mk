@@ -1,9 +1,10 @@
 PROTOBUF_SOURCES := \
 	src/version.sql \
+	src/util.sql \
 	src/util_base64.sql \
 	src/protobuf.sql
 
-PROTOBUF_FILES := $(patsubst src/%.sql,build/%.sql,$(PROTOBUF_SOURCES)) build/low_level_accessors.sql
+PROTOBUF_FILES := $(patsubst src/%.sql,build/%.sql,$(PROTOBUF_SOURCES)) build/low_level_accessors.gen.sql
 
 # Define the ordered list of JSON-related source files
 PROTOBUF_JSON_SOURCES := \
@@ -61,8 +62,8 @@ build/%.sql: src/%.sql
 	mkdir -p build
 	cp $^ $@
 
-.PHONY: build/low_level_accessors.sql
-build/low_level_accessors.sql:
+.PHONY: build/low_level_accessors.gen.sql
+build/low_level_accessors.gen.sql:
 	go run cmd/protobuf-accessors/main.go > $@.tmp
 	mv $@.tmp $@
 

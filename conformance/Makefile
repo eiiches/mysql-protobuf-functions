@@ -10,7 +10,6 @@ CONFORMANCE_PROTO = $(PROTOBUF_DIR)/conformance/conformance.proto
 MYSQL_CONFORMANCE_DIR = .
 MYSQL_CONFORMANCE_BINARY = ./mysql-conformance
 CONFORMANCE_PB_GO = ./conformance.pb.go
-JSON_OPTIONS_PB_GO = ./json_options.pb.go
 
 # Conformance test message descriptor set
 CONFORMANCE_DESCRIPTOR_SET = ./conformance_test_messages.binpb
@@ -37,15 +36,6 @@ $(CONFORMANCE_PB_GO): $(CONFORMANCE_PROTO)
 		--go_opt=paths=source_relative \
 		--go_opt=Mconformance.proto='github.com/eiiches/mysql-protobuf-functions/conformance;main' \
 		$(CONFORMANCE_PROTO)
-
-# Generate Go protobuf code from json_options.proto
-$(JSON_OPTIONS_PB_GO): ../src/json_options.proto
-	@echo "Generating Go protobuf code for json_options.proto..."
-	protoc --proto_path=../src \
-		--go_out=$(MYSQL_CONFORMANCE_DIR) \
-		--go_opt=paths=source_relative \
-		--go_opt=Mjson_options.proto='github.com/eiiches/mysql-protobuf-functions/conformance;main' \
-		../src/json_options.proto
 
 # Build the MySQL conformance test program
 .PHONY: build-mysql-conformance
