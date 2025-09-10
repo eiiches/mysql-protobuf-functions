@@ -156,48 +156,7 @@ BEGIN
 
 		-- Convert the value based on its type, handling null values with appropriate defaults
 		IF current_value IS NULL THEN
-			-- Handle null values with appropriate defaults based on type
-			CASE value_field_type
-			WHEN 14 THEN -- enum
-				-- Default enum value is first enum value (typically 0)
-				SET converted_value = JSON_QUOTE('');
-			WHEN 11 THEN -- message
-				-- Default message value is empty object
-				SET converted_value = JSON_OBJECT();
-			WHEN 3 THEN -- int64
-				SET converted_value = JSON_QUOTE('0');
-			WHEN 4 THEN -- uint64
-				SET converted_value = JSON_QUOTE('0');
-			WHEN 6 THEN -- fixed64
-				SET converted_value = JSON_QUOTE('0');
-			WHEN 16 THEN -- sfixed64
-				SET converted_value = JSON_QUOTE('0');
-			WHEN 18 THEN -- sint64
-				SET converted_value = JSON_QUOTE('0');
-			WHEN 1 THEN -- double
-				SET converted_value = CAST(0.0 AS JSON);
-			WHEN 2 THEN -- float
-				SET converted_value = CAST(0.0 AS JSON);
-			WHEN 5 THEN -- int32
-				SET converted_value = CAST(0 AS JSON);
-			WHEN 7 THEN -- fixed32
-				SET converted_value = CAST(0 AS JSON);
-			WHEN 8 THEN -- bool
-				SET converted_value = CAST(FALSE AS JSON);
-			WHEN 9 THEN -- string
-				SET converted_value = JSON_QUOTE('');
-			WHEN 12 THEN -- bytes
-				SET converted_value = JSON_QUOTE('');
-			WHEN 13 THEN -- uint32
-				SET converted_value = CAST(0 AS JSON);
-			WHEN 15 THEN -- sfixed32
-				SET converted_value = CAST(0 AS JSON);
-			WHEN 17 THEN -- sint32
-				SET converted_value = CAST(0 AS JSON);
-			ELSE
-				-- Unknown type, use appropriate default
-				SET converted_value = JSON_QUOTE('');
-			END CASE;
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'BUG: Values in JSON object cannot be SQL NULL';
 		ELSE
 			-- Value is not null, convert using unified singular field conversion
 			CALL _pb_convert_singular_field_from_number_json(descriptor_set_json, value_field_type, value_field_type_name, current_value, emit_default_values, converted_value);
@@ -369,21 +328,7 @@ proc: BEGIN
 							SET converted_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, 0);
 							SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_value);
 						WHEN 11 THEN -- message
-							IF is_map THEN
-								-- For map fields, default is empty object
-								SET result = JSON_SET(result, CONCAT('$.', target_field_name), JSON_OBJECT());
-							ELSE
-								-- Check if it's a well-known type
-								CALL _pb_is_well_known_type(field_type_name, @is_wkt);
-								IF @is_wkt THEN
-									-- For WKTs, use empty object as default (could be improved)
-									SET result = JSON_SET(result, CONCAT('$.', target_field_name), JSON_OBJECT());
-								ELSE
-									-- Recursively convert empty nested message
-									CALL _pb_number_json_to_json_proc(descriptor_set_json, field_type_name, JSON_OBJECT(), emit_default_values, nested_json);
-									SET result = JSON_SET(result, CONCAT('$.', target_field_name), nested_json);
-								END IF;
-							END IF;
+							SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'BUG: this never happens; message fields always have field presence';
 						ELSE
 							-- Use the existing function for primitive types (false = don't emit 64bit as numbers, use strings)
 							SET converted_value = _pb_json_get_proto3_default_value(field_type, false);
