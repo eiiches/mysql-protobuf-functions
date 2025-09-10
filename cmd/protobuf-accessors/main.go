@@ -206,7 +206,7 @@ func generateRepeatedNumbersAsJson() {
 		{
 			ProtoType:           "bytes",
 			SqlType:             "LONGBLOB",
-			Expr:                "_pb_to_base64(bytes_value)",
+			Expr:                "_pb_util_to_base64(bytes_value)",
 			PackedUint64Decoder: "",
 			WireType:            2,
 			Suffix:              "_as_json_array",
@@ -222,7 +222,7 @@ func generateRepeatedNumbersAsJson() {
 		{
 			ProtoType:           "message",
 			SqlType:             "LONGBLOB",
-			Expr:                "_pb_to_base64(bytes_value)",
+			Expr:                "_pb_util_to_base64(bytes_value)",
 			PackedUint64Decoder: "",
 			WireType:            2,
 			Suffix:              "_as_json_array",
@@ -758,13 +758,13 @@ func generateBulkAddFunctions() {
 		|					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
 		|					packed_data
 		|				);
-		|				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), _pb_to_base64(packed_data));
+		|				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), _pb_util_to_base64(packed_data));
 		|			END IF;
 		|		END IF;
 		|
 		|		-- Create new packed element
 		|		SET next_index = _pb_wire_json_get_next_index(result);
-		|		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', _pb_to_base64(packed_data));
+		|		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', _pb_util_to_base64(packed_data));
 		|
 		|		IF field_array IS NULL THEN
 		|			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));

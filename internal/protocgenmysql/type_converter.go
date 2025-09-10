@@ -63,9 +63,9 @@ var protobufTypeImpls = map[protoreflect.Kind]protobufTypeImpl{
 		SqlTypeName:                        "LONGBLOB",
 		DefaultValueExpression:             "X''",
 		NumberJsonToSqlExpressionTemplate:  "_pb_json_parse_bytes({{numberJsonVar}})",
-		SqlToNumberJsonExpressionTemplate:  "CAST(JSON_QUOTE(_pb_to_base64({{sqlVar}})) AS JSON)",
-		NumberJsonToJsonExpressionTemplate: "CAST(JSON_QUOTE(_pb_to_base64(_pb_json_parse_bytes({{numberJsonVar}}))) AS JSON)",
-		JsonToNumberJsonExpressionTemplate: "CAST(JSON_QUOTE(_pb_to_base64(_pb_json_parse_bytes({{sqlJsonVar}}))) AS JSON)",
+		SqlToNumberJsonExpressionTemplate:  "CAST(JSON_QUOTE(_pb_util_to_base64({{sqlVar}})) AS JSON)",
+		NumberJsonToJsonExpressionTemplate: "CAST(JSON_QUOTE(_pb_util_to_base64(_pb_json_parse_bytes({{numberJsonVar}}))) AS JSON)",
+		JsonToNumberJsonExpressionTemplate: "CAST(JSON_QUOTE(_pb_util_to_base64(_pb_json_parse_bytes({{sqlJsonVar}}))) AS JSON)",
 		SqlToMapKeyExpressionTemplate:      "", // bytes cannot be map keys
 		MapKeyToSqlExpressionTemplate:      "", // bytes cannot be map keys
 		ZeroValueConditionTemplate:         "LENGTH({{sqlVar}}) = 0",
