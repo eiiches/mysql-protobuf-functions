@@ -280,6 +280,16 @@ proc: BEGIN
 		-- Check if field exists in source JSON (by field number) and extract it
 		SET field_json_value = JSON_EXTRACT(number_json, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))));
 
+		-- Check for unsupported field types first
+		IF field_type = 10 THEN
+			IF field_json_value IS NOT NULL THEN -- TYPE_GROUP (unsupported)
+				SET message_text = CONCAT('_pb_number_json_to_json: unsupported field_type `', field_type, '` for field `', field_name, '` (', field_number, ').');
+				SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
+			END IF;
+			SET field_index = field_index + 1;
+			ITERATE field_loop;
+		END IF;
+
 		IF is_map THEN
 			IF field_json_value IS NULL THEN
 				-- Field is missing from number JSON - emit default value if requested

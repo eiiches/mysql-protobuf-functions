@@ -159,7 +159,7 @@ BEGIN
 			SET field_json_value = CAST(int_value AS JSON);
 		END IF;
 	ELSE
-		SET message_text = CONCAT('_pb_message_to_json: unknown field_type `', field_type, '` for field `', field_name, '` (', field_number, ').');
+		SET message_text = CONCAT('_pb_message_to_json: unknown field_type `', field_type, '` for field (', field_number, ').');
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 	END CASE;
 END $$
@@ -254,7 +254,7 @@ proc: BEGIN
 	-- Process each field in the message descriptor
 	SET field_index = 0;
 	SET field_count = _pb_descriptor_proto_count_field(message_descriptor);
-	WHILE field_index < field_count DO
+	field_loop: WHILE field_index < field_count DO
 		SET field_descriptor = _pb_descriptor_proto_get_field(message_descriptor, field_index);
 
 		-- Extract field properties from FieldDescriptorProto
@@ -287,9 +287,13 @@ proc: BEGIN
 				));
 
 		-- Check for unsupported field types first
-		IF field_type = 10 THEN -- TYPE_GROUP (unsupported)
-			SET message_text = CONCAT('_pb_wire_json_to_json: unsupported field_type `', field_type, '` for field `', field_name, '` (', field_number, ').');
-			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
+		IF field_type = 10 THEN
+			IF JSON_CONTAINS_PATH(wire_json, 'one', CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)))) THEN -- TYPE_GROUP (unsupported)
+				SET message_text = CONCAT('_pb_wire_json_to_number_json: unsupported field_type `', field_type, '` for field `', field_name, '` (', field_number, ').');
+				SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
+			END IF;
+			SET field_index = field_index + 1;
+			ITERATE field_loop;
 		END IF;
 
 		IF is_map THEN

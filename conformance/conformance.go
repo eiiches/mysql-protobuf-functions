@@ -632,5 +632,6 @@ func isGroupFieldError(err error) bool {
 
 	// Check for GROUP field error patterns (field_type 10)
 	return strings.Contains(errStr, "unsupported field_type 10") ||
-		strings.Contains(errStr, "unsupported field_type `10`")
+		strings.Contains(errStr, "unsupported field_type `10`") ||
+		strings.Contains(errStr, "unknown field_type `10`")
 }

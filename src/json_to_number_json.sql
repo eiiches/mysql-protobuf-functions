@@ -366,6 +366,12 @@ proc: BEGIN
 			ITERATE field_loop;
 		END IF;
 
+		-- Check for unsupported field types first
+		IF field_type = 10 THEN
+			SET message_text = CONCAT('_pb_json_to_number_json: unsupported field_type `', field_type, '` for field `', field_name, '` (', field_number, ').');
+			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
+		END IF;
+
 		IF is_map THEN
 			-- Explicit JSON null for a map field means the map is empty. This seems weird, but required by AllFieldAcceptNull.
 			IF JSON_TYPE(field_json_value) = 'NULL' THEN
