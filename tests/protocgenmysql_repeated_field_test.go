@@ -62,6 +62,10 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test NULL input rejection for add_all and set_all
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_double('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_double('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_double('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_double('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated float field (IEEE 754 binary32 format in arrays)
@@ -117,6 +121,10 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test NULL input rejection for add_all and set_all
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_float('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_float('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_float('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_float('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated int32 field
@@ -197,6 +205,10 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test NULL input rejection for add_all
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
 
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_int32('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+
 		// Test set_all validation - should reject non-array input
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
@@ -258,6 +270,10 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test NULL input rejection for add_all and set_all
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int64('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int64('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_int64('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int64('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated uint32 field
@@ -310,6 +326,10 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test NULL input rejection for add_all and set_all
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint32('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint32('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_uint32('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint32('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated uint64 field
@@ -358,6 +378,14 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test add_all and set_all validation for uint64 fields
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint64('{}', '18446744073709551615')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint64('{}', 'false')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint64('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint64('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_uint64('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint64('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated sint32 field
@@ -407,8 +435,13 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint32('{}', '-1')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint32('{}', '{}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
 
-		// Test NULL input rejection for set_all
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint32('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint32('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_sint32('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint32('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated sint64 field
@@ -457,6 +490,14 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test add_all and set_all validation for sint64 fields
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint64('{}', '-9223372036854775808')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint64('{}', 'true')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint64('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint64('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_sint64('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint64('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated fixed32 field
@@ -505,6 +546,14 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test add_all and set_all validation for fixed32 fields
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed32('{}', '4294967295')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed32('{}', '"not_array"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed32('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed32('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_fixed32('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed32('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated fixed64 field
@@ -553,6 +602,14 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test add_all and set_all validation for fixed64 fields
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed64('{}', '18446744073709551615')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed64('{}', '{"key": "value"}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed64('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed64('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_fixed64('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed64('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated sfixed32 field
@@ -601,6 +658,14 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test add_all and set_all validation for sfixed32 fields
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed32('{}', '-2147483648')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed32('{}', 'false')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed32('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed32('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_sfixed32('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed32('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated sfixed64 field
@@ -649,6 +714,14 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test add_all and set_all validation for sfixed64 fields
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed64('{}', '-9223372036854775808')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed64('{}', 'true')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed64('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed64('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_sfixed64('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed64('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated bool field (JSON booleans, not 1/0)
@@ -713,6 +786,10 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test NULL input rejection for add_all and set_all
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_bool('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_bool('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_bool('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bool('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated string field
@@ -777,6 +854,10 @@ func TestProtocGenRepeatedField(t *testing.T) {
 
 		// Test NULL input rejection for add_all
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_string('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_string('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_string('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated bytes field (base64 encoded)
@@ -840,6 +921,10 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test NULL input rejection for add_all and set_all
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_bytes('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_bytes('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_bytes('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bytes('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated enum field (numbers, not string names)
@@ -904,6 +989,10 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test NULL input rejection for add_all and set_all
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_enum('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_enum('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_enum('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_enum('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 
 	// Test repeated message field (array of nested objects with field number keys)
@@ -974,5 +1063,9 @@ func TestProtocGenRepeatedField(t *testing.T) {
 		// Test NULL input rejection for add_all and set_all
 		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_message('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
 		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_message('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_message('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_message('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
 	})
 }
