@@ -4,7 +4,7 @@ This document tracks the current status of Protocol Buffers conformance tests fo
 
 ## Summary
 
-> 1936 successes, 817 skipped, 15 expected failures, 0 unexpected failures.
+> 2746 successes, 414 skipped, 22 expected failures, 0 unexpected failures.
 
 ## Skipped Tests
 
@@ -12,8 +12,6 @@ Conformance tests for the following protobuf features are **skipped**.
 These are documented as limitations or unimplemented features of this library.
 
 * **[Text Format](https://protobuf.dev/reference/protobuf/textformat-spec/)** - Textual protobuf representation, which is unlikely to be implemented.
-* **[Groups](https://protobuf.dev/programming-guides/encoding/#groups)** - Deprecated proto2 feature, which might be implemented in the future.
-* **[Editions](https://protobuf.dev/editions/overview/)** - Newer protobuf syntax that is in our roadmap.
 
 ## Failing Tests
 
@@ -37,6 +35,12 @@ For a machine-readable list of all test failures, see [conformance/expected_fail
 | `Required.Proto3.JsonInput.DoubleFieldQuotedExponentialValue.JsonOutput` | Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308 | See [known-issues.md](known-issues.md#double-precision-issues-in-json-parsing) |
 | `Required.Proto3.JsonInput.DoubleFieldQuotedExponentialValue.ProtobufOutput` | Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308 | See [known-issues.md](known-issues.md#double-precision-issues-in-json-parsing) |
 
+## Tests Not Run
+
+Conformance testing for Editions are not run unless --maximum_edition= is specified. As we don't yet support Editions, we don't currently perform any tests for Editions.
+
+* **[Editions](https://protobuf.dev/editions/overview/)** - Newer protobuf syntax that is in our roadmap.
+
 ---
 
-*Last Updated: 2025-08-30*
+*Last Updated: 2025-09-11*

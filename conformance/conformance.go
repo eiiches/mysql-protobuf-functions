@@ -196,14 +196,6 @@ func (h *ConformanceHandler) HandleJsonInputLegacy(request *ConformanceRequest, 
 	query := "SELECT pb_json_to_message(conformance_test_messages_schema(), ?, ?)"
 	err := h.db.QueryRow(query, messageType, jsonInput).Scan(&binaryData)
 	if err != nil {
-		// Check if this is a GROUP field error (unsupported feature)
-		if isGroupFieldError(err) {
-			return &ConformanceResponse{
-				Result: &ConformanceResponse_Skipped{
-					Skipped: "GROUP fields are not supported (deprecated Proto2 feature)",
-				},
-			}
-		}
 		// This is the JSON input parsing phase - all errors here should be parse errors
 		return &ConformanceResponse{
 			Result: &ConformanceResponse_ParseError{
@@ -241,14 +233,6 @@ func (h *ConformanceHandler) HandleConvertedMessageLegacy(request *ConformanceRe
 		query := "SELECT pb_message_to_json(conformance_test_messages_schema(), ?, ?, NULL, NULL)"
 		err := h.db.QueryRow(query, messageType, binaryData).Scan(&jsonOutput)
 		if err != nil {
-			// Check if this is a GROUP field error (unsupported feature)
-			if isGroupFieldError(err) {
-				return &ConformanceResponse{
-					Result: &ConformanceResponse_Skipped{
-						Skipped: "GROUP fields are not supported (deprecated Proto2 feature)",
-					},
-				}
-			}
 			// This is the JSON output serialization phase - all other errors are serialize errors
 			return &ConformanceResponse{
 				Result: &ConformanceResponse_SerializeError{
@@ -327,14 +311,6 @@ func (h *ConformanceHandler) HandleBinaryProtobufLegacy(request *ConformanceRequ
 	query := "SELECT pb_message_to_json(conformance_test_messages_schema(), ?, ?, NULL, NULL)"
 	err := h.db.QueryRow(query, messageType, binaryData).Scan(&jsonOutput)
 	if err != nil {
-		// Check if this is a GROUP field error (unsupported feature)
-		if isGroupFieldError(err) {
-			return &ConformanceResponse{
-				Result: &ConformanceResponse_Skipped{
-					Skipped: "GROUP fields are not supported (deprecated Proto2 feature)",
-				},
-			}
-		}
 		// This is the JSON output serialization phase - all other errors are serialize errors
 		return &ConformanceResponse{
 			Result: &ConformanceResponse_ParseError{
@@ -435,14 +411,6 @@ func (h *ConformanceHandler) HandleBinaryProtobufWithProtoNumberJSON(request *Co
 	query := "SELECT _pb_message_to_number_json(conformance_test_messages_schema(), ?, ?, NULL)"
 	err := h.db.QueryRow(query, messageType, binaryData).Scan(&protoNumberJSON)
 	if err != nil {
-		// Check if this is a GROUP field error (unsupported feature)
-		if isGroupFieldError(err) {
-			return &ConformanceResponse{
-				Result: &ConformanceResponse_Skipped{
-					Skipped: "GROUP fields are not supported (deprecated Proto2 feature)",
-				},
-			}
-		}
 		// This is the binary input parsing phase - all errors here should be parse errors
 		return &ConformanceResponse{
 			Result: &ConformanceResponse_ParseError{
@@ -505,14 +473,6 @@ func (h *ConformanceHandler) HandleJsonInputWithProtoNumberJSON(request *Conform
 	query := "SELECT _pb_json_to_number_json(conformance_test_messages_schema(), ?, ?, ?)"
 	err = h.db.QueryRow(query, messageType, jsonInput, string(optionsJSON)).Scan(&protoNumberJSON)
 	if err != nil {
-		// Check if this is a GROUP field error (unsupported feature)
-		if isGroupFieldError(err) {
-			return &ConformanceResponse{
-				Result: &ConformanceResponse_Skipped{
-					Skipped: "GROUP fields are not supported (deprecated Proto2 feature)",
-				},
-			}
-		}
 		// This is the JSON input parsing phase - all errors here should be parse errors
 		return &ConformanceResponse{
 			Result: &ConformanceResponse_ParseError{
@@ -570,14 +530,6 @@ func (h *ConformanceHandler) generateOutputFromProtoNumberJSON(request *Conforma
 		query := "SELECT _pb_number_json_to_json(conformance_test_messages_schema(), ?, ?, ?)"
 		err = h.db.QueryRow(query, messageType, protoNumberJSON, string(marshalOptionsJSON)).Scan(&jsonOutput)
 		if err != nil {
-			// Check if this is a GROUP field error (unsupported feature)
-			if isGroupFieldError(err) {
-				return &ConformanceResponse{
-					Result: &ConformanceResponse_Skipped{
-						Skipped: "GROUP fields are not supported (deprecated Proto2 feature)",
-					},
-				}
-			}
 			return &ConformanceResponse{
 				Result: &ConformanceResponse_SerializeError{
 					SerializeError: fmt.Sprintf("Failed to convert ProtoNumberJSON to JSON: %v", err),
@@ -620,18 +572,4 @@ func (h *ConformanceHandler) generateOutputFromProtoNumberJSON(request *Conforma
 			},
 		}
 	}
-}
-
-// isGroupFieldError checks if a MySQL error is due to unsupported GROUP fields
-func isGroupFieldError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	errStr := err.Error()
-
-	// Check for GROUP field error patterns (field_type 10)
-	return strings.Contains(errStr, "unsupported field_type 10") ||
-		strings.Contains(errStr, "unsupported field_type `10`") ||
-		strings.Contains(errStr, "unknown field_type `10`")
 }
