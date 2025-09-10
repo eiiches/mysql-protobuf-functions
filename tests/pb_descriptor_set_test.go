@@ -37,7 +37,7 @@ func TestDescriptorSetLoadWkt(t *testing.T) {
 			g.Expect(err).NotTo(HaveOccurred())
 
 			// Test that MySQL function output matches expected JSON
-			RunTestThatExpression(t, "pb_build_descriptor_set_json(?)", fileDescriptorSetBytes).
+			RunTestThatExpression(t, "pb_descriptor_set_build(?)", fileDescriptorSetBytes).
 				IsEqualToJsonString(expectedJSON)
 		})
 	}

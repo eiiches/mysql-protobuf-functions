@@ -1,6 +1,6 @@
 PROTOBUF_SOURCES := \
 	src/version.sql \
-	src/util-base64.sql \
+	src/util_base64.sql \
 	src/protobuf.sql
 
 PROTOBUF_FILES := $(patsubst src/%.sql,build/%.sql,$(PROTOBUF_SOURCES)) build/low_level_accessors.sql
@@ -22,7 +22,7 @@ PROTOBUF_JSON_SOURCES := \
 	src/wkt_empty.sql \
 	src/wkt_wrappers.sql \
 	src/wkt.sql \
-	src/util-case-conv.sql \
+	src/util_case_conv.sql \
 	src/descriptor_set.sql \
 	src/protobuf-descriptor.sql \
 	src/json.sql \

@@ -69,7 +69,7 @@ mysql -u your_username -p your_database < person_schema.sql
 
 You can now use the generated function `person_schema()` directly as the first argument to `pb_message_to_json()`.
 
-For other schema loading methods including `pb_build_descriptor_set_json()` and Go integration, see [Schema Loading Guide](schema-loading.md). For detailed information about the plugin, see [protoc-gen-mysql documentation](../cmd/protoc-gen-mysql/README.md).
+For other schema loading methods including `pb_descriptor_set_build()` and Go integration, see [Schema Loading Guide](schema-loading.md). For detailed information about the plugin, see [protoc-gen-mysql documentation](../cmd/protoc-gen-mysql/README.md).
 
 ## Converting Messages to JSON
 

@@ -6,7 +6,7 @@ This guide explains the different methods for loading and persisting protobuf sc
 ## Table of Contents
 
 - [Method 1: Using protoc-gen-mysql (Recommended)](#method-1-using-protoc-gen-mysql-recommended)
-- [Method 2: Using pb_build_descriptor_set_json](#method-2-using-pb_build_descriptor_set_json)
+- [Method 2: Using pb_descriptor_set_build](#method-2-using-pb_descriptor_set_build)
 - [Method 3: Using Go descriptorsetjson Package](#method-3-using-go-descriptorsetjson-package)
 
 ## Method 1: Using protoc-gen-mysql (Recommended)
@@ -86,7 +86,7 @@ mysql -u your_username -p your_database < person_schema.sql
 SELECT pb_message_to_json(person_schema(), '.Person', pb_data, NULL, NULL) FROM Example;
 ```
 
-## Method 2: Using pb_build_descriptor_set_json
+## Method 2: Using pb_descriptor_set_build
 
 This method converts binary FileDescriptorSet data into the required JSON format at runtime.
 
@@ -116,7 +116,7 @@ You have two options for storing the converted schema:
 
 **Option A: User Variable (Session-scoped)**
 ```sql
-SET @my_schema = pb_build_descriptor_set_json(_binary X'0aff010a1f676f6f676c652f...');
+SET @my_schema = pb_descriptor_set_build(_binary X'0aff010a1f676f6f676c652f...');
 ```
 
 **Option B: Database Table (Persistent)**
@@ -128,7 +128,7 @@ CREATE TABLE schema_registry (
 
 INSERT INTO schema_registry VALUES (
     'person_schema',
-    pb_build_descriptor_set_json(_binary X'0aff010a1f676f6f676c652f...')
+    pb_descriptor_set_build(_binary X'0aff010a1f676f6f676c652f...')
 );
 ```
 

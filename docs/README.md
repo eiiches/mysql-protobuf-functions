@@ -131,13 +131,13 @@ Examples:
 
 There are multiple ways to load protobuf schemas:
 
-**Method 1: Using pb_build_descriptor_set_json**
+**Method 1: Using pb_descriptor_set_build**
 ```sql
 -- Generate your protobuf descriptor set first:
 -- $ protoc --descriptor_set_out=/dev/stdout --include_imports person.proto | xxd -p -c0
 
 -- Convert binary descriptor set to JSON format
-SET @schema_json = pb_build_descriptor_set_json(_binary X'0aff010a1f676f6f676c652f...');
+SET @schema_json = pb_descriptor_set_build(_binary X'0aff010a1f676f6f676c652f...');
 
 -- Save to variable or table for reuse
 CREATE TABLE schema_registry (schema_name VARCHAR(255) PRIMARY KEY, schema_json JSON);

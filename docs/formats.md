@@ -437,7 +437,7 @@ SELECT _pb_message_to_number_json(@schema, '.MessageType', @binary_message);
 - `_pb_message_to_number_json()` - Binary → ProtoNumberJSON conversion
 
 ### Schema Management Functions
-- `pb_build_descriptor_set_json()` - Create schema from FileDescriptorSet
+- `pb_descriptor_set_build()` - Create schema from FileDescriptorSet
 
 ## Related Documentation
 

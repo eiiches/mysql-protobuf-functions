@@ -338,8 +338,8 @@ END $$
 
 -- Public function to convert FileDescriptorSet LONGBLOB to descriptor set JSON
 -- Returns a DescriptorSet message in protonumberjson format
-DROP FUNCTION IF EXISTS pb_build_descriptor_set_json $$
-CREATE FUNCTION pb_build_descriptor_set_json(file_descriptor_set_blob LONGBLOB) RETURNS JSON DETERMINISTIC
+DROP FUNCTION IF EXISTS pb_descriptor_set_build $$
+CREATE FUNCTION pb_descriptor_set_build(file_descriptor_set_blob LONGBLOB) RETURNS JSON DETERMINISTIC
 BEGIN
 	DECLARE file_descriptor_set_number_json JSON;
 	DECLARE message_type_index JSON;

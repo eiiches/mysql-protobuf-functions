@@ -88,7 +88,7 @@ SELECT pb_message_set_repeated_string_field(pb_data, 4, '["new1", "new2"]');
 
 ```sql
 -- Generate protobuf schema JSON
-SET @schema_json = pb_build_descriptor_set_json(binary_descriptor_set);
+SET @schema_json = pb_descriptor_set_build(binary_descriptor_set);
 
 -- Convert message to JSON (requires schema)
 SELECT pb_message_to_json(@schema_json, '.MessageType', pb_data, NULL, NULL);

@@ -313,7 +313,7 @@ SELECT pb_message_get_int32_field(@first_phone, 2, 0) AS phone_type;
 #### Processing Protobuf Schemas
 ```sql
 -- Generate schema JSON from binary FileDescriptorSet
-SET @schema_json = pb_build_descriptor_set_json(
+SET @schema_json = pb_descriptor_set_build(
     @binary_descriptor_set  -- Binary data from protoc --descriptor_set_out
 );
 
