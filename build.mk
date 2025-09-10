@@ -5,7 +5,8 @@ PROTOBUF_SOURCES := \
 	src/wire_json.sql \
 	src/wire_json_to_message.sql \
 	src/message_to_wire_json.sql \
-	src/protobuf.sql
+	src/wire.sql \
+	src/message.sql
 
 PROTOBUF_FILES := $(patsubst src/%.sql,build/%.sql,$(PROTOBUF_SOURCES)) build/low_level_accessors.gen.sql
 
