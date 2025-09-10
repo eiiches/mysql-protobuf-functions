@@ -582,7 +582,7 @@ func generateListSetAll(content *strings.Builder, funcPrefix string, field proto
 	content.WriteString("    DECLARE converted_array JSON DEFAULT JSON_ARRAY();\n")
 	content.WriteString("\n")
 	content.WriteString("    IF field_value IS NULL THEN\n")
-	content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'field_value cannot be NULL';\n")
 	content.WriteString("    END IF;\n")
 	content.WriteString("    IF JSON_TYPE(field_value) != 'ARRAY' THEN\n")
 	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'field_value must be a JSON array';\n")
@@ -640,7 +640,7 @@ func generateMapSetAll(content *strings.Builder, funcPrefix string, field protor
 	}
 
 	content.WriteString("    IF field_value IS NULL THEN\n")
-	content.WriteString(fmt.Sprintf("        RETURN JSON_REMOVE(proto_data, '$.\"%.d\"');\n", field.Number()))
+	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'field_value cannot be NULL';\n")
 	content.WriteString("    END IF;\n")
 	content.WriteString("    IF JSON_TYPE(field_value) != 'OBJECT' THEN\n")
 	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Map field value must be a JSON object';\n")
@@ -877,7 +877,7 @@ func generateRepeatedFieldMethods(content *strings.Builder, funcPrefix string, f
 	content.WriteString("        SET current_array = JSON_ARRAY();\n")
 	content.WriteString("    END IF;\n")
 	content.WriteString("    IF elements_array IS NULL THEN\n")
-	content.WriteString("        RETURN proto_data; -- NULL input, return unchanged\n")
+	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'elements_array cannot be NULL';\n")
 	content.WriteString("    END IF;\n")
 	content.WriteString("    IF JSON_TYPE(elements_array) != 'ARRAY' THEN\n")
 	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'elements_array must be a JSON array';\n")
