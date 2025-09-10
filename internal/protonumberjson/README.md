@@ -88,6 +88,7 @@ The package produces JSON where:
 - **Bytes fields** are always encoded using standard Base64 with padding (Base64 URL encoding is not supported)
 - **All message types**, including Well-Known Types, follow the same consistent field number format
 - **Default values** are omitted from the JSON output to reduce payload size
+- **Unknown fields** are preserved using the special `"$unknownFields"` key with WireJSON format for field storage
 
 ### Example Transformations
 
@@ -103,6 +104,7 @@ The package produces JSON where:
 | `Any{TypeUrl: "type.googleapis.com/...", Value: [...]}` | `{"1": "type.googleapis.com/...", "2": "base64data"}` |
 | Regular message with `repeated int32 values = [1, 2, 3]` | `{"1": [1, 2, 3]}` |
 | Regular message with `Status status = ACTIVE` (enum value 1) | `{"1": 1}` |
+| Message with unknown fields | `{"1": "known_value", "$unknownFields": {"200": [{"i": 0, "n": 1, "t": 2, "v": "CAoQCg=="}]}}` |
 
 ## Design Considerations
 
@@ -155,6 +157,21 @@ Fields with default values are omitted from the JSON output based on field prese
 - **Map fields**: Empty maps are omitted
 - **Message fields**: Unset message fields are omitted
 - **Payload optimization**: Omitting unset fields reduces JSON size and network overhead
+
+### Unknown Fields Handling
+Unknown fields are preserved in the JSON output using a special `"$unknownFields"` key:
+- **Format**: Unknown fields are stored using WireJSON format for efficient field representation
+- **Structure**: `{"$unknownFields": {"fieldNumber": [wireEntry, ...], ...}}`
+- **Wire Entry Format**: Each wire entry contains:
+  - `"i"`: Index of the entry within the surrounding message
+  - `"n"`: Field number
+  - `"t"`: Wire type (0=VARINT, 1=I64, 2=LEN, 3=GROUP, 5=I32)
+  - `"v"`: Value (depending on the wire type)
+    - LEN: base64-encoded bytes
+    - VARINT, I32, I64: unsigned integer
+    - GROUP: nested WireJSON
+- **Preservation**: This ensures unknown fields are not lost during Binary → NumberJSON → Binary conversion, though they would be lost if converted to standard ProtoJSON format
+- **Example**: `{"$unknownFields": {"200": [{"i": 0, "n": 1, "t": 2, "v": "CAoQCg=="}]}}`
 
 ## API Reference
 
