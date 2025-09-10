@@ -24,7 +24,6 @@ PROTOBUF_JSON_SOURCES := \
 	src/wkt.sql \
 	src/util_case_conv.sql \
 	src/descriptor_set.sql \
-	src/protobuf-descriptor.sql \
 	src/json.sql \
 	src/number_json.sql
 
