@@ -2,8 +2,8 @@ DELIMITER $$
 
 -- Encode bytes to Base64 string without newlines
 -- MySQL's TO_BASE64 adds newlines every 76 characters, this function removes them
-DROP FUNCTION IF EXISTS _pb_to_base64 $$
-CREATE FUNCTION _pb_to_base64(data LONGBLOB) RETURNS LONGTEXT DETERMINISTIC
+DROP FUNCTION IF EXISTS _pb_util_to_base64 $$
+CREATE FUNCTION _pb_util_to_base64(data LONGBLOB) RETURNS LONGTEXT DETERMINISTIC
 BEGIN
 	-- Handle null/empty input
 	IF data IS NULL THEN

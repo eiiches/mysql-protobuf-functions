@@ -120,7 +120,7 @@ BEGIN
 		IF is_repeated THEN
 			SET field_json_value = pb_wire_json_get_repeated_bytes_field_as_json_array(wire_json, field_number);
 		ELSE
-			SET field_json_value = JSON_QUOTE(_pb_to_base64(pb_wire_json_get_bytes_field(wire_json, field_number, IF(has_field_presence, NULL, _binary X''))));
+			SET field_json_value = JSON_QUOTE(_pb_util_to_base64(pb_wire_json_get_bytes_field(wire_json, field_number, IF(has_field_presence, NULL, _binary X''))));
 		END IF;
 	WHEN 13 THEN -- uint32
 		IF is_repeated THEN

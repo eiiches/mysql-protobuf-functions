@@ -164,6 +164,6 @@ proc: BEGIN
 	-- Return ProtoNumberJSON format: field 1 = type_url, field 2 = base64 value (only if message is not empty)
 	SET result = JSON_OBJECT('1', type_url);
 	IF message IS NOT NULL AND LENGTH(message) > 0 THEN
-		SET result = JSON_SET(result, '$.\"2\"', _pb_to_base64(message));
+		SET result = JSON_SET(result, '$.\"2\"', _pb_util_to_base64(message));
 	END IF;
 END $$
