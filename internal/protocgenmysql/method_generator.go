@@ -377,8 +377,8 @@ func generateMapGetAll(content *strings.Builder, funcPrefix string, field protor
 	content.WriteString("        SET key_count = JSON_LENGTH(json_keys);\n")
 	content.WriteString("        WHILE i < key_count DO\n")
 	content.WriteString("            SET current_key = JSON_UNQUOTE(JSON_EXTRACT(json_keys, CONCAT('$[', i, ']')));\n")
-	content.WriteString("            SET current_value = JSON_EXTRACT(raw_map, CONCAT('$.\"', current_key, '\"'));\n")
-	content.WriteString(fmt.Sprintf("            SET result_map = JSON_SET(result_map, CONCAT('$.\"', current_key, '\"'), %s);\n", convertedExpression))
+	content.WriteString("            SET current_value = JSON_EXTRACT(raw_map, CONCAT('$.', JSON_QUOTE(current_key)));\n")
+	content.WriteString(fmt.Sprintf("            SET result_map = JSON_SET(result_map, CONCAT('$.', JSON_QUOTE(current_key)), %s);\n", convertedExpression))
 	content.WriteString("            SET i = i + 1;\n")
 	content.WriteString("        END WHILE;\n")
 	content.WriteString("    END IF;\n")
@@ -651,9 +651,9 @@ func generateMapSetAll(content *strings.Builder, funcPrefix string, field protor
 	content.WriteString("        \n")
 	content.WriteString("        WHILE i < key_count DO\n")
 	content.WriteString("            SET current_key = JSON_UNQUOTE(JSON_EXTRACT(json_keys, CONCAT('$[', i, ']')));\n")
-	content.WriteString("            SET current_value = JSON_EXTRACT(field_value, CONCAT('$.\"', current_key, '\"'));\n")
+	content.WriteString("            SET current_value = JSON_EXTRACT(field_value, CONCAT('$.', JSON_QUOTE(current_key)));\n")
 	content.WriteString(fmt.Sprintf("            SET converted_value = %s;\n", jsonConversionExpr))
-	content.WriteString("            SET result_map = JSON_SET(result_map, CONCAT('$.\"', current_key, '\"'), converted_value);\n")
+	content.WriteString("            SET result_map = JSON_SET(result_map, CONCAT('$.', JSON_QUOTE(current_key)), converted_value);\n")
 	content.WriteString("            SET i = i + 1;\n")
 	content.WriteString("        END WHILE;\n")
 	content.WriteString("    END IF;\n")
@@ -947,7 +947,7 @@ func generateUnifiedMapKeyGetter(content *strings.Builder, funcPrefix string, fi
 	} else {
 		// For non-string keys, use unified type system for key path generation
 		keyPathExpression := GetProtobufType(field.MapKey().Kind()).GenerateSqlToMapKeyExpression("key_value")
-		content.WriteString(fmt.Sprintf("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.\"', %s, '\"'));\n", keyPathExpression))
+		content.WriteString(fmt.Sprintf("    SET element_value = JSON_EXTRACT(map_value, CONCAT('$.', JSON_QUOTE(%s)));\n", keyPathExpression))
 	}
 
 	content.WriteString("    IF element_value IS NULL THEN\n")
@@ -1001,7 +1001,7 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, field 
 	} else {
 		// For numeric keys, convert to string using unified type system
 		keyPathExpression := GetProtobufType(field.MapKey().Kind()).GenerateSqlToMapKeyExpression("key_value")
-		content.WriteString(fmt.Sprintf("    RETURN JSON_CONTAINS_PATH(map_value, 'one', CONCAT('$.\"', %s, '\"'));\n", keyPathExpression))
+		content.WriteString(fmt.Sprintf("    RETURN JSON_CONTAINS_PATH(map_value, 'one', CONCAT('$.', JSON_QUOTE(%s)));\n", keyPathExpression))
 	}
 
 	content.WriteString("END $$\n\n")
@@ -1037,7 +1037,7 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, field 
 		keyPath = "CONCAT('$.', JSON_QUOTE(key_value))"
 	} else {
 		// For numeric keys, quote them as JSON object keys
-		keyPath = fmt.Sprintf("CONCAT('$.\"', %s, '\"')", keyPathExpression)
+		keyPath = fmt.Sprintf("CONCAT('$.', JSON_QUOTE(%s))", keyPathExpression)
 	}
 
 	content.WriteString(fmt.Sprintf("    SET map_value = JSON_SET(map_value, %s, %s);\n", keyPath, valueConversionExpression))
@@ -1083,9 +1083,9 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, field 
 	content.WriteString("    \n")
 	content.WriteString("    WHILE i < key_count DO\n")
 	content.WriteString("        SET current_key = JSON_UNQUOTE(JSON_EXTRACT(json_keys, CONCAT('$[', i, ']')));\n")
-	content.WriteString("        SET current_value = JSON_EXTRACT(new_entries, CONCAT('$.\"', current_key, '\"'));\n")
+	content.WriteString("        SET current_value = JSON_EXTRACT(new_entries, CONCAT('$.', JSON_QUOTE(current_key)));\n")
 	content.WriteString(fmt.Sprintf("        SET converted_value = %s;\n", jsonConversionExpr))
-	content.WriteString("        SET map_value = JSON_SET(map_value, CONCAT('$.\"', current_key, '\"'), converted_value);\n")
+	content.WriteString("        SET map_value = JSON_SET(map_value, CONCAT('$.', JSON_QUOTE(current_key)), converted_value);\n")
 	content.WriteString("        SET i = i + 1;\n")
 	content.WriteString("    END WHILE;\n")
 	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', map_value);\n", field.Number()))
@@ -1112,7 +1112,7 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, field 
 	} else {
 		// For numeric keys, convert to string using unified type system
 		keyPathExpression := GetProtobufType(field.MapKey().Kind()).GenerateSqlToMapKeyExpression("key_value")
-		content.WriteString(fmt.Sprintf("    SET map_value = JSON_REMOVE(map_value, CONCAT('$.\"', %s, '\"'));\n", keyPathExpression))
+		content.WriteString(fmt.Sprintf("    SET map_value = JSON_REMOVE(map_value, CONCAT('$.', JSON_QUOTE(%s)));\n", keyPathExpression))
 	}
 
 	// If map becomes empty, remove the field entirely (proto3 default value omission)

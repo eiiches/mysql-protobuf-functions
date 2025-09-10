@@ -245,7 +245,7 @@ func generateRepeatedNumbersAsJson() {
 		|
 		|	SET result = JSON_ARRAY();
 		|
-		|	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+		|	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))));
 		|	SET wire_element_index = 0;
 		|	SET wire_element_count = JSON_LENGTH(wire_elements);
 		|
@@ -724,7 +724,7 @@ func generateBulkAddFunctions() {
 		|	DECLARE packed_data LONGBLOB DEFAULT '';
 		|	DECLARE temp_encoded LONGBLOB;
 		|	DECLARE new_element JSON;
-		|	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+		|	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 		|	DECLARE field_array JSON;
 		|	DECLARE next_index INT;
 		|{{- end}}

@@ -72,7 +72,7 @@ proc: BEGIN
 			SIGNAL CUSTOM_EXCEPTION SET MESSAGE_TEXT = message_text;
 		END CASE;
 
-		SET json_path = CONCAT('$."', field_number, '"');
+		SET json_path = CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 		IF JSON_CONTAINS_PATH(wire_json, 'one', json_path) THEN
 			SET wire_json = JSON_ARRAY_APPEND(wire_json, json_path, wire_element);
 		ELSE

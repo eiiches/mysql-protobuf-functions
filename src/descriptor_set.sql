@@ -13,7 +13,7 @@ BEGIN
 	SET message_type_index = JSON_EXTRACT(descriptor_set_json, '$.\"2\"');
 
 	-- Get paths for the type
-	SET type_paths = JSON_EXTRACT(message_type_index, CONCAT('$."', type_name, '"'));
+	SET type_paths = JSON_EXTRACT(message_type_index, CONCAT('$.', JSON_QUOTE(type_name)));
 
 	IF type_paths IS NULL THEN
 		RETURN NULL;
@@ -40,7 +40,7 @@ BEGIN
 	SET enum_type_index = JSON_EXTRACT(descriptor_set_json, '$.\"3\"');
 
 	-- Get paths for the type
-	SET type_paths = JSON_EXTRACT(enum_type_index, CONCAT('$."', type_name, '"'));
+	SET type_paths = JSON_EXTRACT(enum_type_index, CONCAT('$.', JSON_QUOTE(type_name)));
 
 	IF type_paths IS NULL THEN
 		RETURN NULL;
@@ -67,7 +67,7 @@ BEGIN
 	SET type_index = JSON_EXTRACT(descriptor_set_json, '$.\"2\"');
 
 	-- Get paths for the type
-	SET type_paths = JSON_EXTRACT(type_index, CONCAT('$."', type_name, '"'));
+	SET type_paths = JSON_EXTRACT(type_index, CONCAT('$.', JSON_QUOTE(type_name)));
 
 	IF type_paths IS NULL THEN
 		RETURN NULL;
@@ -162,10 +162,10 @@ proc: BEGIN
 					SET nested_field_name_val = JSON_UNQUOTE(JSON_EXTRACT(nested_field_desc, '$."1"')); -- name
 					SET nested_field_number_val = JSON_EXTRACT(nested_field_desc, '$."3"'); -- number
 					IF nested_field_name_val IS NOT NULL THEN
-						SET nested_field_name_index = JSON_SET(nested_field_name_index, CONCAT('$."', nested_field_name_val, '"'), nested_field_idx);
+						SET nested_field_name_index = JSON_SET(nested_field_name_index, CONCAT('$.', JSON_QUOTE(nested_field_name_val)), nested_field_idx);
 					END IF;
 					IF nested_field_number_val IS NOT NULL THEN
-						SET nested_field_number_index = JSON_SET(nested_field_number_index, CONCAT('$."', nested_field_number_val, '"'), nested_field_idx);
+						SET nested_field_number_index = JSON_SET(nested_field_number_index, CONCAT('$.', JSON_QUOTE(CAST(nested_field_number_val AS CHAR))), nested_field_idx);
 					END IF;
 					SET nested_field_idx = nested_field_idx + 1;
 				END WHILE;
@@ -183,7 +183,7 @@ proc: BEGIN
 			IF JSON_LENGTH(JSON_KEYS(nested_field_number_index)) > 0 THEN
 				SET type_entry = JSON_SET(type_entry, '$.\"4\"', nested_field_number_index);
 			END IF;
-			SET message_type_index = JSON_SET(message_type_index, CONCAT('$."', nested_type_name, '"'), type_entry);
+			SET message_type_index = JSON_SET(message_type_index, CONCAT('$.', JSON_QUOTE(nested_type_name)), type_entry);
 
 			-- Recursively process further nested types
 			CALL _pb_build_nested_types(nested_msg_descriptor, nested_type_name, nested_msg_path, file_path, message_type_index, enum_type_index);
@@ -217,10 +217,10 @@ proc: BEGIN
 					SET enum_value_name = JSON_UNQUOTE(JSON_EXTRACT(enum_value_desc, '$."1"')); -- name
 					SET enum_value_number = JSON_EXTRACT(enum_value_desc, '$."2"'); -- number
 					IF enum_value_name IS NOT NULL THEN
-						SET enum_name_index = JSON_SET(enum_name_index, CONCAT('$."', enum_value_name, '"'), enum_value_idx);
+						SET enum_name_index = JSON_SET(enum_name_index, CONCAT('$.', JSON_QUOTE(enum_value_name)), enum_value_idx);
 					END IF;
 					IF enum_value_number IS NOT NULL THEN
-						SET enum_number_index = JSON_SET(enum_number_index, CONCAT('$."', enum_value_number, '"'), enum_value_idx);
+						SET enum_number_index = JSON_SET(enum_number_index, CONCAT('$.', JSON_QUOTE(CAST(enum_value_number AS CHAR))), enum_value_idx);
 					END IF;
 					SET enum_value_idx = enum_value_idx + 1;
 				END WHILE;
@@ -233,7 +233,7 @@ proc: BEGIN
 				'3', enum_name_index,
 				'4', enum_number_index
 			);
-			SET enum_type_index = JSON_SET(enum_type_index, CONCAT('$."', nested_type_name, '"'), type_entry);
+			SET enum_type_index = JSON_SET(enum_type_index, CONCAT('$.', JSON_QUOTE(nested_type_name)), type_entry);
 
 			SET nested_enum_index = nested_enum_index + 1;
 		END WHILE;
@@ -335,10 +335,10 @@ proc: BEGIN
 						SET field_name_val = JSON_UNQUOTE(JSON_EXTRACT(field_desc, '$."1"')); -- name
 						SET field_number_val = JSON_EXTRACT(field_desc, '$."3"'); -- number
 						IF field_name_val IS NOT NULL THEN
-							SET field_name_index = JSON_SET(field_name_index, CONCAT('$."', field_name_val, '"'), field_idx);
+							SET field_name_index = JSON_SET(field_name_index, CONCAT('$.', JSON_QUOTE(field_name_val)), field_idx);
 						END IF;
 						IF field_number_val IS NOT NULL THEN
-							SET field_number_index = JSON_SET(field_number_index, CONCAT('$."', field_number_val, '"'), field_idx);
+							SET field_number_index = JSON_SET(field_number_index, CONCAT('$.', JSON_QUOTE(CAST(field_number_val AS CHAR))), field_idx);
 						END IF;
 						SET field_idx = field_idx + 1;
 					END WHILE;
@@ -356,7 +356,7 @@ proc: BEGIN
 				IF JSON_LENGTH(JSON_KEYS(field_number_index)) > 0 THEN
 					SET type_entry = JSON_SET(type_entry, '$.\"4\"', field_number_index);
 				END IF;
-				SET message_type_index = JSON_SET(message_type_index, CONCAT('$."', full_type_name, '"'), type_entry);
+				SET message_type_index = JSON_SET(message_type_index, CONCAT('$.', JSON_QUOTE(full_type_name)), type_entry);
 
 				-- Process nested types recursively
 				CALL _pb_build_nested_types(message_descriptor, full_type_name, message_path, file_path, message_type_index, enum_type_index);
@@ -390,10 +390,10 @@ proc: BEGIN
 						SET enum_value_name = JSON_UNQUOTE(JSON_EXTRACT(enum_value_desc, '$."1"')); -- name
 						SET enum_value_number = JSON_EXTRACT(enum_value_desc, '$."2"'); -- number
 						IF enum_value_name IS NOT NULL THEN
-							SET enum_name_index = JSON_SET(enum_name_index, CONCAT('$."', enum_value_name, '"'), enum_value_idx);
+							SET enum_name_index = JSON_SET(enum_name_index, CONCAT('$.', JSON_QUOTE(enum_value_name)), enum_value_idx);
 						END IF;
 						IF enum_value_number IS NOT NULL THEN
-							SET enum_number_index = JSON_SET(enum_number_index, CONCAT('$."', enum_value_number, '"'), enum_value_idx);
+							SET enum_number_index = JSON_SET(enum_number_index, CONCAT('$.', JSON_QUOTE(CAST(enum_value_number AS CHAR))), enum_value_idx);
 						END IF;
 						SET enum_value_idx = enum_value_idx + 1;
 					END WHILE;
@@ -406,7 +406,7 @@ proc: BEGIN
 					'3', enum_name_index,
 					'4', enum_number_index
 				);
-				SET enum_type_index = JSON_SET(enum_type_index, CONCAT('$."', full_type_name, '"'), type_entry);
+				SET enum_type_index = JSON_SET(enum_type_index, CONCAT('$.', JSON_QUOTE(full_type_name)), type_entry);
 
 				SET enum_index = enum_index + 1;
 			END WHILE;

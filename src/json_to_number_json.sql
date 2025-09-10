@@ -56,7 +56,7 @@ BEGIN
 	END IF;
 
 	-- Get paths for the enum type - always signal error if missing
-	SET type_paths = JSON_EXTRACT(enum_type_index, CONCAT('$.\"', full_enum_type_name, '\"'));
+	SET type_paths = JSON_EXTRACT(enum_type_index, CONCAT('$.', JSON_QUOTE(full_enum_type_name)));
 	IF type_paths IS NULL THEN
 		SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum type not found: ', full_enum_type_name);
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
@@ -71,10 +71,10 @@ BEGIN
 	IF is_numeric THEN
 		SET input_as_number = CAST(enum_string_value AS SIGNED);
 		-- Use number index for O(1) lookup
-		SET found_index = JSON_EXTRACT(enum_number_index, CONCAT('$.\"', input_as_number, '\"'));
+		SET found_index = JSON_EXTRACT(enum_number_index, CONCAT('$.', JSON_QUOTE(CAST(input_as_number AS CHAR))));
 	ELSE
 		-- Use name index for O(1) lookup
-		SET found_index = JSON_EXTRACT(enum_name_index, CONCAT('$.\"', enum_string_value, '\"'));
+		SET found_index = JSON_EXTRACT(enum_name_index, CONCAT('$.', JSON_QUOTE(enum_string_value)));
 	END IF;
 
 	IF found_index IS NOT NULL THEN
@@ -410,7 +410,7 @@ proc: BEGIN
 			-- TODO: validate map_key
 			WHILE map_key_index < map_key_count DO
 				SET map_key_name = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', map_key_index, ']')));
-				SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$."', map_key_name, '"'));
+				SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$.', JSON_QUOTE(map_key_name)));
 
 				-- Use singular field conversion procedure
 				CALL _pb_convert_singular_field_to_number_json(descriptor_set_json, map_value_type, map_value_type_name, map_value_json, ignore_unknown_fields, ignore_unknown_enums, converted_value, is_default);
@@ -418,7 +418,7 @@ proc: BEGIN
 				-- Add converted value to map
 				-- converted_value can be NULL if ignore_unknown_enums is set and enum name value is unknown.
 				IF converted_value IS NOT NULL THEN
-					SET converted_map = JSON_SET(converted_map, CONCAT('$."', map_key_name, '"'), converted_value);
+					SET converted_map = JSON_SET(converted_map, CONCAT('$.', JSON_QUOTE(map_key_name)), converted_value);
 				END IF;
 
 				SET map_key_index = map_key_index + 1;
@@ -426,7 +426,7 @@ proc: BEGIN
 
 			-- In proto3, skip empty maps unless proto3_optional is true or it's a oneof field
 			IF map_key_count > 0 THEN
-				SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_map);
+				SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))), converted_map);
 			END IF;
 		ELSEIF is_repeated THEN
 			-- Explicit JSON null for a repeated field means the list is empty. This seems weird, but required by AllFieldAcceptNull.
@@ -456,7 +456,7 @@ proc: BEGIN
 			END WHILE;
 
 			IF array_length > 0 THEN
-				SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_array);
+				SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))), converted_array);
 			END IF;
 		ELSE
 			-- Explicit JSON null for a field that has field presence tracking means the field is not set, except
@@ -470,11 +470,11 @@ proc: BEGIN
 			END IF;
 
 			IF oneof_index IS NOT NULL AND NOT proto3_optional THEN
-				IF JSON_CONTAINS_PATH(oneofs, 'one', CONCAT('$."', oneof_index, '"')) THEN
+				IF JSON_CONTAINS_PATH(oneofs, 'one', CONCAT('$.', JSON_QUOTE(CAST(oneof_index AS CHAR)))) THEN
 					SET message_text = CONCAT('_pb_json_to_number_json_proc: duplicate oneof field: ', field_name);
 					SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
 				END IF;
-				SET oneofs = JSON_SET(oneofs, CONCAT('$."', oneof_index, '"'), 1);
+				SET oneofs = JSON_SET(oneofs, CONCAT('$.', JSON_QUOTE(CAST(oneof_index AS CHAR))), 1);
 			END IF;
 
 			-- Handle singular fields
@@ -483,7 +483,7 @@ proc: BEGIN
 			-- Include field unless it's a default value in proto3 without explicit presence
 			-- converted_value can be NULL if ignore_unknown_enums is set and enum name value is unknown.
 			IF converted_value IS NOT NULL AND has_presence OR NOT is_default THEN
-				SET result = JSON_SET(result, CONCAT('$."', field_number, '"'), converted_value);
+				SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))), converted_value);
 			END IF;
 		END IF;
 

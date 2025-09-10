@@ -253,7 +253,7 @@ proc: BEGIN
 			SET use_packed = (syntax = 'proto3');
 		END IF;
 
-		SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$."', field_number, '"'));
+		SET field_json_value = JSON_EXTRACT(json_value, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))));
 
 		-- Process field if it exists in JSON
 		IF field_json_value IS NOT NULL THEN
@@ -278,7 +278,7 @@ proc: BEGIN
 
 					WHILE map_key_index < map_key_count DO
 						SET map_key_name = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', map_key_index, ']')));
-						SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$."', map_key_name, '"'));
+						SET map_value_json = JSON_EXTRACT(field_json_value, CONCAT('$.', JSON_QUOTE(map_key_name)));
 
 						-- Create map entry with key=1, value=2
 						SET map_entry_wire_json = JSON_OBJECT();

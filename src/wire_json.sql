@@ -23,7 +23,7 @@ BEGIN
 
 	SET field_count = 0;
 
-	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))));
 	SET wire_element_index = 0;
 	SET wire_element_count = JSON_LENGTH(wire_elements);
 
@@ -81,7 +81,7 @@ BEGIN
 
 	SET field_count = 0;
 
-	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))));
 	SET wire_element_index = 0;
 	SET wire_element_count = JSON_LENGTH(wire_elements);
 
@@ -139,7 +139,7 @@ BEGIN
 
 	SET field_count = 0;
 
-	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))));
 	SET wire_element_index = 0;
 	SET wire_element_count = JSON_LENGTH(wire_elements);
 
@@ -197,7 +197,7 @@ BEGIN
 
 	SET field_count = 0;
 
-	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))));
 	SET wire_element_index = 0;
 	SET wire_element_count = JSON_LENGTH(wire_elements);
 
@@ -243,7 +243,7 @@ BEGIN
 	SET field_count = 0;
 	SET concatenated_value = _binary X'';
 
-	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))));
 	SET wire_element_index = 0;
 	SET wire_element_count = JSON_LENGTH(wire_elements);
 
@@ -296,7 +296,7 @@ CREATE FUNCTION _pb_wire_json_set_field(
 	value JSON
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE next_index INT;
 	DECLARE new_element JSON;
 	DECLARE message_text TEXT;
@@ -325,7 +325,7 @@ CREATE FUNCTION _pb_wire_json_add_repeated_field_element(
 	value JSON
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE next_index INT;
 	DECLARE new_element JSON;
 
@@ -347,7 +347,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wire_json_clear_field $$
 CREATE FUNCTION _pb_wire_json_clear_field(wire_json JSON, field_number INT) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	RETURN JSON_REMOVE(wire_json, field_path);
 END $$
 
@@ -360,7 +360,7 @@ CREATE FUNCTION _pb_wire_json_set_repeated_varint_field_element(
 	value BIGINT UNSIGNED
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE current_index INT DEFAULT 0;
 	DECLARE array_index INT DEFAULT 0;
@@ -447,7 +447,7 @@ CREATE FUNCTION _pb_wire_json_set_repeated_i64_field_element(
 	value BIGINT UNSIGNED
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE current_index INT DEFAULT 0;
 	DECLARE array_index INT DEFAULT 0;
@@ -534,7 +534,7 @@ CREATE FUNCTION _pb_wire_json_set_repeated_i32_field_element(
 	value INT UNSIGNED
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE current_index INT DEFAULT 0;
 	DECLARE array_index INT DEFAULT 0;
@@ -621,7 +621,7 @@ CREATE FUNCTION _pb_wire_json_set_repeated_len_field_element(
 	value LONGBLOB
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE current_index INT DEFAULT 0;
 	DECLARE array_index INT DEFAULT 0;
@@ -671,7 +671,7 @@ CREATE FUNCTION _pb_wire_json_remove_repeated_varint_field_element(
 	repeated_index INT
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE current_index INT DEFAULT 0;
 	DECLARE array_index INT DEFAULT 0;
@@ -774,7 +774,7 @@ CREATE FUNCTION _pb_wire_json_remove_repeated_i64_field_element(
 	repeated_index INT
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE current_index INT DEFAULT 0;
 	DECLARE array_index INT DEFAULT 0;
@@ -877,7 +877,7 @@ CREATE FUNCTION _pb_wire_json_remove_repeated_i32_field_element(
 	repeated_index INT
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE current_index INT DEFAULT 0;
 	DECLARE array_index INT DEFAULT 0;
@@ -980,7 +980,7 @@ CREATE FUNCTION _pb_wire_json_remove_repeated_len_field_element(
 	repeated_index INT
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE current_index INT DEFAULT 0;
 	DECLARE array_index INT DEFAULT 0;
@@ -1029,7 +1029,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wire_json_add_packed_varint_field $$
 CREATE FUNCTION _pb_wire_json_add_packed_varint_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE packed_data LONGBLOB;
 	DECLARE new_varint LONGBLOB;
@@ -1071,7 +1071,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wire_json_add_packed_i64_field $$
 CREATE FUNCTION _pb_wire_json_add_packed_i64_field(wire_json JSON, field_number INT, value BIGINT UNSIGNED) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE packed_data LONGBLOB;
 	DECLARE new_i64 LONGBLOB;
@@ -1113,7 +1113,7 @@ END $$
 DROP FUNCTION IF EXISTS _pb_wire_json_add_packed_i32_field $$
 CREATE FUNCTION _pb_wire_json_add_packed_i32_field(wire_json JSON, field_number INT, value INT UNSIGNED) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE packed_data LONGBLOB;
 	DECLARE new_i32 LONGBLOB;
@@ -1229,7 +1229,7 @@ CREATE FUNCTION _pb_wire_json_insert_repeated_varint_field_element(
 	use_packed BOOLEAN
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE new_field_array JSON DEFAULT JSON_ARRAY();
 	DECLARE array_index INT DEFAULT 0;
@@ -1371,7 +1371,7 @@ CREATE FUNCTION _pb_wire_json_insert_repeated_i64_field_element(
 	use_packed BOOLEAN
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE new_field_array JSON DEFAULT JSON_ARRAY();
 	DECLARE array_index INT DEFAULT 0;
@@ -1513,7 +1513,7 @@ CREATE FUNCTION _pb_wire_json_insert_repeated_i32_field_element(
 	use_packed BOOLEAN
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE new_field_array JSON DEFAULT JSON_ARRAY();
 	DECLARE array_index INT DEFAULT 0;
@@ -1654,7 +1654,7 @@ CREATE FUNCTION _pb_wire_json_insert_repeated_len_field_element(
 	value LONGBLOB
 ) RETURNS JSON DETERMINISTIC
 BEGIN
-	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 	DECLARE field_array JSON;
 	DECLARE new_field_array JSON DEFAULT JSON_ARRAY();
 	DECLARE logical_values JSON DEFAULT JSON_ARRAY();

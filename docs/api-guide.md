@@ -713,7 +713,7 @@ SELECT JSON_PRETTY(pb_message_to_json(@schema_json, '.MessageType', pb_data, NUL
 SELECT DISTINCT 
     JSON_UNQUOTE(JSON_EXTRACT(field_data, '$[0].n')) AS field_number
 FROM (
-    SELECT JSON_EXTRACT(pb_message_to_wire_json(pb_data), CONCAT('$."', field_key, '"')) AS field_data
+    SELECT JSON_EXTRACT(pb_message_to_wire_json(pb_data), CONCAT('$.', JSON_QUOTE(field_key))) AS field_data
     FROM (
         SELECT field_key 
         FROM JSON_TABLE(

@@ -499,7 +499,7 @@ func TestStringLiteralEscapeSequences(t *testing.T) {
 		// Complex real-world examples from protobuf-json-v2.sql
 		{
 			name:        "JSON path with escaped quotes",
-			input:       `SELECT JSON_SET(field_json_value, CONCAT('$.\"', map_key, '\"'), map_value)`,
+			input:       `SELECT JSON_SET(field_json_value, CONCAT('$.', JSON_QUOTE(map_key)), map_value)`,
 			expectError: false,
 			description: "Complex JSON path construction with escaped quotes",
 		},
@@ -511,7 +511,7 @@ func TestStringLiteralEscapeSequences(t *testing.T) {
 		},
 		{
 			name:        "Nested function calls with complex quotes",
-			input:       `SELECT JSON_EXTRACT(oneofs, CONCAT('$.\"', oneof_index, '\".i'))`,
+			input:       `SELECT JSON_EXTRACT(oneofs, CONCAT('$.', JSON_QUOTE(CAST(oneof_index AS CHAR)), '.i'))`,
 			expectError: false,
 			description: "Nested function with complex quote patterns",
 		},
@@ -611,7 +611,7 @@ BEGIN
     DECLARE map_value JSON;
     
     -- This line was causing the original parser error
-    SET field_json_value = JSON_SET(field_json_value, CONCAT('$.\"', map_key, '\"'), map_value);
+    SET field_json_value = JSON_SET(field_json_value, CONCAT('$.', JSON_QUOTE(map_key)), map_value);
     
     -- Test multiple escape sequences
     SET field_json_value = JSON_SET(field_json_value, 'path\\with\ttabs\nand\rreturns\0null');
@@ -704,7 +704,7 @@ BEGIN
 	DECLARE value_descriptor JSON;
 	DECLARE value_name TEXT;
 
-	SET enum_descriptor = JSON_EXTRACT(descriptor_set_json, CONCAT('$.file[*].enumType[?(@.name=="', SUBSTRING(full_enum_type_name, 2), '")]'));
+	SET enum_descriptor = JSON_EXTRACT(descriptor_set_json, CONCAT('$.file[*].enumType[?(@.name==', JSON_QUOTE(SUBSTRING(full_enum_type_name, 2)), ')]'));
 	
 	IF enum_descriptor IS NULL THEN
 		SET message_text = CONCAT('_pb_convert_json_enum_to_number: enum type not found: ', full_enum_type_name);

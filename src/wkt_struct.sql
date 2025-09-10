@@ -22,10 +22,10 @@ BEGIN
 
 	WHILE struct_key_index < struct_key_count DO
 		SET struct_key_name = JSON_UNQUOTE(JSON_EXTRACT(struct_keys, CONCAT('$[', struct_key_index, ']')));
-		SET struct_value_json = JSON_EXTRACT(proto_json_value, CONCAT('$."', struct_key_name, '"'));
+		SET struct_value_json = JSON_EXTRACT(proto_json_value, CONCAT('$.', JSON_QUOTE(struct_key_name)));
 		-- Recursively convert the value as Value
 		CALL _pb_wkt_value_json_to_number_json(struct_value_json, struct_converted_value);
-		SET struct_result = JSON_SET(struct_result, CONCAT('$."', struct_key_name, '"'), struct_converted_value);
+		SET struct_result = JSON_SET(struct_result, CONCAT('$.', JSON_QUOTE(struct_key_name)), struct_converted_value);
 		SET struct_key_index = struct_key_index + 1;
 	END WHILE;
 
@@ -284,10 +284,10 @@ BEGIN
 
 		struct_loop: WHILE struct_key_index < struct_key_count DO
 			SET struct_key_name = JSON_UNQUOTE(JSON_EXTRACT(struct_keys, CONCAT('$[', struct_key_index, ']')));
-			SET struct_value_json = JSON_EXTRACT(struct_fields, CONCAT('$."', struct_key_name, '"'));
+			SET struct_value_json = JSON_EXTRACT(struct_fields, CONCAT('$.', JSON_QUOTE(struct_key_name)));
 			-- Recursively convert the Value
 			CALL _pb_wkt_value_number_json_to_json(struct_value_json, struct_converted_value);
-			SET struct_result = JSON_SET(struct_result, CONCAT('$.', struct_key_name), struct_converted_value);
+			SET struct_result = JSON_SET(struct_result, CONCAT('$.', JSON_QUOTE(struct_key_name)), struct_converted_value);
 			SET struct_key_index = struct_key_index + 1;
 		END WHILE struct_loop;
 

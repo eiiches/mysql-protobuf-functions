@@ -26,7 +26,7 @@ BEGIN
 	END IF;
 
 	-- Get paths for the enum type
-	SET type_paths = JSON_EXTRACT(enum_type_index, CONCAT('$.\"', full_enum_type_name, '\"'));
+	SET type_paths = JSON_EXTRACT(enum_type_index, CONCAT('$.', JSON_QUOTE(full_enum_type_name)));
 	IF type_paths IS NULL THEN
 		SET message_text = CONCAT('_pb_convert_number_enum_to_json: enum type not found: ', full_enum_type_name);
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = message_text;
@@ -36,7 +36,7 @@ BEGIN
 	SET enum_number_index = JSON_EXTRACT(type_paths, '$.\"4\"');
 
 	-- Use number index for O(1) lookup
-	SET found_index = JSON_EXTRACT(enum_number_index, CONCAT('$.\"', enum_numeric_value, '\"'));
+	SET found_index = JSON_EXTRACT(enum_number_index, CONCAT('$.', JSON_QUOTE(CAST(enum_numeric_value AS CHAR))));
 
 	IF found_index IS NOT NULL THEN
 		-- Get enum descriptor and values array to extract the name
@@ -152,7 +152,7 @@ BEGIN
 	-- Process each key-value pair
 	WHILE key_index < key_count DO
 		SET current_key = JSON_UNQUOTE(JSON_EXTRACT(map_keys, CONCAT('$[', key_index, ']')));
-		SET current_value = JSON_EXTRACT(map_number_json, CONCAT('$."', current_key, '"'));
+		SET current_value = JSON_EXTRACT(map_number_json, CONCAT('$.', JSON_QUOTE(current_key)));
 
 		-- Convert the value based on its type, handling null values with appropriate defaults
 		IF current_value IS NULL THEN
@@ -163,7 +163,7 @@ BEGIN
 		END IF;
 
 		-- Add to result object
-		SET result = JSON_SET(result, CONCAT('$."', current_key, '"'), converted_value);
+		SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(current_key)), converted_value);
 
 		SET key_index = key_index + 1;
 	END WHILE;
@@ -267,15 +267,15 @@ proc: BEGIN
 		END IF;
 
 		-- Check if field exists in source JSON (by field number)
-		IF JSON_CONTAINS_PATH(number_json, 'one', CONCAT('$."', CAST(field_number AS CHAR), '"')) THEN
-			SET field_json_value = JSON_EXTRACT(number_json, CONCAT('$."', CAST(field_number AS CHAR), '"'));
+		IF JSON_CONTAINS_PATH(number_json, 'one', CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)))) THEN
+			SET field_json_value = JSON_EXTRACT(number_json, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))));
 
 			IF is_map THEN
 				-- Handle map fields: convert object keys/values properly
 				-- For maps, field_json_value is an object like {"key1": value1, "key2": value2}
 				-- We need to convert the values based on the map value type
 				CALL _pb_convert_map_number_json_to_proto_json(descriptor_set_json, field_type_name, field_json_value, emit_default_values, nested_json);
-				SET result = JSON_SET(result, CONCAT('$.', target_field_name), nested_json);
+				SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(target_field_name)), nested_json);
 			ELSEIF is_repeated THEN
 				-- Handle repeated fields (arrays)
 				SET array_value = field_json_value;
@@ -293,11 +293,11 @@ proc: BEGIN
 					SET array_index = array_index + 1;
 				END WHILE array_loop;
 
-				SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_array);
+				SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(target_field_name)), converted_array);
 			ELSE
 				-- Handle singular fields using unified conversion
 				CALL _pb_convert_singular_field_from_number_json(descriptor_set_json, field_type, field_type_name, field_json_value, emit_default_values, converted_value);
-				SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_value);
+				SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(target_field_name)), converted_value);
 			END IF;
 		ELSE
 			-- Field is missing from number JSON - emit default value if requested for non-optional fields
@@ -316,23 +316,23 @@ proc: BEGIN
 				IF NOT has_presence THEN
 					IF is_map THEN
 						-- Empty object for map fields
-						SET result = JSON_SET(result, CONCAT('$.', target_field_name), JSON_OBJECT());
+						SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(target_field_name)), JSON_OBJECT());
 					ELSEIF is_repeated THEN
 						-- Empty array for repeated fields
-						SET result = JSON_SET(result, CONCAT('$.', target_field_name), JSON_ARRAY());
+						SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(target_field_name)), JSON_ARRAY());
 					ELSE
 						-- Default values for singular fields
 						CASE field_type
 						WHEN 14 THEN -- enum
 							-- Get the first (zero) enum value
 							SET converted_value = _pb_convert_number_enum_to_json(descriptor_set_json, field_type_name, 0);
-							SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_value);
+							SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(target_field_name)), converted_value);
 						WHEN 11 THEN -- message
 							SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'BUG: this never happens; message fields always have field presence';
 						ELSE
 							-- Use the existing function for primitive types (false = don't emit 64bit as numbers, use strings)
 							SET converted_value = _pb_json_get_proto3_default_value(field_type, false);
-							SET result = JSON_SET(result, CONCAT('$.', target_field_name), converted_value);
+							SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(target_field_name)), converted_value);
 						END CASE;
 					END IF;
 				END IF;

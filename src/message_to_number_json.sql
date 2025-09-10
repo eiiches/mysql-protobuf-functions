@@ -319,9 +319,9 @@ proc: BEGIN
 					END IF;
 
 					IF JSON_TYPE(map_key) = 'STRING' THEN
-						SET field_json_value = JSON_SET(field_json_value, CONCAT('$.', map_key), map_value);
+						SET field_json_value = JSON_SET(field_json_value, CONCAT('$.', JSON_QUOTE(JSON_UNQUOTE(map_key))), map_value);
 					ELSE
-						SET field_json_value = JSON_SET(field_json_value, CONCAT('$."', map_key, '"'), map_value);
+						SET field_json_value = JSON_SET(field_json_value, CONCAT('$.', JSON_QUOTE(CAST(map_key AS CHAR))), map_value);
 					END IF;
 
 					SET element_index = element_index + 1;
@@ -404,16 +404,16 @@ proc: BEGIN
 
 			IF oneof_index IS NOT NULL AND NOT proto3_optional THEN
 				-- Handle oneof fields
-				SET elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+				SET elements = JSON_EXTRACT(wire_json, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))));
 				SET oneof_priority = JSON_EXTRACT(elements, CONCAT('$[', JSON_LENGTH(elements)-1, '].i'));
-				SET oneof_priority_prev = JSON_EXTRACT(oneofs, CONCAT('$."', oneof_index, '".i'));
+				SET oneof_priority_prev = JSON_EXTRACT(oneofs, CONCAT('$.', JSON_QUOTE(CAST(oneof_index AS CHAR)), '.i'));
 
 				IF oneof_priority_prev IS NULL OR oneof_priority_prev < oneof_priority THEN
-					SET oneofs = JSON_SET(oneofs, CONCAT('$."', oneof_index, '"'), JSON_OBJECT('i', oneof_priority, 'v', JSON_OBJECT(json_field_name, field_json_value)));
+					SET oneofs = JSON_SET(oneofs, CONCAT('$.', JSON_QUOTE(CAST(oneof_index AS CHAR))), JSON_OBJECT('i', oneof_priority, 'v', JSON_OBJECT(json_field_name, field_json_value)));
 				END IF;
 			ELSE
 				-- For number JSON format, field names are numeric and need to be quoted in JSON paths
-				SET result = JSON_SET(result, CONCAT('$."', json_field_name, '"'), field_json_value);
+				SET result = JSON_SET(result, CONCAT('$.', JSON_QUOTE(json_field_name)), field_json_value);
 			END IF;
 		END IF;
 
