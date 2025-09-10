@@ -57,12 +57,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_int32_to_int32_map(?, ?)", `{}`, `42`).IsEqualToJsonString(`{}`)
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_int32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_int32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_int32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_int32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_int32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_int32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_int32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_int32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_int32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_int32_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_int32_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_int32_to_int32_map('{}', NULL, 42)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_int32_to_int32_map('{}', 42, NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("int64_key", func(t *testing.T) {
@@ -104,12 +110,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_int64_to_int32_map(?, ?)", `{}`, `9223372036854775807`).IsEqualToJsonString(`{}`)                                                             // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_int64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_int64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_int64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_int64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_int64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_int64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_int64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_int64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_int64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_int64_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_int64_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_int64_to_int32_map('{}', NULL, 100)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_int64_to_int32_map('{}', 9223372036854775807, NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("uint32_key", func(t *testing.T) {
@@ -151,12 +163,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_uint32_to_int32_map(?, ?)", `{}`, `4294967295`).IsEqualToJsonString(`{}`)                                                    // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_uint32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_uint32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_uint32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_uint32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_uint32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_uint32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_uint32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_uint32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_uint32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_uint32_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_uint32_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_uint32_to_int32_map('{}', NULL, 100)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_uint32_to_int32_map('{}', 4294967295, NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("uint64_key", func(t *testing.T) {
@@ -198,12 +216,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_uint64_to_int32_map(?, ?)", `{}`, `18446744073709551615`).IsEqualToJsonString(`{}`)                                                              // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_uint64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_uint64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_uint64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_uint64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_uint64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_uint64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_uint64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_uint64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_uint64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_uint64_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_uint64_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_uint64_to_int32_map('{}', NULL, 100)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_uint64_to_int32_map('{}', 18446744073709551615, NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("sint32_key", func(t *testing.T) {
@@ -245,12 +269,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_sint32_to_int32_map(?, ?)", `{}`, `-2147483648`).IsEqualToJsonString(`{}`)                                                     // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_sint32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_sint32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_sint32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sint32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sint32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sint32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_sint32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_sint32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_sint32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sint32_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_sint32_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_sint32_to_int32_map('{}', NULL, 100)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_sint32_to_int32_map('{}', -1, NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("sint64_key", func(t *testing.T) {
@@ -292,12 +322,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_sint64_to_int32_map(?, ?)", `{}`, `-9223372036854775808`).IsEqualToJsonString(`{}`)                                                              // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_sint64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_sint64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_sint64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sint64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sint64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sint64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_sint64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_sint64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_sint64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sint64_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_sint64_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_sint64_to_int32_map('{}', NULL, 100)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_sint64_to_int32_map('{}', -9223372036854775808, NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("fixed32_key", func(t *testing.T) {
@@ -339,12 +375,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_fixed32_to_int32_map(?, ?)", `{}`, `4294967295`).IsEqualToJsonString(`{}`)                                                    // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_fixed32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_fixed32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_fixed32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed32_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_fixed32_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_fixed32_to_int32_map('{}', NULL, 100)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_fixed32_to_int32_map('{}', 4294967295, NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("fixed64_key", func(t *testing.T) {
@@ -385,12 +427,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_fixed64_to_int32_map(?, ?)", `{}`, `18446744073709551615`).IsEqualToJsonString(`{}`)                                                              // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_fixed64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_fixed64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_fixed64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_fixed64_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_fixed64_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_fixed64_to_int32_map('{}', NULL, 100)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_fixed64_to_int32_map('{}', 18446744073709551615, NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("sfixed32_key", func(t *testing.T) {
@@ -431,12 +479,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_sfixed32_to_int32_map(?, ?)", `{}`, `-2147483648`).IsEqualToJsonString(`{}`)                                                     // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_sfixed32_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_sfixed32_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_sfixed32_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed32_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_sfixed32_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_sfixed32_to_int32_map('{}', NULL, 100)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_sfixed32_to_int32_map('{}', -2147483648, NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("sfixed64_key", func(t *testing.T) {
@@ -477,12 +531,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_sfixed64_to_int32_map(?, ?)", `{}`, `-9223372036854775808`).IsEqualToJsonString(`{}`)                                                                 // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_sfixed64_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_sfixed64_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_sfixed64_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_sfixed64_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_sfixed64_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_sfixed64_to_int32_map('{}', NULL, 100)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_sfixed64_to_int32_map('{}', -9223372036854775808, NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	// Test non-integer key types
@@ -525,12 +585,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_bool_to_int32_map(?, ?)", `{}`, true).IsEqualToJsonString(`{}`)                                                   // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_bool_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_bool_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_bool_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_bool_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_bool_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_bool_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_bool_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_bool_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_bool_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_bool_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_bool_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_bool_to_int32_map('{}', NULL, 100)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_bool_to_int32_map('{}', true, NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("string_key", func(t *testing.T) {
@@ -582,12 +648,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_int32_map(?, ?)", `{}`, `key`).IsEqualToJsonString(`{}`)                                                     // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_int32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_int32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_int32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_int32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_int32_map('{}', NULL, 100)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_int32_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	// Test different value types with string keys
@@ -629,12 +701,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_double_map(?, ?)", `{}`, `pi`).IsEqualToJsonString(`{}`)
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_double_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_double_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_double_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_double_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_double_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_double_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_double_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_double_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_double_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_double_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_double_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_double_map('{}', NULL, 3.14)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_double_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("float_value", func(t *testing.T) {
@@ -679,12 +757,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_float_map(?, ?)", `{}`, `pi_float`).IsEqualToJsonString(`{}`)
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_float_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_float_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_float_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_float_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_float_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_float_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_float_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_float_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_float_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_float_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_float_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_float_map('{}', NULL, 2.5)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_float_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("int32_value", func(t *testing.T) {
@@ -742,12 +826,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_int64_map(?, ?)", `{}`, `big`).IsEqualToJsonString(`{}`)                                                                         // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int64_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int64_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int64_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int64_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_int64_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_int64_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_int64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_int64_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_int64_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_int64_map('{}', NULL, 9223372036854775807)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_int64_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("uint32_value", func(t *testing.T) {
@@ -789,12 +879,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_uint32_map(?, ?)", `{}`, `max32`).IsEqualToJsonString(`{}`)                                                              // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_uint32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_uint32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_uint32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_uint32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_uint32_map('{}', NULL, 4294967295)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_uint32_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("uint64_value", func(t *testing.T) {
@@ -836,12 +932,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_uint64_map(?, ?)", `{}`, `max64`).IsEqualToJsonString(`{}`)                                                                             // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint64_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint64_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint64_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint64_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_uint64_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_uint64_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_uint64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_uint64_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_uint64_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_uint64_map('{}', NULL, 18446744073709551615)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_uint64_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("sint32_value", func(t *testing.T) {
@@ -883,12 +985,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_sint32_map(?, ?)", `{}`, `negative`).IsEqualToJsonString(`{}`)                                                                  // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sint32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sint32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sint32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sint32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_sint32_map('{}', NULL, -2147483648)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_sint32_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("sint64_value", func(t *testing.T) {
@@ -930,12 +1038,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_sint64_map(?, ?)", `{}`, `big_negative`).IsEqualToJsonString(`{}`)                                                                                    // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint64_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint64_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint64_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint64_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sint64_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sint64_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sint64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sint64_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sint64_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_sint64_map('{}', NULL, -9223372036854775808)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_sint64_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("fixed32_value", func(t *testing.T) {
@@ -977,12 +1091,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_fixed32_map(?, ?)", `{}`, `max_fixed32`).IsEqualToJsonString(`{}`)                                                                    // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_fixed32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_fixed32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_fixed32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_fixed32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_fixed32_map('{}', NULL, 4294967295)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_fixed32_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("fixed64_value", func(t *testing.T) {
@@ -1024,12 +1144,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_fixed64_map(?, ?)", `{}`, `max_fixed64`).IsEqualToJsonString(`{}`)                                                                                   // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed64_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed64_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed64_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed64_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_fixed64_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_fixed64_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_fixed64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_fixed64_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_fixed64_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_fixed64_map('{}', NULL, 18446744073709551615)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_fixed64_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("sfixed32_value", func(t *testing.T) {
@@ -1071,12 +1197,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_sfixed32_map(?, ?)", `{}`, `min_sfixed32`).IsEqualToJsonString(`{}`)                                                                      // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed32_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed32_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed32_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed32_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sfixed32_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sfixed32_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sfixed32_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed32_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sfixed32_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_sfixed32_map('{}', NULL, -2147483648)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_sfixed32_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("sfixed64_value", func(t *testing.T) {
@@ -1118,12 +1250,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_sfixed64_map(?, ?)", `{}`, `min_sfixed64`).IsEqualToJsonString(`{}`)                                                                                    // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed64_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed64_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed64_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed64_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sfixed64_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sfixed64_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sfixed64_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_sfixed64_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_sfixed64_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_sfixed64_map('{}', NULL, -9223372036854775808)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_sfixed64_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("bool_value", func(t *testing.T) {
@@ -1169,12 +1307,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_bool_map(?, ?)", `{}`, `flag`).IsEqualToJsonString(`{}`)                                                           // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bool_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bool_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bool_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bool_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bool_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bool_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_bool_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_bool_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_bool_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bool_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_bool_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_bool_map('{}', NULL, true)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_bool_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("string_value", func(t *testing.T) {
@@ -1220,12 +1364,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_string_map(?, ?)", `{}`, `greeting`).IsEqualToJsonString(`{}`)                                                                      // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_string_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_string_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_string_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_string_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_string_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_string_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_string_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_string_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_string_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_string_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_string_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_string_map('{}', NULL, "value")`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_string_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("bytes_value", func(t *testing.T) {
@@ -1271,12 +1421,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_bytes_map(?, ?)", `{}`, `data`).IsEqualToJsonString(`{}`)                                                                           // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bytes_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bytes_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bytes_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bytes_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bytes_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bytes_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_bytes_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_bytes_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_bytes_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_bytes_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_bytes_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_bytes_map('{}', NULL, "dGVzdA==")`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_bytes_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("enum_value", func(t *testing.T) {
@@ -1318,12 +1474,18 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_enum_map(?, ?)", `{}`, `status`).IsEqualToJsonString(`{}`)                                                    // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_enum_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_enum_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_enum_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_enum_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_enum_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_enum_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_enum_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_enum_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_enum_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_enum_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_enum_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_enum_map('{}', NULL, 1)`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_enum_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 
 	t.Run("message_value", func(t *testing.T) {
@@ -1369,11 +1531,17 @@ func TestProtocGenMapField(t *testing.T) {
 		RunTestThatExpression(t, "pbt_map_fields_remove_string_to_message_map(?, ?)", `{}`, `nested`).IsEqualToJsonString(`{}`)                                                                                                                 // Remove from empty map
 
 		// Test input validation - set_all and put_all must reject non-OBJECT input
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_message_map('{}', '42')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_message_map('{}', '"string"')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
-		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_message_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "Map field value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_message_map('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_message_map('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_message_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "field_value must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_message_map('{}', '42')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_message_map('{}', '"string"')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
 		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_message_map('{}', '[1,2,3]')`).ToFailWithSignalException("45000", "new_entries must be a JSON object")
+
+		// Test NULL input validation - set_all, put_all, and put must reject NULL input
+		RunTestThatExpression(t, `pbt_map_fields_set_all_string_to_message_map('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_all_string_to_message_map('{}', NULL)`).ToFailWithSignalException("45000", "new_entries cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_message_map('{}', NULL, '{}')`).ToFailWithSignalException("45000", "key_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_map_fields_put_string_to_message_map('{}', "test", NULL)`).ToFailWithSignalException("45000", "value_param cannot be NULL")
 	})
 }

@@ -643,7 +643,7 @@ func generateMapSetAll(content *strings.Builder, funcPrefix string, field protor
 	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'field_value cannot be NULL';\n")
 	content.WriteString("    END IF;\n")
 	content.WriteString("    IF JSON_TYPE(field_value) != 'OBJECT' THEN\n")
-	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Map field value must be a JSON object';\n")
+	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'field_value must be a JSON object';\n")
 	content.WriteString("    END IF;\n")
 
 	if needsConversion {
@@ -1019,6 +1019,12 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, field 
 	content.WriteString("    IF map_value IS NULL THEN\n")
 	content.WriteString("        SET map_value = JSON_OBJECT();\n")
 	content.WriteString("    END IF;\n")
+	content.WriteString("    IF key_value IS NULL THEN\n")
+	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'key_value cannot be NULL';\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    IF value_param IS NULL THEN\n")
+	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'value_param cannot be NULL';\n")
+	content.WriteString("    END IF;\n")
 
 	// Convert key to string and handle value conversion
 	keyPathExpression := GetProtobufType(field.MapKey().Kind()).GenerateSqlToMapKeyExpression("key_value")
@@ -1065,30 +1071,30 @@ func generateMapFieldMethods(content *strings.Builder, funcPrefix string, field 
 	content.WriteString("    IF map_value IS NULL THEN\n")
 	content.WriteString("        SET map_value = JSON_OBJECT();\n")
 	content.WriteString("    END IF;\n")
-	content.WriteString("    IF new_entries IS NOT NULL THEN\n")
-	content.WriteString("        IF JSON_TYPE(new_entries) != 'OBJECT' THEN\n")
-	content.WriteString("            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'new_entries must be a JSON object';\n")
-	content.WriteString("        END IF;\n")
+	content.WriteString("    IF new_entries IS NULL THEN\n")
+	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'new_entries cannot be NULL';\n")
+	content.WriteString("    END IF;\n")
+	content.WriteString("    IF JSON_TYPE(new_entries) != 'OBJECT' THEN\n")
+	content.WriteString("        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'new_entries must be a JSON object';\n")
+	content.WriteString("    END IF;\n")
 
 	if needsConversion {
 		// Need to convert each JSON value to number_json format (for float, double)
-		content.WriteString("        SET json_keys = JSON_KEYS(new_entries);\n")
-		content.WriteString("        SET key_count = JSON_LENGTH(json_keys);\n")
-		content.WriteString("        SET i = 0;\n")
-		content.WriteString("        \n")
-		content.WriteString("        WHILE i < key_count DO\n")
-		content.WriteString("            SET current_key = JSON_UNQUOTE(JSON_EXTRACT(json_keys, CONCAT('$[', i, ']')));\n")
-		content.WriteString("            SET current_value = JSON_EXTRACT(new_entries, CONCAT('$.\"', current_key, '\"'));\n")
-		content.WriteString(fmt.Sprintf("            SET converted_value = %s;\n", jsonConversionExpr))
-		content.WriteString("            SET map_value = JSON_SET(map_value, CONCAT('$.\"', current_key, '\"'), converted_value);\n")
-		content.WriteString("            SET i = i + 1;\n")
-		content.WriteString("        END WHILE;\n")
+		content.WriteString("    SET json_keys = JSON_KEYS(new_entries);\n")
+		content.WriteString("    SET key_count = JSON_LENGTH(json_keys);\n")
+		content.WriteString("    SET i = 0;\n")
+		content.WriteString("    \n")
+		content.WriteString("    WHILE i < key_count DO\n")
+		content.WriteString("        SET current_key = JSON_UNQUOTE(JSON_EXTRACT(json_keys, CONCAT('$[', i, ']')));\n")
+		content.WriteString("        SET current_value = JSON_EXTRACT(new_entries, CONCAT('$.\"', current_key, '\"'));\n")
+		content.WriteString(fmt.Sprintf("        SET converted_value = %s;\n", jsonConversionExpr))
+		content.WriteString("        SET map_value = JSON_SET(map_value, CONCAT('$.\"', current_key, '\"'), converted_value);\n")
+		content.WriteString("        SET i = i + 1;\n")
+		content.WriteString("    END WHILE;\n")
 	} else {
 		// For types that don't need conversion (int32, string, etc.), use direct merge
-		content.WriteString("        SET map_value = JSON_MERGE_PATCH(map_value, new_entries);\n")
+		content.WriteString("    SET map_value = JSON_MERGE_PATCH(map_value, new_entries);\n")
 	}
-
-	content.WriteString("    END IF;\n")
 	content.WriteString(fmt.Sprintf("    RETURN JSON_SET(proto_data, '$.\"%.d\"', map_value);\n", field.Number()))
 	content.WriteString("END $$\n\n")
 
