@@ -19,9 +19,6 @@ For a machine-readable list of all test failures, see [conformance/expected_fail
 
 | Test Name | Failure Message | Description |
 |-----------|-----------------|-------------|
-| `Recommended.Proto2.JsonInput.FieldNameExtension.Validator` | JSON payload validation failed | |
-| `Required.Proto3.ProtobufInput.UnknownOrdering.ProtobufOutput` | Unknown field mismatch | |
-| `Required.Proto3.ProtobufInput.UnknownVarint.ProtobufOutput` | Output was not equivalent to reference message: Expect: \250\037\001, but got: | |
 | `Required.Proto2.JsonInput.DoubleFieldMaxNegativeValue.JsonOutput` | Output was not equivalent to reference message: modified: optional_double: -2.22507e-308 -> -2.2250700000000003e-308 | See [known-issues.md](known-issues.md#double-precision-issues-in-json-parsing) |
 | `Required.Proto2.JsonInput.DoubleFieldMaxNegativeValue.ProtobufOutput` | Output was not equivalent to reference message: modified: optional_double: -2.22507e-308 -> -2.2250700000000003e-308 | See [known-issues.md](known-issues.md#double-precision-issues-in-json-parsing) |
 | `Required.Proto2.JsonInput.DoubleFieldMinPositiveValue.JsonOutput` | Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308 | See [known-issues.md](known-issues.md#double-precision-issues-in-json-parsing) |
@@ -34,6 +31,16 @@ For a machine-readable list of all test failures, see [conformance/expected_fail
 | `Required.Proto3.JsonInput.DoubleFieldMinPositiveValue.ProtobufOutput` | Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308 | See [known-issues.md](known-issues.md#double-precision-issues-in-json-parsing) |
 | `Required.Proto3.JsonInput.DoubleFieldQuotedExponentialValue.JsonOutput` | Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308 | See [known-issues.md](known-issues.md#double-precision-issues-in-json-parsing) |
 | `Required.Proto3.JsonInput.DoubleFieldQuotedExponentialValue.ProtobufOutput` | Output was not equivalent to reference message: modified: optional_double: 2.22507e-308 -> 2.2250700000000003e-308 | See [known-issues.md](known-issues.md#double-precision-issues-in-json-parsing) |
+| `Recommended.Proto2.JsonInput.FieldNameExtension.Validator` | JSON payload validation failed | |
+| `Required.Proto3.ProtobufInput.UnknownOrdering.ProtobufOutput` | Unknown field mismatch | |
+| `Required.Proto3.ProtobufInput.UnknownVarint.ProtobufOutput` | Output was not equivalent to reference message: Expect: \250\037\001, but got: | |
+| `Required.Proto2.ProtobufInput.UnknownOrdering.ProtobufOutput` | Unknown field mismatch | |
+| `Required.Proto2.ProtobufInput.UnknownVarint.ProtobufOutput` | Output was not equivalent to reference message: Expect: \250\037\001, but got: | |
+| `Recommended.Proto2.ProtobufInput.ValidMessageSetEncoding.SubmessageEncoding.NotUnknown.ProtobufOutput` | Output was not equivalent to reference message: deleted: message_set_correct | |
+| `Recommended.Proto2.ProtobufInput.ValidMessageSetEncoding.SubmessageEncoding.ProtobufOutput` | Output was not equivalent to reference message: deleted: message_set_correct | |
+| `Required.Proto2.ProtobufInput.MessageSetEncoding.UnknownExtension.ProtobufOutput` | Output was not equivalent to reference message: deleted: message_set_correct.4135300[0] | |
+| `Required.Proto2.ProtobufInput.ValidMessageSetEncoding.OutOfOrderGroupsEntries.ProtobufOutput` | Output was not equivalent to reference message: deleted: message_set_correct | |
+| `Required.Proto2.ProtobufInput.ValidMessageSetEncoding.ProtobufOutput` | Output was not equivalent to reference message: deleted: message_set_correct | |
 
 ## Tests Not Run
 
