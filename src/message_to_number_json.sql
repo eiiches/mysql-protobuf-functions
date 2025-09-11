@@ -429,6 +429,9 @@ proc: BEGIN
 			END IF;
 		END IF;
 
+		-- Remove processed field from wire_json (known fields are consumed)
+		SET wire_json = JSON_REMOVE(wire_json, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))));
+
 		SET field_index = field_index + 1;
 	END WHILE;
 
@@ -442,6 +445,11 @@ proc: BEGIN
 		SET result = JSON_MERGE(result, field_json_value);
 		SET element_index = element_index + 1;
 	END WHILE;
+
+	-- Preserve unknown fields as $unknownFields if any remain
+	IF JSON_LENGTH(wire_json) > 0 THEN
+		SET result = JSON_SET(result, '$."$unknownFields"', wire_json);
+	END IF;
 END $$
 
 -- Private function interface for protonumberjson format

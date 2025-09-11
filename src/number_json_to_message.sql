@@ -206,7 +206,8 @@ proc: BEGIN
 
 	SET syntax = _pb_file_descriptor_proto_get_syntax__or(file_descriptor, 'proto2');
 
-	SET result = JSON_OBJECT();
+	-- Initialize result with unknown fields if present, otherwise empty
+	SET result = COALESCE(JSON_EXTRACT(json_value, '$."$unknownFields"'), JSON_OBJECT());
 
 	-- Process each field in the message descriptor
 	SET field_index = 0;
