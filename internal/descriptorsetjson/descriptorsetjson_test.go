@@ -30,57 +30,87 @@ func TestToJson(t *testing.T) {
 		err = json.Unmarshal([]byte(jsonStr), &result)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		// Verify it's a 3-element array
-		resultArray, ok := result.([]interface{})
+		// Verify it's a DescriptorSet message object with protonumberjson format
+		resultMap, ok := result.(map[string]interface{})
 		g.Expect(ok).To(BeTrue())
-		g.Expect(resultArray).To(HaveLen(3))
 
-		// Verify first element is the version number
-		version, ok := resultArray[0].(float64)
-		g.Expect(ok).To(BeTrue())
-		g.Expect(version).To(Equal(float64(1)))
-
-		// Verify second element is the FileDescriptorSet
-		fileDescriptorSetData := resultArray[1]
+		// Verify field "1" is the FileDescriptorSet
+		fileDescriptorSetData := resultMap["1"]
 		g.Expect(fileDescriptorSetData).ToNot(BeNil())
 
-		// Verify third element is the type index
-		typeIndexData, ok := resultArray[2].(map[string]interface{})
+		// Verify field "2" is the message type index
+		messageTypeIndexData, ok := resultMap["2"].(map[string]interface{})
 		g.Expect(ok).To(BeTrue())
-		g.Expect(typeIndexData).ToNot(BeEmpty())
+		g.Expect(messageTypeIndexData).ToNot(BeEmpty())
 
-		// Verify some expected types exist in the index
-		expectedTypes := []string{
+		// Verify field "3" is the enum type index
+		enumTypeIndexData, ok := resultMap["3"].(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
+
+		// Verify some expected message types exist in the message index
+		expectedMessageTypes := []string{
 			".google.protobuf.FileDescriptorSet",
 			".google.protobuf.FileDescriptorProto",
 			".google.protobuf.DescriptorProto",
 			".google.protobuf.FieldDescriptorProto",
+		}
+
+		for _, expectedType := range expectedMessageTypes {
+			g.Expect(messageTypeIndexData).To(HaveKey(expectedType), "missing message type: %s", expectedType)
+
+			// Verify MessageTypeIndex structure (protonumberjson format)
+			typeIndex, ok := messageTypeIndexData[expectedType].(map[string]interface{})
+			g.Expect(ok).To(BeTrue(), "message type index should be map for %s", expectedType)
+
+			// Verify file path (field "1")
+			filePath, ok := typeIndex["1"].(string)
+			g.Expect(ok).To(BeTrue(), "file path should be string for %s", expectedType)
+			g.Expect(filePath).To(MatchRegexp(`^\$\."1"\[\d+\]$`), "file path format for %s", expectedType)
+
+			// Verify type path (field "2")
+			typePath, ok := typeIndex["2"].(string)
+			g.Expect(ok).To(BeTrue(), "type path should be string for %s", expectedType)
+			g.Expect(typePath).To(ContainSubstring(filePath), "type path should contain file path for %s", expectedType)
+
+			// Verify field name index (field "3")
+			_, ok = typeIndex["3"].(map[string]interface{})
+			g.Expect(ok).To(BeTrue(), "field name index should be map for %s", expectedType)
+
+			// Verify field number index (field "4")
+			_, ok = typeIndex["4"].(map[string]interface{})
+			g.Expect(ok).To(BeTrue(), "field number index should be map for %s", expectedType)
+		}
+
+		// Verify some expected enum types exist in the enum index
+		expectedEnumTypes := []string{
 			".google.protobuf.FieldDescriptorProto.Type",
 			".google.protobuf.FieldDescriptorProto.Label",
 		}
 
-		for _, expectedType := range expectedTypes {
-			g.Expect(typeIndexData).To(HaveKey(expectedType), "missing type: %s", expectedType)
+		for _, expectedType := range expectedEnumTypes {
+			g.Expect(enumTypeIndexData).To(HaveKey(expectedType), "missing enum type: %s", expectedType)
 
-			// Verify TypeIndex structure
-			typeIndex, ok := typeIndexData[expectedType].([]interface{})
-			g.Expect(ok).To(BeTrue(), "type index should be array for %s", expectedType)
-			g.Expect(typeIndex).To(HaveLen(3), "type index should have 3 elements for %s", expectedType)
+			// Verify EnumTypeIndex structure (protonumberjson format)
+			typeIndex, ok := enumTypeIndexData[expectedType].(map[string]interface{})
+			g.Expect(ok).To(BeTrue(), "enum type index should be map for %s", expectedType)
 
-			// Verify kind (first element)
-			kind, ok := typeIndex[0].(float64)
-			g.Expect(ok).To(BeTrue(), "kind should be number for %s", expectedType)
-			g.Expect(kind).To(SatisfyAny(Equal(float64(11)), Equal(float64(14))), "kind should be 11 (message) or 14 (enum) for %s", expectedType)
-
-			// Verify file path (second element)
-			filePath, ok := typeIndex[1].(string)
+			// Verify file path (field "1")
+			filePath, ok := typeIndex["1"].(string)
 			g.Expect(ok).To(BeTrue(), "file path should be string for %s", expectedType)
-			g.Expect(filePath).To(MatchRegexp(`^\$\[1\]\."1"\[\d+\]$`), "file path format for %s", expectedType)
+			g.Expect(filePath).To(MatchRegexp(`^\$\."1"\[\d+\]$`), "file path format for %s", expectedType)
 
-			// Verify type path (third element)
-			typePath, ok := typeIndex[2].(string)
+			// Verify type path (field "2")
+			typePath, ok := typeIndex["2"].(string)
 			g.Expect(ok).To(BeTrue(), "type path should be string for %s", expectedType)
 			g.Expect(typePath).To(ContainSubstring(filePath), "type path should contain file path for %s", expectedType)
+
+			// Verify enum name index (field "3")
+			_, ok = typeIndex["3"].(map[string]interface{})
+			g.Expect(ok).To(BeTrue(), "enum name index should be map for %s", expectedType)
+
+			// Verify enum number index (field "4")
+			_, ok = typeIndex["4"].(map[string]interface{})
+			g.Expect(ok).To(BeTrue(), "enum number index should be map for %s", expectedType)
 		}
 	})
 
@@ -98,20 +128,29 @@ func TestToJson(t *testing.T) {
 		err = json.Unmarshal([]byte(jsonStr), &result)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		// Verify it's a 3-element array
-		resultArray, ok := result.([]interface{})
+		// Verify it's a DescriptorSet message object with protonumberjson format
+		resultMap, ok := result.(map[string]interface{})
 		g.Expect(ok).To(BeTrue())
-		g.Expect(resultArray).To(HaveLen(3))
 
-		// Verify first element is the version number
-		version, ok := resultArray[0].(float64)
-		g.Expect(ok).To(BeTrue())
-		g.Expect(version).To(Equal(float64(1)))
+		// Verify field "1" is the FileDescriptorSet
+		fileDescriptorSetData := resultMap["1"]
+		g.Expect(fileDescriptorSetData).ToNot(BeNil())
 
-		// Verify type index is empty
-		typeIndexData, ok := resultArray[2].(map[string]interface{})
-		g.Expect(ok).To(BeTrue())
-		g.Expect(typeIndexData).To(BeEmpty())
+		// Verify field "2" (message type index) is empty or doesn't exist
+		messageTypeIndexData, exists := resultMap["2"]
+		if exists {
+			messageTypeIndexMap, ok := messageTypeIndexData.(map[string]interface{})
+			g.Expect(ok).To(BeTrue())
+			g.Expect(messageTypeIndexMap).To(BeEmpty())
+		}
+
+		// Verify field "3" (enum type index) is empty or doesn't exist
+		enumTypeIndexData, exists := resultMap["3"]
+		if exists {
+			enumTypeIndexMap, ok := enumTypeIndexData.(map[string]interface{})
+			g.Expect(ok).To(BeTrue())
+			g.Expect(enumTypeIndexMap).To(BeEmpty())
+		}
 	})
 
 	t.Run("with nil FileDescriptorSet", func(t *testing.T) {
@@ -150,26 +189,35 @@ func TestToJsonTree(t *testing.T) {
 
 		result, err := ToJsonTree(fileDescriptorSet)
 		g.Expect(err).ToNot(HaveOccurred())
-		g.Expect(result).To(HaveLen(3))
 
-		// Verify version
-		version := result[0]
-		g.Expect(version).To(Equal(1))
+		// Verify it's a map (DescriptorSet message)
+		resultMap, ok := result.(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
 
-		// Verify FileDescriptorSet part
-		fileDescriptorSetData := result[1]
+		// Verify field "1" is the FileDescriptorSet
+		fileDescriptorSetData := resultMap["1"]
 		g.Expect(fileDescriptorSetData).ToNot(BeNil())
 
-		// Verify type index part
-		typeIndexData, ok := result[2].(map[string]TypeIndex)
+		// Verify field "2" is the message type index
+		messageTypeIndexData, ok := resultMap["2"].(map[string]interface{})
 		g.Expect(ok).To(BeTrue())
-		g.Expect(typeIndexData).To(HaveKey(".test.TestMessage"))
+		g.Expect(messageTypeIndexData).To(HaveKey(".test.TestMessage"))
 
 		// Verify the TestMessage type index
-		testMessageIndex := typeIndexData[".test.TestMessage"]
-		g.Expect(testMessageIndex[0]).To(Equal(11)) // TYPE_MESSAGE
-		g.Expect(testMessageIndex[1]).To(Equal("$[1].\"1\"[0]"))
-		g.Expect(testMessageIndex[2]).To(Equal("$[1].\"1\"[0].\"4\"[0]"))
+		testMessageIndex, ok := messageTypeIndexData[".test.TestMessage"].(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
+		g.Expect(testMessageIndex["1"]).To(Equal("$.\"1\"[0]"))          // file_json_path
+		g.Expect(testMessageIndex["2"]).To(Equal("$.\"1\"[0].\"4\"[0]")) // type_json_path
+
+		// Verify field indexes exist
+		g.Expect(testMessageIndex).To(HaveKey("3")) // field_name_index
+		g.Expect(testMessageIndex).To(HaveKey("4")) // field_number_index
+
+		// Verify field "3" is the enum type index (may be empty)
+		if enumTypeData, exists := resultMap["3"]; exists {
+			_, ok = enumTypeData.(map[string]interface{})
+			g.Expect(ok).To(BeTrue())
+		}
 	})
 
 	t.Run("with nested types", func(t *testing.T) {
@@ -207,25 +255,33 @@ func TestToJsonTree(t *testing.T) {
 		result, err := ToJsonTree(fileDescriptorSet)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		typeIndexData, ok := result[2].(map[string]TypeIndex)
+		resultMap, ok := result.(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
+		typeIndexData, ok := resultMap["2"].(map[string]interface{})
 		g.Expect(ok).To(BeTrue())
 
 		// Verify outer message
 		g.Expect(typeIndexData).To(HaveKey(".nested.OuterMessage"))
-		outerIndex := typeIndexData[".nested.OuterMessage"]
-		g.Expect(outerIndex[0]).To(Equal(11)) // TYPE_MESSAGE
+		outerIndex, ok := typeIndexData[".nested.OuterMessage"].(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
+		g.Expect(outerIndex["1"]).To(Equal("$.\"1\"[0]"))          // file_json_path
+		g.Expect(outerIndex["2"]).To(Equal("$.\"1\"[0].\"4\"[0]")) // type_json_path
 
 		// Verify nested message
 		g.Expect(typeIndexData).To(HaveKey(".nested.OuterMessage.InnerMessage"))
-		innerMsgIndex := typeIndexData[".nested.OuterMessage.InnerMessage"]
-		g.Expect(innerMsgIndex[0]).To(Equal(11)) // TYPE_MESSAGE
-		g.Expect(innerMsgIndex[2]).To(Equal("$[1].\"1\"[0].\"4\"[0].\"3\"[0]"))
+		innerMsgIndex, ok := typeIndexData[".nested.OuterMessage.InnerMessage"].(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
+		g.Expect(innerMsgIndex["1"]).To(Equal("$.\"1\"[0]"))                   // file_json_path
+		g.Expect(innerMsgIndex["2"]).To(Equal("$.\"1\"[0].\"4\"[0].\"3\"[0]")) // type_json_path
 
-		// Verify nested enum
-		g.Expect(typeIndexData).To(HaveKey(".nested.OuterMessage.InnerEnum"))
-		innerEnumIndex := typeIndexData[".nested.OuterMessage.InnerEnum"]
-		g.Expect(innerEnumIndex[0]).To(Equal(14)) // TYPE_ENUM
-		g.Expect(innerEnumIndex[2]).To(Equal("$[1].\"1\"[0].\"4\"[0].\"4\"[0]"))
+		// Verify field "3" is the enum type index and contains nested enum
+		enumTypeIndexData, ok := resultMap["3"].(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
+		g.Expect(enumTypeIndexData).To(HaveKey(".nested.OuterMessage.InnerEnum"))
+		innerEnumIndex, ok := enumTypeIndexData[".nested.OuterMessage.InnerEnum"].(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
+		g.Expect(innerEnumIndex["1"]).To(Equal("$.\"1\"[0]"))                   // file_json_path
+		g.Expect(innerEnumIndex["2"]).To(Equal("$.\"1\"[0].\"4\"[0].\"4\"[0]")) // type_json_path
 	})
 
 	t.Run("with enum types", func(t *testing.T) {
@@ -256,15 +312,21 @@ func TestToJsonTree(t *testing.T) {
 		result, err := ToJsonTree(fileDescriptorSet)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		typeIndexData, ok := result[2].(map[string]TypeIndex)
+		resultMap, ok := result.(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
+		enumTypeIndexData, ok := resultMap["3"].(map[string]interface{})
 		g.Expect(ok).To(BeTrue())
 
 		// Verify enum type
-		g.Expect(typeIndexData).To(HaveKey(".enums.Status"))
-		statusIndex := typeIndexData[".enums.Status"]
-		g.Expect(statusIndex[0]).To(Equal(14)) // TYPE_ENUM
-		g.Expect(statusIndex[1]).To(Equal("$[1].\"1\"[0]"))
-		g.Expect(statusIndex[2]).To(Equal("$[1].\"1\"[0].\"5\"[0]"))
+		g.Expect(enumTypeIndexData).To(HaveKey(".enums.Status"))
+		statusIndex, ok := enumTypeIndexData[".enums.Status"].(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
+		g.Expect(statusIndex["1"]).To(Equal("$.\"1\"[0]"))          // file_json_path
+		g.Expect(statusIndex["2"]).To(Equal("$.\"1\"[0].\"5\"[0]")) // type_json_path
+
+		// Verify enum indexes exist
+		g.Expect(statusIndex).To(HaveKey("3")) // enum_name_index
+		g.Expect(statusIndex).To(HaveKey("4")) // enum_number_index
 	})
 
 	t.Run("with multiple files", func(t *testing.T) {
@@ -294,25 +356,31 @@ func TestToJsonTree(t *testing.T) {
 		result, err := ToJsonTree(fileDescriptorSet)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		typeIndexData, ok := result[2].(map[string]TypeIndex)
+		resultMap, ok := result.(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
+		typeIndexData, ok := resultMap["2"].(map[string]interface{})
 		g.Expect(ok).To(BeTrue())
 
 		// Verify both messages exist with different file paths
 		g.Expect(typeIndexData).To(HaveKey(".pkg1.Message1"))
 		g.Expect(typeIndexData).To(HaveKey(".pkg2.Message2"))
 
-		message1Index := typeIndexData[".pkg1.Message1"]
-		message2Index := typeIndexData[".pkg2.Message2"]
+		message1Index, ok := typeIndexData[".pkg1.Message1"].(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
+		message2Index, ok := typeIndexData[".pkg2.Message2"].(map[string]interface{})
+		g.Expect(ok).To(BeTrue())
 
-		g.Expect(message1Index[1]).To(Equal("$[1].\"1\"[0]")) // First file
-		g.Expect(message2Index[1]).To(Equal("$[1].\"1\"[1]")) // Second file
+		g.Expect(message1Index["1"]).To(Equal("$.\"1\"[0]"))          // file_json_path - First file
+		g.Expect(message1Index["2"]).To(Equal("$.\"1\"[0].\"4\"[0]")) // type_json_path - First file, first message
+		g.Expect(message2Index["1"]).To(Equal("$.\"1\"[1]"))          // file_json_path - Second file
+		g.Expect(message2Index["2"]).To(Equal("$.\"1\"[1].\"4\"[0]")) // type_json_path - Second file, first message
 	})
 
 	t.Run("with nil FileDescriptorSet", func(t *testing.T) {
 		result, err := ToJsonTree(nil)
 		g.Expect(err).To(HaveOccurred())
 		g.Expect(err.Error()).To(ContainSubstring("cannot be nil"))
-		g.Expect(result).To(Equal([3]interface{}{}))
+		g.Expect(result).To(BeNil())
 	})
 }
 

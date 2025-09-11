@@ -40,7 +40,6 @@ SOURCE protobuf-accessors.sql;
 
 2. Install optional JSON features:
 ```sql
-SOURCE protobuf-descriptor.sql;
 SOURCE protobuf-json.sql;
 ```
 
@@ -314,7 +313,7 @@ SELECT pb_message_get_int32_field(@first_phone, 2, 0) AS phone_type;
 #### Processing Protobuf Schemas
 ```sql
 -- Generate schema JSON from binary FileDescriptorSet
-SET @schema_json = pb_build_descriptor_set_json(
+SET @schema_json = pb_descriptor_set_build(
     @binary_descriptor_set  -- Binary data from protoc --descriptor_set_out
 );
 
@@ -340,7 +339,7 @@ xxd -p -c0 schema.binpb
 #### Basic Message to JSON
 ```sql
 -- Convert message to JSON (requires schema JSON)
-SELECT pb_message_to_json(@schema_json, '.Person', pb_data) AS json_output;
+SELECT pb_message_to_json(@schema_json, '.Person', pb_data, NULL, NULL) AS json_output;
 
 -- Example output:
 -- {
@@ -598,9 +597,9 @@ Use bulk operations when possible:
 SELECT pb_message_add_all_repeated_int32_field_elements(pb_data, 4, '[1,2,3,4,5]', TRUE);
 
 -- Inefficient: Add elements one by one
-SET @msg = pb_message_add_repeated_int32_field_element(pb_data, 4, 1);
-SET @msg = pb_message_add_repeated_int32_field_element(@msg, 4, 2);
-SET @msg = pb_message_add_repeated_int32_field_element(@msg, 4, 3);
+SET @msg = pb_message_add_repeated_int32_field_element(pb_data, 4, 1, FALSE);
+SET @msg = pb_message_add_repeated_int32_field_element(@msg, 4, 2, FALSE);
+SET @msg = pb_message_add_repeated_int32_field_element(@msg, 4, 3, FALSE);
 -- ... etc
 ```
 
@@ -685,7 +684,7 @@ END IF;
 #### JSON Conversion Errors
 ```sql
 -- Verify message type name (include leading dot)
-SELECT pb_message_to_json(@schema_json, '.MessageTypeName', pb_data);
+SELECT pb_message_to_json(@schema_json, '.MessageTypeName', pb_data, NULL, NULL);
 ```
 
 #### Wire JSON Format Issues
@@ -705,7 +704,7 @@ SELECT JSON_PRETTY(pb_message_to_wire_json(pb_data));
 SELECT JSON_PRETTY(pb_message_to_wire_json(pb_data)) AS wire_format;
 
 -- Convert to readable JSON (if schema available)
-SELECT JSON_PRETTY(pb_message_to_json(@schema_json, '.MessageType', pb_data)) AS readable_json;
+SELECT JSON_PRETTY(pb_message_to_json(@schema_json, '.MessageType', pb_data, NULL, NULL)) AS readable_json;
 ```
 
 #### Check Message Structure
@@ -714,7 +713,7 @@ SELECT JSON_PRETTY(pb_message_to_json(@schema_json, '.MessageType', pb_data)) AS
 SELECT DISTINCT 
     JSON_UNQUOTE(JSON_EXTRACT(field_data, '$[0].n')) AS field_number
 FROM (
-    SELECT JSON_EXTRACT(pb_message_to_wire_json(pb_data), CONCAT('$."', field_key, '"')) AS field_data
+    SELECT JSON_EXTRACT(pb_message_to_wire_json(pb_data), CONCAT('$.', JSON_QUOTE(field_key))) AS field_data
     FROM (
         SELECT field_key 
         FROM JSON_TABLE(

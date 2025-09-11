@@ -46,8 +46,8 @@ END`
 	_, ok = beginStmt.Body[0].(*sqlflowparser.DeclareStmt)
 	g.Expect(ok).To(BeTrue(), "First statement should be DeclareStmt, got %T", beginStmt.Body[0])
 
-	_, ok = beginStmt.Body[1].(*sqlflowparser.GenericStmt)
-	g.Expect(ok).To(BeTrue(), "Second statement should be GenericStmt, got %T", beginStmt.Body[1])
+	_, ok = beginStmt.Body[1].(*sqlflowparser.SetVariableStmt)
+	g.Expect(ok).To(BeTrue(), "Second statement should be SetVariableStmt, got %T", beginStmt.Body[1])
 }
 
 func TestSimpleDeclareParsing(t *testing.T) {
@@ -80,8 +80,8 @@ END`
 			_, ok := beginStmt.Body[i].(*sqlflowparser.DeclareStmt)
 			g.Expect(ok).To(BeTrue(), "Statement %d should be DeclareStmt, got %T", i, beginStmt.Body[i])
 		} else {
-			_, ok := beginStmt.Body[i].(*sqlflowparser.GenericStmt)
-			g.Expect(ok).To(BeTrue(), "Statement %d should be GenericStmt, got %T", i, beginStmt.Body[i])
+			_, ok := beginStmt.Body[i].(*sqlflowparser.SetVariableStmt)
+			g.Expect(ok).To(BeTrue(), "Statement %d should be SetVariableStmt, got %T", i, beginStmt.Body[i])
 		}
 	}
 }

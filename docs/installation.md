@@ -22,10 +22,7 @@
 3. **Install optional components**
    ```bash
    # For JSON conversion support.
-   mysql -u your_username -p your_database < build/protobuf-json.sql  # depends on protobuf.sql
-
-   # For dynamic schema loading from FileDescriptorSet binary.
-   mysql -u your_username -p your_database < build/protobuf-descriptor.sql  # depends on protobuf.sql and protobuf-json.sql
+   mysql -u your_username -p your_database < build/protobuf-json.sql  # depends on protobuf.sql (includes schema loading)
    ```
 
 ## Component Dependencies
@@ -33,8 +30,7 @@
 The installation components have the following dependency chain:
 
 - `protobuf.sql` - Core wire format parsing (required)
-- `protobuf-json.sql` - JSON conversion (depends on protobuf.sql)
-- `protobuf-descriptor.sql` - Schema loading (depends on protobuf.sql and protobuf-json.sql)
+- `protobuf-json.sql` - JSON conversion and schema loading (depends on protobuf.sql)
 
 ## Important Installation Notes
 

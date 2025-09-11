@@ -4,10 +4,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/eiiches/mysql-protobuf-functions/internal/protoreflectutils"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -35,42 +35,20 @@ func Marshal(m proto.Message) ([]byte, error) {
 	return json.Marshal(result)
 }
 
-var wellKnownTypes = map[string]func(protoreflect.Message) (interface{}, error){
-	"google.protobuf.Timestamp":   marshalWellKnownType,
-	"google.protobuf.Duration":    marshalWellKnownType,
-	"google.protobuf.Struct":      marshalWellKnownType,
-	"google.protobuf.ListValue":   marshalWellKnownType,
-	"google.protobuf.Value":       marshalWellKnownType,
-	"google.protobuf.Empty":       marshalWellKnownType,
-	"google.protobuf.FieldMask":   marshalWellKnownType,
-	"google.protobuf.DoubleValue": marshalWellKnownType,
-	"google.protobuf.FloatValue":  marshalWellKnownType,
-	"google.protobuf.Int64Value":  marshal64BitWrapper,
-	"google.protobuf.UInt64Value": marshal64BitWrapper,
-	"google.protobuf.Int32Value":  marshalWellKnownType,
-	"google.protobuf.UInt32Value": marshalWellKnownType,
-	"google.protobuf.BoolValue":   marshalWellKnownType,
-	"google.protobuf.StringValue": marshalWellKnownType,
-	"google.protobuf.BytesValue":  marshalWellKnownType,
-}
-
 func marshalMessage(msg protoreflect.Message) (interface{}, error) {
 	if msg == nil {
 		return nil, nil
-	}
-
-	fullName := string(msg.Descriptor().FullName())
-
-	// Handle well-known types
-	if handler, isWellKnown := wellKnownTypes[fullName]; isWellKnown {
-		return handler(msg)
 	}
 
 	result := make(map[string]interface{})
 	fields := msg.Descriptor().Fields()
 
 	for field := range protoreflectutils.Iterate(fields) {
-		if field.HasPresence() && !msg.Has(field) {
+		if !msg.Has(field) {
+			// Proto2: any field that is not explicitly set
+			// Proto3: fields that are field presence tracked and not set
+			// Proto3: fields that are explicitly set to their default values
+			// Proto2,Proto3: repeated fields and map fields that are empty
 			continue
 		}
 
@@ -178,9 +156,11 @@ func marshalSingularField(value protoreflect.Value, field protoreflect.FieldDesc
 	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
 		return value.Uint(), nil
 	case protoreflect.FloatKind:
-		return float32(value.Float()), nil
+		bits := math.Float32bits(float32(value.Float()))
+		return fmt.Sprintf("binary32:0x%08x", bits), nil
 	case protoreflect.DoubleKind:
-		return value.Float(), nil
+		bits := math.Float64bits(value.Float())
+		return fmt.Sprintf("binary64:0x%016x", bits), nil
 	case protoreflect.StringKind:
 		return value.String(), nil
 	case protoreflect.BytesKind:
@@ -196,46 +176,4 @@ func marshalSingularField(value protoreflect.Value, field protoreflect.FieldDesc
 	default:
 		return nil, fmt.Errorf("unsupported kind: %v", field.Kind())
 	}
-}
-
-// marshalWellKnownType marshals most well-known types using protojson for correct ProtoJSON format
-func marshalWellKnownType(msg protoreflect.Message) (interface{}, error) {
-	// Use protojson to get correct ProtoJSON format
-	jsonBytes, err := protojson.Marshal(msg.Interface())
-	if err != nil {
-		return nil, err
-	}
-
-	var result interface{}
-	err = json.Unmarshal(jsonBytes, &result)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
-// marshal64BitWrapper handles Int64Value and UInt64Value to return numbers instead of strings
-func marshal64BitWrapper(msg protoreflect.Message) (interface{}, error) {
-	fullName := string(msg.Descriptor().FullName())
-
-	// Get the value field (field number 1)
-	valueField := msg.Descriptor().Fields().ByNumber(1)
-	if valueField == nil {
-		return nil, fmt.Errorf("wrapper type missing value field")
-	}
-
-	if !msg.Has(valueField) {
-		// Return the zero value as a number
-		if fullName == "google.protobuf.Int64Value" {
-			return int64(0), nil
-		}
-		return uint64(0), nil
-	}
-
-	value := msg.Get(valueField)
-	if fullName == "google.protobuf.Int64Value" {
-		return value.Int(), nil
-	}
-	return value.Uint(), nil
 }

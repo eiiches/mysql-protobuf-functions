@@ -111,7 +111,7 @@ Input <- _ stmt:Statement EOF {
 }
 
 // Statement types - focus on control flow and procedure/function boundaries
-Statement <- label:Label? !ELSEIF !ELSE !END !UNTIL !WHEN stmt:(CreateProcedureStmt / CreateFunctionStmt / DeclareStmt / IfStmt / WhileStmt / LoopStmt / RepeatStmt / CaseStmt / BeginStmt / LeaveStmt / IterateStmt / ReturnStmt / GenericStmt) _ {
+Statement <- label:Label? !ELSEIF !ELSE !END !UNTIL !WHEN stmt:(CreateProcedureStmt / CreateFunctionStmt / DeclareStmt / IfStmt / WhileStmt / LoopStmt / RepeatStmt / CaseStmt / BeginStmt / LeaveStmt / IterateStmt / ReturnStmt / SetVariableStmt / GenericStmt) _ {
     if label != nil {
 		stmt.(StatementAST).SetLabel(label.(string))
     }
@@ -162,6 +162,11 @@ CONTAINS <- "CONTAINS"i ![a-zA-Z0-9_]
 SECURITY <- "SECURITY"i ![a-zA-Z0-9_]
 DEFINER <- "DEFINER"i ![a-zA-Z0-9_]
 INVOKER <- "INVOKER"i ![a-zA-Z0-9_]
+GLOBAL <- "GLOBAL"i ![a-zA-Z0-9_]
+SESSION <- "SESSION"i ![a-zA-Z0-9_]
+PERSIST <- "PERSIST"i ![a-zA-Z0-9_]
+PERSIST_ONLY <- "PERSIST_ONLY"i ![a-zA-Z0-9_]
+SET <- "SET"i ![a-zA-Z0-9_]
 
 // CREATE PROCEDURE
 CreateProcedureStmt <- CREATE _ PROCEDURE _ name:IdentifierName _ "(" _ params:ParameterList? _ ")" _ body:Statement {
@@ -210,7 +215,7 @@ ElseClause <- ELSE _ stmts:StatementList _ {
 }
 
 // WHILE statement
-WhileStmt <- WHILE _ condition:ConsumeUntilDO _ DO _ body:StatementList _ END _ WHILE {
+WhileStmt <- WHILE _ condition:ConsumeUntilDO _ DO _ body:StatementList _ END _ WHILE _ endLabel:IdentifierName? {
     return &WhileStmt{
         BaseStatement: makeBaseStatement(c),
         Condition:     condition.(string),
@@ -219,7 +224,7 @@ WhileStmt <- WHILE _ condition:ConsumeUntilDO _ DO _ body:StatementList _ END _ 
 }
 
 // LOOP statement
-LoopStmt <- LOOP _ body:StatementList _ END _ LOOP {
+LoopStmt <- LOOP _ body:StatementList _ END _ LOOP _ endLabel:IdentifierName? {
     return &LoopStmt{
         BaseStatement: makeBaseStatement(c),
         Body:          toStatementList(body),
@@ -227,7 +232,7 @@ LoopStmt <- LOOP _ body:StatementList _ END _ LOOP {
 }
 
 // REPEAT statement
-RepeatStmt <- REPEAT _ body:StatementList _ UNTIL _ condition:ConsumeUntilEND _ END _ REPEAT {
+RepeatStmt <- REPEAT _ body:StatementList _ UNTIL _ condition:ConsumeUntilEND _ END _ REPEAT _ endLabel:IdentifierName? {
     return &RepeatStmt{
         BaseStatement: makeBaseStatement(c),
         Body:          toStatementList(body),
@@ -374,6 +379,49 @@ DeclareStmt <- DECLARE _ text:ConsumeUntilSemicolon {
     }, nil
 }
 
+// SET variable statement (only for variable assignments, not SET NAMES/CHARSET)
+SetVariableStmt <- SET _ assignments:VariableAssignmentList {
+    return &SetVariableStmt{
+        BaseStatement: makeBaseStatement(c),
+        Assignments:   assignments.([]VariableAssignment),
+    }, nil
+}
+
+// List of variable assignments (comma-separated)
+VariableAssignmentList <- first:VariableAssignmentItem rest:(_ "," _ VariableAssignmentItem)* {
+    assignments := []VariableAssignment{first.(VariableAssignment)}
+    for _, item := range rest.([]interface{}) {
+        assignments = append(assignments, item.([]interface{})[3].(VariableAssignment))
+    }
+    return assignments, nil
+}
+
+// Single variable assignment
+VariableAssignmentItem <- scope:ScopeKeyword? _ variable:VariableReference _ operator:AssignmentOperator _ value:ConsumeUntilCommaOrSemicolon {
+    return VariableAssignment{
+        ScopeKeyword: toString(scope),
+        VariableRef:  toString(variable),
+        Operator:     toString(operator),
+        Value:        toString(value),
+    }, nil
+}
+
+// Scope keywords that appear before variable names
+ScopeKeyword <- (GLOBAL / SESSION / PERSIST_ONLY / PERSIST) {
+    return strings.ToUpper(string(c.text)), nil
+}
+
+// Variable reference patterns (preserving original syntax)
+VariableReference <- "@@" (GLOBAL / SESSION / PERSIST) "." IdentifierName { return string(c.text), nil } /
+                    "@@" IdentifierName { return string(c.text), nil } /
+                    "@" IdentifierName { return string(c.text), nil } /
+                    IdentifierName { return string(c.text), nil }
+
+// Assignment operators
+AssignmentOperator <- ":=" / "=" {
+    return string(c.text), nil
+}
+
 // Generic SQL statement (anything we don't specifically parse)
 GenericStmt <- kind:IdentifierName _ text:ConsumeUntilSemicolon {
     return &GenericStmt{
@@ -396,6 +444,9 @@ ConsumeUntilDO <- (QuotedString / Comment / Whitespace / "(" _ (SQLContentAny _)
 	return strings.TrimSpace(string(c.text)), nil
 }
 ConsumeUntilWHEN <- (QuotedString / Comment / Whitespace / "(" _ (SQLContentAny _)* ")" / !"WHEN" !"(" !")" .)* {
+	return strings.TrimSpace(string(c.text)), nil
+}
+ConsumeUntilCommaOrSemicolon <- (QuotedString / Comment / Whitespace / "(" _ (SQLContentAny _)* ")" / !"," !";" !"(" !")" .)* {
 	return strings.TrimSpace(string(c.text)), nil
 }
 

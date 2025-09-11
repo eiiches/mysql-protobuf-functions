@@ -18,71 +18,73 @@ import (
 func TestMarshalBasicTypes(t *testing.T) {
 	g := gomega.NewWithT(t)
 
-	// Test Timestamp
+	// Test Timestamp - should now use field numbers
 	ts := &timestamppb.Timestamp{Seconds: 1234567890, Nanos: 123456789}
 	result, err := Marshal(ts)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
-	var timestampStr string
-	err = json.Unmarshal(result, &timestampStr)
+	var timestampObj map[string]interface{}
+	err = json.Unmarshal(result, &timestampObj)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
-	g.Expect(timestampStr).To(gomega.Equal("2009-02-13T23:31:30.123456789Z"))
+	g.Expect(timestampObj["1"]).To(gomega.Equal(float64(1234567890))) // seconds field
+	g.Expect(timestampObj["2"]).To(gomega.Equal(float64(123456789)))  // nanos field
 
-	// Test Duration
+	// Test Duration - should now use field numbers
 	dur := &durationpb.Duration{Seconds: 3600, Nanos: 500000000}
 	result, err = Marshal(dur)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
-	var durationStr string
-	err = json.Unmarshal(result, &durationStr)
+	var durationObj map[string]interface{}
+	err = json.Unmarshal(result, &durationObj)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
-	g.Expect(durationStr).To(gomega.Equal("3600.500s"))
+	g.Expect(durationObj["1"]).To(gomega.Equal(float64(3600)))      // seconds field
+	g.Expect(durationObj["2"]).To(gomega.Equal(float64(500000000))) // nanos field
 
-	// Test Empty
+	// Test Empty - empty message should still be empty
 	empty := &emptypb.Empty{}
 	result, err = Marshal(empty)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 	g.Expect(string(result)).To(gomega.Equal("{}"))
 
-	// Test StringValue
+	// Test StringValue - should now use field numbers
 	str := &wrapperspb.StringValue{Value: "hello world"}
 	result, err = Marshal(str)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
-	var strVal string
-	err = json.Unmarshal(result, &strVal)
+	var strObj map[string]interface{}
+	err = json.Unmarshal(result, &strObj)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
-	g.Expect(strVal).To(gomega.Equal("hello world"))
+	g.Expect(strObj["1"]).To(gomega.Equal("hello world")) // value field
 
-	// Test Int64Value
+	// Test Int64Value - should now use field numbers
 	int64Val := &wrapperspb.Int64Value{Value: 9223372036854775807}
 	result, err = Marshal(int64Val)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
-	var int64Result float64
-	err = json.Unmarshal(result, &int64Result)
+	var int64Obj map[string]interface{}
+	err = json.Unmarshal(result, &int64Obj)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
-	g.Expect(int64Result).To(gomega.Equal(float64(9223372036854775807)))
+	g.Expect(int64Obj["1"]).To(gomega.Equal(float64(9223372036854775807))) // value field
 
-	// Test BoolValue
+	// Test BoolValue - should now use field numbers
 	boolVal := &wrapperspb.BoolValue{Value: true}
 	result, err = Marshal(boolVal)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
-	var boolResult bool
-	err = json.Unmarshal(result, &boolResult)
+	var boolObj map[string]interface{}
+	err = json.Unmarshal(result, &boolObj)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
-	g.Expect(boolResult).To(gomega.Equal(true))
+	g.Expect(boolObj["1"]).To(gomega.Equal(true)) // value field
 
-	// Test FieldMask
+	// Test FieldMask - should now use field numbers
 	fm := &fieldmaskpb.FieldMask{Paths: []string{"user.name", "user.email"}}
 	result, err = Marshal(fm)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
-	var fmStr string
-	err = json.Unmarshal(result, &fmStr)
+	var fmObj map[string]interface{}
+	err = json.Unmarshal(result, &fmObj)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
-	g.Expect(fmStr).To(gomega.Equal("user.name,user.email"))
+	g.Expect(fmObj["1"]).To(gomega.Equal([]interface{}{"user.name", "user.email"})) // paths field
 }
 
 func TestMarshalStruct(t *testing.T) {
@@ -103,10 +105,11 @@ func TestMarshalStruct(t *testing.T) {
 	err = json.Unmarshal(result, &jsonObj)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
-	// The struct should be marshaled directly as an object in ProtoJSON format
-	g.Expect(jsonObj["name"]).To(gomega.Equal("test"))
-	g.Expect(jsonObj["count"]).To(gomega.Equal(float64(42)))
-	g.Expect(jsonObj["active"]).To(gomega.Equal(true))
+	// The struct should now be marshaled using field numbers (field 1 is the fields map)
+	fieldsMap := jsonObj["1"].(map[string]interface{})
+	g.Expect(fieldsMap["name"]).To(gomega.BeAssignableToTypeOf(map[string]interface{}{}))
+	g.Expect(fieldsMap["count"]).To(gomega.BeAssignableToTypeOf(map[string]interface{}{}))
+	g.Expect(fieldsMap["active"]).To(gomega.BeAssignableToTypeOf(map[string]interface{}{}))
 }
 
 func TestMarshalListValue(t *testing.T) {
@@ -124,42 +127,46 @@ func TestMarshalListValue(t *testing.T) {
 	result, err := Marshal(listValue)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
-	var jsonArray []interface{}
-	err = json.Unmarshal(result, &jsonArray)
+	var jsonObj map[string]interface{}
+	err = json.Unmarshal(result, &jsonObj)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
-	// The list should be marshaled directly as an array in ProtoJSON format
-	g.Expect(jsonArray).To(gomega.Equal([]interface{}{
-		"string",
-		float64(42),
-		true,
-		nil,
-	}))
+	// The list should now be marshaled using field numbers (field 1 is the values array)
+	valuesArray := jsonObj["1"].([]interface{})
+	g.Expect(len(valuesArray)).To(gomega.Equal(4))
+	// Each element should be a Value message with its own field structure
+	for _, elem := range valuesArray {
+		g.Expect(elem).To(gomega.BeAssignableToTypeOf(map[string]interface{}{}))
+	}
 }
 
 func TestMarshalValue(t *testing.T) {
 	g := gomega.NewWithT(t)
 
-	// Test different Value types
+	// Test different Value types - now using field numbers
 	testCases := []struct {
-		name     string
-		value    *structpb.Value
-		expected interface{}
+		name          string
+		value         *structpb.Value
+		expectedField string
+		expectedValue interface{}
 	}{
 		{
-			name:     "number value",
-			value:    structpb.NewNumberValue(3.14),
-			expected: 3.14,
+			name:          "number value",
+			value:         structpb.NewNumberValue(3.14),
+			expectedField: "2", // number_value is field 2
+			expectedValue: "binary64:0x40091eb851eb851f",
 		},
 		{
-			name:     "string value",
-			value:    structpb.NewStringValue("hello"),
-			expected: "hello",
+			name:          "string value",
+			value:         structpb.NewStringValue("hello"),
+			expectedField: "3", // string_value is field 3
+			expectedValue: "hello",
 		},
 		{
-			name:     "bool value",
-			value:    structpb.NewBoolValue(true),
-			expected: true,
+			name:          "bool value",
+			value:         structpb.NewBoolValue(true),
+			expectedField: "4", // bool_value is field 4
+			expectedValue: true,
 		},
 	}
 
@@ -168,10 +175,10 @@ func TestMarshalValue(t *testing.T) {
 			result, err := Marshal(tc.value)
 			g.Expect(err).ToNot(gomega.HaveOccurred())
 
-			var jsonValue interface{}
-			err = json.Unmarshal(result, &jsonValue)
+			var jsonObj map[string]interface{}
+			err = json.Unmarshal(result, &jsonObj)
 			g.Expect(err).ToNot(gomega.HaveOccurred())
-			g.Expect(jsonValue).To(gomega.Equal(tc.expected))
+			g.Expect(jsonObj[tc.expectedField]).To(gomega.Equal(tc.expectedValue))
 		})
 	}
 
@@ -181,10 +188,11 @@ func TestMarshalValue(t *testing.T) {
 		result, err := Marshal(nullValue)
 		g.Expect(err).ToNot(gomega.HaveOccurred())
 
-		var jsonValue interface{}
-		err = json.Unmarshal(result, &jsonValue)
+		var jsonObj map[string]interface{}
+		err = json.Unmarshal(result, &jsonObj)
 		g.Expect(err).ToNot(gomega.HaveOccurred())
-		g.Expect(jsonValue).To(gomega.BeNil())
+		// null_value is field 1 with enum value 0
+		g.Expect(jsonObj["1"]).To(gomega.Equal(float64(0)))
 	})
 }
 

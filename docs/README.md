@@ -54,7 +54,7 @@ WHERE user_id = 123;
 | **Write Fields** | `pb_message_set_int32_field(data, 2, 25)` | Update specific fields safely |
 | **Repeated Fields** | `pb_message_add_repeated_string_field_element(data, 3, 'item')` | Manage lists/arrays |
 | **Bulk Operations** | `pb_message_add_all_repeated_int32_field_elements(data, 4, '[1,2,3]')` | Efficient batch updates |
-| **JSON Conversion** | `pb_message_to_json(schema_json, '.Type', data)` | Human-readable JSON with schema |
+| **JSON Conversion** | `pb_message_to_json(schema_json, '.Type', data, NULL, NULL)` | Human-readable JSON with schema |
 | **Wire Format** | `pb_message_to_wire_json(data)` | Performance optimization for multiple operations |
 
 ## When to Use This Library
@@ -88,7 +88,6 @@ WHERE user_id = 123;
 
 3. **Install optional components** (for JSON conversion):
    ```bash
-   mysql -u your_username -p your_database < build/protobuf-descriptor.sql
    mysql -u your_username -p your_database < build/protobuf-json.sql
    ```
 
@@ -132,23 +131,23 @@ Examples:
 
 There are multiple ways to load protobuf schemas:
 
-**Method 1: Using pb_build_descriptor_set_json**
+**Method 1: Using pb_descriptor_set_build**
 ```sql
 -- Generate your protobuf descriptor set first:
 -- $ protoc --descriptor_set_out=/dev/stdout --include_imports person.proto | xxd -p -c0
 
 -- Convert binary descriptor set to JSON format
-SET @schema_json = pb_build_descriptor_set_json(_binary X'0aff010a1f676f6f676c652f...');
+SET @schema_json = pb_descriptor_set_build(_binary X'0aff010a1f676f6f676c652f...');
 
 -- Save to variable or table for reuse
 CREATE TABLE schema_registry (schema_name VARCHAR(255) PRIMARY KEY, schema_json JSON);
 INSERT INTO schema_registry VALUES ('person_schema', @schema_json);
 ```
 
-**Method 2: Using protoc-gen-descriptor_set_json**
+**Method 2: Using protoc-gen-mysql**
 ```bash
 # Generate SQL function containing schema JSON
-protoc --descriptor_set_json_out=. --descriptor_set_json_opt=name=person_schema person.proto
+protoc --mysql_out=. --mysql_opt=name=person_schema person.proto
 
 # Load into MySQL
 mysql -u your_username -p your_database < person_schema.sql
@@ -158,7 +157,7 @@ mysql -u your_username -p your_database < person_schema.sql
 
 ```sql
 -- Convert protobuf message to human-readable JSON
-SELECT pb_message_to_json(@schema_json, '.Person', pb_data) AS person_json
+SELECT pb_message_to_json(@schema_json, '.Person', pb_data, NULL, NULL) AS person_json
 FROM example_table;
 
 -- Result:

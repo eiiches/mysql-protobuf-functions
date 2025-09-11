@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+message Nested {
+  string name = 1;
+  int32 value = 2;
+}
+
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_ACTIVE = 1;
+  STATUS_INACTIVE = 2;
+}
+
+message NormalFields {
+  double double_field = 1;
+  float float_field = 2;
+  int32 int32_field = 3;
+  int64 int64_field = 4;
+  uint32 uint32_field = 5;
+  uint64 uint64_field = 6;
+  sint32 sint32_field = 7;
+  sint64 sint64_field = 8;
+  fixed32 fixed32_field = 9;
+  fixed64 fixed64_field = 10;
+  sfixed32 sfixed32_field = 11;
+  sfixed64 sfixed64_field = 12;
+  bool bool_field = 13;
+  string string_field = 14;
+  bytes bytes_field = 15;
+  Status enum_field = 16;
+  Nested message_field = 17;
+}
+
+message OptionalFields {
+  optional double optional_double_field = 1;
+  optional float optional_float_field = 2;
+  optional int32 optional_int32_field = 3;
+  optional int64 optional_int64_field = 4;
+  optional uint32 optional_uint32_field = 5;
+  optional uint64 optional_uint64_field = 6;
+  optional sint32 optional_sint32_field = 7;
+  optional sint64 optional_sint64_field = 8;
+  optional fixed32 optional_fixed32_field = 9;
+  optional fixed64 optional_fixed64_field = 10;
+  optional sfixed32 optional_sfixed32_field = 11;
+  optional sfixed64 optional_sfixed64_field = 12;
+  optional bool optional_bool_field = 13;
+  optional string optional_string_field = 14;
+  optional bytes optional_bytes_field = 15;
+  optional Status optional_enum_field = 16;
+  optional Nested optional_message_field = 17;
+}
+
+message RepeatedFields {
+  repeated double repeated_double = 1;
+  repeated float repeated_float = 2;
+  repeated int32 repeated_int32 = 3;
+  repeated int64 repeated_int64 = 4;
+  repeated uint32 repeated_uint32 = 5;
+  repeated uint64 repeated_uint64 = 6;
+  repeated sint32 repeated_sint32 = 7;
+  repeated sint64 repeated_sint64 = 8;
+  repeated fixed32 repeated_fixed32 = 9;
+  repeated fixed64 repeated_fixed64 = 10;
+  repeated sfixed32 repeated_sfixed32 = 11;
+  repeated sfixed64 repeated_sfixed64 = 12;
+  repeated bool repeated_bool = 13;
+  repeated string repeated_string = 14;
+  repeated bytes repeated_bytes = 15;
+  repeated Status repeated_enum = 16;
+  repeated Nested repeated_message = 17;
+}
+
+message MapFields {
+  // Every possible key type
+  map<int32, int32> int32_to_int32_map = 1;
+  map<int64, int32> int64_to_int32_map = 2;
+  map<uint32, int32> uint32_to_int32_map = 3;
+  map<uint64, int32> uint64_to_int32_map = 4;
+  map<sint32, int32> sint32_to_int32_map = 5;
+  map<sint64, int32> sint64_to_int32_map = 6;
+  map<fixed32, int32> fixed32_to_int32_map = 7;
+  map<fixed64, int32> fixed64_to_int32_map = 8;
+  map<sfixed32, int32> sfixed32_to_int32_map = 9;
+  map<sfixed64, int32> sfixed64_to_int32_map = 10;
+  map<bool, int32> bool_to_int32_map = 11;
+  map<string, int32> string_to_int32_map = 12;
+
+  // Every possible value type  
+  map<string, double> string_to_double_map = 13;
+  map<string, float> string_to_float_map = 14;
+  map<string, int64> string_to_int64_map = 15;
+  map<string, uint32> string_to_uint32_map = 16;
+  map<string, uint64> string_to_uint64_map = 17;
+  map<string, sint32> string_to_sint32_map = 18;
+  map<string, sint64> string_to_sint64_map = 19;
+  map<string, fixed32> string_to_fixed32_map = 20;
+  map<string, fixed64> string_to_fixed64_map = 21;
+  map<string, sfixed32> string_to_sfixed32_map = 22;
+  map<string, sfixed64> string_to_sfixed64_map = 23;
+  map<string, bool> string_to_bool_map = 24;
+  map<string, string> string_to_string_map = 25;
+  map<string, bytes> string_to_bytes_map = 26;
+  map<string, Status> string_to_enum_map = 27;
+  map<string, Nested> string_to_message_map = 28;
+}
+
+message OneofFields {
+  oneof choice {
+    double double_field = 1;
+    float float_field = 2;
+    int32 int32_field = 3;
+    int64 int64_field = 4;
+    uint32 uint32_field = 5;
+    uint64 uint64_field = 6;
+    sint32 sint32_field = 7;
+    sint64 sint64_field = 8;
+    fixed32 fixed32_field = 9;
+    fixed64 fixed64_field = 10;
+    sfixed32 sfixed32_field = 11;
+    sfixed64 sfixed64_field = 12;
+    bool bool_field = 13;
+    string string_field = 14;
+    bytes bytes_field = 15;
+    Status enum_field = 16;
+    Nested message_field = 17;
+  }
+}

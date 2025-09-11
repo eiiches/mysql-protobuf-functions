@@ -93,6 +93,10 @@ func main() {
 						Name:  "dry-run",
 						Usage: "Output the comment to stdout instead of posting to GitHub",
 					},
+					&cli.StringSliceFlag{
+						Name:  "exclude-file",
+						Usage: "Exclude files from coverage rate calculation and output (can be repeated)",
+					},
 				},
 				Action: githubCommentAction,
 			},
@@ -569,7 +573,8 @@ func githubCommentAction(ctx context.Context, command *cli.Command) error {
 	}
 
 	// Parse LCOV file
-	summary, err := parseLCOVFile(lcovFile)
+	excludeFiles := command.StringSlice("exclude-file")
+	summary, err := parseLCOVFile(lcovFile, excludeFiles)
 	if err != nil {
 		return fmt.Errorf("failed to parse LCOV file: %w", err)
 	}
@@ -587,12 +592,27 @@ func githubCommentAction(ctx context.Context, command *cli.Command) error {
 	return postGitHubComment(githubToken, repo, prNumber, report)
 }
 
-func parseLCOVFile(filePath string) (*CoverageSummary, error) {
+func parseLCOVFile(filePath string, excludeFiles []string) (*CoverageSummary, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
+
+	// Helper function to check if a file should be excluded
+	shouldExclude := func(filename string) bool {
+		for _, excludePattern := range excludeFiles {
+			// Support both exact matches and simple wildcard patterns
+			if matched, _ := filepath.Match(excludePattern, filename); matched {
+				return true
+			}
+			// Also check basename matching
+			if matched, _ := filepath.Match(excludePattern, filepath.Base(filename)); matched {
+				return true
+			}
+		}
+		return false
+	}
 
 	scanner := bufio.NewScanner(file)
 	summary := &CoverageSummary{}
@@ -616,11 +636,20 @@ func parseLCOVFile(filePath string) (*CoverageSummary, error) {
 			if currentFile != nil {
 				summary.Files = append(summary.Files, *currentFile)
 			}
+			sourceFile := strings.TrimPrefix(line, "SF:")
+			// Skip excluded files
+			if shouldExclude(sourceFile) {
+				currentFile = nil
+				continue
+			}
 			currentFile = &LCOVFile{
-				SourceFile: strings.TrimPrefix(line, "SF:"),
+				SourceFile: sourceFile,
 			}
 		case "FN":
 			// Function definition: FN:line_number,function_name
+			if currentFile == nil {
+				continue // Skip if file is excluded
+			}
 			parts := strings.SplitN(strings.TrimPrefix(line, "FN:"), ",", 2)
 			if len(parts) == 2 {
 				lineNum, _ := strconv.Atoi(parts[0])
@@ -631,6 +660,9 @@ func parseLCOVFile(filePath string) (*CoverageSummary, error) {
 			}
 		case "FNDA":
 			// Function hit data: FNDA:hit_count,function_name
+			if currentFile == nil {
+				continue // Skip if file is excluded
+			}
 			parts := strings.SplitN(strings.TrimPrefix(line, "FNDA:"), ",", 2)
 			if len(parts) == 2 {
 				hitCount, _ := strconv.Atoi(parts[0])
@@ -645,12 +677,21 @@ func parseLCOVFile(filePath string) (*CoverageSummary, error) {
 			}
 		case "FNF":
 			// Functions found
+			if currentFile == nil {
+				continue // Skip if file is excluded
+			}
 			currentFile.FunctionsFound, _ = strconv.Atoi(strings.TrimPrefix(line, "FNF:"))
 		case "FNH":
 			// Functions hit
+			if currentFile == nil {
+				continue // Skip if file is excluded
+			}
 			currentFile.FunctionsHit, _ = strconv.Atoi(strings.TrimPrefix(line, "FNH:"))
 		case "DA":
 			// Line hit data: DA:line_number,hit_count
+			if currentFile == nil {
+				continue // Skip if file is excluded
+			}
 			parts := strings.SplitN(strings.TrimPrefix(line, "DA:"), ",", 2)
 			if len(parts) == 2 {
 				lineNum, _ := strconv.Atoi(parts[0])
@@ -662,9 +703,15 @@ func parseLCOVFile(filePath string) (*CoverageSummary, error) {
 			}
 		case "LF":
 			// Lines found
+			if currentFile == nil {
+				continue // Skip if file is excluded
+			}
 			currentFile.LinesFound, _ = strconv.Atoi(strings.TrimPrefix(line, "LF:"))
 		case "LH":
 			// Lines hit
+			if currentFile == nil {
+				continue // Skip if file is excluded
+			}
 			currentFile.LinesHit, _ = strconv.Atoi(strings.TrimPrefix(line, "LH:"))
 		default:
 			if line == "end_of_record" {

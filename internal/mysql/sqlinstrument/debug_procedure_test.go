@@ -46,9 +46,9 @@ END`
 	_, ok = beginStmt.Body[1].(*sqlflowparser.IfStmt) // IF
 	g.Expect(ok).To(BeTrue(), "Second statement should be IF statement")
 
-	_, ok = beginStmt.Body[2].(*sqlflowparser.GenericStmt) // SET value = ...
-	g.Expect(ok).To(BeTrue(), "Third statement should be SET (GenericStmt)")
+	_, ok = beginStmt.Body[2].(*sqlflowparser.SetVariableStmt) // SET value = ...
+	g.Expect(ok).To(BeTrue(), "Third statement should be SET (SetVariableStmt)")
 
-	_, ok = beginStmt.Body[3].(*sqlflowparser.GenericStmt) // SET tail = ...
-	g.Expect(ok).To(BeTrue(), "Fourth statement should be SET (GenericStmt)")
+	_, ok = beginStmt.Body[3].(*sqlflowparser.SetVariableStmt) // SET tail = ...
+	g.Expect(ok).To(BeTrue(), "Fourth statement should be SET (SetVariableStmt)")
 }

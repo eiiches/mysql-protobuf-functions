@@ -17,6 +17,8 @@ This is a MySQL Protocol Buffers (protobuf) functions library that provides comp
 ### Go Development Tools
 - **cmd/protobuf-accessors/**: Code generator for MySQL accessor functions
 - **cmd/mysql-profiler/**: Performance profiling tool that generates flamegraphs from MySQL performance schema
+- **cmd/mysql-coverage/**: SQL code coverage analysis tool with LCOV report generation
+- **cmd/mysql-ftrace/**: Function tracing tool for SQL execution analysis
 - **internal/**: Supporting Go packages for protobuf reflection, MySQL utilities, and testing
 
 ### Key Components
@@ -24,12 +26,14 @@ This is a MySQL Protocol Buffers (protobuf) functions library that provides comp
 - **Type system**: Comprehensive support for all protobuf types (varint, fixed32/64, length-delimited)
 - **JSON conversion**: Protobuf to JSON transformation with schema awareness
 - **Performance profiling**: MySQL performance analysis and flamegraph generation
+- **Coverage analysis**: SQL code coverage tracking with LCOV report generation
+- **Function tracing**: Detailed SQL function execution tracing and analysis
 
 ## Development Commands
 
 ### Build System
 ```bash
-# Build generated SQL files
+# Build generated SQL files and tools
 make build
 
 # Reload all SQL functions into database
@@ -53,8 +57,8 @@ make stop-mysql
 # Open MySQL shell
 make mysql-shell
 
-# Show debug logs
-make show-logs
+# Run a specific MySQL command
+make mysql-run COMMAND='SELECT _pb_util_reinterpret_double_as_uint64(3.14)'
 ```
 
 ### Testing
@@ -78,11 +82,69 @@ make stop-profiling
 make flamegraph
 ```
 
-### Code Generation
+### Coverage Analysis
 ```bash
-# Generate protobuf accessor functions
-go run cmd/protobuf-accessors/main.go > protobuf-accessors.sql
+# Run full coverage analysis with HTML report
+make coverage
+
+# Generate instrumented SQL files
+make coverage-instrument
+
+# Load instrumented functions into database
+make coverage-load
+
+# Run tests with coverage tracking
+make coverage-run
+
+# Generate LCOV coverage report
+make coverage-report-lcov
+
+# Generate HTML coverage report
+make coverage-report-html
 ```
+
+### Function Tracing
+```bash
+# Instrument SQL files for tracing
+make ftrace-instrument
+
+# Initialize tracing schema
+make ftrace-init
+
+# Load instrumented functions for tracing
+make ftrace-load
+
+# Generate trace report after running tests
+make ftrace-report
+```
+
+#### Tracing Example
+
+Complete workflow for tracing SQL function execution:
+
+```bash
+# 1. Load instrumented functions into database (ftrace-instrument and ftrace-init is run automatically)
+make ftrace-load
+
+# 2. Execute some SQL functions to generate trace data
+make mysql-run COMMAND='SELECT _pb_util_reinterpret_double_as_uint64(3.14)'
+
+# 3. Generate and view trace report
+make ftrace-report
+```
+
+For a quick single-command trace:
+
+```bash
+make ftrace-load mysql-run ftrace-report COMMAND='SELECT _pb_util_reinterpret_double_as_uint64(3.14)'
+```
+
+The trace report will show detailed execution flow including:
+- Function call hierarchy
+- Execution times
+- Parameter values
+- Return values
+- SQL statement execution paths
 
 ### Code Formatting
 ```bash
@@ -96,14 +158,19 @@ make lint
 ## Development Workflow
 
 1. **SQL Development**: Core protobuf functionality is implemented in MySQL stored functions/procedures
-2. **Go Tools**: Supporting tools for code generation, testing, and profiling
+2. **Go Tools**: Supporting tools for code generation, testing, profiling, coverage analysis, and tracing
 3. **Code Formatting**: Always run `make format` after modifying Go code to ensure consistent formatting
 4. **Test-Driven**: Tests run against live MySQL instance to verify SQL function behavior
 5. **Performance Focus**: Built-in profiling and flamegraph generation for performance analysis
+6. **Coverage Analysis**: Code coverage tracking for SQL functions with LCOV and HTML reports
+7. **Function Tracing**: Detailed execution tracing for debugging and performance analysis
 
 ## Database Schema
 
-The project creates tables prefixed with `_Proto_` for protobuf schema storage and functions prefixed with `pb_` or `_pb_` for protobuf operations.
+The project creates:
+- Stored functions and procedures prefixed with `pb_` (Public API) or `_pb_` (Private) for protobuf operations
+- `__CoverageEvent` table for SQL code coverage tracking (when using coverage analysis)
+- `__FtraceEvent` table for function tracing data (when using function tracing)
 
 ## Testing Requirements
 
@@ -113,4 +180,5 @@ The project creates tables prefixed with `_Proto_` for protobuf schema storage a
 
 ## Development Best Practices
 
-- Remove any trailing whitespaces after editing SQL files
+- Always run `make format` after editing SQL files
+- Don't use replace_all.

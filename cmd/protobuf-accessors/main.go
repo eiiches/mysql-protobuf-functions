@@ -16,6 +16,7 @@ type WireTypeAccessor struct {
 	SqlType                       string
 	SupportsPacked                bool
 	GetFunction                   string
+	GetElementFunction            string
 	SetFunction                   string
 	AddRepeatedElementFunction    string
 	SetRepeatedElementFunction    string
@@ -53,7 +54,7 @@ func generateRepeatedNumbersAsJson() {
 		{
 			ProtoType:           "int32",
 			SqlType:             "INT",
-			Expr:                "_pb_util_cast_int64_as_int32(_pb_util_reinterpret_uint64_as_int64(uint_value))",
+			Expr:                "_pb_util_reinterpret_uint64_as_int32(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
 			Suffix:              "_as_json_array",
@@ -61,7 +62,7 @@ func generateRepeatedNumbersAsJson() {
 		{
 			ProtoType:           "uint32",
 			SqlType:             "INT UNSIGNED",
-			Expr:                "_pb_util_cast_uint64_as_uint32(uint_value)",
+			Expr:                "_pb_util_reinterpret_uint64_as_uint32(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
 			Suffix:              "_as_json_array",
@@ -101,7 +102,7 @@ func generateRepeatedNumbersAsJson() {
 		{
 			ProtoType:           "sint32",
 			SqlType:             "INT",
-			Expr:                "_pb_util_cast_int64_as_int32(_pb_util_reinterpret_uint64_as_sint64(uint_value))",
+			Expr:                "_pb_util_reinterpret_uint64_as_sint32(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
 			Suffix:              "_as_json_array",
@@ -125,7 +126,7 @@ func generateRepeatedNumbersAsJson() {
 		{
 			ProtoType:           "enum",
 			SqlType:             "INT",
-			Expr:                "_pb_util_reinterpret_uint64_as_int64(uint_value)",
+			Expr:                "_pb_util_reinterpret_uint64_as_int32(uint_value)",
 			PackedUint64Decoder: "_pb_wire_read_varint_as_uint64",
 			WireType:            0,
 			Suffix:              "_as_json_array",
@@ -205,7 +206,7 @@ func generateRepeatedNumbersAsJson() {
 		{
 			ProtoType:           "bytes",
 			SqlType:             "LONGBLOB",
-			Expr:                "TO_BASE64(bytes_value)",
+			Expr:                "_pb_util_to_base64(bytes_value)",
 			PackedUint64Decoder: "",
 			WireType:            2,
 			Suffix:              "_as_json_array",
@@ -221,7 +222,7 @@ func generateRepeatedNumbersAsJson() {
 		{
 			ProtoType:           "message",
 			SqlType:             "LONGBLOB",
-			Expr:                "TO_BASE64(bytes_value)",
+			Expr:                "_pb_util_to_base64(bytes_value)",
 			PackedUint64Decoder: "",
 			WireType:            2,
 			Suffix:              "_as_json_array",
@@ -244,7 +245,7 @@ func generateRepeatedNumbersAsJson() {
 		|
 		|	SET result = JSON_ARRAY();
 		|
-		|	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$."', field_number, '"'));
+		|	SET wire_elements = JSON_EXTRACT(wire_json, CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR))));
 		|	SET wire_element_index = 0;
 		|	SET wire_element_count = JSON_LENGTH(wire_elements);
 		|
@@ -391,7 +392,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 		|BEGIN
 		|	DECLARE value {{.Procedure.SqlType}};
 		|	DECLARE field_count INT;
-		|	CALL {{.Procedure.GetFunction}}({{.Input.Name}}, field_number, repeated_index, value, field_count);
+		|	CALL {{.Procedure.GetElementFunction}}({{.Input.Name}}, field_number, repeated_index, value, field_count);
 		|	RETURN {{.ReturnExpr}};
 		|END $$
 		|
@@ -400,7 +401,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 		|BEGIN
 		|	DECLARE value {{.Procedure.SqlType}};
 		|	DECLARE field_count INT;
-		|	CALL {{.Procedure.GetFunction}}({{.Input.Name}}, field_number, -1, value, field_count);
+		|	CALL {{.Procedure.GetElementFunction}}({{.Input.Name}}, field_number, -1, value, field_count);
 		|	RETURN field_count;
 		|END $$
 	`)
@@ -412,6 +413,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			SqlType:                       "BIGINT UNSIGNED",
 			SupportsPacked:                true,
 			GetFunction:                   fmt.Sprintf("_pb_%s_get_varint_field_as_uint64", input.Kind),
+			GetElementFunction:            fmt.Sprintf("_pb_%s_get_varint_field_as_uint64", input.Kind),
 			SetFunction:                   "_pb_wire_json_set_varint_field",
 			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_varint_field_element",
 			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_varint_field_element",
@@ -423,6 +425,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			SqlType:                       "BIGINT UNSIGNED",
 			SupportsPacked:                true,
 			GetFunction:                   fmt.Sprintf("_pb_%s_get_i64_field_as_uint64", input.Kind),
+			GetElementFunction:            fmt.Sprintf("_pb_%s_get_i64_field_as_uint64", input.Kind),
 			SetFunction:                   "_pb_wire_json_set_i64_field",
 			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_i64_field_element",
 			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_i64_field_element",
@@ -434,6 +437,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			SqlType:                       "INT UNSIGNED",
 			SupportsPacked:                true,
 			GetFunction:                   fmt.Sprintf("_pb_%s_get_i32_field_as_uint32", input.Kind),
+			GetElementFunction:            fmt.Sprintf("_pb_%s_get_i32_field_as_uint32", input.Kind),
 			SetFunction:                   "_pb_wire_json_set_i32_field",
 			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_i32_field_element",
 			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_i32_field_element",
@@ -445,6 +449,19 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			SqlType:                       "LONGBLOB",
 			SupportsPacked:                false,
 			GetFunction:                   fmt.Sprintf("_pb_%s_get_len_type_field", input.Kind),
+			GetElementFunction:            fmt.Sprintf("_pb_%s_get_len_type_field", input.Kind),
+			SetFunction:                   "_pb_wire_json_set_len_field",
+			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_len_field_element",
+			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_len_field_element",
+			RemoveRepeatedElementFunction: "_pb_wire_json_remove_repeated_len_field_element",
+			InsertRepeatedElementFunction: "_pb_wire_json_insert_repeated_len_field_element",
+		}
+
+		getLengthDelimitedConcatField := &WireTypeAccessor{ // for message field
+			SqlType:                       "LONGBLOB",
+			SupportsPacked:                false,
+			GetFunction:                   fmt.Sprintf("_pb_%s_get_len_type_field_concatenated", input.Kind),
+			GetElementFunction:            fmt.Sprintf("_pb_%s_get_len_type_field", input.Kind),
 			SetFunction:                   "_pb_wire_json_set_len_field",
 			AddRepeatedElementFunction:    "_pb_wire_json_add_repeated_len_field_element",
 			SetRepeatedElementFunction:    "_pb_wire_json_set_repeated_len_field_element",
@@ -454,13 +471,13 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 
 		accessors := []*Accessor{
 			// VARINT
-			{Input: input, ProtoType: "int32", SqlType: "INT", ReturnExpr: "_pb_util_reinterpret_uint64_as_int64(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "_pb_util_reinterpret_int64_as_uint64(value)", SupportsPacked: true},
+			{Input: input, ProtoType: "int32", SqlType: "INT", ReturnExpr: "_pb_util_reinterpret_uint64_as_int32(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "_pb_util_reinterpret_int64_as_uint64(value)", SupportsPacked: true},
 			{Input: input, ProtoType: "int64", SqlType: "BIGINT", ReturnExpr: "_pb_util_reinterpret_uint64_as_int64(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "_pb_util_reinterpret_int64_as_uint64(value)", SupportsPacked: true},
-			{Input: input, ProtoType: "uint32", SqlType: "INT UNSIGNED", ReturnExpr: "value", Procedure: getVarintFieldAsUint64, ConvertExpr: "value", SupportsPacked: true},
+			{Input: input, ProtoType: "uint32", SqlType: "INT UNSIGNED", ReturnExpr: "_pb_util_reinterpret_uint64_as_uint32(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "value", SupportsPacked: true},
 			{Input: input, ProtoType: "uint64", SqlType: "BIGINT UNSIGNED", ReturnExpr: "value", Procedure: getVarintFieldAsUint64, ConvertExpr: "value", SupportsPacked: true},
-			{Input: input, ProtoType: "sint32", SqlType: "INT", ReturnExpr: "_pb_util_reinterpret_uint64_as_sint64(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "_pb_util_reinterpret_sint64_as_uint64(value)", SupportsPacked: true},
+			{Input: input, ProtoType: "sint32", SqlType: "INT", ReturnExpr: "_pb_util_reinterpret_uint64_as_sint32(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "_pb_util_reinterpret_sint64_as_uint64(value)", SupportsPacked: true},
 			{Input: input, ProtoType: "sint64", SqlType: "BIGINT", ReturnExpr: "_pb_util_reinterpret_uint64_as_sint64(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "_pb_util_reinterpret_sint64_as_uint64(value)", SupportsPacked: true},
-			{Input: input, ProtoType: "enum", SqlType: "INT", ReturnExpr: "_pb_util_reinterpret_uint64_as_int64(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "_pb_util_reinterpret_int64_as_uint64(value)", SupportsPacked: true},
+			{Input: input, ProtoType: "enum", SqlType: "INT", ReturnExpr: "_pb_util_reinterpret_uint64_as_int32(value)", Procedure: getVarintFieldAsUint64, ConvertExpr: "_pb_util_reinterpret_int64_as_uint64(value)", SupportsPacked: true},
 			{Input: input, ProtoType: "bool", SqlType: "BOOLEAN", ReturnExpr: "value <> 0", Procedure: getVarintFieldAsUint64, ConvertExpr: "IF(value, 1, 0)", SupportsPacked: true},
 
 			// I32
@@ -476,7 +493,7 @@ func generateAccessorsAction(ctx context.Context, command *cli.Command) error {
 			// LEN
 			{Input: input, ProtoType: "bytes", SqlType: "LONGBLOB", ReturnExpr: "value", Procedure: getLengthDelimitedField, ConvertExpr: "value", SupportsPacked: false},
 			{Input: input, ProtoType: "string", SqlType: "LONGTEXT", ReturnExpr: "CONVERT(value USING utf8mb4)", Procedure: getLengthDelimitedField, ConvertExpr: "CONVERT(value USING binary)", SupportsPacked: false},
-			{Input: input, ProtoType: "message", SqlType: "LONGBLOB", ReturnExpr: "value", Procedure: getLengthDelimitedField, ConvertExpr: "value", SupportsPacked: false},
+			{Input: input, ProtoType: "message", SqlType: "LONGBLOB", ReturnExpr: "value", Procedure: getLengthDelimitedConcatField, ConvertExpr: "value", SupportsPacked: false},
 		}
 
 		tmpl, err := template.New("t").Parse(templateText)
@@ -707,7 +724,7 @@ func generateBulkAddFunctions() {
 		|	DECLARE packed_data LONGBLOB DEFAULT '';
 		|	DECLARE temp_encoded LONGBLOB;
 		|	DECLARE new_element JSON;
-		|	DECLARE field_path TEXT DEFAULT CONCAT('$."', field_number, '"');
+		|	DECLARE field_path TEXT DEFAULT CONCAT('$.', JSON_QUOTE(CAST(field_number AS CHAR)));
 		|	DECLARE field_array JSON;
 		|	DECLARE next_index INT;
 		|{{- end}}
@@ -741,13 +758,13 @@ func generateBulkAddFunctions() {
 		|					FROM_BASE64(JSON_UNQUOTE(JSON_EXTRACT(field_array, CONCAT('$[', JSON_LENGTH(field_array) - 1, '].v')))),
 		|					packed_data
 		|				);
-		|				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), TO_BASE64(packed_data));
+		|				RETURN JSON_SET(result, CONCAT(field_path, '[', JSON_LENGTH(field_array) - 1, '].v'), _pb_util_to_base64(packed_data));
 		|			END IF;
 		|		END IF;
 		|
 		|		-- Create new packed element
 		|		SET next_index = _pb_wire_json_get_next_index(result);
-		|		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', TO_BASE64(packed_data));
+		|		SET new_element = JSON_OBJECT('i', next_index, 'n', field_number, 't', 2, 'v', _pb_util_to_base64(packed_data));
 		|
 		|		IF field_array IS NULL THEN
 		|			RETURN JSON_SET(result, field_path, JSON_ARRAY(new_element));

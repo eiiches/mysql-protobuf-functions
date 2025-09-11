@@ -1,10 +1,12 @@
 /.idea
 /flamegraph-*.svg
-/build/*.sql.instrumented
 /coverage.lcov
 /coverage-html/
 /perf.data
 /perf.data.old
 /mysql.pid
-/protoc-gen-descriptor_set_json
 /mysql-coverage
+/mysql-ftrace
+/protoc-gen-mysql
+/build
+/protobuf.sql

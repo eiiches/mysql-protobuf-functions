@@ -1,0 +1,1141 @@
+package main
+
+import (
+	"fmt"
+	"testing"
+)
+
+func TestProtocGenRepeatedField(t *testing.T) {
+	// Test repeated protobuf field types using the pre-generated functions from protocgenmysql_proto3.pb.sql
+	// The RepeatedFields message in protocgenmysql_proto3.proto matches the test schema
+
+	// Test repeated double field (IEEE 754 binary64 format in arrays)
+	t.Run("repeated_double_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_double(?, 3.141592653589793)", `{}`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18"]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_double(?, 1.0)", `{"1": ["binary64:0x400921fb54442d18"]}`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}`)
+
+		// Test get operations return actual numeric arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}')`).IsEqualToJsonString(`[3.141592653589793, 1.0]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_double('{"1": []}')`).IsEqualToJsonString(`[]`) // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_double('{}')`).IsEqualToJsonString(`[]`)        // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_double(?, '[3.141592653589793, 1.0]')`, `{}`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_double(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_double('{}')`).IsEqualToInt(0)                                                                    // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_double('{"1": []}')`).IsEqualToInt(0)                                                             // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}', 0)`).IsEqualToFloat(3.141592653589793)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}', 1)`).IsEqualToFloat(1.0)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_double('{"1": ["binary64:0x400921fb54442d18"]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}', 0, 2.5)`).IsEqualToJsonString(`{"1": ["binary64:0x4004000000000000", "binary64:0x3ff0000000000000"]}`)
+
+		// Test set bounds checking for double
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_double('{"1": ["binary64:0x400921fb54442d18"]}', 1, 2.5)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_double('{"1": ["binary64:0x400921fb54442d18"]}', -1, 2.5)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_double('{}', 0, 2.5)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for double
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_double('{"1": ["binary64:0x400921fb54442d18"]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_double('{"1": ["binary64:0x3ff0000000000000"]}', 0, 3.141592653589793)`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_double('{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000"]}', 0)`).IsEqualToJsonString(`{"1": ["binary64:0x3ff0000000000000"]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_double('{"1": ["binary64:0x400921fb54442d18"]}', 0)`).IsEqualToJsonString(`{}`)
+
+		// Test insert and remove bounds checking for double
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_double('{"1": ["binary64:0x3ff0000000000000"]}', -1, 3.14)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_double('{"1": ["binary64:0x3ff0000000000000"]}', 2, 3.14)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_double('{}', 1, 3.14)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_double('{"1": ["binary64:0x3ff0000000000000"]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_double('{"1": ["binary64:0x3ff0000000000000"]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_double('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_double('{"1": ["binary64:0x400921fb54442d18"]}', '[1.0, 2.5]')`).IsEqualToJsonString(`{"1": ["binary64:0x400921fb54442d18", "binary64:0x3ff0000000000000", "binary64:0x4004000000000000"]}`)
+
+		// Test add_all and set_all validation for double fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_double('{}', '42.5')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_double('{}', '{"not": "array"}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_double('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_double('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_double('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_double('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated float field (IEEE 754 binary32 format in arrays)
+	t.Run("repeated_float_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_float(?, 3.14)", `{}`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3"]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_float(?, 1.0)", `{"2": ["binary32:0x4048f5c3"]}`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}`)
+
+		// Test get operations return actual numeric arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}')`).IsEqualToJsonString(`[3.140000104904175, 1.0]`) // CAST(CAST(3.14 AS FLOAT) AS DOUBLE) => 3.140000104904175
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_float('{"2": []}')`).IsEqualToJsonString(`[]`)                                                                   // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_float('{}')`).IsEqualToJsonString(`[]`)                                                                          // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_float(?, '[3.14, 1.0]')`, `{}`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_float(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_float('{}')`).IsEqualToInt(0)                                                    // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_float('{"2": []}')`).IsEqualToInt(0)                                             // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}', 0)`).IsEqualToFloat(3.140000104904175) // CAST(CAST(3.14 AS FLOAT) AS DOUBLE)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}', 1)`).IsEqualToFloat(1.0)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_float('{"2": ["binary32:0x4048f5c3"]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}', 1, 2.5)`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x40200000"]}`)
+
+		// Test set bounds checking for float
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_float('{"2": ["binary32:0x4048f5c3"]}', 1, 2.5)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_float('{"2": ["binary32:0x4048f5c3"]}', -1, 2.5)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_float('{}', 0, 2.5)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for float
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_float('{"2": ["binary32:0x4048f5c3"]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_float('{"2": ["binary32:0x3f800000"]}', 0, 3.14)`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_float('{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000"]}', 0)`).IsEqualToJsonString(`{"2": ["binary32:0x3f800000"]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_float('{"2": ["binary32:0x4048f5c3"]}', 0)`).IsEqualToJsonString(`{}`)
+
+		// Test insert and remove bounds checking for float
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_float('{"2": ["binary32:0x3f800000"]}', -1, 3.14)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_float('{"2": ["binary32:0x3f800000"]}', 2, 3.14)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_float('{}', 1, 3.14)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_float('{"2": ["binary32:0x3f800000"]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_float('{"2": ["binary32:0x3f800000"]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_float('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_float('{"2": ["binary32:0x4048f5c3"]}', '[1.0, 2.5]')`).IsEqualToJsonString(`{"2": ["binary32:0x4048f5c3", "binary32:0x3f800000", "binary32:0x40200000"]}`)
+
+		// Test add_all and set_all validation for float fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_float('{}', '3.14')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_float('{}', 'true')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_float('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_float('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_float('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_float('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated int32 field
+	t.Run("repeated_int32_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_int32(?, 42)", `{}`).IsEqualToJsonString(`{"3": [42]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_int32(?, -2147483648)", `{"3": [42]}`).IsEqualToJsonString(`{"3": [42, -2147483648]}`)
+
+		// Test get operations return actual numeric arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_int32('{"3": [42, -2147483648]}')`).IsEqualToJsonString(`[42, -2147483648]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_int32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32(?, '[42, -2147483648]')`, `{}`).IsEqualToJsonString(`{"3": [42, -2147483648]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_int32('{"3": [42, -2147483648]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_int32('{}')`).IsEqualToInt(0)                       // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_int32('{"3": []}')`).IsEqualToInt(0)                // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_int32('{"3": [42, -2147483648]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based get operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_int32('{"3": [10, 20, 30]}', 0)`).IsEqualToInt(10)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_int32('{"3": [10, 20, 30]}', 1)`).IsEqualToInt(20)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_int32('{"3": [10, 20, 30]}', 2)`).IsEqualToInt(30)
+		// Test out of bounds index returns NULL
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_int32('{"3": [10, 20, 30]}', 3)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_int32('{"3": [10, 20, 30]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		// Test empty array returns NULL
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_int32('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test index-based set operations
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int32('{"3": [10, 20, 30]}', 0, 100)`).IsEqualToJsonString(`{"3": [100, 20, 30]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int32('{"3": [10, 20, 30]}', 1, 200)`).IsEqualToJsonString(`{"3": [10, 200, 30]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int32('{"3": [10, 20, 30]}', 2, 300)`).IsEqualToJsonString(`{"3": [10, 20, 300]}`)
+		// Test out of bounds index should fail
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int32('{"3": [10, 20, 30]}', 3, 400)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int32('{}', 0, 100)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for int32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int32('{"3": [10, 20, 30]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+
+		// Test insert operations
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{"3": [20, 30]}', 0, 10)`).IsEqualToJsonString(`{"3": [10, 20, 30]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{"3": [10, 30]}', 1, 20)`).IsEqualToJsonString(`{"3": [10, 20, 30]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{"3": [10, 20]}', 2, 30)`).IsEqualToJsonString(`{"3": [10, 20, 30]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{}', 0, 100)`).IsEqualToJsonString(`{"3": [100]}`)
+
+		// Test insert bounds checking
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{"3": [10, 20]}', -1, 5)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{"3": [10, 20]}', 3, 30)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{}', 1, 100)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{}', -1, 100)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+
+		// Test remove operations
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": [10, 20, 30]}', 0)`).IsEqualToJsonString(`{"3": [20, 30]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": [10, 20, 30]}', 1)`).IsEqualToJsonString(`{"3": [10, 30]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": [10, 20, 30]}', 2)`).IsEqualToJsonString(`{"3": [10, 20]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": [10]}', 0)`).IsEqualToJsonString(`{}`)
+
+		// Test remove bounds checking
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": [10, 20, 30]}', 3)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": [10, 20, 30]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int32('{"3": []}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all operations
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{}', '[100, 200, 300]')`).IsEqualToJsonString(`{"3": [100, 200, 300]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{"3": [10, 20]}', '[100, 200]')`).IsEqualToJsonString(`{"3": [10, 20, 100, 200]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{"3": [10, 20]}', '[]')`).IsEqualToJsonString(`{"3": [10, 20]}`)
+
+		// Test add_all validation - should reject non-array input
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{}', '42')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{}', '"string"')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{}', '{"key": "value"}')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{}', 'true')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+
+		// Test NULL input rejection for add_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int32('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_int32('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int32('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+
+		// Test set_all validation - should reject non-array input
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32('{}', '42')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32('{}', '{"key": "value"}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32('{}', 'false')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int32('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+	})
+
+	// Test repeated int64 field
+	t.Run("repeated_int64_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_int64(?, 9223372036854775807)", `{}`).IsEqualToJsonString(`{"4": [9223372036854775807]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_int64(?, -9223372036854775808)", `{"4": [9223372036854775807]}`).IsEqualToJsonString(`{"4": [9223372036854775807, -9223372036854775808]}`)
+
+		// Test get operations return actual numeric arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_int64('{"4": [9223372036854775807, -9223372036854775808]}')`).IsEqualToJsonString(`[9223372036854775807, -9223372036854775808]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_int64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int64(?, '[9223372036854775807, -9223372036854775808]')`, `{}`).IsEqualToJsonString(`{"4": [9223372036854775807, -9223372036854775808]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_int64('{"4": [9223372036854775807, -9223372036854775808]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_int64('{}')`).IsEqualToInt(0)                                                 // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_int64('{"4": []}')`).IsEqualToInt(0)                                          // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_int64('{"4": [9223372036854775807, -9223372036854775808]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_int64('{"4": [9223372036854775807, -9223372036854775808, 42]}', 0)`).IsEqualToInt(9223372036854775807)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_int64('{"4": [9223372036854775807, -9223372036854775808, 42]}', 2)`).IsEqualToInt(42)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_int64('{"4": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int64('{"4": [100, 200]}', 1, -500)`).IsEqualToJsonString(`{"4": [100, -500]}`)
+
+		// Test set bounds checking for int64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int64('{"4": [100]}', 1, -500)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int64('{"4": [100]}', -1, -500)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int64('{}', 0, -500)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for int64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_int64('{"4": [100]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int64('{"4": [200]}', 0, 100)`).IsEqualToJsonString(`{"4": [100, 200]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int64('{"4": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"4": [100, 300]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int64('{"4": [100]}', 0)`).IsEqualToJsonString(`{}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int64('{"4": [100]}', '[200, 300]')`).IsEqualToJsonString(`{"4": [100, 200, 300]}`)
+
+		// Test insert and remove bounds checking for int64
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int64('{"4": [100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int64('{"4": [100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int64('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int64('{"4": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int64('{"4": [100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_int64('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for int64 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int64('{}', '9223372036854775807')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int64('{}', '{"key": "value"}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_int64('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_int64('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_int64('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_int64('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated uint32 field
+	t.Run("repeated_uint32_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_uint32(?, 4294967295)", `{}`).IsEqualToJsonString(`{"5": [4294967295]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_uint32(?, 42)", `{"5": [4294967295]}`).IsEqualToJsonString(`{"5": [4294967295, 42]}`)
+
+		// Test get operations return actual numeric arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_uint32('{"5": [4294967295, 42]}')`).IsEqualToJsonString(`[4294967295, 42]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_uint32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint32(?, '[4294967295, 42]')`, `{}`).IsEqualToJsonString(`{"5": [4294967295, 42]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_uint32('{"5": [4294967295, 42]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_uint32('{}')`).IsEqualToInt(0)                      // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_uint32('{"5": []}')`).IsEqualToInt(0)               // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_uint32('{"5": [4294967295, 42]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_uint32('{"5": [4294967295, 42, 100]}', 1)`).IsEqualToInt(42)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_uint32('{"5": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint32('{"5": [100, 200]}', 0, 999)`).IsEqualToJsonString(`{"5": [999, 200]}`)
+
+		// Test set bounds checking for uint32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint32('{"5": [100]}', 1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint32('{"5": [100]}', -1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint32('{}', 0, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for uint32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint32('{"5": [100]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint32('{"5": [200]}', 0, 100)`).IsEqualToJsonString(`{"5": [100, 200]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint32('{"5": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"5": [100, 300]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint32('{"5": [100]}', 0)`).IsEqualToJsonString(`{}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint32('{"5": [100]}', '[200, 300]')`).IsEqualToJsonString(`{"5": [100, 200, 300]}`)
+
+		// Test insert and remove bounds checking for uint32
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint32('{"5": [100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint32('{"5": [100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint32('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint32('{"5": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint32('{"5": [100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint32('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for uint32 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint32('{}', '4294967295')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint32('{}', '"string"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint32('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint32('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_uint32('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint32('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated uint64 field
+	t.Run("repeated_uint64_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_uint64(?, 18446744073709551615)", `{}`).IsEqualToJsonString(`{"6": [18446744073709551615]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_uint64(?, 100)", `{"6": [18446744073709551615]}`).IsEqualToJsonString(`{"6": [18446744073709551615, 100]}`)
+
+		// Test get operations return actual numeric arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_uint64('{"6": [18446744073709551615, 100]}')`).IsEqualToJsonString(`[18446744073709551615, 100]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_uint64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint64(?, '[18446744073709551615, 100]')`, `{}`).IsEqualToJsonString(`{"6": [18446744073709551615, 100]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_uint64('{"6": [18446744073709551615, 100]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_uint64('{}')`).IsEqualToInt(0)                                 // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_uint64('{"6": []}')`).IsEqualToInt(0)                          // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_uint64('{"6": [18446744073709551615, 100]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_uint64('{"6": [18446744073709551615, 100, 42]}', 1)`).IsEqualToInt(100)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_uint64('{"6": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint64('{"6": [100, 200]}', 0, 999)`).IsEqualToJsonString(`{"6": [999, 200]}`)
+
+		// Test set bounds checking for uint64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint64('{"6": [100]}', 1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint64('{"6": [100]}', -1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint64('{}', 0, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for uint64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_uint64('{"6": [100]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint64('{"6": [100]}', 0, 50)`).IsEqualToJsonString(`{"6": [50, 100]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint64('{"6": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"6": [100, 300]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint64('{"6": [100]}', 0)`).IsEqualToJsonString(`{}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint64('{"6": [100]}', '[200, 300]')`).IsEqualToJsonString(`{"6": [100, 200, 300]}`)
+
+		// Test insert and remove bounds checking for uint64
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint64('{"6": [100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint64('{"6": [100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint64('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint64('{"6": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint64('{"6": [100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_uint64('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for uint64 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint64('{}', '18446744073709551615')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint64('{}', 'false')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_uint64('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_uint64('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_uint64('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_uint64('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated sint32 field
+	t.Run("repeated_sint32_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_sint32(?, -1)", `{}`).IsEqualToJsonString(`{"7": [-1]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_sint32(?, 42)", `{"7": [-1]}`).IsEqualToJsonString(`{"7": [-1, 42]}`)
+
+		// Test get operations return actual numeric arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_sint32('{"7": [-1, 42]}')`).IsEqualToJsonString(`[-1, 42]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_sint32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint32(?, '[-1, 42]')`, `{}`).IsEqualToJsonString(`{"7": [-1, 42]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_sint32('{"7": [-1, 42]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_sint32('{}')`).IsEqualToInt(0)              // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_sint32('{"7": []}')`).IsEqualToInt(0)       // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_sint32('{"7": [-1, 42]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sint32('{"7": [-1, 42, 100]}', 0)`).IsEqualToInt(-1)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sint32('{"7": [-1]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint32('{"7": [-1, 42]}', 1, 100)`).IsEqualToJsonString(`{"7": [-1, 100]}`)
+
+		// Test set bounds checking for sint32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint32('{"7": [-1]}', 1, 100)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint32('{"7": [-1]}', -1, 100)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint32('{}', 0, 100)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for sint32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint32('{"7": [-1]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint32('{"7": [42]}', 0, -1)`).IsEqualToJsonString(`{"7": [-1, 42]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint32('{"7": [-1, 42, 100]}', 1)`).IsEqualToJsonString(`{"7": [-1, 100]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint32('{"7": [-1]}', 0)`).IsEqualToJsonString(`{}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint32('{"7": [-1]}', '[42, 100]')`).IsEqualToJsonString(`{"7": [-1, 42, 100]}`)
+
+		// Test insert and remove bounds checking for sint32
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint32('{"7": [-1]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint32('{"7": [-1]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint32('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint32('{"7": [-1]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint32('{"7": [-1]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint32('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for sint32 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint32('{}', '-1')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint32('{}', '{}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint32('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint32('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_sint32('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint32('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated sint64 field
+	t.Run("repeated_sint64_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_sint64(?, -1)", `{}`).IsEqualToJsonString(`{"8": [-1]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_sint64(?, 100)", `{"8": [-1]}`).IsEqualToJsonString(`{"8": [-1, 100]}`)
+
+		// Test get operations return actual numeric arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_sint64('{"8": [-1, 100]}')`).IsEqualToJsonString(`[-1, 100]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_sint64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint64(?, '[-1, 100]')`, `{}`).IsEqualToJsonString(`{"8": [-1, 100]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_sint64('{"8": [-1, 100]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_sint64('{}')`).IsEqualToInt(0)               // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_sint64('{"8": []}')`).IsEqualToInt(0)        // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_sint64('{"8": [-1, 100]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sint64('{"8": [-1, 100, 200]}', 1)`).IsEqualToInt(100)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sint64('{"8": [-1]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint64('{"8": [-1, 100]}', 0, -999)`).IsEqualToJsonString(`{"8": [-999, 100]}`)
+
+		// Test set bounds checking for sint64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint64('{"8": [-1]}', 1, -999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint64('{"8": [-1]}', -1, -999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint64('{}', 0, -999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for sint64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sint64('{"8": [-1]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint64('{"8": [100]}', 0, -1)`).IsEqualToJsonString(`{"8": [-1, 100]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint64('{"8": [-1, 100, 200]}', 1)`).IsEqualToJsonString(`{"8": [-1, 200]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint64('{"8": [-1]}', 0)`).IsEqualToJsonString(`{}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint64('{"8": [-1]}', '[100, 200]')`).IsEqualToJsonString(`{"8": [-1, 100, 200]}`)
+
+		// Test insert and remove bounds checking for sint64
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint64('{"8": [-1]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint64('{"8": [-1]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint64('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint64('{"8": [-1]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint64('{"8": [-1]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sint64('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for sint64 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint64('{}', '-9223372036854775808')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint64('{}', 'true')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sint64('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sint64('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_sint64('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sint64('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated fixed32 field
+	t.Run("repeated_fixed32_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_fixed32(?, 4294967295)", `{}`).IsEqualToJsonString(`{"9": [4294967295]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_fixed32(?, 42)", `{"9": [4294967295]}`).IsEqualToJsonString(`{"9": [4294967295, 42]}`)
+
+		// Test get operations return actual numeric arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_fixed32('{"9": [4294967295, 42]}')`).IsEqualToJsonString(`[4294967295, 42]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_fixed32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed32(?, '[4294967295, 42]')`, `{}`).IsEqualToJsonString(`{"9": [4294967295, 42]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_fixed32('{"9": [4294967295, 42]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_fixed32('{}')`).IsEqualToInt(0)                      // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_fixed32('{"9": []}')`).IsEqualToInt(0)               // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_fixed32('{"9": [4294967295, 42]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_fixed32('{"9": [4294967295, 42]}', 0)`).IsEqualToInt(4294967295)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_fixed32('{"9": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed32('{"9": [100, 200]}', 1, 999)`).IsEqualToJsonString(`{"9": [100, 999]}`)
+
+		// Test set bounds checking for fixed32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed32('{"9": [100]}', 1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed32('{"9": [100]}', -1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed32('{}', 0, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for fixed32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed32('{"9": [100]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed32('{"9": [200]}', 0, 100)`).IsEqualToJsonString(`{"9": [100, 200]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed32('{"9": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"9": [100, 300]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed32('{"9": [100]}', 0)`).IsEqualToJsonString(`{}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed32('{"9": [100]}', '[200, 300]')`).IsEqualToJsonString(`{"9": [100, 200, 300]}`)
+
+		// Test insert and remove bounds checking for fixed32
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed32('{"9": [100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed32('{"9": [100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed32('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed32('{"9": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed32('{"9": [100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed32('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for fixed32 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed32('{}', '4294967295')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed32('{}', '"not_array"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed32('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed32('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_fixed32('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed32('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated fixed64 field
+	t.Run("repeated_fixed64_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_fixed64(?, 18446744073709551615)", `{}`).IsEqualToJsonString(`{"10": [18446744073709551615]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_fixed64(?, 100)", `{"10": [18446744073709551615]}`).IsEqualToJsonString(`{"10": [18446744073709551615, 100]}`)
+
+		// Test get operations return actual numeric arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_fixed64('{"10": [18446744073709551615, 100]}')`).IsEqualToJsonString(`[18446744073709551615, 100]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_fixed64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed64(?, '[18446744073709551615, 100]')`, `{}`).IsEqualToJsonString(`{"10": [18446744073709551615, 100]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_fixed64('{"10": [18446744073709551615, 100]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_fixed64('{}')`).IsEqualToInt(0)                                  // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_fixed64('{"10": []}')`).IsEqualToInt(0)                          // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_fixed64('{"10": [18446744073709551615, 100]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_fixed64('{"10": [18446744073709551615, 100]}', 1)`).IsEqualToInt(100)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_fixed64('{"10": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed64('{"10": [100, 200]}', 0, 999)`).IsEqualToJsonString(`{"10": [999, 200]}`)
+
+		// Test set bounds checking for fixed64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed64('{"10": [100]}', 1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed64('{"10": [100]}', -1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed64('{}', 0, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for fixed64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_fixed64('{"10": [100]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed64('{"10": [200]}', 0, 100)`).IsEqualToJsonString(`{"10": [100, 200]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed64('{"10": [100, 200, 300]}', 1)`).IsEqualToJsonString(`{"10": [100, 300]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed64('{"10": [100]}', 0)`).IsEqualToJsonString(`{}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed64('{"10": [100]}', '[200, 300]')`).IsEqualToJsonString(`{"10": [100, 200, 300]}`)
+
+		// Test insert and remove bounds checking for fixed64
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed64('{"10": [100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed64('{"10": [100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed64('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed64('{"10": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed64('{"10": [100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_fixed64('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for fixed64 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed64('{}', '18446744073709551615')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed64('{}', '{"key": "value"}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_fixed64('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_fixed64('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_fixed64('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_fixed64('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated sfixed32 field
+	t.Run("repeated_sfixed32_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_sfixed32(?, -2147483648)", `{}`).IsEqualToJsonString(`{"11": [-2147483648]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_sfixed32(?, 42)", `{"11": [-2147483648]}`).IsEqualToJsonString(`{"11": [-2147483648, 42]}`)
+
+		// Test get operations return actual numeric arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_sfixed32('{"11": [-2147483648, 42]}')`).IsEqualToJsonString(`[-2147483648, 42]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_sfixed32('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed32(?, '[-2147483648, 42]')`, `{}`).IsEqualToJsonString(`{"11": [-2147483648, 42]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed32(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_sfixed32('{"11": [-2147483648, 42]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_sfixed32('{}')`).IsEqualToInt(0)                        // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_sfixed32('{"11": []}')`).IsEqualToInt(0)                // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_sfixed32('{"11": [-2147483648, 42]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sfixed32('{"11": [-2147483648, 42]}', 0)`).IsEqualToInt(-2147483648)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sfixed32('{"11": [42]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed32('{"11": [-100, 42]}', 1, 999)`).IsEqualToJsonString(`{"11": [-100, 999]}`)
+
+		// Test set bounds checking for sfixed32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed32('{"11": [-100]}', 1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed32('{"11": [-100]}', -1, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed32('{}', 0, 999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for sfixed32
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed32('{"11": [-100]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed32('{"11": [42]}', 0, -100)`).IsEqualToJsonString(`{"11": [-100, 42]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed32('{"11": [-100, 42, 100]}', 1)`).IsEqualToJsonString(`{"11": [-100, 100]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed32('{"11": [-100]}', 0)`).IsEqualToJsonString(`{}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed32('{"11": [-100]}', '[42, 100]')`).IsEqualToJsonString(`{"11": [-100, 42, 100]}`)
+
+		// Test insert and remove bounds checking for sfixed32
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed32('{"11": [-100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed32('{"11": [-100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed32('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed32('{"11": [-100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed32('{"11": [-100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed32('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for sfixed32 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed32('{}', '-2147483648')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed32('{}', 'false')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed32('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed32('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_sfixed32('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed32('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated sfixed64 field
+	t.Run("repeated_sfixed64_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_sfixed64(?, -9223372036854775808)", `{}`).IsEqualToJsonString(`{"12": [-9223372036854775808]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_sfixed64(?, 100)", `{"12": [-9223372036854775808]}`).IsEqualToJsonString(`{"12": [-9223372036854775808, 100]}`)
+
+		// Test get operations return actual numeric arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_sfixed64('{"12": [-9223372036854775808, 100]}')`).IsEqualToJsonString(`[-9223372036854775808, 100]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_sfixed64('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed64(?, '[-9223372036854775808, 100]')`, `{}`).IsEqualToJsonString(`{"12": [-9223372036854775808, 100]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed64(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_sfixed64('{"12": [-9223372036854775808, 100]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_sfixed64('{}')`).IsEqualToInt(0)                                  // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_sfixed64('{"12": []}')`).IsEqualToInt(0)                          // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_sfixed64('{"12": [-9223372036854775808, 100]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sfixed64('{"12": [-9223372036854775808, 100]}', 1)`).IsEqualToInt(100)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_sfixed64('{"12": [100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed64('{"12": [-100, 100]}', 0, -999)`).IsEqualToJsonString(`{"12": [-999, 100]}`)
+
+		// Test set bounds checking for sfixed64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed64('{"12": [-100]}', 1, -999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed64('{"12": [-100]}', -1, -999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed64('{}', 0, -999)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for sfixed64
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_sfixed64('{"12": [-100]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed64('{"12": [100]}', 0, -100)`).IsEqualToJsonString(`{"12": [-100, 100]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed64('{"12": [-100, 100, 200]}', 1)`).IsEqualToJsonString(`{"12": [-100, 200]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed64('{"12": [-100]}', 0)`).IsEqualToJsonString(`{}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed64('{"12": [-100]}', '[100, 200]')`).IsEqualToJsonString(`{"12": [-100, 100, 200]}`)
+
+		// Test insert and remove bounds checking for sfixed64
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed64('{"12": [-100]}', -1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed64('{"12": [-100]}', 2, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed64('{}', 1, 50)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed64('{"12": [-100]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed64('{"12": [-100]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_sfixed64('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for sfixed64 fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed64('{}', '-9223372036854775808')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed64('{}', 'true')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_sfixed64('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_sfixed64('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_sfixed64('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_sfixed64('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated bool field (JSON booleans, not 1/0)
+	t.Run("repeated_bool_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_bool(?, TRUE)", `{}`).IsEqualToJsonString(`{"13": [true]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_bool(?, FALSE)", `{"13": [true]}`).IsEqualToJsonString(`{"13": [true, false]}`)
+
+		// Test get operations return actual boolean arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_bool('{"13": [true, false]}')`).IsEqualToJsonString(`[true, false]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_bool('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_bool(?, '[true, false]')`, `{}`).IsEqualToJsonString(`{"13": [true, false]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_bool(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_bool('{"13": [true, false]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_bool('{}')`).IsEqualToInt(0)                    // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_bool('{"13": []}')`).IsEqualToInt(0)            // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_bool('{"13": [true, false]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based get operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_bool('{"13": [true, false, true]}', 0)`).IsEqualToBool(true)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_bool('{"13": [true, false, true]}', 1)`).IsEqualToBool(false)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_bool('{"13": [true, false, true]}', 2)`).IsEqualToBool(true)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_bool('{"13": [true, false]}', 2)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test index-based set operations
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_bool('{"13": [true, false]}', 0, false)`).IsEqualToJsonString(`{"13": [false, false]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_bool('{"13": [true, false]}', 1, true)`).IsEqualToJsonString(`{"13": [true, true]}`)
+
+		// Test set bounds checking for bool
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_bool('{"13": [true]}', 1, false)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_bool('{"13": [true]}', -1, false)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_bool('{}', 0, false)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for bool
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_bool('{"13": [true]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+
+		// Test insert operations
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bool('{"13": [false]}', 0, true)`).IsEqualToJsonString(`{"13": [true, false]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bool('{}', 0, true)`).IsEqualToJsonString(`{"13": [true]}`)
+
+		// Test remove operations
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bool('{"13": [true, false, true]}', 1)`).IsEqualToJsonString(`{"13": [true, true]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bool('{"13": [true]}', 0)`).IsEqualToJsonString(`{}`)
+
+		// Test add_all operations
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_bool('{"13": [true]}', '[false, true]')`).IsEqualToJsonString(`{"13": [true, false, true]}`)
+
+		// Test insert and remove bounds checking for bool
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bool('{"13": [true]}', -1, false)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bool('{"13": [true]}', 2, false)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bool('{}', 1, false)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bool('{"13": [true]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bool('{"13": [true]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bool('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for bool fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_bool('{}', 'true')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_bool('{}', '"boolean"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_bool('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_bool('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_bool('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bool('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated string field
+	t.Run("repeated_string_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_string(?, 'hello')", `{}`).IsEqualToJsonString(`{"14": ["hello"]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_string(?, 'world')", `{"14": ["hello"]}`).IsEqualToJsonString(`{"14": ["hello", "world"]}`)
+
+		// Test get operations return actual string arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_string('{"14": ["hello", "world"]}')`).IsEqualToJsonString(`["hello", "world"]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_string('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_string(?, '["hello", "world"]')`, `{}`).IsEqualToJsonString(`{"14": ["hello", "world"]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_string(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_string('{"14": ["hello", "world"]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_string('{}')`).IsEqualToInt(0)                         // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_string('{"14": []}')`).IsEqualToInt(0)                 // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_string('{"14": ["hello", "world"]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based get operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_string('{"14": ["hello", "world", "test"]}', 0)`).IsEqualToString("hello")
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_string('{"14": ["hello", "world", "test"]}', 1)`).IsEqualToString("world")
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_string('{"14": ["hello", "world", "test"]}', 2)`).IsEqualToString("test")
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_string('{"14": ["hello", "world"]}', 2)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_string('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test index-based set operations
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_string('{"14": ["hello", "world"]}', 0, "hi")`).IsEqualToJsonString(`{"14": ["hi", "world"]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_string('{"14": ["hello", "world"]}', 1, "universe")`).IsEqualToJsonString(`{"14": ["hello", "universe"]}`)
+
+		// Test set bounds checking for string
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_string('{"14": ["hello", "world"]}', 2, "test")`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_string('{"14": ["hello"]}', -1, "test")`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_string('{}', 0, "test")`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for string
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_string('{"14": ["hello", "world"]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+
+		// Test insert operations
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_string('{"14": ["world"]}', 0, "hello")`).IsEqualToJsonString(`{"14": ["hello", "world"]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_string('{"14": ["hello", "world"]}', 1, "beautiful")`).IsEqualToJsonString(`{"14": ["hello", "beautiful", "world"]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_string('{}', 0, "first")`).IsEqualToJsonString(`{"14": ["first"]}`)
+
+		// Test remove operations
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_string('{"14": ["hello", "beautiful", "world"]}', 1)`).IsEqualToJsonString(`{"14": ["hello", "world"]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_string('{"14": ["hello"]}', 0)`).IsEqualToJsonString(`{}`)
+
+		// Test add_all operations
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_string('{"14": ["hello"]}', '["world", "test"]')`).IsEqualToJsonString(`{"14": ["hello", "world", "test"]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_string('{}', '["hello", "world"]')`).IsEqualToJsonString(`{"14": ["hello", "world"]}`)
+
+		// Test insert and remove bounds checking for string
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_string('{"14": ["hello"]}', -1, "test")`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_string('{"14": ["hello"]}', 2, "test")`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_string('{}', 1, "test")`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_string('{"14": ["hello"]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_string('{"14": ["hello"]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_string('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for string fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_string('{}', '"not_array"')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_string('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL") // NULL input rejected
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_string('{}', '123')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_string('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_string('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_string('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated bytes field (base64 encoded)
+	t.Run("repeated_bytes_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_bytes(?, ?)", `{}`, []byte("hello")).IsEqualToJsonString(`{"15": ["aGVsbG8="]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_bytes(?, ?)", `{"15": ["aGVsbG8="]}`, []byte("world")).IsEqualToJsonString(`{"15": ["aGVsbG8=", "d29ybGQ="]}`)
+
+		// Test get operations convert from base64 back to actual byte arrays (but returned as base64 JSON)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ="]}')`).IsEqualToJsonString(`["aGVsbG8=", "d29ybGQ="]`) // Returns base64 strings in array
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_bytes('{}')`).IsEqualToJsonString(`[]`)                                                     // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_bytes(?, '["aGVsbG8=", "d29ybGQ="]')`, `{}`).IsEqualToJsonString(`{"15": ["aGVsbG8=", "d29ybGQ="]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_bytes(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ="]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_bytes('{}')`).IsEqualToInt(0)                               // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_bytes('{"15": []}')`).IsEqualToInt(0)                       // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ="]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based get operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ=", "dGVzdA=="]}', 0)`).IsEqualToBytes([]byte("hello"))
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ=", "dGVzdA=="]}', 1)`).IsEqualToBytes([]byte("world"))
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_bytes('{"15": ["aGVsbG8=", "d29ybGQ="]}', 2)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test index-based set operations
+		RunTestThatExpression(t, "pbt_repeated_fields_set_repeated_bytes(?, 0, ?)", `{"15": ["aGVsbG8=", "d29ybGQ="]}`, []byte("hi")).IsEqualToJsonString(`{"15": ["aGk=", "d29ybGQ="]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_set_repeated_bytes(?, 1, ?)", `{"15": ["aGVsbG8=", "d29ybGQ="]}`, []byte("universe")).IsEqualToJsonString(`{"15": ["aGVsbG8=", "dW5pdmVyc2U="]}`)
+
+		// Test set bounds checking for bytes
+		RunTestThatExpression(t, "pbt_repeated_fields_set_repeated_bytes(?, 1, ?)", `{"15": ["aGVsbG8="]}`, []byte("test")).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, "pbt_repeated_fields_set_repeated_bytes(?, -1, ?)", `{"15": ["aGVsbG8="]}`, []byte("test")).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, "pbt_repeated_fields_set_repeated_bytes(?, 0, ?)", `{}`, []byte("test")).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for bytes
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_bytes('{"15": ["aGVsbG8="]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+
+		// Test insert operations
+		RunTestThatExpression(t, "pbt_repeated_fields_insert_repeated_bytes(?, 0, ?)", `{"15": ["d29ybGQ="]}`, []byte("hello")).IsEqualToJsonString(`{"15": ["aGVsbG8=", "d29ybGQ="]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_insert_repeated_bytes(?, 0, ?)", `{}`, []byte("first")).IsEqualToJsonString(`{"15": ["Zmlyc3Q="]}`)
+
+		// Test remove operations
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bytes('{"15": ["aGVsbG8=", "YmVhdXRpZnVs", "d29ybGQ="]}', 1)`).IsEqualToJsonString(`{"15": ["aGVsbG8=", "d29ybGQ="]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bytes('{"15": ["dGVzdA=="]}', 0)`).IsEqualToJsonString(`{}`)
+
+		// Test add_all operations
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_bytes('{"15": ["aGVsbG8="]}', '["d29ybGQ=", "dGVzdA=="]')`).IsEqualToJsonString(`{"15": ["aGVsbG8=", "d29ybGQ=", "dGVzdA=="]}`)
+
+		// Test insert and remove bounds checking for bytes
+		RunTestThatExpression(t, "pbt_repeated_fields_insert_repeated_bytes(?, -1, ?)", `{"15": ["aGVsbG8="]}`, []byte("test")).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, "pbt_repeated_fields_insert_repeated_bytes(?, 2, ?)", `{"15": ["aGVsbG8="]}`, []byte("test")).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, "pbt_repeated_fields_insert_repeated_bytes(?, 1, ?)", `{}`, []byte("test")).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bytes('{"15": ["aGVsbG8="]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bytes('{"15": ["aGVsbG8="]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_bytes('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for bytes fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_bytes('{}', '"aGVsbG8="')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_bytes('{}', '{"base64": "encoded"}')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_bytes('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_bytes('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_bytes('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_bytes('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated enum field (numbers, not string names)
+	t.Run("repeated_enum_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_enum(?, 1)", `{}`).IsEqualToJsonString(`{"16": [1]}`)
+		RunTestThatExpression(t, "pbt_repeated_fields_add_repeated_enum(?, 2)", `{"16": [1]}`).IsEqualToJsonString(`{"16": [1, 2]}`)
+
+		// Test get operations return actual integer arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_enum('{"16": [1, 2]}')`).IsEqualToJsonString(`[1, 2]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_enum('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_enum(?, '[1, 2]')`, `{}`).IsEqualToJsonString(`{"16": [1, 2]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_enum(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_enum('{"16": [1, 2]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_enum('{}')`).IsEqualToInt(0)             // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_enum('{"16": []}')`).IsEqualToInt(0)     // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_enum('{"16": [1, 2]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based get operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_enum('{"16": [1, 2, 0]}', 0)`).IsEqualToInt(1)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_enum('{"16": [1, 2, 0]}', 1)`).IsEqualToInt(2)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_enum('{"16": [1, 2, 0]}', 2)`).IsEqualToInt(0)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_enum('{"16": [1, 2]}', 2)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test index-based set operations
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_enum('{"16": [1, 2]}', 0, 0)`).IsEqualToJsonString(`{"16": [0, 2]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_enum('{"16": [1, 2]}', 1, 1)`).IsEqualToJsonString(`{"16": [1, 1]}`)
+
+		// Test set bounds checking for enum
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_enum('{"16": [1]}', 1, 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_enum('{"16": [1]}', -1, 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_enum('{}', 0, 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for enum
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_enum('{"16": [1]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+
+		// Test insert operations
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_enum('{"16": [2]}', 0, 1)`).IsEqualToJsonString(`{"16": [1, 2]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_enum('{}', 0, 1)`).IsEqualToJsonString(`{"16": [1]}`)
+
+		// Test remove operations
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_enum('{"16": [1, 2, 0]}', 1)`).IsEqualToJsonString(`{"16": [1, 0]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_enum('{"16": [1]}', 0)`).IsEqualToJsonString(`{}`)
+
+		// Test add_all operations
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_enum('{"16": [1]}', '[2, 0]')`).IsEqualToJsonString(`{"16": [1, 2, 0]}`)
+
+		// Test insert and remove bounds checking for enum
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_enum('{"16": [1]}', -1, 0)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_enum('{"16": [1]}', 2, 0)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_enum('{}', 1, 0)`).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_enum('{"16": [1]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_enum('{"16": [1]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_enum('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for enum fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_enum('{}', '1')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_enum('{}', '"ENUM_VALUE"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_enum('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_enum('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_enum('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_enum('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+
+	// Test repeated message field (array of nested objects with field number keys)
+	t.Run("repeated_message_field", func(t *testing.T) {
+		// Test add operations create correct internal format
+		nested1 := "pbt_nested_set_name(pbt_nested_new(), 'first')"
+		nested2 := "pbt_nested_set_value(pbt_nested_set_name(pbt_nested_new(), 'second'), 42)"
+		RunTestThatExpression(t, fmt.Sprintf("pbt_repeated_fields_add_repeated_message(?, %s)", nested1), `{}`).IsEqualToJsonString(`{"17": [{"1": "first"}]}`)
+		RunTestThatExpression(t, fmt.Sprintf("pbt_repeated_fields_add_repeated_message(?, %s)", nested2), `{"17": [{"1": "first"}]}`).IsEqualToJsonString(`{"17": [{"1": "first"}, {"1": "second", "2": 42}]}`)
+
+		// Test get operations return actual nested object arrays
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}')`).IsEqualToJsonString(`[{"1": "first"}, {"1": "second", "2": 42}]`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_all_repeated_message('{}')`).IsEqualToJsonString(`[]`) // Missing field returns empty array
+
+		// Test set operations create correct internal format
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_message(?, '[{"1": "first"}, {"1": "second", "2": 42}]')`, `{}`).IsEqualToJsonString(`{"17": [{"1": "first"}, {"1": "second", "2": 42}]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_message(?, '[]')`, `{}`).IsEqualToJsonString(`{}`) // Empty array omitted
+
+		// Test clear operations remove field and return empty JSON
+		RunTestThatExpression(t, `pbt_repeated_fields_clear_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}')`).IsEqualToJsonString(`{}`)
+
+		// Test count operations
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_message('{}')`).IsEqualToInt(0)                                                 // Empty object/missing field
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_message('{"17": []}')`).IsEqualToInt(0)                                         // Empty array
+		RunTestThatExpression(t, `pbt_repeated_fields_count_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}')`).IsEqualToInt(2) // Two elements
+
+		// Test index-based get operations
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}', 0)`).IsEqualToJsonString(`{"1": "first"}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_message('{"17": [{"1": "first"}, {"1": "second", "2": 42}]}', 1)`).IsEqualToJsonString(`{"1": "second", "2": 42}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_get_repeated_message('{"17": [{"1": "first"}]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test index-based set operations
+		nestedSetUpdate := "pbt_nested_set_name(pbt_nested_new(), 'updated')"
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_set_repeated_message('{"17": [{"1": "first"}, {"1": "second"}]}', 0, %s)`, nestedSetUpdate)).IsEqualToJsonString(`{"17": [{"1": "updated"}, {"1": "second"}]}`)
+		nestedSetModified := "pbt_nested_set_value(pbt_nested_set_name(pbt_nested_new(), 'modified'), 99)"
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_set_repeated_message('{"17": [{"1": "first"}, {"1": "second"}]}', 1, %s)`, nestedSetModified)).IsEqualToJsonString(`{"17": [{"1": "first"}, {"1": "modified", "2": 99}]}`)
+
+		// Test set bounds checking for message
+		nestedSetBounds := "pbt_nested_set_name(pbt_nested_new(), 'bounds_test')"
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_set_repeated_message('{"17": [{"1": "first"}]}', 1, %s)`, nestedSetBounds)).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_set_repeated_message('{"17": [{"1": "first"}]}', -1, %s)`, nestedSetBounds)).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_set_repeated_message('{}', 0, %s)`, nestedSetBounds)).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test set NULL input rejection for message
+		RunTestThatExpression(t, `pbt_repeated_fields_set_repeated_message('{"17": [{"1": "first"}]}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+
+		// Test insert operations
+		nestedInsert := "pbt_nested_set_name(pbt_nested_new(), 'inserted')"
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_insert_repeated_message('{"17": [{"1": "second"}]}', 0, %s)`, nestedInsert)).IsEqualToJsonString(`{"17": [{"1": "inserted"}, {"1": "second"}]}`)
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_insert_repeated_message('{}', 0, %s)`, nestedInsert)).IsEqualToJsonString(`{"17": [{"1": "inserted"}]}`)
+
+		// Test remove operations
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_message('{"17": [{"1": "first"}, {"1": "second"}, {"1": "third"}]}', 1)`).IsEqualToJsonString(`{"17": [{"1": "first"}, {"1": "third"}]}`)
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_message('{"17": [{"1": "test"}]}', 0)`).IsEqualToJsonString(`{}`)
+
+		// Test add_all operations
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_message('{"17": [{"1": "first"}]}', '[{"1": "second"}, {"1": "third", "2": 42}]')`).IsEqualToJsonString(`{"17": [{"1": "first"}, {"1": "second"}, {"1": "third", "2": 42}]}`)
+
+		// Test insert and remove bounds checking for message
+		nestedBounds := "pbt_nested_set_name(pbt_nested_new(), 'bounds_test')"
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_insert_repeated_message('{"17": [{"1": "first"}]}', -1, %s)`, nestedBounds)).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_insert_repeated_message('{"17": [{"1": "first"}]}', 2, %s)`, nestedBounds)).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, fmt.Sprintf(`pbt_repeated_fields_insert_repeated_message('{}', 1, %s)`, nestedBounds)).ToFailWithSignalException("45000", "Insert index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_message('{"17": [{"1": "first"}]}', 1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_message('{"17": [{"1": "first"}]}', -1)`).ToFailWithSignalException("45000", "Array index out of bounds")
+		RunTestThatExpression(t, `pbt_repeated_fields_remove_repeated_message('{}', 0)`).ToFailWithSignalException("45000", "Array index out of bounds")
+
+		// Test add_all and set_all validation for message fields
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_message('{}', '{"1": "single_object"}')`).ToFailWithSignalException("45000", "elements_array must be a JSON array")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_message('{}', '"not_object"')`).ToFailWithSignalException("45000", "field_value must be a JSON array")
+
+		// Test NULL input rejection for add_all and set_all
+		RunTestThatExpression(t, `pbt_repeated_fields_add_all_repeated_message('{}', NULL)`).ToFailWithSignalException("45000", "elements_array cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_set_all_repeated_message('{}', NULL)`).ToFailWithSignalException("45000", "field_value cannot be NULL")
+
+		// Test NULL input rejection for add and insert
+		RunTestThatExpression(t, `pbt_repeated_fields_add_repeated_message('{}', NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+		RunTestThatExpression(t, `pbt_repeated_fields_insert_repeated_message('{}', 0, NULL)`).ToFailWithSignalException("45000", "element_value cannot be NULL")
+	})
+}

@@ -9,7 +9,7 @@ A Go package for parsing individual MySQL SQL statements into Abstract Syntax Tr
 - **Stored Procedures**: Parses `CREATE PROCEDURE` statements with parameters and body
 - **Functions**: Parses `CREATE FUNCTION` statements with parameters, return types, and body
 - **Control Flow**: Supports `IF`, `WHILE`, `LOOP`, `REPEAT`, `CASE` statements
-- **Variables**: Handles `DECLARE` and `SET` statements
+- **Variables**: Handles `DECLARE` and `SET` statements with detailed variable assignment parsing
 - **Flow Control**: Parses `LEAVE`, `ITERATE`, `RETURN`, and `SIGNAL` statements
 - **Generic Expressions**: Simplified expression parsing for conditions and values
 - **Position Tracking**: Every AST node includes line number, column, and byte offset information
@@ -197,6 +197,20 @@ type WhileStmt struct {
 }
 ```
 
+#### SetVariableStmt
+```go
+type SetVariableStmt struct {
+    BaseStatement
+    Assignments []VariableAssignment
+}
+
+type VariableAssignment struct {
+    VariableRef   string // Variable name (@var, @@var, local_var)
+    ScopeKeyword  string // GLOBAL, SESSION, PERSIST, PERSIST_ONLY
+    Value         string // Assignment expression
+}
+```
+
 #### Parameter
 ```go
 type Parameter struct {
@@ -219,10 +233,11 @@ The parser returns different AST node types based on the input:
 - **CaseStmt**: For `CASE` statements
 - **BeginStmt**: For `BEGIN...END` blocks
 - **DeclareStmt**: For `DECLARE` statements
+- **SetVariableStmt**: For `SET` variable assignment statements
 - **LeaveStmt**: For `LEAVE` statements
 - **IterateStmt**: For `ITERATE` statements
 - **ReturnStmt**: For `RETURN` statements
-- **GenericStmt**: For other SQL statements (including `SIGNAL`, `SET`, `SELECT`, `CALL`, etc.)
+- **GenericStmt**: For other SQL statements (including `SIGNAL`, `SELECT`, `CALL`, etc.)
 
 ### Expression Handling
 
@@ -250,7 +265,7 @@ CreateProcedureStmt{
     },
     Body: []StatementAST{
         DeclareStmt{...},
-        GenericStmt{Text: "SET temp = 'Hello'"},
+        SetVariableStmt{Assignments: []VariableAssignment{{VariableRef: "temp", Value: "'Hello'"}}},
         GenericStmt{Text: "SELECT temp"}
     }
 }
@@ -294,11 +309,11 @@ Output:
 ```
 IfStmt{
     Condition: "x > 0",
-    Then: []StatementAST{GenericStmt{Text: "SET result = 'positive'"}},
+    Then: []StatementAST{SetVariableStmt{Assignments: []VariableAssignment{{VariableRef: "result", Value: "'positive'"}}}},
     ElseIfs: []ElseIfClause{
-        {Condition: "x < 0", Then: []StatementAST{GenericStmt{Text: "SET result = 'negative'"}}}
+        {Condition: "x < 0", Then: []StatementAST{SetVariableStmt{Assignments: []VariableAssignment{{VariableRef: "result", Value: "'negative'"}}}}}
     },
-    Else: []StatementAST{GenericStmt{Text: "SET result = 'zero'"}}
+    Else: []StatementAST{SetVariableStmt{Assignments: []VariableAssignment{{VariableRef: "result", Value: "'zero'"}}}}
 }
 ```
 
@@ -315,8 +330,44 @@ Output:
 WhileStmt{
     Condition: "counter < 10",
     Body: []StatementAST{
-        GenericStmt{Text: "SET counter = counter + 1"},
+        SetVariableStmt{Assignments: []VariableAssignment{{VariableRef: "counter", Value: "counter + 1"}}},
         GenericStmt{Text: "SELECT counter"}
+    }
+}
+```
+
+### SET Variable Statements
+```sql
+SET @user_var = 'hello';
+SET @@SESSION.sql_mode = 'STRICT_TRANS_TABLES';
+SET GLOBAL max_connections = 200;
+SET result = x + y, temp = result * 2;
+```
+
+Output:
+```
+SetVariableStmt{
+    Assignments: []VariableAssignment{
+        {VariableRef: "@user_var", Value: "'hello'"}
+    }
+}
+
+SetVariableStmt{
+    Assignments: []VariableAssignment{
+        {VariableRef: "@@SESSION.sql_mode", Value: "'STRICT_TRANS_TABLES'"}
+    }
+}
+
+SetVariableStmt{
+    Assignments: []VariableAssignment{
+        {VariableRef: "max_connections", ScopeKeyword: "GLOBAL", Value: "200"}
+    }
+}
+
+SetVariableStmt{
+    Assignments: []VariableAssignment{
+        {VariableRef: "result", Value: "x + y"},
+        {VariableRef: "temp", Value: "result * 2"}
     }
 }
 ```

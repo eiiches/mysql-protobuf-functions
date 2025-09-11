@@ -47,6 +47,6 @@ END`
 	_, isDeclare := beginStmt.Body[0].(*sqlflowparser.DeclareStmt)
 	g.Expect(isDeclare).To(BeTrue(), "First statement should be DeclareStmt, got %T", beginStmt.Body[0])
 
-	_, isSet := beginStmt.Body[1].(*sqlflowparser.GenericStmt)
-	g.Expect(isSet).To(BeTrue(), "Second statement should be GenericStmt, got %T", beginStmt.Body[1])
+	_, isSet := beginStmt.Body[1].(*sqlflowparser.SetVariableStmt)
+	g.Expect(isSet).To(BeTrue(), "Second statement should be SetVariableStmt, got %T", beginStmt.Body[1])
 }
